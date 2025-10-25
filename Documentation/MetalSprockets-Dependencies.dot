@@ -1,0 +1,95 @@
+// Generated from user's selection
+// Directed graph of package dependencies
+digraph MetalSprockets {
+    // layout and style
+    rankdir = LR;
+    bgcolor = "#ffffff";
+    graph [splines = true;];
+    node [shape = rect; style = "rounded,filled"; fillcolor = "#F7FBFF"; color = "#2B3B4E"; fontname = "Helvetica"; fontsize = 12;];
+    edge [color = "#666666"; arrowsize = 0.9; penwidth = 1.2;];
+
+    // clusters for logical grouping
+    subgraph cluster_core {
+        label = "Core";
+        style = "filled,rounded";
+        color = "#A9CCE3";
+        fillcolor = "#EEF9FF";
+        penwidth = 1.2;
+        MetalSprockets;
+        MetalSprocketsAddOns;
+        MetalSprocketsExamples;
+    }
+
+    subgraph cluster_support {
+        label = "Support";
+        style = "filled,rounded";
+        color = "#A9CCE3";
+        fillcolor = "#F2FBF7";
+        penwidth = 1.0;
+        DemoKit;
+        GeometryLite3D;
+        Interaction3D;
+    }
+
+
+    subgraph cluster_apple {
+        label = "Apple";
+        style = "filled,rounded";
+        color = "#F5CBA7";
+        fillcolor = "#FFF4E6";
+        penwidth = 1.0;
+        swift_syntax;
+        swift_async_algorithms;
+        swift_collections;
+    }
+
+    subgraph cluster_schwa {
+        label = "schwa";
+        style = "filled,rounded";
+        color = "#D6EAF8";
+        fillcolor = "#F7FBFF";
+        penwidth = 0.8;
+
+        MetalCompilerPlugin;
+        Everything;
+        SwiftGLTF;
+        Panels;
+        earcut_swift;
+    }
+
+    subgraph cluster_third_party {
+        label = "Third Party";
+        style = "filled,rounded";
+        color = "#D6EAF8";
+        fillcolor = "#F7FBFF";
+        penwidth = 0.8;
+
+        CBORCoding;
+        ZIPFoundation;
+    }
+
+
+    // dependency edges
+    MetalSprockets -> GeometryLite3D;
+    MetalSprockets -> swift_syntax;
+    MetalSprocketsAddOns -> MetalSprockets;
+    MetalSprocketsAddOns -> GeometryLite3D;
+    MetalSprocketsAddOns -> Interaction3D;
+    MetalSprocketsAddOns -> MetalCompilerPlugin;
+    MetalSprocketsExamples -> MetalSprocketsAddOns;
+    MetalSprocketsExamples -> CBORCoding;
+    MetalSprocketsExamples -> DemoKit;
+    MetalSprocketsExamples -> earcut_swift;
+    MetalSprocketsExamples -> Everything;
+    MetalSprocketsExamples -> GeometryLite3D;
+    MetalSprocketsExamples -> Interaction3D;
+    MetalSprocketsExamples -> MetalCompilerPlugin;
+    MetalSprocketsExamples -> MetalSprockets;
+    MetalSprocketsExamples -> MetalSprocketsAddOns;
+    MetalSprocketsExamples -> Panels;
+    MetalSprocketsExamples -> swift_async_algorithms;
+    MetalSprocketsExamples -> swift_collections;
+    MetalSprocketsExamples -> swift_syntax;
+    MetalSprocketsExamples -> SwiftGLTF;
+    MetalSprocketsExamples -> ZIPFoundation;
+}
