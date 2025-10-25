@@ -17,7 +17,7 @@ internal class Snapshotter {
 
     init() {
         // Setup file path
-        let baseDir = FileManager.default.temporaryDirectory.appendingPathComponent("ultraviolence_snapshots")
+        let baseDir = FileManager.default.temporaryDirectory.appendingPathComponent("metal-sprockets_snapshots")
         let filename = "\(ProcessInfo.processInfo.processIdentifier).uvsnapshots"
         self.fileURL = baseDir.appendingPathComponent(filename)
     }
