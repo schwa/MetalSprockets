@@ -1,6 +1,6 @@
 import Metal
 import Testing
-@testable import UltraviolenceExamples
+@testable import MetalSprocketsExamples
 
 struct VertexDescriptorTests {
     @Test

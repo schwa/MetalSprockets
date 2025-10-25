@@ -1,5 +1,5 @@
 import SwiftUI
-import Ultraviolence
+import MetalSprockets
 
 internal struct SnapshotViewerDocumentView: View {
     @Binding var document: SnapshotViewerDocument

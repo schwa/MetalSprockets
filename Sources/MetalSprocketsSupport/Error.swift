@@ -1,6 +1,6 @@
 import Foundation
 
-public indirect enum UltraviolenceError: Error, Equatable {
+public indirect enum MetalSprocketsError: Error, Equatable {
     case undefined
     case generic(String)
     case missingEnvironment(String)
@@ -13,7 +13,7 @@ public indirect enum UltraviolenceError: Error, Equatable {
 }
 
 public extension Optional {
-    func orThrow(_ error: @autoclosure () -> UltraviolenceError) throws -> Wrapped {
+    func orThrow(_ error: @autoclosure () -> MetalSprocketsError) throws -> Wrapped {
         // swiftlint:disable:next self_binding
         guard let value = self else {
             let error = error()
@@ -35,7 +35,7 @@ public extension Optional {
         return value
     }
 
-    func orFatalError(_ error: @autoclosure () -> UltraviolenceError) -> Wrapped {
+    func orFatalError(_ error: @autoclosure () -> MetalSprocketsError) -> Wrapped {
         // swiftlint:disable:next self_binding
         guard let value = self else {
             fatalError("\(error())")

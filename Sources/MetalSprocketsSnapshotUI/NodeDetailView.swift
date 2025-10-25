@@ -1,5 +1,5 @@
 import SwiftUI
-import Ultraviolence
+import MetalSprockets
 
 internal struct ExpandableSection: View {
     let content: String

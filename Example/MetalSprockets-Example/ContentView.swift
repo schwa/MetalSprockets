@@ -1,6 +1,6 @@
 import SwiftUI
-import Ultraviolence
-import UltraviolenceUI
+import MetalSprockets
+import MetalSprocketsUI
 
 struct ContentView: View {
     var body: some View {

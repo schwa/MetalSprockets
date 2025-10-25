@@ -1,5 +1,5 @@
 import Metal
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
 @dynamicMemberLookup
 public struct ShaderLibrary {
@@ -22,7 +22,7 @@ public struct ShaderLibrary {
                 self.library = library
             }
             else {
-                try _throw(UltraviolenceError.resourceCreationFailure("Failed to load default library from bundle."))
+                try _throw(MetalSprocketsError.resourceCreationFailure("Failed to load default library from bundle."))
             }
         }
         self.namespace = namespace
@@ -52,7 +52,7 @@ public struct ShaderLibrary {
         } else {
             // No constants, just get the function directly
             guard let basicFunction = library.makeFunction(name: scopedNamed) else {
-                try _throw(UltraviolenceError.resourceCreationFailure("Function '\(scopedNamed)' not found in library (available: \(library.functionNames))."))
+                try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedNamed)' not found in library (available: \(library.functionNames))."))
             }
             function = basicFunction
         }
@@ -60,37 +60,37 @@ public struct ShaderLibrary {
         // TODO: #94 Clean this up.
         case is VertexShader.Type:
             guard function.functionType == .vertex else {
-                try _throw(UltraviolenceError.resourceCreationFailure("Function \(scopedNamed) is not a vertex function."))
+                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a vertex function."))
             }
             return (VertexShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create VertexShader."))
         case is FragmentShader.Type:
             guard function.functionType == .fragment else {
-                try _throw(UltraviolenceError.resourceCreationFailure("Function \(scopedNamed) is not a fragment function."))
+                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a fragment function."))
             }
             return (FragmentShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create FragmentShader."))
         case is ComputeKernel.Type:
             guard function.functionType == .kernel else {
-                try _throw(UltraviolenceError.resourceCreationFailure("Function \(scopedNamed) is not a kernel function."))
+                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a kernel function."))
             }
             return (ComputeKernel(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ComputeKernel."))
 
         case is VisibleFunction.Type:
             guard function.functionType == .visible else {
-                try _throw(UltraviolenceError.resourceCreationFailure("Function \(scopedNamed) is not a visible function."))
+                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a visible function."))
             }
             return (VisibleFunction(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ComputeKernel."))
         case is ObjectShader.Type:
             guard function.functionType == .object else {
-                try _throw(UltraviolenceError.resourceCreationFailure("Function \(scopedNamed) is not an object function."))
+                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not an object function."))
             }
             return (ObjectShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ObjectShader."))
         case is MeshShader.Type:
             guard function.functionType == .mesh else {
-                try _throw(UltraviolenceError.resourceCreationFailure("Function \(scopedNamed) is not a mesh function."))
+                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a mesh function."))
             }
             return (MeshShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create MeshShader."))
         default:
-            try _throw(UltraviolenceError.resourceCreationFailure("Unknown shader type \(type)."))
+            try _throw(MetalSprocketsError.resourceCreationFailure("Unknown shader type \(type)."))
         }
     }
 }

@@ -1,8 +1,8 @@
 import Metal
 internal import os
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
-public extension UltraviolenceError {
+public extension MetalSprocketsError {
     static func missingEnvironment(_ key: PartialKeyPath<UVEnvironmentValues>) -> Self {
         missingEnvironment("\(key)")
     }

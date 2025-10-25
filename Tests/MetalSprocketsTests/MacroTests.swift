@@ -5,9 +5,9 @@ import SwiftSyntaxMacrosTestSupport
 import XCTest
 
 // Macro implementations build for the host, so the corresponding module is not available when cross-compiling. Cross-compiled tests may still make use of the macro itself in end-to-end tests.
-#if canImport(UltraviolenceMacros)
+#if canImport(MetalSprocketsMacros)
 // periphery:ignore
-import UltraviolenceMacros
+import MetalSprocketsMacros
 
 @MainActor
 let testMacros: [String: Macro.Type] = [
@@ -18,7 +18,7 @@ let testMacros: [String: Macro.Type] = [
 @MainActor
 final class EntryMacroTests: XCTestCase {
     func testBasicType() throws {
-        #if canImport(UltraviolenceMacros)
+        #if canImport(MetalSprocketsMacros)
         assertMacroExpansion(
             """
             extension EnvironmentValues {
@@ -54,7 +54,7 @@ final class EntryMacroTests: XCTestCase {
     }
 
     func testOptionalType() throws {
-        #if canImport(UltraviolenceMacros)
+        #if canImport(MetalSprocketsMacros)
         assertMacroExpansion(
             """
             extension EnvironmentValues {

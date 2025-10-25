@@ -2,8 +2,8 @@ import GeometryLite3D
 import Metal
 import simd
 import Testing
-@testable import Ultraviolence
-import UltraviolenceSupport
+@testable import MetalSprockets
+import MetalSprocketsSupport
 
 @Suite
 struct ParametersTests {

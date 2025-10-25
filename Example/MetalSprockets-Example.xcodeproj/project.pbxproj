@@ -7,18 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		45B171292E8447A7003BD63A /* Ultraviolence in Frameworks */ = {isa = PBXBuildFile; productRef = 45B171282E8447A7003BD63A /* Ultraviolence */; };
-		45B1712B2E8447A7003BD63A /* UltraviolenceUI in Frameworks */ = {isa = PBXBuildFile; productRef = 45B1712A2E8447A7003BD63A /* UltraviolenceUI */; };
+		45B171292E8447A7003BD63A /* MetalSprockets in Frameworks */ = {isa = PBXBuildFile; productRef = 45B171282E8447A7003BD63A /* MetalSprockets */; };
+		45B1712B2E8447A7003BD63A /* MetalSprocketsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 45B1712A2E8447A7003BD63A /* MetalSprocketsUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		45C80D312E84475800136D6D /* Ultraviolence-Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Ultraviolence-Example.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		45C80D312E84475800136D6D /* MetalSprockets-Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MetalSprockets-Example.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		45C80D332E84475800136D6D /* Ultraviolence-Example */ = {
+		45C80D332E84475800136D6D /* MetalSprockets-Example */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Ultraviolence-Example";
+			path = "MetalSprockets-Example";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -28,8 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				45B1712B2E8447A7003BD63A /* UltraviolenceUI in Frameworks */,
-				45B171292E8447A7003BD63A /* Ultraviolence in Frameworks */,
+				45B1712B2E8447A7003BD63A /* MetalSprocketsUI in Frameworks */,
+				45B171292E8447A7003BD63A /* MetalSprockets in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -39,7 +39,7 @@
 		45C80D282E84475800136D6D = {
 			isa = PBXGroup;
 			children = (
-				45C80D332E84475800136D6D /* Ultraviolence-Example */,
+				45C80D332E84475800136D6D /* MetalSprockets-Example */,
 				45C80D322E84475800136D6D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,7 +47,7 @@
 		45C80D322E84475800136D6D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				45C80D312E84475800136D6D /* Ultraviolence-Example.app */,
+				45C80D312E84475800136D6D /* MetalSprockets-Example.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,9 +55,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		45C80D302E84475800136D6D /* Ultraviolence-Example */ = {
+		45C80D302E84475800136D6D /* MetalSprockets-Example */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 45C80D3C2E84475800136D6D /* Build configuration list for PBXNativeTarget "Ultraviolence-Example" */;
+			buildConfigurationList = 45C80D3C2E84475800136D6D /* Build configuration list for PBXNativeTarget "MetalSprockets-Example" */;
 			buildPhases = (
 				45C80D2D2E84475800136D6D /* Sources */,
 				45C80D2E2E84475800136D6D /* Frameworks */,
@@ -68,15 +68,15 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				45C80D332E84475800136D6D /* Ultraviolence-Example */,
+				45C80D332E84475800136D6D /* MetalSprockets-Example */,
 			);
-			name = "Ultraviolence-Example";
+			name = "MetalSprockets-Example";
 			packageProductDependencies = (
-				45B171282E8447A7003BD63A /* Ultraviolence */,
-				45B1712A2E8447A7003BD63A /* UltraviolenceUI */,
+				45B171282E8447A7003BD63A /* MetalSprockets */,
+				45B1712A2E8447A7003BD63A /* MetalSprocketsUI */,
 			);
-			productName = "Ultraviolence-Example";
-			productReference = 45C80D312E84475800136D6D /* Ultraviolence-Example.app */;
+			productName = "MetalSprockets-Example";
+			productReference = 45C80D312E84475800136D6D /* MetalSprockets-Example.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -94,7 +94,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 45C80D2C2E84475800136D6D /* Build configuration list for PBXProject "Ultraviolence-Example" */;
+			buildConfigurationList = 45C80D2C2E84475800136D6D /* Build configuration list for PBXProject "MetalSprockets-Example" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -104,14 +104,14 @@
 			mainGroup = 45C80D282E84475800136D6D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				45B171272E8447A7003BD63A /* XCLocalSwiftPackageReference "../../Ultraviolence" */,
+				45B171272E8447A7003BD63A /* XCLocalSwiftPackageReference "../../MetalSprockets" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 45C80D322E84475800136D6D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				45C80D302E84475800136D6D /* Ultraviolence-Example */,
+				45C80D302E84475800136D6D /* MetalSprockets-Example */,
 			);
 		};
 /* End PBXProject section */
@@ -281,7 +281,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.schwa.Ultraviolence-Example";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.schwa.MetalSprockets-Example";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -325,7 +325,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.schwa.Ultraviolence-Example";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.schwa.MetalSprockets-Example";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -344,7 +344,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		45C80D2C2E84475800136D6D /* Build configuration list for PBXProject "Ultraviolence-Example" */ = {
+		45C80D2C2E84475800136D6D /* Build configuration list for PBXProject "MetalSprockets-Example" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				45C80D3A2E84475800136D6D /* Debug */,
@@ -353,7 +353,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		45C80D3C2E84475800136D6D /* Build configuration list for PBXNativeTarget "Ultraviolence-Example" */ = {
+		45C80D3C2E84475800136D6D /* Build configuration list for PBXNativeTarget "MetalSprockets-Example" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				45C80D3D2E84475800136D6D /* Debug */,
@@ -365,20 +365,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		45B171272E8447A7003BD63A /* XCLocalSwiftPackageReference "../../Ultraviolence" */ = {
+		45B171272E8447A7003BD63A /* XCLocalSwiftPackageReference "../../MetalSprockets" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Ultraviolence;
+			relativePath = ../../MetalSprockets;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		45B171282E8447A7003BD63A /* Ultraviolence */ = {
+		45B171282E8447A7003BD63A /* MetalSprockets */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = Ultraviolence;
+			productName = MetalSprockets;
 		};
-		45B1712A2E8447A7003BD63A /* UltraviolenceUI */ = {
+		45B1712A2E8447A7003BD63A /* MetalSprocketsUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = UltraviolenceUI;
+			productName = MetalSprocketsUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

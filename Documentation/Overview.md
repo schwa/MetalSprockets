@@ -1,8 +1,8 @@
-# Ultraviolence Overview
+# MetalSprockets Overview
 
 ## Introduction
 
-Ultraviolence ("UV") is a Swift Package that provides a composable architecture on top of Metal.
+MetalSprockets ("UV") is a Swift Package that provides a composable architecture on top of Metal.
 
 UV's design loosely follows SwiftUI. UV Elements correspond to SwiftUI Views, including SwiftUI features like State, Environment, and Bindings (UVState, UVEnvironment, UVBinding). UV does not simplify Metal - you will still need a deep understanding of Metal to use it effectively. However, UV helps you skip many complex Metal setups and boilerplate code. It also enables you to compose multiple Metal render and compute pipelines to create a "render graph."
 

@@ -1,6 +1,6 @@
 import CoreGraphics
 import Metal
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
 public struct OffscreenRenderer {
     public var device: MTLDevice

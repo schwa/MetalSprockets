@@ -1,7 +1,7 @@
 import Foundation
 import simd
 import Testing
-@testable import Ultraviolence
+@testable import MetalSprockets
 
 @Test
 @MainActor

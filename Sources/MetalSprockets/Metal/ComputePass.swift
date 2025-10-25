@@ -1,5 +1,5 @@
 import Metal
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
 public struct ComputePass <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     internal let label: String?

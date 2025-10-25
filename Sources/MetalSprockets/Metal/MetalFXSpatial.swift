@@ -1,7 +1,7 @@
 #if canImport(MetalFX)
 import Metal
 import MetalFX
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
 public struct MetalFXSpatial: Element {
     @UVState

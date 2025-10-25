@@ -4,37 +4,37 @@
             "type": "lldb",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:Ultraviolence}",
+            "cwd": "${workspaceFolder:MetalSprockets}",
             "name": "Debug uvcli",
-            "program": "${workspaceFolder:Ultraviolence}/.build/debug/uvcli",
+            "program": "${workspaceFolder:MetalSprockets}/.build/debug/uvcli",
             "preLaunchTask": "swift: Build Debug uvcli"
         },
         {
             "type": "lldb",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:Ultraviolence}",
+            "cwd": "${workspaceFolder:MetalSprockets}",
             "name": "Release uvcli",
-            "program": "${workspaceFolder:Ultraviolence}/.build/release/uvcli",
+            "program": "${workspaceFolder:MetalSprockets}/.build/release/uvcli",
             "preLaunchTask": "swift: Build Release uvcli"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:Ultraviolence}",
-            "name": "Debug UltraviolenceCLI",
-            "program": "${workspaceFolder:Ultraviolence}/.build/debug/UltraviolenceCLI",
-            "preLaunchTask": "swift: Build Debug UltraviolenceCLI"
+            "cwd": "${workspaceFolder:MetalSprockets}",
+            "name": "Debug MetalSprocketsCLI",
+            "program": "${workspaceFolder:MetalSprockets}/.build/debug/MetalSprocketsCLI",
+            "preLaunchTask": "swift: Build Debug MetalSprocketsCLI"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:Ultraviolence}",
-            "name": "Release UltraviolenceCLI",
-            "program": "${workspaceFolder:Ultraviolence}/.build/release/UltraviolenceCLI",
-            "preLaunchTask": "swift: Build Release UltraviolenceCLI"
+            "cwd": "${workspaceFolder:MetalSprockets}",
+            "name": "Release MetalSprocketsCLI",
+            "program": "${workspaceFolder:MetalSprockets}/.build/release/MetalSprocketsCLI",
+            "preLaunchTask": "swift: Build Release MetalSprocketsCLI"
         }
     ]
 }

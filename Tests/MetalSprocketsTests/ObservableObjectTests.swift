@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 import Testing
-@testable import Ultraviolence
+@testable import MetalSprockets
 
 @MainActor
 final class TestModel: ObservableObject {

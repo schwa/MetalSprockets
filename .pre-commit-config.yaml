@@ -25,7 +25,7 @@ repos:
             pass_filenames: false
           - id: xcodebuild
             name: xcodebuild
-            entry: cd Demo && xcodebuild -scheme Ultraviolet && xcodebuild -scheme UltraviolenceDemo -destination 'platform=iOS Simulator,name=iPhone 16 Plus' build
+            entry: cd Demo && xcodebuild -scheme Ultraviolet && xcodebuild -scheme MetalSprocketsDemo -destination 'platform=iOS Simulator,name=iPhone 16 Plus' build
 
             language: system
             types: [swift]

@@ -1,4 +1,4 @@
-# [Ultraviolence](https://github.com/schwa/Ultraviolence)
+# [MetalSprockets](https://github.com/schwa/MetalSprockets)
 
 A declarative framework for Metal rendering in Swift.
 
@@ -14,7 +14,7 @@ See [Documentation](./Documentation/) for more information:
 
 Related repositories:
 
-- [Ultraviolence-Examples](https://github.com/schwa/Ultraviolence-Examples) - Example projects using Ultraviolence
+- [MetalSprockets-Examples](https://github.com/schwa/MetalSprockets-Examples) - Example projects using MetalSprockets
 
 ## AI Usage
 

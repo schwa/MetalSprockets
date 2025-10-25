@@ -1,8 +1,8 @@
-# Ultraviolence Internals
+# MetalSprockets Internals
 
 ## Overview
 
-Ultraviolence is a declarative framework for Metal rendering in Swift, inspired by SwiftUI's architecture. The framework uses a System-based approach with structural identity to efficiently manage element trees and Metal rendering operations.
+MetalSprockets is a declarative framework for Metal rendering in Swift, inspired by SwiftUI's architecture. The framework uses a System-based approach with structural identity to efficiently manage element trees and Metal rendering operations.
 
 ## Core Architecture
 

@@ -1,6 +1,6 @@
 import QuartzCore
 import SwiftUI
-import Ultraviolence
+import MetalSprockets
 
 internal struct RenderViewDebugViewModifier <Root>: ViewModifier where Root: Element {
     @State

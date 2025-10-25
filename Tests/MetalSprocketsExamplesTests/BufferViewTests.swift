@@ -1,6 +1,6 @@
 import Metal
 import Testing
-@testable import UltraviolenceExamples
+@testable import MetalSprocketsExamples
 
 @Suite("BufferView Tests")
 struct BufferViewTests {

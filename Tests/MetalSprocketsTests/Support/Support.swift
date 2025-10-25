@@ -3,8 +3,8 @@ import CoreGraphics
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import Testing
-@testable import Ultraviolence
-import UltraviolenceSupport
+@testable import MetalSprockets
+import MetalSprocketsSupport
 import UniformTypeIdentifiers
 #if canImport(AppKit)
 import AppKit
@@ -21,7 +21,7 @@ extension CGImage {
                 try self.write(to: url)
                 url.revealInFinder()
 
-                throw UltraviolenceError.validationError("Images are not equal")
+                throw MetalSprocketsError.validationError("Images are not equal")
             }
             return true
         }

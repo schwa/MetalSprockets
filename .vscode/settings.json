@@ -3,7 +3,7 @@
         "Blit",
         "Objc",
         "stdlib",
-        "Ultraviolence",
+        "MetalSprockets",
         "Upscaler"
     ],
     "cSpell.enableFiletypes": [

@@ -1,5 +1,5 @@
 import SwiftUI
-import Ultraviolence
+import MetalSprockets
 
 /// Main debug view that displays a system snapshot
 public struct SnapshotDebugView: View {

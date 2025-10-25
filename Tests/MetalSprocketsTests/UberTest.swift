@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Ultraviolence
+@testable import MetalSprockets
 
 @MainActor
 struct UberTest {

@@ -2,7 +2,7 @@ import Metal
 import MetalKit
 import ModelIO
 import QuartzCore
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
 public extension UVEnvironmentValues {
     // TODO: #114 This is messy and needs organisation and possibly deprecation of unused elements.

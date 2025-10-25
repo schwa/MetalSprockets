@@ -1,4 +1,4 @@
-# Ultraviolence FAQ
+# MetalSprockets FAQ
 
 ## Why isn't my Element rendering anything / Why does Metal debugger show "empty render encoder"?
 
@@ -31,7 +31,7 @@ The framework needs concrete type information to properly traverse the element t
 Always use `some Element` as the return type for your Element's body property. This preserves the concrete type information needed for proper element tree traversal.
 
 ### Related Issues
-- [#256](https://github.com/schwa/Ultraviolence/issues/256) - Framework should detect or warn when Element body returns 'any Element'
+- [#256](https://github.com/schwa/MetalSprockets/issues/256) - Framework should detect or warn when Element body returns 'any Element'
 
 ## Why am I getting "missingEnvironment(\.reflection)" errors?
 

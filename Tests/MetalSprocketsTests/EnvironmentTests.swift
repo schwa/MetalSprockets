@@ -1,6 +1,6 @@
 import Testing
-@testable import Ultraviolence
-import UltraviolenceSupport
+@testable import MetalSprockets
+import MetalSprocketsSupport
 
 extension UVEnvironmentValues {
     @UVEntry

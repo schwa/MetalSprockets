@@ -1,5 +1,5 @@
 import Metal
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
 public struct MeshRenderPipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     public typealias Body = Never

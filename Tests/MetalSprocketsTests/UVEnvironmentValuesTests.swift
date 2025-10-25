@@ -1,5 +1,5 @@
 import Testing
-@testable import Ultraviolence
+@testable import MetalSprockets
 
 struct TestEnvironmentKey: UVEnvironmentKey {
     static let defaultValue = "default"

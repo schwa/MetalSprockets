@@ -3,7 +3,7 @@ import CoreGraphics
 import CoreMedia
 import CoreVideo
 import Metal
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
 public final class OffscreenVideoRenderer {
     public let size: CGSize
@@ -93,12 +93,12 @@ public final class OffscreenVideoRenderer {
         )
 
         guard assetWriter.canAdd(assetWriterInput) else {
-            throw UltraviolenceError.generic("Cannot add input to asset writer")
+            throw MetalSprocketsError.generic("Cannot add input to asset writer")
         }
         assetWriter.add(assetWriterInput)
 
         guard assetWriter.startWriting() else {
-            throw UltraviolenceError.generic("Failed to start writing")
+            throw MetalSprocketsError.generic("Failed to start writing")
         }
         assetWriter.startSession(atSourceTime: .zero)
 
@@ -133,13 +133,13 @@ public final class OffscreenVideoRenderer {
 
     func appendFrame() throws {
         guard let pixelBufferPool = pixelBufferAdaptor.pixelBufferPool else {
-            throw UltraviolenceError.generic("No pixel buffer pool available")
+            throw MetalSprocketsError.generic("No pixel buffer pool available")
         }
 
         var pixelBuffer: CVPixelBuffer?
         let status = CVPixelBufferPoolCreatePixelBuffer(nil, pixelBufferPool, &pixelBuffer)
         guard status == kCVReturnSuccess, let pixelBuffer else {
-            throw UltraviolenceError.generic("Failed to create pixel buffer")
+            throw MetalSprocketsError.generic("Failed to create pixel buffer")
         }
 
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
@@ -149,7 +149,7 @@ public final class OffscreenVideoRenderer {
         let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer)
 
         guard let baseAddress else {
-            throw UltraviolenceError.generic("Failed to get pixel buffer base address")
+            throw MetalSprocketsError.generic("Failed to get pixel buffer base address")
         }
 
         let region = MTLRegionMake2D(0, 0, Int(size.width), Int(size.height))
@@ -167,7 +167,7 @@ public final class OffscreenVideoRenderer {
         }
 
         guard pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: presentationTime) else {
-            throw UltraviolenceError.generic("Failed to append pixel buffer")
+            throw MetalSprocketsError.generic("Failed to append pixel buffer")
         }
 
         frameNumber += 1
@@ -184,7 +184,7 @@ public final class OffscreenVideoRenderer {
         }
 
         if assetWriter.status == .failed {
-            throw assetWriter.error ?? UltraviolenceError.generic("Asset writer failed")
+            throw assetWriter.error ?? MetalSprocketsError.generic("Asset writer failed")
         }
     }
 }

@@ -1,5 +1,5 @@
-# XCODE_PROJECT_PATH := "./Demo/UltraviolenceDemo.xcodeproj"
-XCODE_SCHEME := "UltraviolenceDemo"
+# XCODE_PROJECT_PATH := "./Demo/MetalSprocketsDemo.xcodeproj"
+XCODE_SCHEME := "MetalSprocketsDemo"
 CONFIGURATION := "Debug"
 
 default: list
@@ -15,11 +15,11 @@ test:
 
 coverage-percent:
     swift test --enable-code-coverage --quiet
-    #.build/arm64-apple-macosx/debug/codecov/Ultraviolence.json
+    #.build/arm64-apple-macosx/debug/codecov/MetalSprockets.json
     xcrun llvm-cov report \
-        .build/arm64-apple-macosx/debug/UltraviolencePackageTests.xctest/Contents/MacOS/UltraviolencePackageTests \
+        .build/arm64-apple-macosx/debug/MetalSprocketsPackageTests.xctest/Contents/MacOS/MetalSprocketsPackageTests \
         -instr-profile=.build/arm64-apple-macosx/debug/codecov/default.profdata \
-        -ignore-filename-regex=".build|Tests|UltraviolenceExamples|UltraviolenceGaussianSplats|UltraviolenceSupport|UltraviolenceUI" \
+        -ignore-filename-regex=".build|Tests|MetalSprocketsExamples|MetalSprocketsGaussianSplats|MetalSprocketsSupport|MetalSprocketsUI" \
         | tail -1 | grep -oE '[0-9]+\.[0-9]+%' | head -n1
 
 lint:
@@ -30,11 +30,11 @@ format:
     fd --extension metal --extension h --exec clang-format -i {}
 
 open-container:
-    open "$HOME/Library/Containers/io.schwa.UltraviolenceExamples/Data"
+    open "$HOME/Library/Containers/io.schwa.MetalSprocketsExamples/Data"
 
 clean:
     swift package clean
     rm -rf .build
     rm -rf .swiftpm
-    rm -rf Sources/Ultraviolence/.swiftpm/
-    rm -rf Ultraviolence-Examples/Ultraviolence-Examples.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+    rm -rf Sources/MetalSprockets/.swiftpm/
+    rm -rf MetalSprockets-Examples/MetalSprockets-Examples.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/

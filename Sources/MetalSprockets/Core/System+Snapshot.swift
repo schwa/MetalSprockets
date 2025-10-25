@@ -23,7 +23,7 @@ public extension System {
 internal extension System {
     /// Log snapshot to OSLog for debugging
     @MainActor
-    func logSnapshot(logger: Logger = Logger(subsystem: "Ultraviolence", category: "System")) {
+    func logSnapshot(logger: Logger = Logger(subsystem: "MetalSprockets", category: "System")) {
         let snapshot = self.snapshot()
 
         logger.debug("=== System Snapshot ===")

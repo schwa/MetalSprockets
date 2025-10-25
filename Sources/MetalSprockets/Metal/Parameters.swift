@@ -1,7 +1,7 @@
 import CoreGraphics
 import Metal
 import simd
-import UltraviolenceSupport
+import MetalSprocketsSupport
 
 // TODO: #62 instead of being typed <T> we need an "AnyParameter" and this needs to take a dictionary of AnyParameters
 internal struct ParameterElementModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
@@ -79,7 +79,7 @@ internal struct Parameter {
                 switch indices.count {
                 case 0:
                     logger?.info("Parameter \(name) not found in reflection \(reflection.debugDescription).")
-                    try _throw(UltraviolenceError.missingBinding(name))
+                    try _throw(MetalSprocketsError.missingBinding(name))
                 case 1:
                     let (index, _, type) = indices[0]
                     encoder.setValue(value, index: index, functionType: type)
@@ -95,7 +95,7 @@ internal struct Parameter {
 
     func set(on encoder: MTLComputeCommandEncoder, reflection: Reflection) throws {
         guard functionType == .kernel || functionType == nil else {
-            try _throw(UltraviolenceError.configurationError("Invalid function type \(functionType.debugDescription)."))
+            try _throw(MetalSprocketsError.configurationError("Invalid function type \(functionType.debugDescription)."))
         }
         let index = try reflection.binding(forType: .kernel, name: name).orThrow(.missingBinding(name))
         encoder.setValue(value, index: index)

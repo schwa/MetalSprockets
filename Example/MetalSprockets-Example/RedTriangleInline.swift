@@ -3,7 +3,7 @@ import ImageIO
 import Metal
 internal import os
 import simd
-import Ultraviolence
+import MetalSprockets
 import UniformTypeIdentifiers
 
 struct RedTriangleInline: Element {

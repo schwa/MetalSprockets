@@ -3,7 +3,7 @@ import MetalKit
 import simd
 import SwiftUI
 import Testing
-@testable import Ultraviolence
+@testable import MetalSprockets
 
 @Test(.disabled("Rendering very broken!"))
 @MainActor

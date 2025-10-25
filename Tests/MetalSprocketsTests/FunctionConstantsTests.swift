@@ -1,6 +1,6 @@
 import Metal
 import Testing
-@testable import Ultraviolence
+@testable import MetalSprockets
 
 struct FunctionConstantsTests {
     @Test("Value enum equality")

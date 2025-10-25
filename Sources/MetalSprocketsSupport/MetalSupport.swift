@@ -723,7 +723,7 @@ public extension MTLDevice {
             let raw = UnsafeRawBufferPointer(buffer)
             let baseAddress = raw.baseAddress.orFatalError(.resourceCreationFailure("No base address."))
             guard let buffer = makeBuffer(bytes: baseAddress, length: raw.count, options: options) else {
-                throw UltraviolenceError.resourceCreationFailure("MTLDevice.makeBuffer failed.")
+                throw MetalSprocketsError.resourceCreationFailure("MTLDevice.makeBuffer failed.")
             }
             return buffer
         }

@@ -1,14 +1,14 @@
-# Ultraviolence Architecture
+# MetalSprockets Architecture
 
 ## Overview
 
-Ultraviolence is a declarative Metal rendering framework for Swift, inspired by SwiftUI's architecture. It provides a high-level, composable API for building Metal rendering pipelines while maintaining the performance and flexibility of Metal.
+MetalSprockets is a declarative Metal rendering framework for Swift, inspired by SwiftUI's architecture. It provides a high-level, composable API for building Metal rendering pipelines while maintaining the performance and flexibility of Metal.
 
 ## Core Concepts
 
 ### 1. Element Protocol
 
-The `Element` protocol is the fundamental building block of Ultraviolence, analogous to SwiftUI's `View` protocol.
+The `Element` protocol is the fundamental building block of MetalSprockets, analogous to SwiftUI's `View` protocol.
 
 ```swift
 public protocol Element {
@@ -47,7 +47,7 @@ The framework manages a graph that transforms your declarative element tree into
 
 ### 4. State Management
 
-Ultraviolence provides SwiftUI-like property wrappers for state management:
+MetalSprockets provides SwiftUI-like property wrappers for state management:
 
 #### @UVState
 
@@ -100,7 +100,7 @@ Elements can read from and modify the environment for their children.
 
 ## Module Structure
 
-### Core Framework (Ultraviolence)
+### Core Framework (MetalSprockets)
 
 The main framework containing:
 
@@ -110,7 +110,7 @@ The main framework containing:
 - Built-in rendering elements
 - Metal integration helpers
 
-### UI Integration (UltraviolenceUI)
+### UI Integration (MetalSprocketsUI)
 
 SwiftUI integration components:
 
@@ -118,7 +118,7 @@ SwiftUI integration components:
 - `MTKView` integration
 - SwiftUI environment bridging
 
-### Support Utilities (UltraviolenceSupport)
+### Support Utilities (MetalSprocketsSupport)
 
 Supporting utilities and extensions:
 
@@ -127,14 +127,14 @@ Supporting utilities and extensions:
 - Logging utilities
 - Type-safe Metal buffer operations
 
-### Macros (UltraviolenceMacros)
+### Macros (MetalSprocketsMacros)
 
 Swift macros for code generation:
 
 - `@UVEntry`: Generates boilerplate for shader parameters
 - Automatic struct alignment for Metal-Swift interop
 
-### Examples (UltraviolenceExamples)
+### Examples (MetalSprocketsExamples)
 
 Example implementations and demos:
 
@@ -147,7 +147,7 @@ Example implementations and demos:
 
 Metal shader libraries:
 
-- **UltraviolenceExampleShaders**: Common shaders for examples
+- **MetalSprocketsExampleShaders**: Common shaders for examples
 
 ## Rendering Pipeline
 
@@ -320,7 +320,7 @@ The framework ensures thread safety through:
 - Synchronized access to shared resources
 - Command buffer scheduling
 
-_Note: There are ongoing concurrency safety improvements tracked in [issue #146](https://github.com/schwa/Ultraviolence/issues/146) (Sendable conformance)._
+_Note: There are ongoing concurrency safety improvements tracked in [issue #146](https://github.com/schwa/MetalSprockets/issues/146) (Sendable conformance)._
 
 ## Performance Considerations
 
@@ -378,7 +378,7 @@ extension UVEnvironmentValues {
 
 ## Comparison with SwiftUI
 
-| Aspect        | SwiftUI          | Ultraviolence          |
+| Aspect        | SwiftUI          | MetalSprockets          |
 | ------------- | ---------------- | ---------------------- |
 | Core Protocol | View             | Element                |
 | Composition   | Views            | Elements               |
@@ -389,11 +389,11 @@ extension UVEnvironmentValues {
 
 ## Future Directions
 
-- **Mesh Shaders**: Support for Metal 3 mesh shaders ([issue #68](https://github.com/schwa/Ultraviolence/issues/68))
-- **Ray Tracing**: Integration with Metal ray tracing ([issue #86](https://github.com/schwa/Ultraviolence/issues/86))
-- **Shader Graph**: Visual shader composition ([issue #67](https://github.com/schwa/Ultraviolence/issues/67))
+- **Mesh Shaders**: Support for Metal 3 mesh shaders ([issue #68](https://github.com/schwa/MetalSprockets/issues/68))
+- **Ray Tracing**: Integration with Metal ray tracing ([issue #86](https://github.com/schwa/MetalSprockets/issues/86))
+- **Shader Graph**: Visual shader composition ([issue #67](https://github.com/schwa/MetalSprockets/issues/67))
 - **Performance Tools**: Built-in profiling and debugging
-- **More Platforms**: visionOS and iOS optimization ([issue #82](https://github.com/schwa/Ultraviolence/issues/82))
+- **More Platforms**: visionOS and iOS optimization ([issue #82](https://github.com/schwa/MetalSprockets/issues/82))
 
 ## Related Documentation
 

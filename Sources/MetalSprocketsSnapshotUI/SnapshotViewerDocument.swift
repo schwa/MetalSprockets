@@ -1,5 +1,5 @@
 import SwiftUI
-import Ultraviolence
+import MetalSprockets
 import UniformTypeIdentifiers
 
 public struct SnapshotViewerDocumentScene: Scene {

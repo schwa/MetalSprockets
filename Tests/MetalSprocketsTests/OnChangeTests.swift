@@ -1,5 +1,5 @@
 import Testing
-@testable import Ultraviolence
+@testable import MetalSprockets
 
 @Suite(.serialized)
 @MainActor
