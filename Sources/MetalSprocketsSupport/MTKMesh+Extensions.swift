@@ -139,7 +139,7 @@ public extension MTKMesh {
                         let theta = atan2(relative.z, relative.x)
                         let phi = asin(max(-1, min(1, relative.y)))
 
-                        // Map to UV space [0, 1]
+                        // Map to MS space [0, 1]
                         let u = (theta + .pi) / (2 * .pi)
                         let v = (phi + .pi / 2) / .pi
 

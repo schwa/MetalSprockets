@@ -2,7 +2,7 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-public struct UVEntryMacro: AccessorMacro, PeerMacro {
+public struct MSEntryMacro: AccessorMacro, PeerMacro {
     public static func expansion(of node: AttributeSyntax, providingAccessorsOf declaration: some DeclSyntaxProtocol, in context: some MacroExpansionContext) throws -> [AccessorDeclSyntax] {
         // NOTE: The real macro complains if we use it wrong: "'@Entry' macro can only attach to var declarations inside extensions of EnvironmentValues, Transaction, ContainerValues, or FocusedValues"
         guard let binding = declaration.as(VariableDeclSyntax.self)?.bindings.first else {
@@ -39,7 +39,7 @@ public struct UVEntryMacro: AccessorMacro, PeerMacro {
         let defaultValue = binding.initializer?.value ?? "nil"
         return [
             """
-            private struct __Key_\(raw: name): UVEnvironmentKey {
+            private struct __Key_\(raw: name): MSEnvironmentKey {
                 typealias Value = \(raw: type)
                 static var defaultValue: Value { \(raw: defaultValue) }
             }

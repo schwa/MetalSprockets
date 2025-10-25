@@ -1,4 +1,4 @@
-public struct UVEnvironmentValues {
+public struct MSEnvironmentValues {
     struct Key: Hashable, CustomDebugStringConvertible {
         var id: ObjectIdentifier
         var value: Any.Type
@@ -50,13 +50,13 @@ public struct UVEnvironmentValues {
     }
 }
 
-public protocol UVEnvironmentKey {
+public protocol MSEnvironmentKey {
     associatedtype Value
     static var defaultValue: Value { get }
 }
 
-public extension UVEnvironmentValues {
-    subscript<Key: UVEnvironmentKey>(key: Key.Type) -> Key.Value {
+public extension MSEnvironmentValues {
+    subscript<Key: MSEnvironmentKey>(key: Key.Type) -> Key.Value {
         get {
             if let value = storage[.init(key)] as? Key.Value {
                 return value
@@ -78,7 +78,7 @@ public extension UVEnvironmentValues {
 // MARK: -
 
 @propertyWrapper
-public struct UVEnvironment <Value> {
+public struct MSEnvironment <Value> {
     public var wrappedValue: Value {
         guard let system = System.current else {
             preconditionFailure("Environment must be used within a System.")
@@ -89,16 +89,16 @@ public struct UVEnvironment <Value> {
         return currentNode.environmentValues[keyPath: keyPath]
     }
 
-    private var keyPath: KeyPath<UVEnvironmentValues, Value>
+    private var keyPath: KeyPath<MSEnvironmentValues, Value>
 
-    public init(_ keyPath: KeyPath<UVEnvironmentValues, Value>) {
+    public init(_ keyPath: KeyPath<MSEnvironmentValues, Value>) {
         self.keyPath = keyPath
     }
 }
 
 // MARK: -
 
-extension UVEnvironmentValues.Key {
+extension MSEnvironmentValues.Key {
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
     }
@@ -107,7 +107,7 @@ extension UVEnvironmentValues.Key {
         id.hash(into: &hasher)
     }
 
-    init<K: UVEnvironmentKey>(_ key: K.Type) {
+    init<K: MSEnvironmentKey>(_ key: K.Type) {
         id = ObjectIdentifier(key)
         value = key
     }
@@ -117,8 +117,8 @@ extension UVEnvironmentValues.Key {
     }
 }
 
-extension UVEnvironmentValues.Storage {
-    subscript(key: UVEnvironmentValues.Key) -> Any? {
+extension MSEnvironmentValues.Storage {
+    subscript(key: MSEnvironmentValues.Key) -> Any? {
         if let value = values[key] {
             return value
         }
@@ -130,14 +130,14 @@ extension UVEnvironmentValues.Storage {
     }
 }
 
-extension UVEnvironmentValues.Storage: CustomDebugStringConvertible {
+extension MSEnvironmentValues.Storage: CustomDebugStringConvertible {
     public var debugDescription: String {
         let keys = values.map { "\($0.key)".trimmingPrefix("__Key_") }.sorted()
         return "([\(keys.joined(separator: ", "))], parent: \(parent != nil)))"
     }
 }
 
-extension UVEnvironmentValues: CustomDebugStringConvertible {
+extension MSEnvironmentValues: CustomDebugStringConvertible {
     public var debugDescription: String {
         "(storage: \(storage.debugDescription))"
     }

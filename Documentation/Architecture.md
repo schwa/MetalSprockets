@@ -49,36 +49,36 @@ The framework manages a graph that transforms your declarative element tree into
 
 MetalSprockets provides SwiftUI-like property wrappers for state management:
 
-#### @UVState
+#### @MSState
 
 Local state within an element:
 
 ```swift
-@UVState private var rotation: Float = 0
+@MSState private var rotation: Float = 0
 ```
 
-#### @UVBinding
+#### @MSBinding
 
 Two-way binding to external state:
 
 ```swift
-@UVBinding var isEnabled: Bool
+@MSBinding var isEnabled: Bool
 ```
 
-#### @UVObservedObject
+#### @MSObservedObject
 
 Observe changes in external objects:
 
 ```swift
-@UVObservedObject var viewModel: MyViewModel
+@MSObservedObject var viewModel: MyViewModel
 ```
 
-#### @UVEnvironment
+#### @MSEnvironment
 
 Access values from the environment:
 
 ```swift
-@UVEnvironment(\.device) var device
+@MSEnvironment(\.device) var device
 ```
 
 ### 5. Environment System
@@ -86,7 +86,7 @@ Access values from the environment:
 The environment propagates values down the element tree:
 
 ```swift
-public struct UVEnvironmentValues {
+public struct MSEnvironmentValues {
     // Predefined environment keys
     var device: MTLDevice?
     var commandQueue: MTLCommandQueue?
@@ -131,7 +131,7 @@ Supporting utilities and extensions:
 
 Swift macros for code generation:
 
-- `@UVEntry`: Generates boilerplate for shader parameters
+- `@MSEntry`: Generates boilerplate for shader parameters
 - Automatic struct alignment for Metal-Swift interop
 
 ### Examples (MetalSprocketsExamples)
@@ -359,7 +359,7 @@ struct MyMetalOperation: BodylessElement {
 Add custom environment values:
 
 ```swift
-extension UVEnvironmentValues {
+extension MSEnvironmentValues {
     var myCustomValue: MyType {
         get { self[MyCustomKey.self] }
         set { self[MyCustomKey.self] = newValue }
@@ -382,8 +382,8 @@ extension UVEnvironmentValues {
 | ------------- | ---------------- | ---------------------- |
 | Core Protocol | View             | Element                |
 | Composition   | Views            | Elements               |
-| State         | @State, @Binding | @UVState, @UVBinding   |
-| Environment   | @Environment     | @UVEnvironment         |
+| State         | @State, @Binding | @MSState, @MSBinding   |
+| Environment   | @Environment     | @MSEnvironment         |
 | Output        | UI Elements      | Metal Commands         |
 | Rebuild       | Diffing          | Selective Node Updates |
 

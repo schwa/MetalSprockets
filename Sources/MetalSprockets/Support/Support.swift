@@ -3,7 +3,7 @@ internal import os
 import MetalSprocketsSupport
 
 public extension MetalSprocketsError {
-    static func missingEnvironment(_ key: PartialKeyPath<UVEnvironmentValues>) -> Self {
+    static func missingEnvironment(_ key: PartialKeyPath<MSEnvironmentValues>) -> Self {
         missingEnvironment("\(key)")
     }
 }

@@ -6,10 +6,10 @@ internal struct OnChange<Value: Equatable, Content>: Element where Content: Elem
     let action: (Value, Value) -> Void
     let content: Content
 
-    @UVState
+    @MSState
     private var previousValue: Value?
 
-    @UVState
+    @MSState
     private var hasInitialized: Bool
 
     init(value: Value, initial: Bool, action: @escaping (Value, Value) -> Void, content: Content) {

@@ -81,10 +81,10 @@ Elements that perform actual work rather than composition:
 
 **Property Wrappers:**
 
-- `@UVState`: Local state storage
-- `@UVBinding`: Two-way binding to state
-- `@UVObservedObject`: Observable object integration
-- `@UVEnvironment`: Access to environment values
+- `@MSState`: Local state storage
+- `@MSBinding`: Two-way binding to state
+- `@MSObservedObject`: Observable object integration
+- `@MSEnvironment`: Access to environment values
 
 State is preserved across frames using the structural identity system.
 
@@ -92,7 +92,7 @@ State is preserved across frames using the structural identity system.
 
 Environment values propagate down the element tree:
 
-- Each node has its own `UVEnvironmentValues` instance
+- Each node has its own `MSEnvironmentValues` instance
 - Values inherited from parent with copy-on-write semantics
 - Used to pass Metal resources (encoders, buffers, etc.) down the tree
 
@@ -123,7 +123,7 @@ The framework has an architectural inconsistency in how environment values are a
 #### The Problem
 
 - `workloadEnter/Exit` and `setupEnter/Exit` methods receive a `node` parameter directly
-- However, `@UVEnvironment` property wrappers cannot access this parameter
+- However, `@MSEnvironment` property wrappers cannot access this parameter
 - Instead, they rely on a global `activeNodeStack` maintained by the System
 
 #### Why This Is Problematic
@@ -135,7 +135,7 @@ The framework has an architectural inconsistency in how environment values are a
 
 #### Potential Solutions
 
-1. **Pass node explicitly**: Redesign @UVEnvironment to take node as parameter
+1. **Pass node explicitly**: Redesign @MSEnvironment to take node as parameter
 2. **Context object**: Pass a context containing both node and environment
 3. **Remove property wrapper**: Use explicit node.environmentValues access
 4. **Accept the tradeoff**: Document clearly and ensure stack is always valid

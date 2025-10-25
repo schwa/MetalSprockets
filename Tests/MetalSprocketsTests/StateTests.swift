@@ -7,7 +7,7 @@ struct StateTests {
     // MARK: - Basic State Test
 
     struct TestRoot: Element {
-        @UVState var count: Int = 0
+        @MSState var count: Int = 0
 
         var body: some Element {
             TestChild(count: count)
@@ -50,7 +50,7 @@ struct StateTests {
     // MARK: - Independent State Test
 
     struct ParentWithState: Element {
-        @UVState var parentCounter = 0
+        @MSState var parentCounter = 0
 
         var body: some Element {
             TrackedElement(name: "parent", value: parentCounter) {
@@ -61,7 +61,7 @@ struct StateTests {
     }
 
     struct ChildWithState: Element {
-        @UVState var childCounter = 0
+        @MSState var childCounter = 0
 
         var body: some Element {
             TrackedElement(name: "child", value: childCounter) {
@@ -131,7 +131,7 @@ struct StateTests {
     // MARK: - State Propagation Test
 
     struct PropagationRoot: Element {
-        @UVState var value = 0
+        @MSState var value = 0
 
         var body: some Element {
             PropagationMiddle(parentValue: value) {
@@ -143,7 +143,7 @@ struct StateTests {
     struct PropagationMiddle: Element {
         let parentValue: Int
         let onIncrement: () -> Void
-        @UVState var ownValue = 100
+        @MSState var ownValue = 100
 
         var body: some Element {
             PropagationLeaf(

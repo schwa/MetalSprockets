@@ -15,7 +15,7 @@ struct ObservableObjectTests {
     // MARK: - Basic ObservedObject Test
 
     struct BasicObservedElement: Element {
-        @UVObservedObject var model = TestModel()
+        @MSObservedObject var model = TestModel()
 
         var body: some Element {
             TestMonitor.shared.logUpdate("body-\(model.counter)")
@@ -69,7 +69,7 @@ struct ObservableObjectTests {
     // MARK: - Multiple Published Properties Test
 
     struct MultiPropertyElement: Element {
-        @UVObservedObject var model = TestModel()
+        @MSObservedObject var model = TestModel()
 
         var body: some Element {
             TestMonitor.shared.logUpdate("body")
@@ -172,7 +172,7 @@ struct ObservableObjectTests {
     static let sharedModel = TestModel()
 
     struct ParentWithShared: Element {
-        @UVObservedObject var model = ObservableObjectTests.sharedModel
+        @MSObservedObject var model = ObservableObjectTests.sharedModel
 
         var body: some Element {
             TestMonitor.shared.logUpdate("parent-body")
@@ -186,7 +186,7 @@ struct ObservableObjectTests {
     }
 
     struct ChildWithShared: Element {
-        @UVObservedObject var model = ObservableObjectTests.sharedModel
+        @MSObservedObject var model = ObservableObjectTests.sharedModel
 
         var body: some Element {
             TestMonitor.shared.logUpdate("child-body")
@@ -225,7 +225,7 @@ struct ObservableObjectTests {
     // MARK: - ObservedObject with Binding Test
 
     struct ObservedWithBinding: Element {
-        @UVObservedObject var model = TestModel()
+        @MSObservedObject var model = TestModel()
 
         var body: some Element {
             BindingChild(counter: $model.counter)
@@ -233,7 +233,7 @@ struct ObservableObjectTests {
     }
 
     struct BindingChild: Element {
-        @UVBinding var counter: Int
+        @MSBinding var counter: Int
 
         var body: some Element {
             DisplayElement(value: counter) {
@@ -270,7 +270,7 @@ struct ObservableObjectTests {
     // MARK: - Selective Rebuilding with ObservedObject
 
     struct SelectiveParent: Element {
-        @UVObservedObject var model = TestModel()
+        @MSObservedObject var model = TestModel()
 
         var body: some Element {
             TestMonitor.shared.logUpdate("parent-body")
@@ -302,7 +302,7 @@ struct ObservableObjectTests {
     }
 
     struct IndependentChild: Element {
-        @UVState var ownState = 0
+        @MSState var ownState = 0
 
         var body: some Element {
             TestMonitor.shared.logUpdate("independent-body")

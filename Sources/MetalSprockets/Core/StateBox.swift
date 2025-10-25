@@ -35,7 +35,7 @@ internal final class StateBox<Wrapped> {
         }
     }
 
-    internal var binding: UVBinding<Wrapped> = UVBinding(
+    internal var binding: MSBinding<Wrapped> = MSBinding(
         get: { preconditionFailure("Empty Binding: get() called.") },
         set: { _ in preconditionFailure("Empty Binding: set() called.") }
     )
@@ -43,7 +43,7 @@ internal final class StateBox<Wrapped> {
     internal init(_ wrappedValue: Wrapped) {
         self._value = wrappedValue
         // swiftlint:disable:next unowned_variable_capture
-        self.binding = UVBinding(get: { [unowned self] in
+        self.binding = MSBinding(get: { [unowned self] in
             self.wrappedValue
             // swiftlint:disable:next unowned_variable_capture
         }, set: { [unowned self] newValue in

@@ -5,7 +5,7 @@ internal class Node: Identifiable {
     var element: (any Element)
 
     var stateProperties: [String: Any] = [:]
-    var environmentValues = UVEnvironmentValues()
+    var environmentValues = MSEnvironmentValues()
     var needsSetup = true
 
     init(system: System, id: StructuralIdentifier, parentIdentifier: StructuralIdentifier? = nil, element: (any Element)) {

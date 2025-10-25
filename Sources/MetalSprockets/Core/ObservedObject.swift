@@ -8,7 +8,7 @@ internal protocol AnyObservedObject {
 // MARK: -
 
 @propertyWrapper
-public struct UVObservedObject<ObjectType: ObservableObject> {
+public struct MSObservedObject<ObjectType: ObservableObject> {
     @ObservedObjectBox
     private var object: ObjectType
 
@@ -25,13 +25,13 @@ public struct UVObservedObject<ObjectType: ObservableObject> {
     }
 }
 
-extension UVObservedObject: Equatable {
-    public static func == (l: UVObservedObject, r: UVObservedObject) -> Bool {
+extension MSObservedObject: Equatable {
+    public static func == (l: MSObservedObject, r: MSObservedObject) -> Bool {
         l.wrappedValue === r.wrappedValue
     }
 }
 
-extension UVObservedObject: AnyObservedObject {
+extension MSObservedObject: AnyObservedObject {
     internal func addDependency(_ node: Node) {
         _object.addDependency(node)
     }
@@ -66,14 +66,14 @@ private final class ObservedObjectBox<Wrapped: ObservableObject> {
 
 @dynamicMemberLookup
 public struct ProjectedValue <ObjectType: ObservableObject> {
-    private var observedObject: UVObservedObject<ObjectType>
+    private var observedObject: MSObservedObject<ObjectType>
 
-    internal init(_ observedObject: UVObservedObject<ObjectType>) {
+    internal init(_ observedObject: MSObservedObject<ObjectType>) {
         self.observedObject = observedObject
     }
 
-    public subscript<Value>(dynamicMember keyPath: ReferenceWritableKeyPath<ObjectType, Value>) -> UVBinding<Value> {
-        UVBinding(get: {
+    public subscript<Value>(dynamicMember keyPath: ReferenceWritableKeyPath<ObjectType, Value>) -> MSBinding<Value> {
+        MSBinding(get: {
             observedObject.wrappedValue[keyPath: keyPath]
         }, set: { newValue in
             observedObject.wrappedValue[keyPath: keyPath] = newValue

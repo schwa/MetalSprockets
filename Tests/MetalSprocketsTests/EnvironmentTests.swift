@@ -2,8 +2,8 @@ import Testing
 @testable import MetalSprockets
 import MetalSprocketsSupport
 
-extension UVEnvironmentValues {
-    @UVEntry
+extension MSEnvironmentValues {
+    @MSEntry
     var exampleValue: String = "<default>"
 }
 
@@ -42,7 +42,7 @@ struct EnvironmentTests {
         }
 
         struct Example2: Element {
-            @UVEnvironment(\.exampleValue)
+            @MSEnvironment(\.exampleValue)
             var value
             var body: some Element {
                 Example3(value: value)

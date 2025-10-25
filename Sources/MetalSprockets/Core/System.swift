@@ -18,12 +18,12 @@ public class System {
     /// - Process/workload phase (`process()`) - populated during node visitation
     ///
     /// The stack enables:
-    /// - Environment value resolution via @UVEnvironment property wrapper
+    /// - Environment value resolution via @MSEnvironment property wrapper
     /// - State dependency tracking for reactive updates
     /// - Parent-child context during node configuration
     ///
     /// IMPORTANT: The stack is empty outside of these traversal contexts.
-    /// Accessing @UVEnvironment properties outside traversal will cause a crash.
+    /// Accessing @MSEnvironment properties outside traversal will cause a crash.
     var activeNodeStack: [Node] = []
     var dirtyIdentifiers: Set<StructuralIdentifier> = []
 
@@ -186,7 +186,7 @@ private extension System {
             // When element changes, preserve setup-phase values while clearing others
             // This ensures values like renderPipelineState set during setup are retained
             let preservedValues = existingNode.environmentValues.storage.values
-            existingNode.environmentValues = UVEnvironmentValues()
+            existingNode.environmentValues = MSEnvironmentValues()
             // Restore preserved values after resetting
             existingNode.environmentValues.storage.values = preservedValues
 

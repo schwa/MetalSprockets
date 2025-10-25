@@ -6,10 +6,10 @@
 //
 
 public struct EnvironmentReader<Value, Content: Element>: Element, BodylessElement {
-    var keyPath: KeyPath<UVEnvironmentValues, Value>
+    var keyPath: KeyPath<MSEnvironmentValues, Value>
     var content: (Value) throws -> Content
 
-    public init(keyPath: KeyPath<UVEnvironmentValues, Value>, @ElementBuilder content: @escaping (Value) throws -> Content) {
+    public init(keyPath: KeyPath<MSEnvironmentValues, Value>, @ElementBuilder content: @escaping (Value) throws -> Content) {
         self.keyPath = keyPath
         self.content = content
     }

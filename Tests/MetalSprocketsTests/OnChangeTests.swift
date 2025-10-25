@@ -26,7 +26,7 @@ struct OnChangeTests {
         var lastNewValue: Int?
 
         struct ContentElement: Element {
-            @UVState var counter = 0
+            @MSState var counter = 0
             let onCounterChange: (Int, Int) -> Void
 
             var body: some Element {
@@ -131,7 +131,7 @@ struct OnChangeTests {
         var changeCount = 0
 
         struct ContentElement: Element {
-            @UVState var value: String = "Hello"
+            @MSState var value: String = "Hello"
             let onChange: () -> Void
 
             var body: some Element {
@@ -179,7 +179,7 @@ struct OnChangeTests {
         var actionCalled = false
 
         struct ContentElement: Element {
-            @UVState var toggle = false
+            @MSState var toggle = false
             let onToggle: () -> Void
 
             var body: some Element {
@@ -218,8 +218,8 @@ struct OnChangeTests {
         var value2ChangeCount = 0
 
         struct ContentElement: Element {
-            @UVState var value1 = 0
-            @UVState var value2 = "A"
+            @MSState var value1 = 0
+            @MSState var value2 = "A"
             let onValue1Change: () -> Void
             let onValue2Change: () -> Void
 
@@ -285,7 +285,7 @@ struct OnChangeTests {
         var lastValue: Int?
 
         struct ChildElement: Element {
-            @UVBinding var boundValue: Int
+            @MSBinding var boundValue: Int
             let onChange: (Int) -> Void
 
             var body: some Element {
@@ -297,7 +297,7 @@ struct OnChangeTests {
         }
 
         struct ParentElement: Element {
-            @UVState var value = 5
+            @MSState var value = 5
             let onChange: (Int) -> Void
 
             var body: some Element {
@@ -343,7 +343,7 @@ struct OnChangeTests {
         var callCount = 0
 
         struct TrackedElement: Element {
-            @UVState var value = 0
+            @MSState var value = 0
             let onValueChange: () -> Void
 
             var body: some Element {

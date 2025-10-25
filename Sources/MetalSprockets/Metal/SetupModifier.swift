@@ -1,8 +1,8 @@
 internal struct SetupModifier <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     var content: Content
-    var _setupEnter: ((UVEnvironmentValues) throws -> Void)?
+    var _setupEnter: ((MSEnvironmentValues) throws -> Void)?
 
-    init(content: Content, setupEnter: ((UVEnvironmentValues) throws -> Void)? = nil) {
+    init(content: Content, setupEnter: ((MSEnvironmentValues) throws -> Void)? = nil) {
         self.content = content
         self._setupEnter = setupEnter
     }
@@ -17,7 +17,7 @@ internal struct SetupModifier <Content>: Element, BodylessElement, BodylessConte
 }
 
 public extension Element {
-    func onSetupEnter(_ action: @escaping (UVEnvironmentValues) throws -> Void) -> some Element {
+    func onSetupEnter(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element {
         SetupModifier(content: self, setupEnter: action)
     }
 }

@@ -2,7 +2,7 @@ import Metal
 
 // TODO: #30 Make into actual Modifier.
 internal struct RenderPassDescriptorModifier<Content>: Element where Content: Element {
-    @UVEnvironment(\.renderPassDescriptor)
+    @MSEnvironment(\.renderPassDescriptor)
     var renderPassDescriptor
 
     var content: Content

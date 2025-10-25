@@ -36,7 +36,7 @@ Always use `some Element` as the return type for your Element's body property. T
 ## Why am I getting "missingEnvironment(\.reflection)" errors?
 
 ### Problem
-You get a fatal error like `Fatal error: missingEnvironment("\\UVEnvironmentValues.reflection")` when trying to use `.parameter()` modifiers.
+You get a fatal error like `Fatal error: missingEnvironment("\\MSEnvironmentValues.reflection")` when trying to use `.parameter()` modifiers.
 
 ### Cause
 This happens when `.parameter()` modifiers are applied outside of a RenderPipeline or ComputePipeline context:

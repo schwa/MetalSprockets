@@ -6,7 +6,7 @@ import Testing
 struct SystemSnapshotTests {
     // Test element for snapshot testing
     struct TestElement: Element {
-        @UVState var counter: Int = 0
+        @MSState var counter: Int = 0
 
         var body: some Element {
             EmptyElement()
@@ -14,7 +14,7 @@ struct SystemSnapshotTests {
     }
 
     struct ParentElement: Element {
-        @UVState var name: String = "Parent"
+        @MSState var name: String = "Parent"
 
         var body: some Element {
             TestElement()

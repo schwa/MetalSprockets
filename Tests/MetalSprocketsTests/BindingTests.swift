@@ -7,7 +7,7 @@ struct BindingTests {
     // MARK: - Basic Binding Test
 
     struct ParentWithBinding: Element {
-        @UVState var value = 0
+        @MSState var value = 0
 
         var body: some Element {
             ChildWithBinding(value: $value)
@@ -15,7 +15,7 @@ struct BindingTests {
     }
 
     struct ChildWithBinding: Element {
-        @UVBinding var value: Int
+        @MSBinding var value: Int
 
         var body: some Element {
             ActionElement(value: value) {
@@ -67,7 +67,7 @@ struct BindingTests {
     // MARK: - Two-Way Binding Test
 
     struct TwoWayParent: Element {
-        @UVState var counter = 10
+        @MSState var counter = 10
 
         var body: some Element {
             ActionElement(value: counter) {
@@ -78,7 +78,7 @@ struct BindingTests {
     }
 
     struct TwoWayChild: Element {
-        @UVBinding var counter: Int
+        @MSBinding var counter: Int
 
         var body: some Element {
             ActionElement(value: counter) {
@@ -118,7 +118,7 @@ struct BindingTests {
     // MARK: - Nested Bindings Test
 
     struct NestedBindingRoot: Element {
-        @UVState var value = 100
+        @MSState var value = 100
 
         var body: some Element {
             NestedBindingMiddle(value: $value)
@@ -126,7 +126,7 @@ struct BindingTests {
     }
 
     struct NestedBindingMiddle: Element {
-        @UVBinding var value: Int
+        @MSBinding var value: Int
 
         var body: some Element {
             NestedBindingLeaf(value: _value)
@@ -134,7 +134,7 @@ struct BindingTests {
     }
 
     struct NestedBindingLeaf: Element {
-        @UVBinding var value: Int
+        @MSBinding var value: Int
 
         var body: some Element {
             ActionElement(value: value) {
@@ -172,9 +172,9 @@ struct BindingTests {
     // MARK: - Multiple Bindings Test
 
     struct MultiBindingParent: Element {
-        @UVState var x = 1
-        @UVState var y = 2
-        @UVState var z = 3
+        @MSState var x = 1
+        @MSState var y = 2
+        @MSState var z = 3
 
         var body: some Element {
             MultiBindingChild(x: $x, y: $y, z: $z)
@@ -182,9 +182,9 @@ struct BindingTests {
     }
 
     struct MultiBindingChild: Element {
-        @UVBinding var x: Int
-        @UVBinding var y: Int
-        @UVBinding var z: Int
+        @MSBinding var x: Int
+        @MSBinding var y: Int
+        @MSBinding var z: Int
 
         var body: some Element {
             CombinedElement(sum: x + y + z) {

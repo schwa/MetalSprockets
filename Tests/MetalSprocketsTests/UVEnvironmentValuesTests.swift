@@ -1,11 +1,11 @@
 import Testing
 @testable import MetalSprockets
 
-struct TestEnvironmentKey: UVEnvironmentKey {
+struct TestEnvironmentKey: MSEnvironmentKey {
     static let defaultValue = "default"
 }
 
-extension UVEnvironmentValues {
+extension MSEnvironmentValues {
     // periphery:ignore
     var testValue: String {
         get { self[TestEnvironmentKey.self] }
@@ -13,16 +13,16 @@ extension UVEnvironmentValues {
     }
 }
 
-@Suite struct UVEnvironmentValuesStorageTests {
+@Suite struct MSEnvironmentValuesStorageTests {
     @Test func testNormalParentChain() {
-        let storage1 = UVEnvironmentValues.Storage()
+        let storage1 = MSEnvironmentValues.Storage()
         storage1.values[.init(TestEnvironmentKey.self)] = "value1"
 
-        let storage2 = UVEnvironmentValues.Storage()
+        let storage2 = MSEnvironmentValues.Storage()
         storage2.parent = storage1
         storage2.values[.init(TestEnvironmentKey.self)] = "value2"
 
-        let storage3 = UVEnvironmentValues.Storage()
+        let storage3 = MSEnvironmentValues.Storage()
         storage3.parent = storage2
 
         #expect(storage3[.init(TestEnvironmentKey.self)] as? String == "value2")
@@ -30,7 +30,7 @@ extension UVEnvironmentValues {
 
     @Test(.disabled("Would trigger assertion - demonstrates self-cycle protection"))
     func testDirectSelfCycle() {
-        let storage = UVEnvironmentValues.Storage()
+        let storage = MSEnvironmentValues.Storage()
         storage.values[.init(TestEnvironmentKey.self)] = "value"
 
         // This would trigger assertion: "Cannot set Storage parent to itself"
@@ -38,10 +38,10 @@ extension UVEnvironmentValues {
     }
 
     @Test func testTwoNodeCyclePrevention() {
-        let storage1 = UVEnvironmentValues.Storage()
+        let storage1 = MSEnvironmentValues.Storage()
         storage1.values[.init(TestEnvironmentKey.self)] = "value1"
 
-        let storage2 = UVEnvironmentValues.Storage()
+        let storage2 = MSEnvironmentValues.Storage()
         storage2.parent = storage1
 
         // This should trigger assertion in debug builds - cannot create cycle
@@ -54,9 +54,9 @@ extension UVEnvironmentValues {
 
     @Test func testParentChainDepth() {
         // Test that we can have reasonable depth without issues
-        var storages: [UVEnvironmentValues.Storage] = []
+        var storages: [MSEnvironmentValues.Storage] = []
         for i in 0..<10 {
-            let storage = UVEnvironmentValues.Storage()
+            let storage = MSEnvironmentValues.Storage()
             storage.values[.init(TestEnvironmentKey.self)] = "value\(i)"
             if i > 0 {
                 storage.parent = storages[i - 1]
@@ -70,8 +70,8 @@ extension UVEnvironmentValues {
     }
 
     @Test func testMergeCreatingCycle() {
-        var env1 = UVEnvironmentValues()
-        let env2 = UVEnvironmentValues()
+        var env1 = MSEnvironmentValues()
+        let env2 = MSEnvironmentValues()
 
         env1.merge(env2)
 

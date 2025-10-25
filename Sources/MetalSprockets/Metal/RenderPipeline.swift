@@ -3,10 +3,10 @@ import MetalSprocketsSupport
 
 public struct RenderPipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     public typealias Body = Never
-    @UVEnvironment(\.device)
+    @MSEnvironment(\.device)
     var device
 
-    @UVEnvironment(\.depthStencilState)
+    @MSEnvironment(\.depthStencilState)
     var depthStencilState
 
     var label: String?
@@ -14,7 +14,7 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
     var fragmentShader: FragmentShader
     var content: Content
 
-    @UVState
+    @MSState
     var reflection: Reflection?
 
     public init(label: String? = nil, vertexShader: VertexShader, fragmentShader: FragmentShader, @ElementBuilder content: () throws -> Content) throws {

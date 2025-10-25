@@ -1,8 +1,8 @@
 internal struct WorkloadModifier <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     var content: Content
-    var _workloadEnter: ((UVEnvironmentValues) throws -> Void)?
+    var _workloadEnter: ((MSEnvironmentValues) throws -> Void)?
 
-    init(content: Content, workloadEnter: ((UVEnvironmentValues) throws -> Void)? = nil) {
+    init(content: Content, workloadEnter: ((MSEnvironmentValues) throws -> Void)? = nil) {
         self.content = content
         self._workloadEnter = workloadEnter
     }
@@ -18,7 +18,7 @@ internal struct WorkloadModifier <Content>: Element, BodylessElement, BodylessCo
 }
 
 public extension Element {
-    func onWorkloadEnter(_ action: @escaping (UVEnvironmentValues) throws -> Void) -> some Element {
+    func onWorkloadEnter(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element {
         WorkloadModifier(content: self, workloadEnter: action)
     }
 }

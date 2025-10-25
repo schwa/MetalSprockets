@@ -11,7 +11,7 @@ internal class Snapshotter {
     }
 
     private var frameCounter: Int = 0
-    private let shouldDumpSnapshots = ProcessInfo.processInfo.environment["UV_DUMP_SNAPSHOTS"] != nil
+    private let shouldDumpSnapshots = ProcessInfo.processInfo.environment["MS_DUMP_SNAPSHOTS"] != nil
     private var fileHandle: FileHandle?
     private let fileURL: URL
 
@@ -57,7 +57,7 @@ internal class Snapshotter {
                 fileHandle = try FileHandle(forWritingTo: fileURL)
                 fileHandle?.seekToEndOfFile()
 
-                print("UV_DUMP_SNAPSHOTS: Dumping snapshots to \(fileURL.path)")
+                print("MS_DUMP_SNAPSHOTS: Dumping snapshots to \(fileURL.path)")
             }
 
             // Encode record as single-line JSON and append newline
@@ -69,10 +69,10 @@ internal class Snapshotter {
 
             // Log progress
             if frameCounter == 1 || frameCounter.isMultiple(of: 100) {
-                print("UV_DUMP_SNAPSHOTS: Saved frame \(frameCounter)")
+                print("MS_DUMP_SNAPSHOTS: Saved frame \(frameCounter)")
             }
         } catch {
-            print("UV_DUMP_SNAPSHOTS: Failed to save snapshot: \(error)")
+            print("MS_DUMP_SNAPSHOTS: Failed to save snapshot: \(error)")
         }
     }
 }

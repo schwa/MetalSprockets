@@ -24,7 +24,7 @@ internal extension Element {
         // This ensures each node has its own storage that can safely inherit from parent
         if let parentEnvironmentValues = parent?.environmentValues {
             // Create a fresh environment that inherits from parent
-            var freshEnvironment = UVEnvironmentValues()
+            var freshEnvironment = MSEnvironmentValues()
             freshEnvironment.merge(parentEnvironmentValues)
 
             // Preserve any existing values from the node's current environment

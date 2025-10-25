@@ -1,6 +1,6 @@
 public struct ForEach <Data, ID, Content>: Element where Data: RandomAccessCollection, ID: Hashable, Content: Element {
     // TODO: #107 Compare ids to see if they've changed in expandNode
-    //    @UVState
+    //    @MSState
     //    var ids: [ID]
 
     var data: Data

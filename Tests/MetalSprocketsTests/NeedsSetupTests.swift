@@ -39,7 +39,7 @@ struct NeedsSetupTests {
     }
 
     final class StateElement: Element {
-        @UVState var counter = 0
+        @MSState var counter = 0
 
         var body: some Element {
             SetupTrackingElement(id: counter)

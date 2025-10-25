@@ -1,7 +1,7 @@
 import Foundation
 
 @propertyWrapper
-public struct UVBinding<Value>: Equatable {
+public struct MSBinding<Value>: Equatable {
     private let get: () -> Value
     private let set: (Value) -> Void
     // TOOD: Use a less expensive unique identifier

@@ -4,7 +4,7 @@ import SwiftSyntaxMacros
 @main
 public struct MetalSprocketsMacros: CompilerPlugin {
     public let providingMacros: [Macro.Type] = [
-        UVEntryMacro.self
+        MSEntryMacro.self
     ]
 
     public init() {

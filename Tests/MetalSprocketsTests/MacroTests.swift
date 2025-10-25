@@ -11,7 +11,7 @@ import MetalSprocketsMacros
 
 @MainActor
 let testMacros: [String: Macro.Type] = [
-    "Entry": UVEntryMacro.self
+    "Entry": MSEntryMacro.self
 ]
 #endif
 
@@ -38,7 +38,7 @@ final class EntryMacroTests: XCTestCase {
                     }
                 }
 
-                private struct __Key_name: UVEnvironmentKey {
+                private struct __Key_name: MSEnvironmentKey {
                     typealias Value = Int
                     static var defaultValue: Value {
                         42
@@ -74,7 +74,7 @@ final class EntryMacroTests: XCTestCase {
                     }
                 }
 
-                private struct __Key_name: UVEnvironmentKey {
+                private struct __Key_name: MSEnvironmentKey {
                     typealias Value = String?
                     static var defaultValue: Value {
                         nil

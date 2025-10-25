@@ -133,12 +133,12 @@ public struct EnvironmentSnapshot: Codable, Sendable {
     public let values: [String: String]
     public let hasParent: Bool
 
-    init(environmentValues: UVEnvironmentValues) {
+    init(environmentValues: MSEnvironmentValues) {
         // Use Mirror to extract storage
         let mirror = Mirror(reflecting: environmentValues)
 
         if let storageChild = mirror.children.first(where: { $0.label == "storage" }),
-            let storage = storageChild.value as? UVEnvironmentValues.Storage {
+            let storage = storageChild.value as? MSEnvironmentValues.Storage {
             // Extract values from storage
             let storageMirror = Mirror(reflecting: storage)
 
@@ -150,7 +150,7 @@ public struct EnvironmentSnapshot: Codable, Sendable {
                 let valuesMirror = Mirror(reflecting: valuesChild.value)
                 for child in valuesMirror.children {
                     // Each child is a key-value pair
-                    if let pair = child.value as? (key: UVEnvironmentValues.Key, value: Any) {
+                    if let pair = child.value as? (key: MSEnvironmentValues.Key, value: Any) {
                         let keyDescription = "\(pair.key.value)".components(separatedBy: ".").last ?? "\(pair.key.value)"
                         extractedValues[keyDescription] = "\(pair.value)"
                     }

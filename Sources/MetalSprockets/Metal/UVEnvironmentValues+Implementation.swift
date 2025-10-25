@@ -4,28 +4,28 @@ import ModelIO
 import QuartzCore
 import MetalSprocketsSupport
 
-public extension UVEnvironmentValues {
+public extension MSEnvironmentValues {
     // TODO: #114 This is messy and needs organisation and possibly deprecation of unused elements.
-    @UVEntry var device: MTLDevice?
-    @UVEntry var commandQueue: MTLCommandQueue?
-    @UVEntry var commandBuffer: MTLCommandBuffer?
-    @UVEntry var renderCommandEncoder: MTLRenderCommandEncoder?
-    @UVEntry var renderPassDescriptor: MTLRenderPassDescriptor?
-    @UVEntry var renderPipelineDescriptor: MTLRenderPipelineDescriptor?
-    @UVEntry var renderPipelineState: MTLRenderPipelineState?
-    @UVEntry var vertexDescriptor: MTLVertexDescriptor?
-    @UVEntry var depthStencilDescriptor: MTLDepthStencilDescriptor?
-    @UVEntry var depthStencilState: MTLDepthStencilState?
-    @UVEntry var computeCommandEncoder: MTLComputeCommandEncoder?
-    @UVEntry var computePipelineState: MTLComputePipelineState?
-    @UVEntry var reflection: Reflection?
-    @UVEntry var colorAttachment0: (MTLTexture, Int)?
-    @UVEntry var depthAttachment: MTLTexture?
-    @UVEntry var stencilAttachment: MTLTexture?
-    @UVEntry var currentDrawable: CAMetalDrawable?
-    @UVEntry var drawableSize: CGSize?
-    @UVEntry var blitCommandEncoder: MTLBlitCommandEncoder?
-    @UVEntry var linkedFunctions: MTLLinkedFunctions?
+    @MSEntry var device: MTLDevice?
+    @MSEntry var commandQueue: MTLCommandQueue?
+    @MSEntry var commandBuffer: MTLCommandBuffer?
+    @MSEntry var renderCommandEncoder: MTLRenderCommandEncoder?
+    @MSEntry var renderPassDescriptor: MTLRenderPassDescriptor?
+    @MSEntry var renderPipelineDescriptor: MTLRenderPipelineDescriptor?
+    @MSEntry var renderPipelineState: MTLRenderPipelineState?
+    @MSEntry var vertexDescriptor: MTLVertexDescriptor?
+    @MSEntry var depthStencilDescriptor: MTLDepthStencilDescriptor?
+    @MSEntry var depthStencilState: MTLDepthStencilState?
+    @MSEntry var computeCommandEncoder: MTLComputeCommandEncoder?
+    @MSEntry var computePipelineState: MTLComputePipelineState?
+    @MSEntry var reflection: Reflection?
+    @MSEntry var colorAttachment0: (MTLTexture, Int)?
+    @MSEntry var depthAttachment: MTLTexture?
+    @MSEntry var stencilAttachment: MTLTexture?
+    @MSEntry var currentDrawable: CAMetalDrawable?
+    @MSEntry var drawableSize: CGSize?
+    @MSEntry var blitCommandEncoder: MTLBlitCommandEncoder?
+    @MSEntry var linkedFunctions: MTLLinkedFunctions?
 }
 
 public extension Element {

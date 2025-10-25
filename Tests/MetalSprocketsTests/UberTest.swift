@@ -7,8 +7,8 @@ struct UberTest {
     // MARK: - Test Elements
 
     struct RootElement: Element {
-        @UVState var counter: Int = 0
-        @UVEnvironment(\.exampleValue) var envValue
+        @MSState var counter: Int = 0
+        @MSEnvironment(\.exampleValue) var envValue
 
         var body: some Element {
             TrackedBodyless(name: "root", counter: counter, envValue: envValue)
@@ -24,7 +24,7 @@ struct UberTest {
 
     struct ChildElement: Element {
         let parentCounter: Int
-        @UVEnvironment(\.exampleValue) var envValue
+        @MSEnvironment(\.exampleValue) var envValue
 
         var body: some Element {
             TrackedBodyless(name: "child", counter: parentCounter + 100, envValue: envValue)
@@ -35,7 +35,7 @@ struct UberTest {
 
     struct GrandchildElement: Element {
         let ancestorCounter: Int
-        @UVEnvironment(\.exampleValue) var envValue
+        @MSEnvironment(\.exampleValue) var envValue
 
         var body: some Element {
             TrackedBodyless(name: "grandchild", counter: ancestorCounter * 2, envValue: envValue)
@@ -147,9 +147,9 @@ struct UberTest {
     @Test
     func testStateTimingDuringProcessing() throws {
         struct TimingElement: Element {
-            @UVState var value: Int = 0
-            @UVState var capturedDuringSetup: Int = -1
-            @UVState var capturedDuringWorkload: Int = -1
+            @MSState var value: Int = 0
+            @MSState var capturedDuringSetup: Int = -1
+            @MSState var capturedDuringWorkload: Int = -1
 
             var body: some Element {
                 TimingBodyless(
@@ -210,7 +210,7 @@ struct UberTest {
     @Test
     func testEnvironmentPropagationTiming() throws {
         struct EnvElement: Element {
-            @UVState var modifier: String = "A"
+            @MSState var modifier: String = "A"
 
             var body: some Element {
                 EnvBodyless(name: "parent")
@@ -223,7 +223,7 @@ struct UberTest {
 
         struct EnvBodyless: Element, BodylessElement {
             let name: String
-            @UVEnvironment(\.exampleValue) var envValue
+            @MSEnvironment(\.exampleValue) var envValue
 
             var body: Never {
                 fatalError()
@@ -264,7 +264,7 @@ struct UberTest {
     @Test
     func testComplexHierarchy() throws {
         struct ComplexElement: Element {
-            @UVState var depth: Int = 2
+            @MSState var depth: Int = 2
 
             var body: some Element {
                 SimpleTracked(name: "root")

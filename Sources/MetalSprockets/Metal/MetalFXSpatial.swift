@@ -4,13 +4,13 @@ import MetalFX
 import MetalSprocketsSupport
 
 public struct MetalFXSpatial: Element {
-    @UVState
+    @MSState
     var scaler: MTLFXSpatialScaler?
 
     var inputTexture: MTLTexture
     var outputTexture: MTLTexture
 
-    @UVEnvironment(\.commandBuffer)
+    @MSEnvironment(\.commandBuffer)
     var commandBuffer
 
     public init(inputTexture: MTLTexture, outputTexture: MTLTexture) {

@@ -40,7 +40,7 @@ internal extension System {
                         if activeNodeStack.count > 1 {
                             if node.environmentValues.storage.parent == nil {
                                 let parentNode = activeNodeStack[activeNodeStack.count - 2]
-                                var freshEnvironment = UVEnvironmentValues()
+                                var freshEnvironment = MSEnvironmentValues()
                                 freshEnvironment.merge(parentNode.environmentValues)
                                 freshEnvironment.storage.values.merge(node.environmentValues.storage.values) { _, new in new }
                                 node.environmentValues = freshEnvironment
