@@ -500,7 +500,7 @@ public extension MTLFunction {
                 vertexDescriptor.attributes[attribute.attributeIndex].format = .uchar4
                 vertexDescriptor.layouts[attribute.attributeIndex].stride = MemoryLayout<SIMD4<UInt8>>.stride
             default:
-                // TODO: #181 Flesh this out.
+                // TODO: #173 Flesh this out.
                 fatalError("Unimplemented: \(attribute.attributeType)")
             }
             vertexDescriptor.attributes[attribute.attributeIndex].bufferIndex = attribute.attributeIndex
@@ -817,7 +817,7 @@ public extension MTLDevice {
 
     func make1PixelTexture(color: SIMD4<Float>) throws -> MTLTexture {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false)
-        descriptor.usage = [.shaderRead, .shaderWrite, .renderTarget] // TODO: #120 Too much
+        descriptor.usage = [.shaderRead, .shaderWrite, .renderTarget] // TODO: #112 Too much
         descriptor.storageMode = .shared
         let value = SIMD4<UInt8>(color * 255.0)
         return try makeTexture(descriptor: descriptor, repeating: value)
@@ -826,7 +826,7 @@ public extension MTLDevice {
 
 public extension MTLTexture {
     func toCGImage() throws -> CGImage {
-        // TODO: #121 Hack
+        // TODO: #113 Hack
         assert(self.pixelFormat == .bgra8Unorm || self.pixelFormat == .bgra8Unorm_srgb)
         var bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)
         bitmapInfo.insert(.byteOrder32Little)
@@ -849,7 +849,7 @@ public extension MTLTexture {
 
     func write(to url: URL) throws {
         let image = try toCGImage()
-        // TODO: #122 We're ignoring the file extension.
+        // TODO: #114 We're ignoring the file extension.
         let destination = try CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil).orThrow(.resourceCreationFailure("Failed to create image destination"))
         CGImageDestinationAddImage(destination, image, nil)
         CGImageDestinationFinalize(destination)

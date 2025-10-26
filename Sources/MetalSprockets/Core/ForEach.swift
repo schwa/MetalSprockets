@@ -1,5 +1,5 @@
 public struct ForEach <Data, ID, Content>: Element where Data: RandomAccessCollection, ID: Hashable, Content: Element {
-    // TODO: #107 Compare ids to see if they've changed in expandNode
+    // TODO: #99 Compare ids to see if they've changed in expandNode
     //    @MSState
     //    var ids: [ID]
 
@@ -21,7 +21,7 @@ public extension ForEach {
     }
 }
 
-// TODO: #217 We're not using ids in the System StructuralIdentifier yet - need to implement proper ID tracking for ForEach elements
+// TODO: #209 We're not using ids in the System StructuralIdentifier yet - need to implement proper ID tracking for ForEach elements
 extension ForEach: BodylessElement {
     internal func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         for datum in data {

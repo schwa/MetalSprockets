@@ -5,7 +5,7 @@ import QuartzCore
 import MetalSprocketsSupport
 
 public extension MSEnvironmentValues {
-    // TODO: #114 This is messy and needs organisation and possibly deprecation of unused elements.
+    // TODO: #106 This is messy and needs organisation and possibly deprecation of unused elements.
     @MSEntry var device: MTLDevice?
     @MSEntry var commandQueue: MTLCommandQueue?
     @MSEntry var commandBuffer: MTLCommandBuffer?

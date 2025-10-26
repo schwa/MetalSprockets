@@ -44,7 +44,7 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
         }
 
         // Only set pixel formats if they haven't been explicitly configured
-        // TODO: #103 This is copying everything from the render pass descriptor. But really we should be getting this entirely from the environment.
+        // TODO: #95 This is copying everything from the render pass descriptor. But really we should be getting this entirely from the environment.
         if renderPipelineDescriptor.colorAttachments[0].pixelFormat == .invalid,
             let colorAttachment0Texture = renderPassDescriptor.colorAttachments[0].texture {
             renderPipelineDescriptor.colorAttachments[0].pixelFormat = colorAttachment0Texture.pixelFormat

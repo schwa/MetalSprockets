@@ -8,7 +8,7 @@ internal enum TraversalEvent {
 }
 
 public class System {
-    // TODO: #221 These properties should become private to enforce proper encapsulation
+    // TODO: #213 These properties should become private to enforce proper encapsulation
     var traversalEvents: [TraversalEvent] = []
     var nodes: [StructuralIdentifier: Node] = [:]
     /// Stack of nodes currently being processed during system traversal.
@@ -146,7 +146,7 @@ public class System {
             // Find removed nodes by diffing old vs new
             let removedIds = Set(nodes.keys).subtracting(Set(newNodes.keys))
             for _ in removedIds {
-                // TODO: #222 Could call cleanup/onDisappear here for proper node lifecycle management
+                // TODO: #214 Could call cleanup/onDisappear here for proper node lifecycle management
             }
 
             // Replace old with new

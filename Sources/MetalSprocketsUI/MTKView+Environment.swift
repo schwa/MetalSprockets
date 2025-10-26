@@ -38,11 +38,11 @@ public extension View {
     func metalPresentsWithTransaction(_ value: Bool) -> some View {
         self.environment(\.metalPresentsWithTransaction, value)
     }
-    // TODO: #282 This is so important it should be a parameter on RenderView?
+    // TODO: #274 This is so important it should be a parameter on RenderView?
     func metalColorPixelFormat(_ value: MTLPixelFormat) -> some View {
         self.environment(\.metalColorPixelFormat, value)
     }
-    // TODO: #282 This is so important it should be a parameter on RenderView?
+    // TODO: #274 This is so important it should be a parameter on RenderView?
     func metalDepthStencilPixelFormat(_ value: MTLPixelFormat) -> some View {
         self.environment(\.metalDepthStencilPixelFormat, value)
     }

@@ -57,7 +57,7 @@ public struct ShaderLibrary {
             function = basicFunction
         }
         switch type {
-        // TODO: #94 Clean this up.
+        // TODO: #86 Clean this up.
         case is VertexShader.Type:
             guard function.functionType == .vertex else {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a vertex function."))

@@ -1,7 +1,7 @@
 import Metal
 
-// TODO: #30 Make into actual Modifier.
-// TODO: #99 is this actually necessary? Elements just use an environment?
+// TODO: #22 Make into actual Modifier.
+// TODO: #91 is this actually necessary? Elements just use an environment?
 public struct RenderPipelineDescriptorModifier<Content>: Element where Content: Element {
     @MSEnvironment(\.renderPipelineDescriptor)
     var renderPipelineDescriptor
@@ -9,7 +9,7 @@ public struct RenderPipelineDescriptorModifier<Content>: Element where Content: 
     var content: Content
     var modify: (MTLRenderPipelineDescriptor) -> Void
 
-    // TODO: #72 this is pretty bad. We're only modifying it for workload NOT setup. And we're modifying it globally - even for elements further up the stack.
+    // TODO: #64 this is pretty bad. We're only modifying it for workload NOT setup. And we're modifying it globally - even for elements further up the stack.
     public var body: some Element {
         get throws {
             content.environment(\.renderPipelineDescriptor, try modifiedRenderPipelineDescriptor())

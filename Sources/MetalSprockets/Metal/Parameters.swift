@@ -3,7 +3,7 @@ import Metal
 import simd
 import MetalSprocketsSupport
 
-// TODO: #62 instead of being typed <T> we need an "AnyParameter" and this needs to take a dictionary of AnyParameters
+// TODO: #54 instead of being typed <T> we need an "AnyParameter" and this needs to take a dictionary of AnyParameters
 internal struct ParameterElementModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     var parameters: [String: Parameter]
     var content: Content

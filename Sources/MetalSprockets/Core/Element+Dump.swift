@@ -1,5 +1,5 @@
-// TODO: #226 This is dangerous - walking the tree can modify state (e.g., EnvironmentReader can break things)
-// TODO: #226 We should only walk the "System tree" instead of the Element tree to avoid state mutations
+// TODO: #218 This is dangerous - walking the tree can modify state (e.g., EnvironmentReader can break things)
+// TODO: #218 We should only walk the "System tree" instead of the Element tree to avoid state mutations
 
 public extension Element {
     @MainActor

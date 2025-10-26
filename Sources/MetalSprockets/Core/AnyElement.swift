@@ -1,4 +1,4 @@
-// TODO: #227 Evaluate if AnyElement type erasure is still needed - may be redundant with current architecture
+// TODO: #219 Evaluate if AnyElement type erasure is still needed - may be redundant with current architecture
 public struct AnyElement: Element, BodylessElement {
     private let base: any Element
 

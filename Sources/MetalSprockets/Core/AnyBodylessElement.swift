@@ -35,7 +35,7 @@ internal struct AnyBodylessElement: Element, BodylessElement {
     }
 }
 
-// TODO: #225 Clarify purpose of these modifier-style extensions - may be for builder pattern or phase-specific actions
+// TODO: #217 Clarify purpose of these modifier-style extensions - may be for builder pattern or phase-specific actions
 internal extension AnyBodylessElement {
     func onSetupEnter(_ action: @escaping (Node) throws -> Void) -> AnyBodylessElement {
         var modifier = self

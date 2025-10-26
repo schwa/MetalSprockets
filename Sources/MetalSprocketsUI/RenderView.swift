@@ -192,7 +192,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     }
 }
 
-// TODO: #277 Merge this with environment (ProcessInfo) logic.
+// TODO: #269 Merge this with environment (ProcessInfo) logic.
 public struct RenderViewDebugging {
     @MainActor
     static var logFrame = true

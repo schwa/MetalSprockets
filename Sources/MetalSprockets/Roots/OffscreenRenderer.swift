@@ -24,22 +24,22 @@ public struct OffscreenRenderer {
         renderPassDescriptor.depthAttachment.texture = depthTexture
         renderPassDescriptor.depthAttachment.loadAction = .clear
         renderPassDescriptor.depthAttachment.clearDepth = 1
-        renderPassDescriptor.depthAttachment.storeAction = .store // TODO: #33 This is hardcoded. Should usually be .dontCare but we need to read back in some examples.
+        renderPassDescriptor.depthAttachment.storeAction = .store // TODO: #25 This is hardcoded. Should usually be .dontCare but we need to read back in some examples.
         self.renderPassDescriptor = renderPassDescriptor
 
         commandQueue = try device._makeCommandQueue()
     }
 
-    // TODO: #28 Most of this belongs on a RenderSession type API. We should be able to render multiple times with the same setup.
+    // TODO: #20 Most of this belongs on a RenderSession type API. We should be able to render multiple times with the same setup.
     public init(size: CGSize) throws {
         let device = _MTLCreateSystemDefaultDevice()
         let colorTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: Int(size.width), height: Int(size.height), mipmapped: false)
-        colorTextureDescriptor.usage = [.renderTarget, .shaderRead, .shaderWrite] // TODO: #33 this is all hardcoded :-(
+        colorTextureDescriptor.usage = [.renderTarget, .shaderRead, .shaderWrite] // TODO: #25 this is all hardcoded :-(
         let colorTexture = try device.makeTexture(descriptor: colorTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create color texture"))
         colorTexture.label = "Color Texture"
 
         let depthTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: Int(size.width), height: Int(size.height), mipmapped: false)
-        depthTextureDescriptor.usage = [.renderTarget, .shaderRead] // TODO: #33 this is all hardcoded :-(
+        depthTextureDescriptor.usage = [.renderTarget, .shaderRead] // TODO: #25 this is all hardcoded :-(
         let depthTexture = try device.makeTexture(descriptor: depthTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create depth texture"))
         depthTexture.label = "Depth Texture"
 
