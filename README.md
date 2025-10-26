@@ -165,11 +165,11 @@ For production, place shaders in `.metal` files (for syntax highlighting, cachin
 
 ## Shader Types
 
-| Type                     | Use                 | MS Type                                            |
+| Type                     | Use                 | MetalSprockets Type                                |
 | ------------------------ | ------------------- | -------------------------------------------------- |
 | Render (vertex/fragment) | Rasterized geometry | `RenderPipeline`, `RenderPass`                     |
 | Compute                  | GPGPU workloads     | `ComputeShader`, `ComputePass`                     |
-| Mesh/Object (Metal 3)    | GPU-driven geometry | `MeshShader`, `ObjectShader`, `MeshRenderPipeline` |
+| Mesh/Object              | GPU-driven geometry | `MeshShader`, `ObjectShader`, `MeshRenderPipeline` |
 
 Each integrates seamlessly via the same `Element` composition model — allowing render and compute workloads to coexist in one unified Swift graph.
 

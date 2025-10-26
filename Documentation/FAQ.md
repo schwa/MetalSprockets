@@ -91,3 +91,11 @@ Explicitly specify the function type when binding parameters that exist in multi
 ```
 
 You can bind the same or different values to each stage as needed. This removes the ambiguity and ensures your parameters are bound to the correct shader stage.
+
+## What is Ultraviolence
+
+MetalSprockets was originally codenamed "Ultraviolence" during its early development. The project was renamed to MetalSprockets. If you encounter references to "Ultraviolence" in old commits, documentation, or issues, they refer to the same project.
+
+## What is the relationship to Apple Game Sprockets?
+
+The MetalSprockets name is inspired by Apple's Game Sprockets, a games framework from the classic Mac OS era.
