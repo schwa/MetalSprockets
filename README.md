@@ -1,6 +1,4 @@
-
-
-![alt text](Documentation/MetalSprockets.png)
+![MetalSprocketsLogo](Documentation/MetalSprockets.png)
 
 # [MetalSprockets](https://github.com/schwa/MetalSprockets)
 
