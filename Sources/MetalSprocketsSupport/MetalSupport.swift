@@ -946,3 +946,54 @@ public extension MTLBuffer {
         return UnsafeMutablePointer<T>(bitPattern: bits)
     }
 }
+
+private func align(_ value: Int, to alignment: Int) -> Int {
+    precondition(alignment > 0 && (alignment & (alignment - 1)) == 0, "alignment must be power of two")
+    return (value + alignment - 1) & -alignment
+}
+
+public extension MTLVertexDescriptor {
+    convenience init<T>(reflection _: T.Type) {
+        self.init()
+
+        assert(_isPOD(T.self))
+
+
+        // You really shouldn't rebind bytes to T, but keeping your idea:
+        let raw = Array<UInt8>(repeating: 0, count: MemoryLayout<T>.size)
+        let mirror = raw.withUnsafeBufferPointer { buf in
+            buf.withMemoryRebound(to: T.self) { reb in
+                Mirror(reflecting: reb[0])
+            }
+        }
+
+        var offset = 0
+
+        func foo<V>(type: V.Type, i: Int) -> Int {
+            let a = MemoryLayout<V>.alignment
+            let s = MemoryLayout<V>.size
+            offset = align(offset, to: a)
+            attributes[i].format = .float4
+            attributes[i].offset = offset
+            attributes[i].bufferIndex = 0
+            return s
+        }
+
+        for (i, child) in mirror.children.enumerated() {
+            switch child.value {
+            case is SIMD4<Float>:
+                offset += foo(type: SIMD4<Float>.self, i: i)
+            case is SIMD2<Float>:
+                offset += foo(type: SIMD2<Float>.self, i: i)
+            default:
+                fatalError("Unhandled field type")
+            }
+        }
+
+        layouts[0].stride = max(offset, MemoryLayout<T>.stride) // tail padding
+        layouts[0].stepRate = 1
+        layouts[0].stepFunction = .perVertex
+
+        assert(layouts[0].stride == MemoryLayout<T>.stride, "Your manual walk likely missed padding.")
+    }
+}
