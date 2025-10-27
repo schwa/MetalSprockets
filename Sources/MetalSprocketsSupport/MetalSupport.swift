@@ -969,22 +969,73 @@ public extension MTLVertexDescriptor {
 
         var offset = 0
 
-        func foo<V>(type: V.Type, i: Int) -> Int {
-            let a = MemoryLayout<V>.alignment
-            let s = MemoryLayout<V>.size
-            offset = align(offset, to: a)
-            attributes[i].format = .float4
+        func writeAttribute(format: MTLVertexFormat, size: Int, alignment: Int, i: Int) -> Int {
+            offset = align(offset, to: alignment)
+            attributes[i].format = format
             attributes[i].offset = offset
             attributes[i].bufferIndex = 0
-            return s
+            return size
         }
 
         for (i, child) in mirror.children.enumerated() {
             switch child.value {
-            case is SIMD4<Float>:
-                offset += foo(type: SIMD4<Float>.self, i: i)
+
+            case is Float:
+                offset += writeAttribute(format: .float, size: MemoryLayout<Float>.size, alignment: MemoryLayout<Float>.alignment, i: i)
             case is SIMD2<Float>:
-                offset += foo(type: SIMD2<Float>.self, i: i)
+                offset += writeAttribute(format: .float2, size: MemoryLayout<SIMD2<Float>>.size, alignment: MemoryLayout<SIMD2<Float>>.alignment, i: i)
+            case is SIMD3<Float>:
+                offset += writeAttribute(format: .float3, size: MemoryLayout<SIMD3<Float>>.size, alignment: MemoryLayout<SIMD3<Float>>.alignment, i: i)
+            case is SIMD4<Float>:
+                offset += writeAttribute(format: .float4, size: MemoryLayout<SIMD4<Float>>.size, alignment: MemoryLayout<SIMD4<Float>>.alignment, i: i)
+            case is UInt8:
+                offset += writeAttribute(format: .uchar, size: MemoryLayout<UInt8>.size, alignment: MemoryLayout<UInt8>.alignment, i: i)
+            case is SIMD2<UInt8>:
+                offset += writeAttribute(format: .uchar2Normalized, size: MemoryLayout<SIMD2<UInt8>>.size, alignment: MemoryLayout<SIMD2<UInt8>>.alignment, i: i)
+            case is SIMD3<UInt8>:
+                offset += writeAttribute(format: .uchar3Normalized, size: MemoryLayout<SIMD3<UInt8>>.size, alignment: MemoryLayout<SIMD3<UInt8>>.alignment, i: i)
+            case is SIMD4<UInt8>:
+                offset += writeAttribute(format: .uchar4Normalized, size: MemoryLayout<SIMD4<UInt8>>.size, alignment: MemoryLayout<SIMD4<UInt8>>.alignment, i: i)
+            case is Int8:
+                offset += writeAttribute(format: .char, size: MemoryLayout<Int8>.size, alignment: MemoryLayout<Int8>.alignment, i: i)
+            case is SIMD2<Int8>:
+                offset += writeAttribute(format: .char2, size: MemoryLayout<SIMD2<Int8>>.size, alignment: MemoryLayout<SIMD2<Int8>>.alignment, i: i)
+            case is SIMD3<Int8>:
+                offset += writeAttribute(format: .char3, size: MemoryLayout<SIMD3<Int8>>.size, alignment: MemoryLayout<SIMD3<Int8>>.alignment, i: i)
+            case is SIMD4<Int8>:
+                offset += writeAttribute(format: .char4, size: MemoryLayout<SIMD4<Int8>>.size, alignment: MemoryLayout<SIMD4<Int8>>.alignment, i: i)
+            case is UInt16:
+                offset += writeAttribute(format: .ushort, size: MemoryLayout<UInt16>.size, alignment: MemoryLayout<UInt16>.alignment, i: i)
+            case is SIMD2<UInt16>:
+                offset += writeAttribute(format: .ushort2, size: MemoryLayout<SIMD2<UInt16>>.size, alignment: MemoryLayout<SIMD2<UInt16>>.alignment, i: i)
+            case is SIMD3<UInt16>:
+                offset += writeAttribute(format: .ushort3, size: MemoryLayout<SIMD3<UInt16>>.size, alignment: MemoryLayout<SIMD3<UInt16>>.alignment, i: i)
+            case is SIMD4<UInt16>:
+                offset += writeAttribute(format: .ushort4, size: MemoryLayout<SIMD4<UInt16>>.size, alignment: MemoryLayout<SIMD4<UInt16>>.alignment, i: i)
+            case is Int16:
+                offset += writeAttribute(format: .short, size: MemoryLayout<Int16>.size, alignment: MemoryLayout<Int16>.alignment, i: i)
+            case is SIMD2<Int16>:
+                offset += writeAttribute(format: .short2, size: MemoryLayout<SIMD2<Int16>>.size, alignment: MemoryLayout<SIMD2<Int16>>.alignment, i: i)
+            case is SIMD3<Int16>:
+                offset += writeAttribute(format: .short3, size: MemoryLayout<SIMD3<Int16>>.size, alignment: MemoryLayout<SIMD3<Int16>>.alignment, i: i)
+            case is SIMD4<Int16>:
+                offset += writeAttribute(format: .short4, size: MemoryLayout<SIMD4<Int16>>.size, alignment: MemoryLayout<SIMD4<Int16>>.alignment, i: i)
+            case is UInt32:
+                offset += writeAttribute(format: .uint, size: MemoryLayout<UInt32>.size, alignment: MemoryLayout<UInt32>.alignment, i: i)
+            case is SIMD2<UInt32>:
+                offset += writeAttribute(format: .uint2, size: MemoryLayout<SIMD2<UInt32>>.size, alignment: MemoryLayout<SIMD2<UInt32>>.alignment, i: i)
+            case is SIMD3<UInt32>:
+                offset += writeAttribute(format: .uint3, size: MemoryLayout<SIMD3<UInt32>>.size, alignment: MemoryLayout<SIMD3<UInt32>>.alignment, i: i)
+            case is SIMD4<UInt32>:
+                offset += writeAttribute(format: .uint4, size: MemoryLayout<SIMD4<UInt32>>.size, alignment: MemoryLayout<SIMD4<UInt32>>.alignment, i: i)
+            case is Int32:
+                offset += writeAttribute(format: .int, size: MemoryLayout<Int32>.size, alignment: MemoryLayout<Int32>.alignment, i: i)
+            case is SIMD2<Int32>:
+                offset += writeAttribute(format: .int2, size: MemoryLayout<SIMD2<Int32>>.size, alignment: MemoryLayout<SIMD2<Int32>>.alignment, i: i)
+            case is SIMD3<Int32>:
+                offset += writeAttribute(format: .int3, size: MemoryLayout<SIMD3<Int32>>.size, alignment: MemoryLayout<SIMD3<Int32>>.alignment, i: i)
+            case is SIMD4<Int32>:
+                offset += writeAttribute(format: .int4, size: MemoryLayout<SIMD4<Int32>>.size, alignment: MemoryLayout<SIMD4<Int32>>.alignment, i: i)
             default:
                 fatalError("Unhandled field type")
             }
