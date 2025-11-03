@@ -1,7 +1,7 @@
 import Metal
 import MetalSprocketsSupport
 
-public protocol ShaderProtocol {
+public protocol ShaderProtocol: Sendable {
     static var functionType: MTLFunctionType { get }
     var function: MTLFunction { get }
     init(_ function: MTLFunction)

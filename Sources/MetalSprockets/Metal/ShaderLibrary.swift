@@ -2,7 +2,7 @@ import Metal
 import MetalSprocketsSupport
 
 @dynamicMemberLookup
-public struct ShaderLibrary {
+public struct ShaderLibrary: Sendable {
     var library: MTLLibrary
     var namespace: String?
 
@@ -37,9 +37,22 @@ public struct ShaderLibrary {
 
 
     public func function<T>(named name: String, type: T.Type, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
-        logger?.verbose?.log("Loading function '\(name)' from library \(library.label ?? "<unnamed>")")
-
         let scopedNamed = namespace.map { "\($0)::\(name)" } ?? name
+        let cacheKey = constants.isEmpty ? nil : constants
+
+        // Check cache first
+        if let cached = ShaderCache.shared.get(library: self, name: scopedNamed, functionConstants: cacheKey) {
+            if let result = cached as? T {
+                logger?.verbose?.log("Loaded function '\(name)' from cache")
+                return result
+            }
+            else {
+                logger?.verbose?.log("Loading function '\(name)' (cache miss)")
+
+            }
+        }
+
+        logger?.verbose?.log("Loading function '\(name)' from library \(library.label ?? "<unnamed>")")
 
         let function: MTLFunction
 
@@ -56,42 +69,62 @@ public struct ShaderLibrary {
             }
             function = basicFunction
         }
+
+        let shader: ShaderProtocol
         switch type {
         // TODO: #86 Clean this up.
         case is VertexShader.Type:
             guard function.functionType == .vertex else {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a vertex function."))
             }
-            return (VertexShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create VertexShader."))
+            shader = VertexShader(function)
         case is FragmentShader.Type:
             guard function.functionType == .fragment else {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a fragment function."))
             }
-            return (FragmentShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create FragmentShader."))
+            shader = FragmentShader(function)
         case is ComputeKernel.Type:
             guard function.functionType == .kernel else {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a kernel function."))
             }
-            return (ComputeKernel(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ComputeKernel."))
+            shader = ComputeKernel(function)
 
         case is VisibleFunction.Type:
             guard function.functionType == .visible else {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a visible function."))
             }
-            return (VisibleFunction(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ComputeKernel."))
+            shader = VisibleFunction(function)
         case is ObjectShader.Type:
             guard function.functionType == .object else {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not an object function."))
             }
-            return (ObjectShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ObjectShader."))
+            shader = ObjectShader(function)
         case is MeshShader.Type:
             guard function.functionType == .mesh else {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a mesh function."))
             }
-            return (MeshShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create MeshShader."))
+            shader = MeshShader(function)
         default:
             try _throw(MetalSprocketsError.resourceCreationFailure("Unknown shader type \(type)."))
         }
+
+        // Store in cache before returning
+        ShaderCache.shared.set(library: self, name: scopedNamed, functionConstants: cacheKey, shader: shader)
+
+        return (shader as? T).orFatalError(.resourceCreationFailure("Failed to cast shader to \(type)."))
+    }
+}
+
+extension ShaderLibrary: Equatable {
+    public static func == (lhs: ShaderLibrary, rhs: ShaderLibrary) -> Bool {
+        lhs.library === rhs.library && lhs.namespace == rhs.namespace
+    }
+}
+
+extension ShaderLibrary: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ObjectIdentifier(library))
+        hasher.combine(namespace)
     }
 }
 
@@ -114,3 +147,6 @@ public extension ShaderLibrary {
         }
     }
 }
+
+// MARK:
+
