@@ -2,11 +2,19 @@ import Metal
 import MetalSprocketsSupport
 
 @dynamicMemberLookup
-public struct ShaderLibrary {
+public struct ShaderLibrary: Identifiable {
     var library: MTLLibrary
+    public let id: ID
+
+    public enum ID: Hashable {
+        case bundle(Bundle)
+        case library(MTLLibrary)
+        case source(String, MTLCompileOptions?)
+    }
 
     public init(library: MTLLibrary) {
         self.library = library
+        self.id = .library(library)
     }
 
     public init(bundle: Bundle) throws {
@@ -23,12 +31,14 @@ public struct ShaderLibrary {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Failed to load default library from bundle."))
             }
         }
+        self.id = .bundle(bundle)
     }
 
     public init(source: String, options: MTLCompileOptions? = nil) throws {
         let device = _MTLCreateSystemDefaultDevice()
 
         self.library = try device.makeLibrary(source: source, options: options)
+        self.id = .source(source, options)
     }
 
 
@@ -112,5 +122,36 @@ public extension ShaderLibrary {
 
     func namespaced(_ name: String) -> ShaderNamespace {
         ShaderNamespace(library: self, namespace: name)
+    }
+}
+
+// MARK: - ShaderLibrary.ID Extensions
+
+public extension ShaderLibrary.ID {
+    func hash(into hasher: inout Hasher) {
+        switch self {
+        case .bundle(let bundle):
+            hasher.combine("bundle")
+            hasher.combine(bundle.bundleURL)
+        case .library(let library):
+            hasher.combine("library")
+            hasher.combine(ObjectIdentifier(library))
+        case .source(let source, _):
+            hasher.combine("source")
+            hasher.combine(source)
+        }
+    }
+
+    static func == (lhs: ShaderLibrary.ID, rhs: ShaderLibrary.ID) -> Bool {
+        switch (lhs, rhs) {
+        case let (.bundle(lBundle), .bundle(rBundle)):
+            return lBundle.bundleURL == rBundle.bundleURL
+        case let (.library(lLibrary), .library(rLibrary)):
+            return lLibrary === rLibrary
+        case let (.source(lSource, _), .source(rSource, _)):
+            return lSource == rSource
+        default:
+            return false
+        }
     }
 }
