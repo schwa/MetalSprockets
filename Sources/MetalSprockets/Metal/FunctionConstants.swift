@@ -2,8 +2,8 @@ import Metal
 import MetalSprocketsSupport
 
 /// Type-safe wrapper for Metal function constant values
-public struct FunctionConstants: Equatable {
-    public enum Value: Equatable {
+public struct FunctionConstants: Equatable, Hashable, Sendable {
+    public enum Value: Equatable, Hashable, Sendable {
         case bool(Bool)
         case int8(Int8)
         case uint8(UInt8)
