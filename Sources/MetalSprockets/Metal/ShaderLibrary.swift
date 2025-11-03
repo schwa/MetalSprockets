@@ -3,6 +3,12 @@ import MetalSprocketsSupport
 
 @dynamicMemberLookup
 public struct ShaderLibrary: Identifiable {
+    public enum ID: Hashable, @unchecked Sendable {
+        case bundle(Bundle)
+        case library(MTLLibrary)
+        case source(String, MTLCompileOptions?)
+    }
+
     final class State: Sendable {
         let library: MTLLibrary
         let cache: ShaderCache
@@ -19,19 +25,15 @@ public struct ShaderLibrary: Identifiable {
     public var id: ID { state.id }
     var library: MTLLibrary { state.library }
     var cache: ShaderCache { state.cache }
+}
 
-    public enum ID: Hashable, @unchecked Sendable {
-        case bundle(Bundle)
-        case library(MTLLibrary)
-        case source(String, MTLCompileOptions?)
-    }
-
-    public init(library: MTLLibrary) {
+public extension ShaderLibrary {
+    init(library: MTLLibrary) {
         let id = ID.library(library)
         self.state = LibraryRegistry.shared.getOrCreate(id: id) { library }
     }
 
-    public init(bundle: Bundle) throws {
+    init(bundle: Bundle) throws {
         let id = ID.bundle(bundle)
         self.state = try LibraryRegistry.shared.getOrCreate(id: id) {
             let device = _MTLCreateSystemDefaultDevice()
@@ -46,15 +48,27 @@ public struct ShaderLibrary: Identifiable {
         }
     }
 
-    public init(source: String, options: MTLCompileOptions? = nil) throws {
+    init(source: String, options: MTLCompileOptions? = nil) throws {
         let id = ID.source(source, options)
         self.state = try LibraryRegistry.shared.getOrCreate(id: id) {
             let device = _MTLCreateSystemDefaultDevice()
             return try device.makeLibrary(source: source, options: options)
         }
     }
+}
 
-    public func function<T>(named name: String, type: T.Type, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
+public extension ShaderLibrary {
+    func requiredFunction<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) -> T where T: ShaderProtocol {
+        do {
+            return try function(type: type, named: name, namespace: namespace, constants: constants)
+
+        }
+        catch {
+            fatalError("Failed to load required function '\(name)': \(error)")
+        }
+    }
+
+    func function<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
         let scopedNamed = namespace.map { "\($0)::\(name)" } ?? name
         let expectedType = T.functionType
 
@@ -123,19 +137,19 @@ public struct ShaderLibrary: Identifiable {
 public extension ShaderLibrary {
     subscript(dynamicMember name: String) -> ComputeKernel {
         get throws {
-            try function(named: name, type: ComputeKernel.self)
+            try function(type: ComputeKernel.self, named: name, )
         }
     }
 
     subscript(dynamicMember name: String) -> VertexShader {
         get throws {
-            try function(named: name, type: VertexShader.self)
+            try function(type: VertexShader.self, named: name, )
         }
     }
 
     subscript(dynamicMember name: String) -> FragmentShader {
         get throws {
-            try function(named: name, type: FragmentShader.self)
+            try function(type: FragmentShader.self, named: name, )
         }
     }
 

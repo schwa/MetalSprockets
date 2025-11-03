@@ -12,7 +12,11 @@ public struct ShaderNamespace {
     }
 
     public func function<T>(named name: String, type: T.Type, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
-        try library.function(named: name, type: type, namespace: namespace, constants: constants)
+        try library.function(type: type, named: name, namespace: namespace, constants: constants)
+    }
+
+    public func requiredFunction<T>(named name: String, type: T.Type, constants: FunctionConstants = FunctionConstants()) -> T where T: ShaderProtocol {
+        library.requiredFunction(type: type, named: name, namespace: namespace, constants: constants)
     }
 }
 
