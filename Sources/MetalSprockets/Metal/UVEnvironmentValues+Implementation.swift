@@ -1,8 +1,8 @@
 import Metal
 import MetalKit
+import MetalSprocketsSupport
 import ModelIO
 import QuartzCore
-import MetalSprocketsSupport
 
 public extension MSEnvironmentValues {
     // TODO: #106 This is messy and needs organisation and possibly deprecation of unused elements.

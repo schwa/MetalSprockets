@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import MetalSprockets
+import Testing
 
 @MainActor
 struct BindingTests {

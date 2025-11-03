@@ -39,14 +39,10 @@ public struct ShaderLibrary: Identifiable {
             if let url = bundle.url(forResource: "debug", withExtension: "metallib"), let library = try? device.makeLibrary(URL: url) {
                 return library
             }
-            else {
-                if let library = try? device.makeDefaultLibrary(bundle: bundle) {
-                    return library
-                }
-                else {
-                    try _throw(MetalSprocketsError.resourceCreationFailure("Failed to load default library from bundle."))
-                }
+            if let library = try? device.makeDefaultLibrary(bundle: bundle) {
+                return library
             }
+            try _throw(MetalSprocketsError.resourceCreationFailure("Failed to load default library from bundle."))
         }
     }
 
@@ -57,7 +53,6 @@ public struct ShaderLibrary: Identifiable {
             return try device.makeLibrary(source: source, options: options)
         }
     }
-
 
     public func function<T>(named name: String, type: T.Type, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
         let scopedNamed = namespace.map { "\($0)::\(name)" } ?? name

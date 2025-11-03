@@ -1,9 +1,9 @@
 import CoreGraphics
 import ImageIO
 import Metal
+import MetalSprockets
 internal import os
 import simd
-import MetalSprockets
 import UniformTypeIdentifiers
 
 public enum RedTriangleInline {

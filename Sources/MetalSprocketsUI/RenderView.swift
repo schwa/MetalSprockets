@@ -1,11 +1,11 @@
 import Metal
 import MetalKit
+import MetalSprockets
+import MetalSprocketsSupport
 import Observation
 internal import os
 import QuartzCore
 import SwiftUI
-import MetalSprockets
-import MetalSprocketsSupport
 
 public extension EnvironmentValues {
     @Entry

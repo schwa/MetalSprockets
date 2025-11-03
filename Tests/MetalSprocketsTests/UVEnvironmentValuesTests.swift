@@ -1,5 +1,5 @@
-import Testing
 @testable import MetalSprockets
+import Testing
 
 struct TestEnvironmentKey: MSEnvironmentKey {
     static let defaultValue = "default"

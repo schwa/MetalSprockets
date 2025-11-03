@@ -1,7 +1,7 @@
 import CoreGraphics
 import Metal
-import simd
 import MetalSprocketsSupport
+import simd
 
 // TODO: #54 instead of being typed <T> we need an "AnyParameter" and this needs to take a dictionary of AnyParameters
 internal struct ParameterElementModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {

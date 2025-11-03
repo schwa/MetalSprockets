@@ -1,5 +1,5 @@
-import SwiftUI
 import MetalSprockets
+import SwiftUI
 
 // TODO: #102 Also it could take a SwiftUI environment(). Also SRGB?
 public extension Element {

@@ -1,5 +1,5 @@
-import Testing
 @testable import MetalSprockets
+import Testing
 
 struct StructuralIdentifierTests {
     struct TestElement1: Element {

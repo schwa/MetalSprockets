@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import MetalSprockets
+import Testing
 
 @MainActor
 final class TestModel: ObservableObject {

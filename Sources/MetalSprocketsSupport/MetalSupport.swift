@@ -958,9 +958,8 @@ public extension MTLVertexDescriptor {
 
         assert(_isPOD(T.self))
 
-
         // You really shouldn't rebind bytes to T, but keeping your idea:
-        let raw = Array<UInt8>(repeating: 0, count: MemoryLayout<T>.size)
+        let raw = [UInt8](repeating: 0, count: MemoryLayout<T>.size)
         let mirror = raw.withUnsafeBufferPointer { buf in
             buf.withMemoryRebound(to: T.self) { reb in
                 Mirror(reflecting: reb[0])
@@ -979,7 +978,6 @@ public extension MTLVertexDescriptor {
 
         for (i, child) in mirror.children.enumerated() {
             switch child.value {
-
             case is Float:
                 offset += writeAttribute(format: .float, size: MemoryLayout<Float>.size, alignment: MemoryLayout<Float>.alignment, i: i)
             case is SIMD2<Float>:

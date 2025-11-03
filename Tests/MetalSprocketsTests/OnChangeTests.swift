@@ -1,5 +1,5 @@
-import Testing
 @testable import MetalSprockets
+import Testing
 
 @Suite(.serialized)
 @MainActor

@@ -1,5 +1,5 @@
-import SwiftUI
 import MetalSprockets
+import SwiftUI
 
 internal struct SnapshotViewerDocumentView: View {
     @Binding var document: SnapshotViewerDocument

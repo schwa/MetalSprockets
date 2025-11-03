@@ -1,6 +1,6 @@
 import Metal
-import Testing
 @testable import MetalSprockets
+import Testing
 
 struct FunctionConstantsTests {
     @Test("Value enum equality")

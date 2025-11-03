@@ -1,5 +1,5 @@
-import SwiftUI
 import MetalSprockets
+import SwiftUI
 
 /// List view showing the node hierarchy
 internal struct NodeListView: View {

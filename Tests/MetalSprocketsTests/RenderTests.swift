@@ -1,9 +1,9 @@
 import Combine
 import MetalKit
+@testable import MetalSprockets
 import simd
 import SwiftUI
 import Testing
-@testable import MetalSprockets
 
 @Test(.disabled("Rendering very broken!"))
 @MainActor

@@ -2,9 +2,9 @@ import Accelerate
 import CoreGraphics
 import CoreImage
 import CoreImage.CIFilterBuiltins
-import Testing
 @testable import MetalSprockets
 import MetalSprocketsSupport
+import Testing
 import UniformTypeIdentifiers
 #if canImport(AppKit)
 import AppKit

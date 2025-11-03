@@ -1,5 +1,5 @@
-import SwiftUI
 import MetalSprockets
+import SwiftUI
 
 internal struct NodeRowView: View {
     let node: NodeSnapshot

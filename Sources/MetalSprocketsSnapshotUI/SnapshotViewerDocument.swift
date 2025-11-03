@@ -1,5 +1,5 @@
-import SwiftUI
 import MetalSprockets
+import SwiftUI
 import UniformTypeIdentifiers
 
 public struct SnapshotViewerDocumentScene: Scene {
@@ -14,7 +14,7 @@ public struct SnapshotViewerDocumentScene: Scene {
     }
 }
 
-internal nonisolated struct SnapshotViewerDocument: FileDocument {
+nonisolated internal struct SnapshotViewerDocument: FileDocument {
     struct FrameInfo: Codable {
         let number: Int
     }

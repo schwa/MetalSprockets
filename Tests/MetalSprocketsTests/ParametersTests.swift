@@ -1,9 +1,9 @@
 import GeometryLite3D
 import Metal
-import simd
-import Testing
 @testable import MetalSprockets
 import MetalSprocketsSupport
+import simd
+import Testing
 
 @Suite
 struct ParametersTests {

@@ -1,7 +1,7 @@
 import Metal
-import simd
 import MetalSprockets
 import MetalSprocketsSupport
+import simd
 
 struct ExampleTriangleElement: Element {
     @MSState private var vertexShader: VertexShader
@@ -76,4 +76,3 @@ struct ExampleTriangleElement: Element {
         }
     }
 }
-

@@ -1,5 +1,5 @@
-import Testing
 @testable import MetalSprockets
+import Testing
 
 struct ElementDumpTests {
     struct SimpleElement: Element {

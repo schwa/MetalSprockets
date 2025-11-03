@@ -1,7 +1,7 @@
 import Foundation
+@testable import MetalSprockets
 import simd
 import Testing
-@testable import MetalSprockets
 
 @Test
 @MainActor

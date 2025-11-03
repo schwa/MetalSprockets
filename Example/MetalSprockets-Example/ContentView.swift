@@ -1,11 +1,10 @@
-import SwiftUI
 import MetalSprockets
 import MetalSprocketsUI
+import SwiftUI
 
 struct ContentView: View {
-
     @State
-    var start = Date()
+    private var start = Date()
 
     var body: some View {
         TimelineView(.animation) { timeline in

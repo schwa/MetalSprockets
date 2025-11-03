@@ -1,6 +1,6 @@
+import MetalSprockets
 import QuartzCore
 import SwiftUI
-import MetalSprockets
 
 internal struct RenderViewDebugViewModifier <Root>: ViewModifier where Root: Element {
     @State
