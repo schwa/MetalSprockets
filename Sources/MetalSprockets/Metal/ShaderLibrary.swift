@@ -4,14 +4,12 @@ import MetalSprocketsSupport
 @dynamicMemberLookup
 public struct ShaderLibrary {
     var library: MTLLibrary
-    var namespace: String?
 
-    public init(library: MTLLibrary, namespace: String? = nil) {
+    public init(library: MTLLibrary) {
         self.library = library
-        self.namespace = namespace
     }
 
-    public init(bundle: Bundle, namespace: String? = nil) throws {
+    public init(bundle: Bundle) throws {
         let device = _MTLCreateSystemDefaultDevice()
 
         if let url = bundle.url(forResource: "debug", withExtension: "metallib"), let library = try? device.makeLibrary(URL: url) {
@@ -25,18 +23,16 @@ public struct ShaderLibrary {
                 try _throw(MetalSprocketsError.resourceCreationFailure("Failed to load default library from bundle."))
             }
         }
-        self.namespace = namespace
     }
 
-    public init(source: String, options: MTLCompileOptions? = nil, namespace: String? = nil) throws {
+    public init(source: String, options: MTLCompileOptions? = nil) throws {
         let device = _MTLCreateSystemDefaultDevice()
 
         self.library = try device.makeLibrary(source: source, options: options)
-        self.namespace = namespace
     }
 
 
-    public func function<T>(named name: String, type: T.Type, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
+    public func function<T>(named name: String, type: T.Type, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
         logger?.verbose?.log("Loading function '\(name)' from library \(library.label ?? "<unnamed>")")
 
         let scopedNamed = namespace.map { "\($0)::\(name)" } ?? name
@@ -112,5 +108,9 @@ public extension ShaderLibrary {
         get throws {
             try function(named: name, type: FragmentShader.self)
         }
+    }
+
+    func namespaced(_ name: String) -> ShaderNamespace {
+        ShaderNamespace(library: self, namespace: name)
     }
 }
