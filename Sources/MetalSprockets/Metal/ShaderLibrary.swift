@@ -1,66 +1,90 @@
-import Metal
+@preconcurrency import Metal
 import MetalSprocketsSupport
 
 @dynamicMemberLookup
 public struct ShaderLibrary: Identifiable {
-    var library: MTLLibrary
-    public let id: ID
+    final class State: Sendable {
+        let library: MTLLibrary
+        let cache: ShaderCache
+        let id: ShaderLibrary.ID
 
-    public enum ID: Hashable {
+        init(library: MTLLibrary, id: ShaderLibrary.ID) {
+            self.library = library
+            self.id = id
+            self.cache = ShaderCache()
+        }
+    }
+
+    private let state: State
+    public var id: ID { state.id }
+    var library: MTLLibrary { state.library }
+    var cache: ShaderCache { state.cache }
+
+    public enum ID: Hashable, @unchecked Sendable {
         case bundle(Bundle)
         case library(MTLLibrary)
         case source(String, MTLCompileOptions?)
     }
 
     public init(library: MTLLibrary) {
-        self.library = library
-        self.id = .library(library)
+        let id = ID.library(library)
+        self.state = LibraryRegistry.shared.getOrCreate(id: id) { library }
     }
 
     public init(bundle: Bundle) throws {
-        let device = _MTLCreateSystemDefaultDevice()
+        let id = ID.bundle(bundle)
+        self.state = try LibraryRegistry.shared.getOrCreate(id: id) {
+            let device = _MTLCreateSystemDefaultDevice()
 
-        if let url = bundle.url(forResource: "debug", withExtension: "metallib"), let library = try? device.makeLibrary(URL: url) {
-            self.library = library
-        }
-        else {
-            if let library = try? device.makeDefaultLibrary(bundle: bundle) {
-                self.library = library
+            if let url = bundle.url(forResource: "debug", withExtension: "metallib"), let library = try? device.makeLibrary(URL: url) {
+                return library
             }
             else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Failed to load default library from bundle."))
+                if let library = try? device.makeDefaultLibrary(bundle: bundle) {
+                    return library
+                }
+                else {
+                    try _throw(MetalSprocketsError.resourceCreationFailure("Failed to load default library from bundle."))
+                }
             }
         }
-        self.id = .bundle(bundle)
     }
 
     public init(source: String, options: MTLCompileOptions? = nil) throws {
-        let device = _MTLCreateSystemDefaultDevice()
-
-        self.library = try device.makeLibrary(source: source, options: options)
-        self.id = .source(source, options)
+        let id = ID.source(source, options)
+        self.state = try LibraryRegistry.shared.getOrCreate(id: id) {
+            let device = _MTLCreateSystemDefaultDevice()
+            return try device.makeLibrary(source: source, options: options)
+        }
     }
 
 
     public func function<T>(named name: String, type: T.Type, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
-        logger?.verbose?.log("Loading function '\(name)' from library \(library.label ?? "<unnamed>")")
-
         let scopedNamed = namespace.map { "\($0)::\(name)" } ?? name
+        let expectedType = T.functionType
 
+        // Check cache first
         let function: MTLFunction
-
-        if !constants.isEmpty {
-            // Build the constant values using the unspecialized function for introspection
-            let mtlConstants = try constants.buildMTLConstants(for: library, functionName: scopedNamed)
-
-            // Now create the SPECIALIZED function with the constants applied
-            function = try library.makeFunction(name: scopedNamed, constantValues: mtlConstants)
+        if let cachedFunction = cache.get(scopedName: scopedNamed, functionType: expectedType, constants: constants) {
+            function = cachedFunction
         } else {
-            // No constants, just get the function directly
-            guard let basicFunction = library.makeFunction(name: scopedNamed) else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedNamed)' not found in library (available: \(library.functionNames))."))
+            // Cache miss - load the function
+            if !constants.isEmpty {
+                // Build the constant values using the unspecialized function for introspection
+                let mtlConstants = try constants.buildMTLConstants(for: library, functionName: scopedNamed)
+
+                // Now create the SPECIALIZED function with the constants applied
+                function = try library.makeFunction(name: scopedNamed, constantValues: mtlConstants)
+            } else {
+                // No constants, just get the function directly
+                guard let basicFunction = library.makeFunction(name: scopedNamed) else {
+                    try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedNamed)' not found in library (available: \(library.functionNames))."))
+                }
+                function = basicFunction
             }
-            function = basicFunction
+
+            // Cache the loaded function
+            cache.set(scopedName: scopedNamed, functionType: expectedType, constants: constants, function: function)
         }
         switch type {
         // TODO: #86 Clean this up.
