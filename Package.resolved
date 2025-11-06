@@ -1,13 +1,22 @@
 {
-  "originHash" : "27215b5e8f2b6f9b32b774b9edda0af38bd2fb97524fe64ef17b037a6a015f24",
+  "originHash" : "32391ed7a49d177c82af0b86ebc8a9a382e11a5fe8a5045a135625bea72f1c01",
   "pins" : [
     {
       "identity" : "geometrylite3d",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/GeometryLite3D",
       "state" : {
-        "branch" : "main",
-        "revision" : "59e3663e6a6668a5b25cb7bfb5da54dfad1ed8ab"
+        "revision" : "2b63646cf7290361567cafaf89f82206ee0ff3e7",
+        "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics.git",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
       }
     },
     {
