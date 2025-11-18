@@ -1,25 +1,28 @@
 import Metal
 
 // TODO: #22 Make into actual Modifier.
-internal struct RenderPassDescriptorModifier<Content>: Element where Content: Element {
-    @MSEnvironment(\.renderPassDescriptor)
-    var renderPassDescriptor
-
+internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     var content: Content
     var modify: (MTLRenderPassDescriptor) -> Void
 
-    // TODO: #64 this is pretty bad. We're only modifying it for workload NOT setup. And we're modifying it globally - even for elements further up the stack.
-    var body: some Element {
-        get throws {
-            content.environment(\.renderPassDescriptor, try modifiedRenderPassDescriptor())
-        }
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        try visit(content)
     }
 
-    func modifiedRenderPassDescriptor() throws -> MTLRenderPassDescriptor {
-        let renderPassDescriptor = renderPassDescriptor.orFatalError("Missing render pass descriptor")
-        let copy = (renderPassDescriptor.copy() as? MTLRenderPassDescriptor).orFatalError("Failed to copy render pass descriptor")
+    func configureNodeBodyless(_ node: Node) throws {
+        // Access the descriptor during the setup phase when we know it exists
+        guard let renderPassDescriptor = node.environmentValues.renderPassDescriptor else {
+            return // Descriptor not set yet
+        }
+
+        let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
         modify(copy)
-        return copy
+        node.environmentValues.renderPassDescriptor = copy
+    }
+
+    nonisolated func requiresSetup(comparedTo old: RenderPassDescriptorModifier<Content>) -> Bool {
+        // Since we can't compare closures, be conservative
+        true
     }
 }
 

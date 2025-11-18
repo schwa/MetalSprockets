@@ -1,26 +1,28 @@
 import Metal
 
 // TODO: #22 Make into actual Modifier.
-// TODO: #91 is this actually necessary? Elements just use an environment?
-public struct RenderPipelineDescriptorModifier<Content>: Element where Content: Element {
-    @MSEnvironment(\.renderPipelineDescriptor)
-    var renderPipelineDescriptor
-
+public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     var content: Content
     var modify: (MTLRenderPipelineDescriptor) -> Void
 
-    // TODO: #64 this is pretty bad. We're only modifying it for workload NOT setup. And we're modifying it globally - even for elements further up the stack.
-    public var body: some Element {
-        get throws {
-            content.environment(\.renderPipelineDescriptor, try modifiedRenderPipelineDescriptor())
-        }
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        try visit(content)
     }
 
-    func modifiedRenderPipelineDescriptor() throws -> MTLRenderPipelineDescriptor {
-        let renderPipelineDescriptor = renderPipelineDescriptor.orFatalError("Missing render pipeline descriptor")
-        let copy = (renderPipelineDescriptor.copy() as? MTLRenderPipelineDescriptor).orFatalError("Failed to copy render pipeline descriptor")
+    func configureNodeBodyless(_ node: Node) throws {
+        // Access the descriptor during the setup phase when we know it exists
+        guard let renderPipelineDescriptor = node.environmentValues.renderPipelineDescriptor else {
+            return // Descriptor not set yet, will be set by RenderPass.setupEnter()
+        }
+
+        let copy = renderPipelineDescriptor.copyWithType(MTLRenderPipelineDescriptor.self)
         modify(copy)
-        return copy
+        node.environmentValues.renderPipelineDescriptor = copy
+    }
+
+    nonisolated func requiresSetup(comparedTo old: RenderPipelineDescriptorModifier<Content>) -> Bool {
+        // Since we can't compare closures, be conservative
+        true
     }
 }
 
