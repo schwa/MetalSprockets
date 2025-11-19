@@ -20,6 +20,7 @@ public let package = Package(
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0-latest"),
 //        .package(url: "https://github.com/schwa/MetalCompilerPlugin", from: "0.1.0"),
         .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
+        .package(url: "https://github.com/schwa/GoldenImage", branch: "main"),
     ],
     targets: [
         .target(
@@ -64,6 +65,7 @@ public let package = Package(
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
                 "GeometryLite3D",
+                "GoldenImage",
             ],
             resources: [
                 .copy("Golden Images")

@@ -1,5 +1,5 @@
 {
-  "originHash" : "32391ed7a49d177c82af0b86ebc8a9a382e11a5fe8a5045a135625bea72f1c01",
+  "originHash" : "59d786208002d5b96d4ca4557316ae57d2bc9522463e901aef30df15ccd0779e",
   "pins" : [
     {
       "identity" : "geometrylite3d",
@@ -8,6 +8,24 @@
       "state" : {
         "revision" : "2b63646cf7290361567cafaf89f82206ee0ff3e7",
         "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "goldenimage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/schwa/GoldenImage",
+      "state" : {
+        "branch" : "main",
+        "revision" : "34396251ee4fc108b9167ba5785f66a5c473088b"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser",
+      "state" : {
+        "revision" : "cdd0ef3755280949551dc26dee5de9ddeda89f54",
+        "version" : "1.6.2"
       }
     },
     {
