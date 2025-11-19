@@ -9,10 +9,11 @@ public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElemen
         try visit(content)
     }
 
-    func configureNodeBodyless(_ node: Node) throws {
-        // Access the descriptor during the setup phase when we know it exists
+    func setupEnter(_ node: Node) throws {
+        // Run during setup phase AFTER RenderPass.setupEnter() creates the descriptor
+        // but BEFORE RenderPipeline.setupEnter() uses it
         guard let renderPipelineDescriptor = node.environmentValues.renderPipelineDescriptor else {
-            return // Descriptor not set yet, will be set by RenderPass.setupEnter()
+            return // Descriptor not set yet
         }
 
         let copy = renderPipelineDescriptor.copyWithType(MTLRenderPipelineDescriptor.self)
