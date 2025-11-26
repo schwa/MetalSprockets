@@ -10,14 +10,10 @@ internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement,
     }
 
     func configureNodeBodyless(_ node: Node) throws {
-        // Access the descriptor during the setup phase when we know it exists
         guard let renderPassDescriptor = node.environmentValues.renderPassDescriptor else {
             return // Descriptor not set yet
         }
-
-        let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
-        modify(copy)
-        node.environmentValues.renderPassDescriptor = copy
+        modify(renderPassDescriptor)
     }
 
     nonisolated func requiresSetup(comparedTo old: RenderPassDescriptorModifier<Content>) -> Bool {
