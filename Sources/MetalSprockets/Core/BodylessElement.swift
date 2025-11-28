@@ -10,7 +10,7 @@ internal protocol BodylessElement {
 
     /// Returns true if the change from `old` to `self` requires the setup phase to run again.
     /// This is a SHALLOW check - only considers this element, not its children.
-    nonisolated func requiresSetup(comparedTo old: Self) -> Bool
+    func requiresSetup(comparedTo old: Self) -> Bool
 }
 
 extension BodylessElement {

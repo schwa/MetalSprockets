@@ -1,7 +1,7 @@
 import Metal
 import MetalSprocketsSupport
 
-public protocol ShaderProtocol {
+public protocol ShaderProtocol: Equatable {
     static var functionType: MTLFunctionType { get }
     var function: MTLFunction { get }
     init(_ function: MTLFunction)
@@ -36,6 +36,10 @@ public struct ComputeKernel: ShaderProtocol {
     public init(_ function: MTLFunction) {
         self.function = function
     }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.function === rhs.function
+    }
 }
 
 // MARK: -
@@ -46,6 +50,10 @@ public struct VertexShader: ShaderProtocol {
 
     public init(_ function: MTLFunction) {
         self.function = function
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.function === rhs.function
     }
 }
 
@@ -58,6 +66,10 @@ public struct FragmentShader: ShaderProtocol {
     public init(_ function: MTLFunction) {
         self.function = function
     }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.function === rhs.function
+    }
 }
 
 // MARK: -
@@ -68,6 +80,10 @@ public struct ObjectShader: ShaderProtocol {
 
     public init(_ function: MTLFunction) {
         self.function = function
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.function === rhs.function
     }
 }
 
@@ -80,6 +96,10 @@ public struct MeshShader: ShaderProtocol {
     public init(_ function: MTLFunction) {
         self.function = function
     }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.function === rhs.function
+    }
 }
 
 // MARK: -
@@ -91,5 +111,9 @@ public struct VisibleFunction: ShaderProtocol {
 
     public init(_ function: MTLFunction) {
         self.function = function
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.function === rhs.function
     }
 }

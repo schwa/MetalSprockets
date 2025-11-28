@@ -163,6 +163,7 @@ public class System {
 
 private extension System {
     /// Determine whether to reuse an existing node or create a new one
+    @MainActor
     func processNode(currentId: StructuralIdentifier, previousId: StructuralIdentifier?, element: any Element, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         if let previousId, previousId == currentId {
             return reuseNode(currentId: currentId, element: element, newNodes: &newNodes)
@@ -171,6 +172,7 @@ private extension System {
     }
 
     /// Reuse an existing node, updating it if its element has changed
+    @MainActor
     func reuseNode(currentId: StructuralIdentifier, element: any Element, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         guard let existingNode = nodes[currentId] else {
             // This should never happen - same ID but no existing node
@@ -225,6 +227,7 @@ private extension System {
         return !isEqual(node.element, element)
     }
 
+    @MainActor
     private func requiresSetupErased(old: any BodylessElement, new: any BodylessElement) -> Bool {
         // This function handles the type erasure needed to call requiresSetup
         func helper<T: BodylessElement>(_ old: T, _ new: any BodylessElement) -> Bool {

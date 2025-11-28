@@ -90,10 +90,7 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
         logger?.verbose?.info("Exit render pipeline: \(label ?? "<unlabeled>") (\(node.element.debugName))")
     }
 
-    nonisolated func requiresSetup(comparedTo old: RenderPipeline<Content>) -> Bool {
-        // For now, always return false since shaders rarely change after initial setup
-        // This prevents pipeline recreation on every frame
-        // TODO: Implement proper comparison when shader constants are added
-        false
+    func requiresSetup(comparedTo old: RenderPipeline<Content>) -> Bool {
+        vertexShader != old.vertexShader || fragmentShader != old.fragmentShader
     }
 }
