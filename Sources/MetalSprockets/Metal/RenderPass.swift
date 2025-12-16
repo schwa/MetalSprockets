@@ -1,5 +1,9 @@
 import Metal
 
+#if os(visionOS)
+import CompositorServices
+#endif
+
 public struct RenderPass <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     private let label: String?
     internal let content: Content
@@ -27,7 +31,18 @@ public struct RenderPass <Content>: Element, BodylessElement, BodylessContentEle
 
     func workloadExit(_ node: Node) throws {
         let renderCommandEncoder = try node.environmentValues.renderCommandEncoder.orThrow(.missingEnvironment(\.renderCommandEncoder))
+
+        #if os(visionOS)
+        // Use immersive render context for proper CompositorServices integration
+        if let renderContext = node.environmentValues.immersiveRenderContext {
+            renderContext.endEncoding(commandEncoder: renderCommandEncoder)
+        } else {
+            renderCommandEncoder.endEncoding()
+        }
+        #else
         renderCommandEncoder.endEncoding()
+        #endif
+
         node.environmentValues.renderCommandEncoder = nil
         logger?.verbose?.info("Ending render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
     }

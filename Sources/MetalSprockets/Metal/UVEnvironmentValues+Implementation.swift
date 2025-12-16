@@ -4,6 +4,10 @@ import MetalSprocketsSupport
 import ModelIO
 import QuartzCore
 
+#if os(visionOS)
+import CompositorServices
+#endif
+
 public extension MSEnvironmentValues {
     // TODO: #106 This is messy and needs organisation and possibly deprecation of unused elements.
     @MSEntry var device: MTLDevice?
@@ -59,3 +63,21 @@ public extension Element {
         self.vertexDescriptor(MTKMetalVertexDescriptorFromModelIO(vertexDescriptor).orFatalError(.resourceCreationFailure("Failed to create MTLVertexDescriptor from MDLVertexDescriptor")))
     }
 }
+
+// MARK: - visionOS CompositorServices Support
+
+#if os(visionOS)
+public extension MSEnvironmentValues {
+    /// The render context for CompositorServices immersive rendering.
+    /// When set, RenderPass will use `renderContext.endEncoding(commandEncoder:)` instead of `encoder.endEncoding()`.
+    @MSEntry var immersiveRenderContext: LayerRenderer.Drawable.RenderContext?
+}
+
+public extension Element {
+    /// Sets the immersive render context for CompositorServices rendering.
+    /// This enables proper integration with visionOS immersive spaces.
+    func immersiveRenderContext(_ renderContext: LayerRenderer.Drawable.RenderContext?) -> some Element {
+        environment(\.immersiveRenderContext, renderContext)
+    }
+}
+#endif
