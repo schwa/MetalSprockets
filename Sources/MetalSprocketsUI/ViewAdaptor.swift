@@ -28,7 +28,7 @@ public struct ViewAdaptor<ViewType>: View where ViewType: NSView {
     }
 }
 
-#elseif os(iOS) || os(tvOS)
+#elseif os(iOS) || os(tvOS) || os(visionOS)
 public struct ViewAdaptor<ViewType>: View where ViewType: UIView {
     let make: () -> ViewType
     let update: (ViewType) -> Void

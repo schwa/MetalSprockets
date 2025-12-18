@@ -20,6 +20,7 @@ internal struct RenderViewDebugViewModifier <Root>: ViewModifier where Root: Ele
 
     func body(content: Content) -> some View {
         content
+            #if !os(visionOS)
             .toolbar {
                 Toggle("Inspector", systemImage: "ladybug", isOn: $debugInspectorIsPresented)
                 Button("Refresh", systemImage: "arrow.trianglehead.clockwise") {
@@ -54,6 +55,7 @@ internal struct RenderViewDebugViewModifier <Root>: ViewModifier where Root: Ele
             .onChange(of: debugInspectorIsPresented) {
                 refreshCount += 1
             }
+            #endif
     }
 }
 
