@@ -52,7 +52,6 @@ public struct OffscreenRenderer {
 }
 
 public extension OffscreenRenderer {
-    @MainActor
     func render<Content>(_ content: Content) throws -> Rendering where Content: Element {
         let device = _MTLCreateSystemDefaultDevice()
         let commandQueue = try device._makeCommandQueue()

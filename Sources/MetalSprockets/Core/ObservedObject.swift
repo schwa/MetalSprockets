@@ -1,7 +1,6 @@
 import Combine
 
 internal protocol AnyObservedObject {
-    @MainActor
     func addDependency(_ node: Node)
 }
 
@@ -49,7 +48,6 @@ private final class ObservedObjectBox<Wrapped: ObservableObject> {
         self.wrappedValue = wrappedValue
     }
 
-    @MainActor
     func addDependency(_ node: Node) {
         guard node !== self.node else {
             return

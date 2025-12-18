@@ -26,7 +26,6 @@ internal class Snapshotter {
         fileHandle?.closeFile()
     }
 
-    @MainActor
     func dumpSnapshotIfNeeded(_ system: System) {
         guard shouldDumpSnapshots else {
             return

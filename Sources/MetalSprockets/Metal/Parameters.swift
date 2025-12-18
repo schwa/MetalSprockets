@@ -50,7 +50,6 @@ internal struct Parameter {
         self.value = AnyParameterValue(value)
     }
 
-    @MainActor
     func set(on encoder: MTLRenderCommandEncoder, reflection: Reflection) throws {
         try encoder.withDebugGroup("MTLRenderCommandEncoder(\(encoder.label.quoted)): \(name.quoted) = \(value)") {
             switch functionType {

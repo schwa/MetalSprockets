@@ -117,7 +117,6 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     var currentDrawableSize: CGSize = .zero
 
-    @MainActor
     init(device: MTLDevice, commandQueue: MTLCommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) throws {
         self.device = device
         self.content = content

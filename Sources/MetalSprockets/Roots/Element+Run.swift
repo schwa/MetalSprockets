@@ -2,7 +2,6 @@ import Metal
 import MetalSprocketsSupport
 
 public extension Element {
-    @MainActor
     func run() throws {
         // TODO: #19 This has surprisingly little to do with compute. It's basically the same as offscreen renderer.
         let device = _MTLCreateSystemDefaultDevice()

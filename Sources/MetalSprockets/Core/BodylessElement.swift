@@ -1,4 +1,3 @@
-@MainActor
 internal protocol BodylessElement {
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws
 

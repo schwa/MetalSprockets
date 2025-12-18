@@ -2,7 +2,6 @@
 // TODO: #218 We should only walk the "System tree" instead of the Element tree to avoid state mutations
 
 public extension Element {
-    @MainActor
     func dump(to output: inout String, indent: Int = 0) throws {
         let indentString = String(repeating: "  ", count: indent)
 
@@ -14,14 +13,12 @@ public extension Element {
         }
     }
 
-    @MainActor
     func dump() throws -> String {
         var output = ""
         try dump(to: &output)
         return output
     }
 
-    @MainActor
     func printDump() throws {
         print(try dump())
     }
@@ -29,7 +26,6 @@ public extension Element {
 
 // More detailed dump with additional information
 public extension Element {
-    @MainActor
     func dumpVerbose(to output: inout String, indent: Int = 0) throws {
         let indentString = String(repeating: "  ", count: indent)
         let typeName = String(describing: type(of: self))
@@ -50,7 +46,6 @@ public extension Element {
         }
     }
 
-    @MainActor
     func dumpVerbose() throws -> String {
         var output = ""
         try dumpVerbose(to: &output)

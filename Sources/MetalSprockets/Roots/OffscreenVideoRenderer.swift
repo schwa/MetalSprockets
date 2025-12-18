@@ -106,7 +106,6 @@ public final class OffscreenVideoRenderer {
         system = System()
     }
 
-    @MainActor
     public func render<Content>(_ element: Content) throws where Content: Element {
         // Wrap the element with necessary environment values
         let wrappedElement = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
@@ -173,7 +172,6 @@ public final class OffscreenVideoRenderer {
         frameNumber += 1
     }
 
-    @MainActor
     public func finalize() async throws {
         assetWriterInput.markAsFinished()
 

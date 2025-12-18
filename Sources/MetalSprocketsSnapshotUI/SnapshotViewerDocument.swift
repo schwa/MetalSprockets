@@ -27,7 +27,6 @@ nonisolated internal struct SnapshotViewerDocument: FileDocument {
     var snapshots: [SnapshotRecord]
     var currentFrameIndex: Int = 0
 
-    @MainActor
     var currentSnapshot: SystemSnapshot? {
         guard !snapshots.isEmpty else {
             return nil
@@ -41,7 +40,6 @@ nonisolated internal struct SnapshotViewerDocument: FileDocument {
         self.currentFrameIndex = 0
     }
 
-    @MainActor
     init() {
         // Initialize with empty snapshots - no System creation
         self.snapshots = []

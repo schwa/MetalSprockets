@@ -1,7 +1,6 @@
 import MetalSprocketsSupport
 
 public extension System {
-    @MainActor
     func processSetup() throws {
         try withIntervalSignpost(signposter, name: "System.processSetup()") {
             try process(needsSetup: true) { element, node in
@@ -13,7 +12,6 @@ public extension System {
         }
     }
 
-    @MainActor
     func processWorkload() throws {
         try withIntervalSignpost(signposter, name: "System.processWorkload()") {
             try process { element, node in
@@ -26,7 +24,6 @@ public extension System {
 }
 
 internal extension System {
-    @MainActor
     func process(needsSetup: Bool = false, enter: (any BodylessElement, Node) throws -> Void, exit: (any BodylessElement, Node) throws -> Void) throws {
         try withCurrentSystem {
             assert(activeNodeStack.isEmpty)
