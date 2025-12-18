@@ -5,13 +5,11 @@ internal import os
 
 public extension System {
     /// Create a snapshot of the current system state
-    @MainActor
     func snapshot() -> SystemSnapshot {
         SystemSnapshot(system: self)
     }
 
     /// Create a snapshot and dump it to console
-    @MainActor
     func dump(includeEnvironment: Bool = false) {
         let snapshot = self.snapshot()
         print(snapshot.textDump(includeEnvironment: includeEnvironment))
@@ -22,7 +20,6 @@ public extension System {
 
 internal extension System {
     /// Log snapshot to OSLog for debugging
-    @MainActor
     func logSnapshot(logger: Logger = Logger(subsystem: "MetalSprockets", category: "System")) {
         let snapshot = self.snapshot()
 

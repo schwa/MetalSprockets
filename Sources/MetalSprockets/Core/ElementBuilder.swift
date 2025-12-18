@@ -1,5 +1,4 @@
 @resultBuilder
-@MainActor
 // swiftlint:disable:next convenience_type
 public struct ElementBuilder {
     public static func buildBlock<V: Element>(_ content: V) -> V {
