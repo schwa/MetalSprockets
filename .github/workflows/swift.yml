@@ -19,5 +19,37 @@ jobs:
         run: xcodebuild -downloadComponent MetalToolchain
       - name: Trust plugins
         run: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
-      - run: swift build -v
-      - run: swift test -v
+      - name: Build (macOS)
+        run: swift build -v
+      - name: Test (macOS)
+        run: swift test -v
+      - name: Create visionOS destination
+        run: |
+          cat > .visionos-destination.json << 'EOF'
+          {
+              "version": 1,
+              "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/XROS.platform/Developer/SDKs/XROS.sdk",
+              "toolchain-bin-dir": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+              "target": "arm64-apple-xros26.0",
+              "extra-cc-flags": [],
+              "extra-swiftc-flags": [],
+              "extra-cpp-flags": []
+          }
+          EOF
+      - name: Build (visionOS)
+        run: swift build -v --destination .visionos-destination.json
+      - name: Create iOS destination
+        run: |
+          cat > .ios-destination.json << 'EOF'
+          {
+              "version": 1,
+              "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk",
+              "toolchain-bin-dir": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+              "target": "arm64-apple-ios26.0",
+              "extra-cc-flags": [],
+              "extra-swiftc-flags": [],
+              "extra-cpp-flags": []
+          }
+          EOF
+      - name: Build (iOS)
+        run: swift build -v --destination .ios-destination.json
