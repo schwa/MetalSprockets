@@ -9,8 +9,8 @@ internal enum TraversalEvent {
 
 public class System: @unchecked Sendable {
     // TODO: #213 These properties should become private to enforce proper encapsulation
-    var traversalEvents: [TraversalEvent] = []
-    var nodes: [StructuralIdentifier: Node] = [:]
+    private(set) var traversalEvents: [TraversalEvent] = []
+    private(set) var nodes: [StructuralIdentifier: Node] = [:]
     /// Stack of nodes currently being processed during system traversal.
     /// This stack is maintained during:
     /// - Initial system update (`update(root:)`) - populated during element tree traversal
@@ -24,8 +24,8 @@ public class System: @unchecked Sendable {
     ///
     /// IMPORTANT: The stack is empty outside of these traversal contexts.
     /// Accessing @MSEnvironment properties outside traversal will cause a crash.
-    var activeNodeStack: [Node] = []
-    var dirtyIdentifiers: Set<StructuralIdentifier> = []
+    private(set) var activeNodeStack: [Node] = []
+    private(set) var dirtyIdentifiers: Set<StructuralIdentifier> = []
 
     private let snapshotter = Snapshotter()
 
@@ -40,6 +40,21 @@ public class System: @unchecked Sendable {
         for node in nodes.values {
             node.needsSetup = true
         }
+    }
+
+    /// Mark a node as dirty (needs rebuild on next update)
+    internal func markDirty(_ id: StructuralIdentifier) {
+        dirtyIdentifiers.insert(id)
+    }
+
+    /// Push a node onto the active stack
+    internal func pushActiveNode(_ node: Node) {
+        activeNodeStack.append(node)
+    }
+
+    /// Pop the last node from the active stack
+    internal func popActiveNode() {
+        activeNodeStack.removeLast()
     }
 
     public func update(root: some Element) throws {

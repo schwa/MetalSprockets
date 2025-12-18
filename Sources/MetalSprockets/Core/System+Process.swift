@@ -30,7 +30,7 @@ internal extension System {
             for event in traversalEvents {
                 switch event {
                 case .enter(let node):
-                    activeNodeStack.append(node)
+                    pushActiveNode(node)
                     if let bodylessElement = node.element as? any BodylessElement, !needsSetup || node.needsSetup {
                         // Rebuild environment parent chain
                         // TODO: Investigate whether we need this still. Seems like patch for broken behavior.
@@ -49,7 +49,7 @@ internal extension System {
                     if let bodylessElement = node.element as? any BodylessElement, !needsSetup || node.needsSetup {
                         try exit(bodylessElement, node)
                     }
-                    activeNodeStack.removeLast()
+                    popActiveNode()
                 }
             }
             assert(activeNodeStack.isEmpty)

@@ -62,7 +62,7 @@ internal final class StateBox<Wrapped> {
                 // TODO: #210 Handle error when node has been deallocated - dependency cleanup needed
                 return
             }
-            system.dirtyIdentifiers.insert(node.id)
+            system.markDirty(node.id)
             node.needsSetup = true
         }
     }
