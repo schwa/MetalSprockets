@@ -2,6 +2,7 @@ import Metal
 @testable import MetalSprockets
 import Testing
 
+@Suite
 struct FunctionConstantsTests {
     @Test("Value enum equality")
     func valueEquality() throws {

@@ -8,6 +8,7 @@ extension MSEnvironmentValues {
 }
 
 @MainActor
+@Suite
 struct EnvironmentTests {
     @Test
     func testEnvironment1() throws {

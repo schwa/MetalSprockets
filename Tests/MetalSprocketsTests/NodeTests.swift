@@ -3,6 +3,7 @@ import Foundation
 import Testing
 
 @MainActor
+@Suite
 struct NodeTests {
     @Test
     func testParentIdentifierIsSet() throws {

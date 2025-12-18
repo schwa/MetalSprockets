@@ -1,15 +1,14 @@
 @testable import MetalSprockets
 import Testing
 
-@Suite
+@Suite(.serialized)
 struct NeedsSetupTests {
     // Track setup calls
-    @MainActor
     final class SetupTrackingElement: Element, BodylessElement, Identifiable, Equatable {
         typealias Body = Never
 
-        static var globalSetupEnterCount = 0
-        static var globalSetupExitCount = 0
+        nonisolated(unsafe) static var globalSetupEnterCount = 0
+        nonisolated(unsafe) static var globalSetupExitCount = 0
 
         let id: Int
 
@@ -28,7 +27,7 @@ struct NeedsSetupTests {
         func workloadEnter(_ node: Node) throws {}
         func workloadExit(_ node: Node) throws {}
 
-        nonisolated static func == (lhs: SetupTrackingElement, rhs: SetupTrackingElement) -> Bool {
+        static func == (lhs: SetupTrackingElement, rhs: SetupTrackingElement) -> Bool {
             lhs.id == rhs.id
         }
 

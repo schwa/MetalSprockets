@@ -3,6 +3,7 @@ import Foundation
 import Testing
 
 @MainActor
+@Suite(.serialized)
 struct StateTests {
     // MARK: - Basic State Test
 
@@ -80,7 +81,7 @@ struct StateTests {
         }
 
         func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.values[name] = value
+            TestMonitor.shared.setValue(value, forKey: name)
         }
     }
 
@@ -164,7 +165,7 @@ struct StateTests {
         }
 
         func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.values["combined"] = combinedValue
+            TestMonitor.shared.setValue(combinedValue, forKey: "combined")
         }
     }
 
