@@ -7,7 +7,7 @@ internal enum TraversalEvent {
     case exit(Node)
 }
 
-public class System {
+public class System: @unchecked Sendable {
     // TODO: #213 These properties should become private to enforce proper encapsulation
     var traversalEvents: [TraversalEvent] = []
     var nodes: [StructuralIdentifier: Node] = [:]
@@ -29,16 +29,7 @@ public class System {
 
     private let snapshotter = Snapshotter()
 
-    private static let _current = OSAllocatedUnfairLock<System?>(uncheckedState: nil)
-
-    internal static var current: System? {
-        get {
-            _current.withLockUnchecked { $0 }
-        }
-        set {
-            _current.withLockUnchecked { $0 = newValue }
-        }
-    }
+    @TaskLocal internal static var current: System?
 
     public init() {
         // This line intentionally left blank.
