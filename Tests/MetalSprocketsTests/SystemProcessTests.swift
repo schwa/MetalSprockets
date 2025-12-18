@@ -3,6 +3,7 @@ import Foundation
 import Testing
 
 @MainActor
+@Suite(.serialized)
 struct SystemProcessTests {
     struct CallOrderTracker: Element, BodylessElement {
         var body: Never {

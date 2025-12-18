@@ -3,7 +3,6 @@ import Foundation
 @testable import MetalSprockets
 import Testing
 
-@MainActor
 final class TestModel: ObservableObject {
     @Published var counter: Int = 0
     @Published var text: String = "Hello"
@@ -11,6 +10,7 @@ final class TestModel: ObservableObject {
 }
 
 @MainActor
+@Suite(.serialized)
 struct ObservableObjectTests {
     // MARK: - Basic ObservedObject Test
 
@@ -34,7 +34,7 @@ struct ObservableObjectTests {
         }
 
         func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.values["counter"] = value
+            TestMonitor.shared.setValue(value, forKey: "counter")
         }
     }
 
@@ -51,7 +51,7 @@ struct ObservableObjectTests {
         #expect(TestMonitor.shared.updates == ["body-0"])
         #expect(TestMonitor.shared.values["counter"] as? Int == 0)
 
-        TestMonitor.shared.updates.removeAll()
+        TestMonitor.shared.clearUpdates()
 
         // Trigger change through Published property
         let display = system.element(at: [0, 0], type: DisplayElement.self)!
@@ -96,7 +96,7 @@ struct ObservableObjectTests {
         }
 
         func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.values["text"] = text
+            TestMonitor.shared.setValue(text, forKey: "text")
         }
     }
 
@@ -109,7 +109,7 @@ struct ObservableObjectTests {
         }
 
         func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.values["flag"] = flag
+            TestMonitor.shared.setValue(flag, forKey: "flag")
         }
     }
 
@@ -139,7 +139,7 @@ struct ObservableObjectTests {
         #expect(TestMonitor.shared.values["text"] as? String == "Hello")
         #expect(TestMonitor.shared.values["flag"] as? Bool == false)
 
-        TestMonitor.shared.updates.removeAll()
+        TestMonitor.shared.clearUpdates()
 
         // Change text
         let textElement = system.element(at: [0, 0, 0, 1], type: TextElement.self)!
@@ -154,7 +154,7 @@ struct ObservableObjectTests {
         #expect(TestMonitor.shared.values["text"] as? String == "World")
 
         // Change flag
-        TestMonitor.shared.updates.removeAll()
+        TestMonitor.shared.clearUpdates()
         let flagElement = system.element(at: [0, 0, 0, 2], type: FlagElement.self)!
         system.withCurrentSystem {
             flagElement.action()
@@ -168,8 +168,7 @@ struct ObservableObjectTests {
 
     // MARK: - Shared ObservedObject Test
 
-    @MainActor
-    static let sharedModel = TestModel()
+    nonisolated(unsafe) static let sharedModel = TestModel()
 
     struct ParentWithShared: Element {
         @MSObservedObject var model = ObservableObjectTests.sharedModel
@@ -208,7 +207,7 @@ struct ObservableObjectTests {
 
         #expect(TestMonitor.shared.updates == ["parent-body", "child-body"])
 
-        TestMonitor.shared.updates.removeAll()
+        TestMonitor.shared.clearUpdates()
 
         // Change from child - should rebuild both
         let childDisplay = system.element(at: [0, 0, 0, 1, 0], type: DisplayElement.self)!
@@ -328,7 +327,7 @@ struct ObservableObjectTests {
             "independent-body"
         ])
 
-        TestMonitor.shared.updates.removeAll()
+        TestMonitor.shared.clearUpdates()
 
         // Change observed object
         if let display = system.element(at: [0, 0, 0], type: DisplayElement.self) {
@@ -345,7 +344,7 @@ struct ObservableObjectTests {
             ])
         }
 
-        TestMonitor.shared.updates.removeAll()
+        TestMonitor.shared.clearUpdates()
 
         // Change independent child's state
         if let independentDisplay = system.element(at: [0, 0, 3, 0], type: DisplayElement.self) {

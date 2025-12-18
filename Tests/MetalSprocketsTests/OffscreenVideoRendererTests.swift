@@ -4,7 +4,6 @@ import simd
 import Testing
 
 @Test
-@MainActor
 func testVideoRenderer() async throws {
     let outputURL = URL(fileURLWithPath: "/tmp/RedTriangleVideo.mov")
 

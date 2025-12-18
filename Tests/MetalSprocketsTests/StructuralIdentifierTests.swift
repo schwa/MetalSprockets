@@ -1,6 +1,7 @@
 @testable import MetalSprockets
 import Testing
 
+@Suite
 struct StructuralIdentifierTests {
     struct TestElement1: Element {
         var body: some Element { EmptyElement() }

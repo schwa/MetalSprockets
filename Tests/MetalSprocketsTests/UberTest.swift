@@ -3,6 +3,7 @@ import Foundation
 import Testing
 
 @MainActor
+@Suite(.serialized)
 struct UberTest {
     // MARK: - Test Elements
 

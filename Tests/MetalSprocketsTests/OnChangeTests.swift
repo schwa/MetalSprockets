@@ -14,7 +14,7 @@ struct OnChangeTests {
         }
 
         func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.values["testValue"] = value
+            TestMonitor.shared.setValue(value, forKey: "testValue")
         }
     }
 

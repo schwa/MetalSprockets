@@ -1,6 +1,7 @@
 @testable import MetalSprockets
 import Testing
 
+@Suite
 struct ElementDumpTests {
     struct SimpleElement: Element {
         var body: some Element {

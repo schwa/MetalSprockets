@@ -3,6 +3,7 @@ import Foundation
 import Testing
 
 @MainActor
+@Suite(.serialized)
 struct BindingTests {
     // MARK: - Basic Binding Test
 
@@ -33,7 +34,7 @@ struct BindingTests {
         }
 
         func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.values["value"] = value
+            TestMonitor.shared.setValue(value, forKey: "value")
         }
     }
 
@@ -204,7 +205,7 @@ struct BindingTests {
         }
 
         func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.values["sum"] = sum
+            TestMonitor.shared.setValue(sum, forKey: "sum")
         }
     }
 

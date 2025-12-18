@@ -10,26 +10,61 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
-@MainActor
-class TestMonitor {
+import os
+
+final class TestMonitor: @unchecked Sendable {
     static let shared = TestMonitor()
 
-    var updates: [String] = []
-    var values: [String: Any] = [:]
-    var observations: [(phase: String, element: String, counter: Int, env: String)] = []
+    private struct State: @unchecked Sendable {
+        var updates: [String] = []
+        var values: [String: Any] = [:]
+        var observations: [(phase: String, element: String, counter: Int, env: String)] = []
+    }
+
+    private let lock = OSAllocatedUnfairLock(initialState: State())
+
+    var updates: [String] {
+        lock.withLockUnchecked { $0.updates }
+    }
+
+    var values: [String: Any] {
+        lock.withLockUnchecked { $0.values }
+    }
+
+    var observations: [(phase: String, element: String, counter: Int, env: String)] {
+        lock.withLockUnchecked { $0.observations }
+    }
 
     func reset() {
-        updates.removeAll()
-        values.removeAll()
-        observations.removeAll()
+        lock.withLockUnchecked {
+            $0.updates.removeAll()
+            $0.values.removeAll()
+            $0.observations.removeAll()
+        }
     }
 
     func logUpdate(_ message: String) {
-        updates.append(message)
+        lock.withLockUnchecked {
+            $0.updates.append(message)
+        }
     }
 
     func record(phase: String, element: String, counter: Int = -1, env: String = "") {
-        observations.append((phase: phase, element: element, counter: counter, env: env))
+        lock.withLockUnchecked {
+            $0.observations.append((phase: phase, element: element, counter: counter, env: env))
+        }
+    }
+
+    func setValue(_ value: Any, forKey key: String) {
+        lock.withLockUnchecked {
+            $0.values[key] = value
+        }
+    }
+
+    func clearUpdates() {
+        lock.withLockUnchecked {
+            $0.updates.removeAll()
+        }
     }
 }
 
