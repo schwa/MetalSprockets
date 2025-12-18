@@ -1,7 +1,7 @@
 @testable import MetalSprockets
 import Testing
 
-@Suite(.serialized)
+@Suite
 @MainActor
 struct OnChangeTests {
     struct TestElement: Element, BodylessElement {
@@ -12,15 +12,10 @@ struct OnChangeTests {
         var body: Never {
             fatalError()
         }
-
-        func workloadEnter(_ node: Node) throws {
-            TestMonitor.shared.setValue(value, forKey: "testValue")
-        }
     }
 
     @Test
     func testBasicOnChange() throws {
-        TestMonitor.shared.reset()
         var changeCount = 0
         var lastOldValue: Int?
         var lastNewValue: Int?
@@ -78,7 +73,6 @@ struct OnChangeTests {
 
     @Test
     func testOnChangeWithInitial() throws {
-        TestMonitor.shared.reset()
         var changeCount = 0
         var lastOldValue: Int?
         var lastNewValue: Int?
@@ -127,7 +121,6 @@ struct OnChangeTests {
 
     @Test
     func testOnChangeNoChangeWhenValueSame() throws {
-        TestMonitor.shared.reset()
         var changeCount = 0
 
         struct ContentElement: Element {
@@ -175,7 +168,6 @@ struct OnChangeTests {
 
     @Test
     func testOnChangeSimpleAction() throws {
-        TestMonitor.shared.reset()
         var actionCalled = false
 
         struct ContentElement: Element {
@@ -213,7 +205,6 @@ struct OnChangeTests {
 
     @Test
     func testMultipleOnChangeModifiers() throws {
-        TestMonitor.shared.reset()
         var value1ChangeCount = 0
         var value2ChangeCount = 0
 
@@ -280,7 +271,6 @@ struct OnChangeTests {
 
     @Test
     func testOnChangeWithBinding() throws {
-        TestMonitor.shared.reset()
         var changeCount = 0
         var lastValue: Int?
 
@@ -339,7 +329,6 @@ struct OnChangeTests {
 
     @Test
     func testOnChangeOnlyCalledWhenValueChanges() throws {
-        TestMonitor.shared.reset()
         var callCount = 0
 
         struct TrackedElement: Element {
