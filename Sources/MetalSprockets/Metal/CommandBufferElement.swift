@@ -61,6 +61,12 @@ public extension Element {
             nonisolated(unsafe) let actionCopy = action
             return self.onWorkloadEnter { _ in
                 if let commandBuffer {
+                    guard commandBuffer.status == .notEnqueued || commandBuffer.status == .enqueued else {
+                        logger?.warning("onCommandBufferCompleted: Command buffer is already completed or in error state; handler will not be added.")
+                        return
+                    }
+
+
                     commandBuffer.addCompletedHandler { commandBuffer in
                         actionCopy(commandBuffer)
                     }
