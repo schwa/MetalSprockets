@@ -13,12 +13,13 @@ public let package = Package(
     products: [
         .library(name: "MetalSprockets", targets: ["MetalSprockets"]),
         .library(name: "MetalSprocketsUI", targets: ["MetalSprocketsUI"]),
+        .library(name: "MetalSprocketsUIShaders", targets: ["MetalSprocketsUIShaders"]),
         .library(name: "MetalSprocketsSupport", targets: ["MetalSprocketsSupport"]),
         .library(name: "MetalSprocketsSnapshotUI", targets: ["MetalSprocketsSnapshotUI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0-latest"),
-//        .package(url: "https://github.com/schwa/MetalCompilerPlugin", from: "0.1.0"),
+        .package(url: "https://github.com/schwa/MetalCompilerPlugin", from: "0.1.4"),
         .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
         .package(url: "https://github.com/schwa/GoldenImage", branch: "main"),
     ],
@@ -34,6 +35,14 @@ public let package = Package(
             dependencies: [
                 "MetalSprockets",
                 "MetalSprocketsSupport",
+                "MetalSprocketsUIShaders",
+            ]
+        ),
+        .target(
+            name: "MetalSprocketsUIShaders",
+            exclude: ["Metal"],
+            plugins: [
+                .plugin(name: "MetalCompilerPlugin", package: "MetalCompilerPlugin")
             ]
         ),
         .target(

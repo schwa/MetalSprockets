@@ -1,5 +1,5 @@
 {
-  "originHash" : "59d786208002d5b96d4ca4557316ae57d2bc9522463e901aef30df15ccd0779e",
+  "originHash" : "035b2f1678f84bc649148b602d0ffd753164f7432ee826109bed8bfe4bb76348",
   "pins" : [
     {
       "identity" : "geometrylite3d",
@@ -17,6 +17,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "34396251ee4fc108b9167ba5785f66a5c473088b"
+      }
+    },
+    {
+      "identity" : "metalcompilerplugin",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/schwa/MetalCompilerPlugin",
+      "state" : {
+        "revision" : "36c761478a8e3fb934acf8ef2db4696af95069b4",
+        "version" : "0.1.5"
       }
     },
     {
