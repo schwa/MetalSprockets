@@ -130,6 +130,7 @@ public extension Element {
     }
 
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: some Any) -> some Element {
+        assert(!isArray(value), "Use 'values:' parameter for arrays, not 'value:'.")
         assert(isPOD(value), "Parameter value must be a POD type.")
         return ParameterElementModifier(functionType: functionType, name: name, value: .value(value), content: self)
     }
