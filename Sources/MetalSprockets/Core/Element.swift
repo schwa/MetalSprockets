@@ -4,13 +4,15 @@ import MetalSprocketsSupport
 
 /// The fundamental building block of MetalSprockets render graphs.
 ///
-/// `Element` is analogous to SwiftUI's `View` protocol. Each element describes
-/// a unit of GPU work — such as a render pass, pipeline configuration, or draw command.
-/// Elements compose together to form a declarative render graph.
+/// `Element` is analogous to SwiftUI's `View` protocol. Elements can represent many things:
+/// GPU work (render passes, pipelines, draw commands), organizational containers (``Group``,
+/// ``ForEach``), or modifiers that configure child elements. Elements compose together
+/// to form a declarative render graph.
 ///
 /// ## Creating Custom Elements
 ///
-/// Conform to `Element` and implement the `body` property to compose other elements:
+/// Conform to `Element` and implement the `body` property to compose other elements.
+/// Use ``ElementBuilder`` to combine multiple child elements:
 ///
 /// ```swift
 /// struct MyTriangle: Element {
@@ -25,12 +27,6 @@ import MetalSprocketsSupport
 ///     }
 /// }
 /// ```
-///
-/// ## Element Lifecycle
-///
-/// Elements go through two phases:
-/// 1. **Setup**: Pipeline states and resources are created (runs when structure changes)
-/// 2. **Workload**: Draw commands are encoded (runs every frame)
 ///
 /// ## Topics
 ///
@@ -50,7 +46,7 @@ public protocol Element {
     
     /// The content and behavior of this element.
     ///
-    /// Implement this property to compose child elements. Use the `@ElementBuilder`
+    /// Implement this property to compose child elements. Use the ``ElementBuilder``
     /// result builder to combine multiple elements.
     @ElementBuilder var body: Body { get throws }
 }

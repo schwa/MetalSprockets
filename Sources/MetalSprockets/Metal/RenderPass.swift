@@ -11,9 +11,23 @@ import CompositorServices
 /// `RenderPass` establishes the rendering context for child elements. It creates
 /// an `MTLRenderCommandEncoder` that pipelines and draw commands use to encode GPU work.
 ///
+/// ## Understanding Passes vs Pipelines
+///
+/// A **render pass** represents a single set of render targets (color, depth, stencil
+/// attachments). Within a pass, you can have multiple **pipelines** with different
+/// shader configurations. Each pipeline change is relatively cheap, while starting
+/// a new pass requires potentially flushing render targets.
+///
+/// Use multiple passes when you need different render targets (e.g., shadow maps,
+/// post-processing). Use multiple pipelines within a pass for different materials
+/// or rendering techniques.
+///
+/// You can have multiple render passes in a frame, and you can also mix render passes
+/// with ``ComputePass`` for hybrid rendering and compute workflows.
+///
 /// ## Overview
 ///
-/// A render pass typically contains one or more ``RenderPipeline`` elements:
+/// A render pass must contain one or more ``RenderPipeline`` elements:
 ///
 /// ```swift
 /// RenderPass {

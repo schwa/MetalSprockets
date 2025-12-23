@@ -4,6 +4,8 @@
 ///
 /// Environment values flow down from parent elements to children, providing
 /// shared context like the Metal device, render pass descriptor, and custom values.
+/// You can define your own custom environment values using the ``MSEntry()`` macro
+/// or by manually conforming to ``MSEnvironmentKey``.
 ///
 /// ## Accessing Environment Values
 ///
@@ -21,7 +23,15 @@
 ///
 /// ## Custom Environment Keys
 ///
-/// Define custom environment keys by conforming to ``MSEnvironmentKey``:
+/// The preferred way to define custom environment values is with the `@MSEntry` macro:
+///
+/// ```swift
+/// extension MSEnvironmentValues {
+///     @MSEntry var myCustomValue: Int = 0
+/// }
+/// ```
+///
+/// Alternatively, you can manually conform to ``MSEnvironmentKey``:
 ///
 /// ```swift
 /// struct MyCustomKey: MSEnvironmentKey {
@@ -161,15 +171,6 @@ public extension MSEnvironmentValues {
 ///     }
 /// }
 /// ```
-///
-/// ## Built-in Environment Values
-///
-/// Common environment values include:
-/// - `\.device` — The `MTLDevice`
-/// - `\.commandBuffer` — The current `MTLCommandBuffer`
-/// - `\.renderCommandEncoder` — The current `MTLRenderCommandEncoder`
-/// - `\.renderPassDescriptor` — The `MTLRenderPassDescriptor`
-/// - `\.drawableSize` — The size of the drawable in pixels
 ///
 /// ## Topics
 ///

@@ -22,13 +22,6 @@ import Metal
 /// }
 /// ```
 ///
-/// ## Common Operations
-///
-/// - Copying textures or buffers
-/// - Generating mipmaps
-/// - Synchronizing resources between CPU and GPU
-/// - Filling buffers with constant values
-///
 /// ## Topics
 ///
 /// ### Related Elements
