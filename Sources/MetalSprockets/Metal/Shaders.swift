@@ -202,7 +202,8 @@ public struct MeshShader: ShaderProtocol {
 /// A visible function that can be called from other shaders.
 ///
 /// Visible functions enable dynamic function calls from shaders,
-/// useful for ray tracing intersection functions and callable shaders.
+/// useful for ray tracing intersection functions, callable shaders,
+/// and mesh shader pipelines.
 // TODO: Not really a "Shader". Sounds like we have a grand renaming coming. [FILE ISSUE]
 public struct VisibleFunction: ShaderProtocol {
     public static let functionType: MTLFunctionType = .visible

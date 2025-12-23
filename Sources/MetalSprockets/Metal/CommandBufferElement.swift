@@ -10,9 +10,11 @@ import MetalSprocketsSupport
 ///
 /// ## Overview
 ///
-/// In most cases, `RenderView` creates command buffers automatically.
-/// Use `CommandBufferElement` directly for offscreen rendering or
-/// when you need explicit control over command buffer lifecycle.
+/// > Important: Most users will not need to use this element directly.
+/// `RenderView` and similar containers automatically create command buffers.
+///
+/// Use `CommandBufferElement` only for advanced scenarios like offscreen
+/// rendering or when you need explicit control over command buffer lifecycle.
 ///
 /// ```swift
 /// CommandBufferElement(completion: .commitAndWaitUntilCompleted) {

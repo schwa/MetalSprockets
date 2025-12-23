@@ -1,9 +1,10 @@
 // MARK: - Group
 
-/// A container that groups multiple elements without affecting layout or rendering.
+/// A container that groups multiple elements for organizational purposes.
 ///
 /// Use `Group` when you need to return multiple elements from a property or
-/// apply modifiers to a collection of elements.
+/// apply modifiers to a collection of elements. The order of elements within
+/// a `Group` matters, just as it does in a `body` property.
 ///
 /// ## Overview
 ///
@@ -17,19 +18,6 @@
 ///         Element3()
 ///     }
 ///     .environment(\.someValue, value)  // Applied to all children
-/// }
-/// ```
-///
-/// ## Extracting Complex Content
-///
-/// Use `Group` to create helper properties:
-///
-/// ```swift
-/// var debugElements: some Element {
-///     Group {
-///         DebugGrid()
-///         DebugAxes()
-///     }
 /// }
 /// ```
 public struct Group <Content>: Element where Content: Element {

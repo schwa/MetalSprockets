@@ -9,31 +9,35 @@ import Metal
 ///
 /// ## Overview
 ///
-/// Use the closure to encode draw commands:
+/// `Draw` must be placed inside a ``RenderPipeline``, which itself must be inside
+/// a ``RenderPass``:
 ///
 /// ```swift
-/// Draw { encoder in
-///     // Set vertex data
-///     var vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-///     encoder.setVertexBytes(&vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-///
-///     // Draw the triangle
-///     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+/// RenderPass {
+///     RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+///         Draw { encoder in
+///             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+///         }
+///         .parameter("vertices", values: [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>])
+///     }
 /// }
 /// ```
 ///
-/// ## Setting Vertex Data
+/// ## Setting Shader Parameters
 ///
-/// For small amounts of data, use `setVertexBytes`:
+/// The preferred way to pass data to shaders is with the `.parameter()` modifier:
 ///
 /// ```swift
-/// encoder.setVertexBytes(&data, length: dataSize, index: bufferIndex)
+/// Draw { encoder in ... }
+///     .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
+///     .parameter("transform", value: modelMatrix)
 /// ```
 ///
-/// For larger data or data that persists across frames, use `MTLBuffer`:
+/// For buffers, use the buffer variant:
 ///
 /// ```swift
-/// encoder.setVertexBuffer(buffer, offset: 0, index: bufferIndex)
+/// Draw { encoder in ... }
+///     .parameter("vertices", buffer: vertexBuffer)
 /// ```
 ///
 /// ## Draw Methods

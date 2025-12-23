@@ -107,9 +107,14 @@ internal struct Parameter {
 
 /// Modifiers for binding values to shader parameters by name.
 ///
-/// The `parameter` modifiers use reflection to automatically find the
-/// correct buffer index for a named shader parameter. This eliminates
-/// the need to manually track buffer indices.
+/// The `parameter` modifiers use Metal shader reflection to automatically find
+/// the correct buffer index for a named shader parameter. This is a key feature
+/// of MetalSprockets — it eliminates the need to manually track buffer indices
+/// and keeps your Swift code in sync with your Metal shaders.
+///
+/// When both vertex and fragment shaders declare a parameter with the same name,
+/// MetalSprockets will raise an error at runtime. Use the `functionType` parameter
+/// to explicitly specify which shader stage should receive the value.
 ///
 /// ## Overview
 ///
@@ -126,13 +131,18 @@ internal struct Parameter {
 ///
 /// ## Shader Side
 ///
-/// In your Metal shader, parameters are bound to buffers:
+/// In your Metal shader, parameters are bound to buffers. The names must match
+/// exactly between Swift and Metal:
 ///
 /// ```metal
+/// // Swift: .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
+/// // Swift: .parameter("transform", value: modelViewProjection)
+/// // Swift: .parameter("diffuseTexture", texture: myTexture)
+///
 /// fragment float4 myFragment(
-///     constant float4 &color [[buffer(0)]],
-///     constant float4x4 &transform [[buffer(1)]],
-///     texture2d<float> diffuseTexture [[texture(0)]]
+///     constant float4 &color [[buffer(0)]],        // Matches "color"
+///     constant float4x4 &transform [[buffer(1)]], // Matches "transform"
+///     texture2d<float> diffuseTexture [[texture(0)]] // Matches "diffuseTexture"
 /// ) { ... }
 /// ```
 ///
@@ -178,7 +188,12 @@ public extension Element {
 
     /// Binds a value to a shader parameter.
     ///
-    /// The value must be a plain-old-data (POD) type like Float, Int, SIMD types, or structs of POD types.
+    /// The value must be a plain-old-data (POD) type that is compatible with Metal.
+    /// This includes: `Float`, `Int`, SIMD types (`SIMD2<Float>`, `SIMD4<Float>`, etc.),
+    /// matrices (`simd_float4x4`), and structs composed entirely of these types.
+    ///
+    /// > Important: The Swift type's memory layout must match the corresponding Metal type.
+    /// Use `MemoryLayout<T>.stride` to verify sizes match your shader expectations.
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: some Any) -> some Element {
         assert(!isArray(value), "Use 'values:' parameter for arrays, not 'value:'.")
         assert(isPOD(value), "Parameter value must be a POD type.")

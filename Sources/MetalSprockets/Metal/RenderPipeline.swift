@@ -6,21 +6,27 @@ import MetalSprocketsSupport
 /// Configures a Metal render pipeline state with vertex and fragment shaders.
 ///
 /// `RenderPipeline` binds shaders and creates the pipeline state object that the GPU
-/// uses to process vertices and fragments. Place it inside a ``RenderPass``.
+/// uses to process vertices and fragments.
+///
+/// > Important: `RenderPipeline` must be placed inside a ``RenderPass``. A render pass
+/// provides the render targets and creates the command encoder that the pipeline uses.
+/// See ``RenderPass`` for the difference between passes and pipelines.
 ///
 /// ## Overview
 ///
-/// Create a render pipeline by specifying vertex and fragment shaders:
+/// Create a render pipeline inside a render pass by specifying vertex and fragment shaders:
 ///
 /// ```swift
 /// let library = try ShaderLibrary(bundle: .main)
 ///
-/// RenderPipeline(
-///     vertexShader: library.myVertexShader,
-///     fragmentShader: library.myFragmentShader
-/// ) {
-///     Draw { encoder in
-///         // Issue draw commands
+/// RenderPass {
+///     RenderPipeline(
+///         vertexShader: library.myVertexShader,
+///         fragmentShader: library.myFragmentShader
+///     ) {
+///         Draw { encoder in
+///             // Issue draw commands
+///         }
 ///     }
 /// }
 /// ```
