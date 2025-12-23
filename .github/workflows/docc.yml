@@ -49,6 +49,18 @@ jobs:
             --transform-for-static-hosting \
             --hosting-base-path MetalSprockets \
             --output-path ./docs
+          cat > ./docs/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta http-equiv="refresh" content="0; url=documentation/metalsprockets/">
+            <title>MetalSprockets Documentation</title>
+          </head>
+          <body>
+            <p>Redirecting to <a href="documentation/metalsprockets/">MetalSprockets Documentation</a>...</p>
+          </body>
+          </html>
+          EOF
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
