@@ -2,6 +2,8 @@
 
 In the previous tutorial, we hardcoded vertex data in the shader. That works for simple demos, but real projects define geometry in Swift and pass it to the GPU.
 
+📦 **[Companion Code](https://github.com/schwa/MetalSprocketsTutorials/tree/main/Tutorial%202)**
+
 ---
 
 ## What We're Building

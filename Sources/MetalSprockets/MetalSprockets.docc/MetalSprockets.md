@@ -54,8 +54,7 @@ Unlike SwiftUI's `body`, Element bodies can throw errors—useful since Metal op
 
 ### Tutorials
 
-- <doc:01-ColorfulTriangle>
-- <doc:02-AnimatedQuad>
+- <doc:TutorialOverview>
 
 ### Deep Dive
 

@@ -2,6 +2,8 @@
 
 Render a colorful triangle using MetalSprockets. The GPU will blend red, green, and blue corners across the surface—this interpolation is fundamental to how GPUs shade geometry.
 
+📦 **[Companion Code](https://github.com/schwa/MetalSprocketsTutorials/tree/main/Tutorial%201)**
+
 ---
 
 ## Step 1: Create an Xcode Project
