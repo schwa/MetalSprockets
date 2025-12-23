@@ -1,4 +1,4 @@
-# Tutorial: Your First Metal Triangle
+# Tutorial 1: Your First Metal Triangle
 
 Render a colorful triangle using MetalSprockets. The GPU will blend red, green, and blue corners across the surface—this interpolation is fundamental to how GPUs shade geometry.
 
@@ -184,6 +184,8 @@ This ties it all together. The `Draw` block gives you access to the Metal encode
 ## Step 8: Run It
 
 Press **⌘R**. You should see a triangle with colors smoothly blending from red (top) to green (bottom-left) to blue (bottom-right).
+
+![A colorful triangle rendered with Metal](tutorial-01-result)
 
 ---
 

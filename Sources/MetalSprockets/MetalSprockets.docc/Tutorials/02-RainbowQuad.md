@@ -226,6 +226,8 @@ Notice how clean this is—all the rendering logic is encapsulated in `RainbowQu
 
 Press **⌘R**. You should see a quad with a rainbow gradient flowing diagonally from one corner to the other.
 
+![A rainbow quad rendered with Metal](tutorial-02-result)
+
 ---
 
 ## Complete Code

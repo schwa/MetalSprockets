@@ -20,4 +20,5 @@ Before starting, make sure you have:
 ### Beginner
 
 - <doc:01-ColorfulTriangle>
-- <doc:02-AnimatedQuad>
+- <doc:02-RainbowQuad>
+- <doc:03-AnimatedRainbowQuad>
