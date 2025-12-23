@@ -177,7 +177,8 @@ Each integrates seamlessly via the same `Element` composition model — allowing
 
 ## Examples
 
-- **Minimalist demo app:** `Example/MetalSprockets-Example`
+The `Example/` folder contains a spinning cube demo that runs on macOS, iOS, and visionOS. It covers view-based rendering with `RenderView`, ARKit camera passthrough on iOS, and immersive mixed reality on visionOS — a good starting point for exploring the framework.
+
 - **Larger examples (external):** https://github.com/schwa/MetalSprocketsExamples
 
 ---
