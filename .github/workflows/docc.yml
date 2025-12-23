@@ -53,11 +53,11 @@ jobs:
           <!DOCTYPE html>
           <html>
           <head>
-            <meta http-equiv="refresh" content="0; url=documentation/metalsprockets/">
+            <meta http-equiv="refresh" content="0; url=documentation/">
             <title>MetalSprockets Documentation</title>
           </head>
           <body>
-            <p>Redirecting to <a href="documentation/metalsprockets/">MetalSprockets Documentation</a>...</p>
+            <p>Redirecting to <a href="documentation/">MetalSprockets Documentation</a>...</p>
           </body>
           </html>
           EOF
