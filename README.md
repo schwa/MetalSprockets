@@ -4,6 +4,8 @@
 
 > "It's like SwiftUI — but for Metal."
 
+📖 **[Documentation](https://schwa.github.io/MetalSprockets)** · 📦 **[Swift Package Index](https://swiftpackageindex.com/schwa/MetalSprockets)**
+
 MetalSprockets is a Swift package that brings a **declarative, composable** layer to Metal.
 You describe render graphs in Swift the same way you describe views in SwiftUI while keeping full control over shaders, buffers, and GPU resources.
 
