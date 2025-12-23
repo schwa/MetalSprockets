@@ -7,8 +7,6 @@ import MetalSprocketsUI
 import simd
 
 // Swift counterparts of CameraUniforms and Uniforms in Shaders.metal.
-// Layout must match exactly - alternatively, define structs in a .h file and import
-// via bridging header to share between Swift and Metal.
 struct CameraUniforms {
     var viewMatrix: float4x4
     var projectionMatrix: float4x4
@@ -35,20 +33,12 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
             try RenderPipeline(vertexShader: shaderLibrary.vertexImmersive, fragmentShader: shaderLibrary.fragmentMain) {
                 Draw { encoder in
                     // Vertex amplification renders geometry twice (once per eye) in a single draw call.
-                    // View mappings tell Metal which viewport/render target to use for each amplification.
-                    var viewMappings = (0 ..< context.viewCount).map {
-                        MTLVertexAmplificationViewMapping(
-                            viewportArrayIndexOffset: UInt32($0),
-                            renderTargetArrayIndexOffset: UInt32($0)
-                        )
-                    }
+                    var viewMappings = (0 ..< context.viewCount).map { MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: UInt32($0), renderTargetArrayIndexOffset: UInt32($0)) }
                     encoder.setVertexAmplificationCount(context.viewCount, viewMappings: &viewMappings)
                     encoder.setViewports(context.viewports)
 
                     // Position cube in world space: 2m in front, 1.5m up, scaled to 30cm
-                    let modelMatrix = float4x4.translation(0, 1.5, -2)
-                        * cubeRotationMatrix(time: context.time)
-                        * float4x4.scale(0.3, 0.3, 0.3)
+                    let modelMatrix = float4x4.translation(0, 1.5, -2) * cubeRotationMatrix(time: context.time) * float4x4.scale(0.3, 0.3, 0.3)
 
                     // ImmersiveContext provides head-tracked view/projection matrices for each eye
                     let leftView = context.viewMatrix(eye: 0)
@@ -56,19 +46,12 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
                     let leftProj = context.projectionMatrix(eye: 0)
                     let rightProj = context.viewCount > 1 ? context.projectionMatrix(eye: 1) : leftProj
 
-                    var uniforms = Uniforms(
-                        modelMatrix: modelMatrix,
-                        cameras: (
-                            CameraUniforms(viewMatrix: leftView, projectionMatrix: leftProj),
-                            CameraUniforms(viewMatrix: rightView, projectionMatrix: rightProj)
-                        )
-                    )
+                    var uniforms = Uniforms(modelMatrix: modelMatrix, cameras: (CameraUniforms(viewMatrix: leftView, projectionMatrix: leftProj), CameraUniforms(viewMatrix: rightView, projectionMatrix: rightProj)))
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
 
-                    // Pass time to fragment shader for edge animation
                     var time = Float(context.time)
                     encoder.setFragmentBytes(&time, length: MemoryLayout<Float>.stride, index: 0)
-                    
+
                     var vertices = generateCubeVertices()
                     encoder.setVertexBytes(&vertices, length: MemoryLayout<Vertex>.stride * vertices.count, index: 0)
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
@@ -77,7 +60,6 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
             .vertexDescriptor(Vertex.descriptor)
             .depthCompare(function: .greater, enabled: true)  // visionOS uses reverse-Z depth buffer
             .renderPipelineDescriptorModifier { descriptor in
-                // Configure pipeline for stereo rendering
                 descriptor.maxVertexAmplificationCount = context.viewCount
                 descriptor.colorAttachments[0].pixelFormat = context.drawable.colorTextures[0].pixelFormat
                 descriptor.depthAttachmentPixelFormat = context.drawable.depthTextures[0].pixelFormat
