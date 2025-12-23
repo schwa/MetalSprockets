@@ -50,13 +50,18 @@ Unlike SwiftUI's `body`, Element bodies can throw errors—useful since Metal op
 ### Essentials
 
 - <doc:GettingStarted>
-- <doc:Architecture>
-- <doc:FAQ>
+- <doc:Comparison>
 
 ### Tutorials
 
 - <doc:01-ColorfulTriangle>
 - <doc:02-AnimatedQuad>
+
+### Deep Dive
+
+- <doc:Architecture>
+- <doc:Internals>
+- <doc:FAQ>
 
 ### Core Types
 
@@ -78,7 +83,7 @@ Unlike SwiftUI's `body`, Element bodies can throw errors—useful since Metal op
 ### Compute
 
 - ``ComputePass``
-- ``Dispatch``
+- ``ComputeDispatch``
 
 ### Mesh Shading
 

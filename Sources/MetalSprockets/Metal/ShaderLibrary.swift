@@ -102,7 +102,7 @@ public extension ShaderLibrary {
     /// Falls back to a `debug.metallib` if present.
     ///
     /// - Parameter bundle: The bundle containing the compiled Metal library.
-    /// - Throws: ``MetalSprocketsError/resourceCreationFailure(_:)`` if the library cannot be loaded.
+    /// - Throws: `MetalSprocketsError.resourceCreationFailure` if the library cannot be loaded.
     init(bundle: Bundle) throws {
         let id = ID.bundle(bundle)
         self.state = try LibraryRegistry.shared.getOrCreate(id: id) {

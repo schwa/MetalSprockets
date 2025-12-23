@@ -310,17 +310,24 @@ Automatic resource lifecycle management:
 
 ## Threading Model
 
-- **Main Thread**: Element tree updates and state management
-- **Render Thread**: Command encoding and submission
-- **GPU**: Actual rendering execution
+MetalSprockets currently operates on a **single-threaded model**:
 
-The framework ensures thread safety through:
+- **Main Thread**: All element tree updates, setup, and command encoding happen synchronously on the thread that calls into the System (typically main thread via MTKViewDelegate)
+- **GPU**: Command buffer execution happens asynchronously after `commit()`/`present()`
 
-- `@MainActor` annotations for UI updates
-- Synchronized access to shared resources
-- Command buffer scheduling
+### Current Limitations
 
-_Note: There are ongoing concurrency safety improvements tracked in [issue #146](https://github.com/schwa/MetalSprockets/issues/146) (Sendable conformance)._
+The framework is **not thread-safe**. The `System` class uses `@unchecked Sendable` as a temporary measure but does not actually provide thread safety. Key limitations:
+
+- `activeNodeStack` is shared mutable state without synchronization
+- All System methods must be called from the same thread
+- `@MSEnvironment` property wrappers rely on global state
+
+### SwiftUI Integration
+
+When using `RenderView`, MetalKit's `MTKViewDelegate.draw(in:)` drives the render loop. This callback occurs on the main thread, so all MetalSprockets processing happens there.
+
+_Note: Concurrency improvements are tracked in [issue #146](https://github.com/schwa/MetalSprockets/issues/146)._
 
 ## Performance Considerations
 

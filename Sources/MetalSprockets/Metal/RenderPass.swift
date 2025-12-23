@@ -42,7 +42,7 @@ import CompositorServices
 /// ## Render Pass Descriptor
 ///
 /// The render pass uses the `renderPassDescriptor` from the environment, which is
-/// typically configured by ``RenderView`` or ``OffscreenRenderer``. You can modify
+/// typically configured by `RenderView` or ``OffscreenRenderer``. You can modify
 /// it using render pass descriptor modifiers.
 ///
 /// ## Labels

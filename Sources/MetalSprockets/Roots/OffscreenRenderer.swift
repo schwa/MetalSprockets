@@ -45,7 +45,6 @@ import MetalSprocketsSupport
 /// ## Topics
 ///
 /// ### Related Types
-/// - ``RenderView``
 /// - ``OffscreenVideoRenderer``
 public struct OffscreenRenderer {
     public var device: MTLDevice

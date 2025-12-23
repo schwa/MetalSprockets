@@ -4,7 +4,7 @@
 ///
 /// Environment values flow down from parent elements to children, providing
 /// shared context like the Metal device, render pass descriptor, and custom values.
-/// You can define your own custom environment values using the ``MSEntry()`` macro
+/// You can define your own custom environment values using the `@MSEntry` macro
 /// or by manually conforming to ``MSEnvironmentKey``.
 ///
 /// ## Accessing Environment Values

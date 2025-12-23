@@ -82,7 +82,6 @@ public extension View {
 /// ### Related Types
 /// - ``RenderViewContext``
 /// - ``FrameUniforms``
-/// - ``Element``
 public struct RenderView <Content>: View where Content: Element {
     var content: (RenderViewContext, CGSize) throws -> Content
 

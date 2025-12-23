@@ -42,10 +42,7 @@ import MetalSprockets
 /// let texCoords = baseCoords.map { $0.applying(transform) }
 /// ```
 ///
-/// ## Topics
-///
-/// ### Related Types
-/// - ``ARFrameData``
+
 public struct YCbCrBillboardRenderPass: Element {
     @MSState
     private var vertexShader = ShaderLibrary.metalSprocketsUI
