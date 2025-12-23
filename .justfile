@@ -38,3 +38,15 @@ clean:
     rm -rf .swiftpm
     rm -rf Sources/MetalSprockets/.swiftpm/
     rm -rf MetalSprockets-Examples/MetalSprockets-Examples.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+convert-docs:
+    swift package \
+        generate-documentation \
+        --target MetalSprockets \
+        --target MetalSprocketsUI \
+        --enable-experimental-combined-documentation \
+        --source-service github \
+        --source-service-base-url https://github.com/schwa/MetalSprockets/blob/main \
+        --checkout-path . \
+        --transform-for-static-hosting \
+        --output-path /tmp/MetalSprockets

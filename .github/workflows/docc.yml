@@ -1,0 +1,67 @@
+# Publish DocC documentation to GitHub Pages
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    env:
+      XCODE_VERSION: "26.0"
+    steps:
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - uses: actions/checkout@v4
+
+      - name: Download MetalToolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Trust plugins
+        run: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
+
+      - name: Build Documentation
+        run: |
+          swift package \
+            --allow-writing-to-directory ./docs \
+            generate-documentation \
+            --target MetalSprockets \
+            --target MetalSprocketsUI \
+            --enable-experimental-combined-documentation \
+            --source-service github \
+            --source-service-base-url https://github.com/schwa/MetalSprockets/blob/main \
+            --checkout-path . \
+            --transform-for-static-hosting \
+            --hosting-base-path MetalSprockets \
+            --output-path ./docs
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
