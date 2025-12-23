@@ -15,7 +15,6 @@ public let package = Package(
         .library(name: "MetalSprocketsUI", targets: ["MetalSprocketsUI"]),
         .library(name: "MetalSprocketsUIShaders", targets: ["MetalSprocketsUIShaders"]),
         .library(name: "MetalSprocketsSupport", targets: ["MetalSprocketsSupport"]),
-        .library(name: "MetalSprocketsSnapshotUI", targets: ["MetalSprocketsSnapshotUI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0-latest"),
@@ -43,13 +42,6 @@ public let package = Package(
             exclude: ["Metal"],
             plugins: [
                 .plugin(name: "MetalCompilerPlugin", package: "MetalCompilerPlugin")
-            ]
-        ),
-        .target(
-            name: "MetalSprocketsSnapshotUI",
-            dependencies: [
-                "MetalSprockets",
-                "MetalSprocketsUI"
             ]
         ),
         .target(
