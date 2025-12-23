@@ -1,10 +1,48 @@
 import Metal
 import MetalSprocketsSupport
 
+// MARK: - CommandBufferElement
+
+/// Creates and manages a Metal command buffer for child elements.
+///
+/// `CommandBufferElement` creates a command buffer that render passes,
+/// compute passes, and blit passes use to encode GPU work.
+///
+/// ## Overview
+///
+/// In most cases, `RenderView` creates command buffers automatically.
+/// Use `CommandBufferElement` directly for offscreen rendering or
+/// when you need explicit control over command buffer lifecycle.
+///
+/// ```swift
+/// CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
+///     RenderPass {
+///         // Render content
+///     }
+/// }
+/// ```
+///
+/// ## Completion Modes
+///
+/// - `.none`: Don't commit (caller manages lifecycle)
+/// - `.commit`: Commit after encoding completes
+/// - `.commitAndWaitUntilCompleted`: Commit and block until GPU finishes
+///
+/// ## Topics
+///
+/// ### Related Elements
+/// - ``RenderPass``
+/// - ``ComputePass``
+/// - ``BlitPass``
 public struct CommandBufferElement <Content>: Element, BodylessContentElement where Content: Element {
     var completion: MTLCommandQueueCompletion
     var content: Content
 
+    /// Creates a command buffer element.
+    ///
+    /// - Parameters:
+    ///   - completion: How to handle the command buffer after encoding.
+    ///   - content: Child elements that encode GPU work.
     public init(completion: MTLCommandQueueCompletion, @ElementBuilder content: () throws -> Content) rethrows {
         self.completion = completion
         self.content = try content()

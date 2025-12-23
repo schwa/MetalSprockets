@@ -18,7 +18,38 @@ internal struct EnvironmentWritingModifier<Content: Element>: Element, BodylessE
     }
 }
 
+// MARK: - environment Modifier
+
 public extension Element {
+    /// Sets an environment value for this element and its descendants.
+    ///
+    /// Environment values flow down through the element tree, providing
+    /// shared context without explicit parameter passing.
+    ///
+    /// ## Overview
+    ///
+    /// Set custom environment values:
+    ///
+    /// ```swift
+    /// RenderPass {
+    ///     MyContent()
+    /// }
+    /// .environment(\.myCustomValue, someValue)
+    /// ```
+    ///
+    /// ## Built-in Values
+    ///
+    /// Override built-in environment values:
+    ///
+    /// ```swift
+    /// element
+    ///     .environment(\.device, customDevice)
+    ///     .environment(\.commandQueue, customQueue)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - keyPath: A writable key path to the environment value.
+    ///   - value: The value to set.
     func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element {
         EnvironmentWritingModifier(content: self) { environmentValues in
             environmentValues[keyPath: keyPath] = value

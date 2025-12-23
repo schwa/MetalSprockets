@@ -6,17 +6,74 @@ import MetalSprockets
 import simd
 import SwiftUI
 
-// MARK: - Public Data
+// MARK: - ARFrameData
 
+/// Camera frame data extracted from ARKit for Metal rendering.
+///
+/// Contains the camera textures, matrices, and texture coordinates needed
+/// to render the AR camera background and position 3D content correctly.
+///
+/// ## Overview
+///
+/// Use with the `.arkit(frame:frameData:)` modifier to process ARKit frames:
+///
+/// ```swift
+/// struct ARView: View {
+///     @State private var frameData = ARFrameData()
+///     @StateObject private var session = ARSessionManager()
+///
+///     var body: some View {
+///         RenderView { context, size in
+///             if frameData.isReady {
+///                 try RenderPass {
+///                     // Render camera background
+///                     YCbCrBillboardRenderPass(
+///                         textureY: frameData.textureY!,
+///                         textureCbCr: frameData.textureCbCr!,
+///                         textureCoordinates: frameData.textureCoordinates
+///                     )
+///                     // Render 3D content using view/projection matrices
+///                 }
+///             }
+///         }
+///         .arkit(frame: session.currentFrame, frameData: $frameData)
+///     }
+/// }
+/// ```
+///
+/// ## Properties
+///
+/// - `textureY`: Luminance texture (r8Unorm)
+/// - `textureCbCr`: Chrominance texture (rg8Unorm)
+/// - `textureCoordinates`: UV coordinates adjusted for screen orientation
+/// - `viewMatrix`: Camera view matrix for 3D rendering
+/// - `projectionMatrix`: Camera projection matrix
+///
+/// ## Topics
+///
+/// ### Related Types
+/// - ``YCbCrBillboardRenderPass``
 public struct ARFrameData {
+    /// The Y (luminance) texture from the camera in r8Unorm format.
     public var textureY: MTLTexture?
+    
+    /// The CbCr (chrominance) texture from the camera in rg8Unorm format.
     public var textureCbCr: MTLTexture?
+    
+    /// Texture coordinates for the camera quad, adjusted for screen orientation.
+    /// Order: bottom-left, bottom-right, top-left, top-right.
     public var textureCoordinates: [SIMD2<Float>] = [[0, 1], [1, 1], [0, 0], [1, 0]]
+    
+    /// The projection matrix from ARKit, adjusted for screen orientation.
     public var projectionMatrix: simd_float4x4 = .init(diagonal: [1, 1, 1, 1])
+    
+    /// The view matrix (inverse camera transform), adjusted for screen orientation.
     public var viewMatrix: simd_float4x4 = .init(diagonal: [1, 1, 1, 1])
 
+    /// Creates empty frame data.
     public init() {}
 
+    /// Returns `true` when both camera textures are available.
     public var isReady: Bool { textureY != nil && textureCbCr != nil }
 }
 
@@ -102,6 +159,23 @@ private struct ARKitFrameModifier: ViewModifier {
 // MARK: - View Extension
 
 public extension View {
+    /// Processes ARKit frames and extracts data for Metal rendering.
+    ///
+    /// Attach this modifier to your view hierarchy to automatically convert
+    /// ARKit camera frames into Metal-compatible textures and matrices.
+    ///
+    /// - Parameters:
+    ///   - frame: The current ARFrame from your ARSession.
+    ///   - frameData: A binding to store the extracted frame data.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// RenderView { context, size in
+    ///     // Use frameData for rendering
+    /// }
+    /// .arkit(frame: arSession.currentFrame, frameData: $frameData)
+    /// ```
     func arkit(frame: ARFrame?, frameData: Binding<ARFrameData>) -> some View {
         modifier(ARKitFrameModifier(frame: frame, frameData: frameData))
     }

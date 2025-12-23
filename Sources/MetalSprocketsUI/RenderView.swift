@@ -24,6 +24,65 @@ public extension View {
     }
 }
 
+// MARK: - RenderView
+
+/// A SwiftUI view that hosts Metal rendering using MetalSprockets elements.
+///
+/// `RenderView` bridges SwiftUI and Metal, calling your content closure every frame
+/// to build and execute the render graph.
+///
+/// ## Overview
+///
+/// Create a `RenderView` and return elements from the content closure:
+///
+/// ```swift
+/// struct ContentView: View {
+///     var body: some View {
+///         RenderView { context, size in
+///             try RenderPass {
+///                 try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+///                     Draw { encoder in
+///                         // Issue draw commands
+///                     }
+///                 }
+///             }
+///         }
+///     }
+/// }
+/// ```
+///
+/// ## Context and Size
+///
+/// The content closure receives two parameters:
+/// - `context`: Frame timing information via `context.frameUniforms`
+/// - `size`: The current drawable size in pixels
+///
+/// ```swift
+/// RenderView { context, size in
+///     let time = context.frameUniforms.time
+///     let aspect = Float(size.width / size.height)
+///     // Use time and aspect for animations and projections
+/// }
+/// ```
+///
+/// ## Configuration
+///
+/// Use view modifiers to configure Metal settings:
+///
+/// ```swift
+/// RenderView { context, size in
+///     // ...
+/// }
+/// .metalDepthStencilPixelFormat(.depth32Float)
+/// .metalColorPixelFormat(.bgra8Unorm_srgb)
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Types
+/// - ``RenderViewContext``
+/// - ``FrameUniforms``
+/// - ``Element``
 public struct RenderView <Content>: View where Content: Element {
     var content: (RenderViewContext, CGSize) throws -> Content
 
@@ -33,6 +92,10 @@ public struct RenderView <Content>: View where Content: Element {
     @Environment(\.commandQueue)
     var commandQueue
 
+    /// Creates a render view with the specified content.
+    ///
+    /// - Parameter content: A closure that returns the elements to render each frame.
+    ///   Receives the render context and drawable size as parameters.
     public init(@ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.content = content
     }
@@ -199,7 +262,23 @@ public struct RenderViewDebugging {
     static var fatalErrorOnCatch = true
 }
 
+// MARK: - RenderViewContext
+
+/// Context information passed to the render view's content closure each frame.
+///
+/// Access frame timing and other per-frame information through this type.
+///
+/// ## Example
+///
+/// ```swift
+/// RenderView { context, size in
+///     let time = context.frameUniforms.time
+///     let rotation = time * 0.5  // Rotate half a radian per second
+///     // Use rotation in your rendering...
+/// }
+/// ```
 public struct RenderViewContext {
+    /// Per-frame timing and viewport information.
     public private(set) var frameUniforms: FrameUniforms
 
     internal init(frameUniformas: FrameUniforms) {
@@ -207,12 +286,44 @@ public struct RenderViewContext {
     }
 }
 
+// MARK: - FrameUniforms
+
+/// Per-frame timing and viewport information.
+///
+/// This struct contains values that change each frame, useful for animations
+/// and time-based effects.
+///
+/// ## Properties
+///
+/// - `index`: The zero-based frame number
+/// - `time`: Elapsed time in seconds since rendering started
+/// - `deltaTime`: Time in seconds since the previous frame
+/// - `viewportSize`: The drawable size in pixels
+///
+/// ## Example
+///
+/// Pass frame uniforms to shaders:
+///
+/// ```swift
+/// Draw { encoder in
+///     var uniforms = context.frameUniforms
+///     encoder.setFragmentBytes(&uniforms.time, length: MemoryLayout<Float>.stride, index: 0)
+/// }
+/// ```
 public struct FrameUniforms: Equatable, Sendable {
+    /// The zero-based frame number, incrementing each frame.
     public var index: UInt32
+    
+    /// Elapsed time in seconds since rendering started.
     public var time: Float
+    
+    /// Time in seconds since the previous frame (useful for frame-rate independent animation).
     public var deltaTime: Float
+    
+    /// The drawable size in pixels as `[width, height]`.
     public var viewportSize: SIMD2<UInt32>
 
+    /// Creates frame uniforms with the specified values.
     public init(index: UInt32, time: Float, deltaTime: Float, viewportSize: SIMD2<UInt32>) {
         self.index = index
         self.time = time

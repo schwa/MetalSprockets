@@ -1,3 +1,31 @@
+// MARK: - ElementBuilder
+
+/// A result builder for composing multiple elements into a single element tree.
+///
+/// `ElementBuilder` enables the declarative syntax used in MetalSprockets.
+/// You typically don't use it directly — it's applied automatically to
+/// `body` properties and content closures.
+///
+/// ## Overview
+///
+/// The builder supports:
+/// - Single elements
+/// - Multiple elements (composed into a tuple)
+/// - Conditional elements (`if`, `if-else`)
+/// - Optional elements
+///
+/// ```swift
+/// RenderPass {
+///     // Multiple elements are combined automatically
+///     Pipeline1()
+///     Pipeline2()
+///
+///     // Conditionals work naturally
+///     if showDebug {
+///         DebugOverlay()
+///     }
+/// }
+/// ```
 @resultBuilder
 // swiftlint:disable:next convenience_type
 public struct ElementBuilder {

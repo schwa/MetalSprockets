@@ -1,6 +1,69 @@
 import Metal
 import MetalSprocketsSupport
 
+// MARK: - RenderPipeline
+
+/// Configures a Metal render pipeline state with vertex and fragment shaders.
+///
+/// `RenderPipeline` binds shaders and creates the pipeline state object that the GPU
+/// uses to process vertices and fragments. Place it inside a ``RenderPass``.
+///
+/// ## Overview
+///
+/// Create a render pipeline by specifying vertex and fragment shaders:
+///
+/// ```swift
+/// let library = try ShaderLibrary(bundle: .main)
+///
+/// RenderPipeline(
+///     vertexShader: library.myVertexShader,
+///     fragmentShader: library.myFragmentShader
+/// ) {
+///     Draw { encoder in
+///         // Issue draw commands
+///     }
+/// }
+/// ```
+///
+/// ## Vertex Descriptors
+///
+/// Use the `.vertexDescriptor()` modifier to specify how vertex data is laid out:
+///
+/// ```swift
+/// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+///     Draw { encoder in ... }
+/// }
+/// .vertexDescriptor(MyVertex.descriptor)
+/// ```
+///
+/// ## Depth Testing
+///
+/// Enable depth testing with the `.depthCompare()` modifier:
+///
+/// ```swift
+/// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+///     Draw { encoder in ... }
+/// }
+/// .depthCompare(function: .less, enabled: true)
+/// ```
+///
+/// ## Parameters
+///
+/// Use the `.parameter()` modifier to bind values to shader uniforms by name:
+///
+/// ```swift
+/// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+///     Draw { encoder in ... }
+/// }
+/// .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Elements
+/// - ``RenderPass``
+/// - ``Draw``
+/// - ``ShaderLibrary``
 public struct RenderPipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     public typealias Body = Never
     @MSEnvironment(\.device)
@@ -17,6 +80,13 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
     @MSState
     var reflection: Reflection?
 
+    /// Creates a render pipeline with the specified shaders and content.
+    ///
+    /// - Parameters:
+    ///   - label: An optional label for debugging (visible in GPU frame capture).
+    ///   - vertexShader: The vertex shader function to use.
+    ///   - fragmentShader: The fragment shader function to use.
+    ///   - content: A closure that returns child elements (typically ``Draw`` elements).
     public init(label: String? = nil, vertexShader: VertexShader, fragmentShader: FragmentShader, @ElementBuilder content: () throws -> Content) throws {
         self.label = label
         self.vertexShader = vertexShader

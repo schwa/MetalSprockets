@@ -1,8 +1,44 @@
 import Metal
 
+// MARK: - BlitPass
+
+/// A container element that creates a Metal blit command encoder.
+///
+/// Use `BlitPass` for GPU memory operations like copying textures,
+/// generating mipmaps, and synchronizing resources.
+///
+/// ## Overview
+///
+/// Perform texture operations:
+///
+/// ```swift
+/// BlitPass {
+///     Blit { encoder in
+///         encoder.copy(from: sourceTexture, to: destTexture)
+///     }
+///     Blit { encoder in
+///         encoder.generateMipmaps(for: texture)
+///     }
+/// }
+/// ```
+///
+/// ## Common Operations
+///
+/// - Copying textures or buffers
+/// - Generating mipmaps
+/// - Synchronizing resources between CPU and GPU
+/// - Filling buffers with constant values
+///
+/// ## Topics
+///
+/// ### Related Elements
+/// - ``Blit``
+/// - ``RenderPass``
+/// - ``ComputePass``
 public struct BlitPass <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     internal let content: Content
 
+    /// Creates a blit pass with the specified content.
     public init(@ElementBuilder content: () throws -> Content) throws {
         self.content = try content()
     }
@@ -24,9 +60,32 @@ public struct BlitPass <Content>: Element, BodylessElement, BodylessContentEleme
     }
 }
 
+// MARK: - Blit
+
+/// Issues blit commands to a Metal blit command encoder.
+///
+/// `Blit` provides direct access to `MTLBlitCommandEncoder` for memory
+/// operations. Place it inside a ``BlitPass``.
+///
+/// ## Example
+///
+/// ```swift
+/// BlitPass {
+///     Blit { encoder in
+///         // Copy texture
+///         encoder.copy(from: source, to: destination)
+///
+///         // Generate mipmaps
+///         encoder.generateMipmaps(for: texture)
+///     }
+/// }
+/// ```
 public struct Blit: Element, BodylessElement {
     var block: (MTLBlitCommandEncoder) throws -> Void
 
+    /// Creates a blit element with the specified encoding closure.
+    ///
+    /// - Parameter block: A closure that receives the blit command encoder.
     public init(_ block: @escaping (MTLBlitCommandEncoder) throws -> Void) {
         self.block = block
     }

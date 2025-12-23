@@ -1,6 +1,66 @@
 @preconcurrency import Metal
 import MetalSprocketsSupport
 
+// MARK: - ShaderLibrary
+
+/// A type-safe wrapper around a Metal shader library.
+///
+/// `ShaderLibrary` provides convenient access to shader functions compiled from
+/// `.metal` files. Use dynamic member lookup to access shaders by name.
+///
+/// ## Loading from Bundle
+///
+/// Load shaders compiled into your app bundle:
+///
+/// ```swift
+/// let library = try ShaderLibrary(bundle: .main)
+/// let vertexShader: VertexShader = library.myVertexFunction
+/// let fragmentShader: FragmentShader = library.myFragmentFunction
+/// ```
+///
+/// ## Loading from Source
+///
+/// Compile shaders from source at runtime (useful for prototyping):
+///
+/// ```swift
+/// let source = """
+/// #include <metal_stdlib>
+/// using namespace metal;
+///
+/// vertex float4 vertexMain(uint id [[vertex_id]]) {
+///     return float4(0, 0, 0, 1);
+/// }
+/// """
+/// let library = try ShaderLibrary(source: source)
+/// ```
+///
+/// ## Accessing Shaders
+///
+/// Use dynamic member lookup with type annotation to get the correct shader type:
+///
+/// ```swift
+/// let vs: VertexShader = library.vertexMain
+/// let fs: FragmentShader = library.fragmentMain
+/// let kernel: ComputeKernel = library.computeMain
+/// ```
+///
+/// ## Namespaced Functions
+///
+/// Access functions in C++ namespaces:
+///
+/// ```swift
+/// let namespaced = library.namespaced("MyNamespace")
+/// let shader: VertexShader = namespaced.myFunction
+/// ```
+///
+/// ## Topics
+///
+/// ### Shader Types
+/// - ``VertexShader``
+/// - ``FragmentShader``
+/// - ``ComputeKernel``
+/// - ``MeshShader``
+/// - ``ObjectShader``
 @dynamicMemberLookup
 public struct ShaderLibrary: Identifiable {
     public enum ID: Hashable, @unchecked Sendable {
@@ -28,11 +88,21 @@ public struct ShaderLibrary: Identifiable {
 }
 
 public extension ShaderLibrary {
+    /// Creates a shader library from an existing Metal library.
+    ///
+    /// - Parameter library: The `MTLLibrary` to wrap.
     init(library: MTLLibrary) {
         let id = ID.library(library)
         self.state = LibraryRegistry.shared.getOrCreate(id: id) { library }
     }
 
+    /// Creates a shader library from a bundle's compiled Metal library.
+    ///
+    /// This loads the `default.metallib` compiled from `.metal` files in the bundle.
+    /// Falls back to a `debug.metallib` if present.
+    ///
+    /// - Parameter bundle: The bundle containing the compiled Metal library.
+    /// - Throws: ``MetalSprocketsError/resourceCreationFailure(_:)`` if the library cannot be loaded.
     init(bundle: Bundle) throws {
         let id = ID.bundle(bundle)
         self.state = try LibraryRegistry.shared.getOrCreate(id: id) {
@@ -48,6 +118,15 @@ public extension ShaderLibrary {
         }
     }
 
+    /// Creates a shader library by compiling Metal source code at runtime.
+    ///
+    /// Use this for prototyping or dynamically generated shaders. For production,
+    /// prefer pre-compiled `.metal` files loaded via ``init(bundle:)``.
+    ///
+    /// - Parameters:
+    ///   - source: The Metal Shading Language source code to compile.
+    ///   - options: Optional compile options.
+    /// - Throws: An error if compilation fails.
     init(source: String, options: MTLCompileOptions? = nil) throws {
         let id = ID.source(source, options)
         self.state = try LibraryRegistry.shared.getOrCreate(id: id) {

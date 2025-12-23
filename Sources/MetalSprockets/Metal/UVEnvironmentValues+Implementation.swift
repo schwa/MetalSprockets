@@ -44,21 +44,62 @@ public extension Element {
     }
 }
 
+// MARK: - Depth/Stencil Modifiers
+
 public extension Element {
+    /// Sets a custom depth/stencil descriptor.
     func depthStencilDescriptor(_ depthStencilDescriptor: MTLDepthStencilDescriptor) -> some Element {
         environment(\.depthStencilDescriptor, depthStencilDescriptor)
     }
 
+    /// Configures depth testing for the render pipeline.
+    ///
+    /// Enable depth testing for 3D rendering:
+    ///
+    /// ```swift
+    /// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+    ///     Draw { encoder in ... }
+    /// }
+    /// .depthCompare(function: .less, enabled: true)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - function: The comparison function (e.g., `.less`, `.lessEqual`).
+    ///   - enabled: Whether depth writing is enabled.
+    ///
+    /// - Note: Also requires `.metalDepthStencilPixelFormat(.depth32Float)` on your `RenderView`.
     func depthCompare(function: MTLCompareFunction, enabled: Bool) -> some Element {
         depthStencilDescriptor(.init(depthCompareFunction: function, isDepthWriteEnabled: enabled))
     }
 }
 
+// MARK: - Vertex Descriptor Modifiers
+
 public extension Element {
+    /// Sets the vertex descriptor for interpreting vertex buffer data.
+    ///
+    /// The vertex descriptor tells Metal how to map vertex buffer data
+    /// to shader input attributes.
+    ///
+    /// ```swift
+    /// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+    ///     Draw { encoder in ... }
+    /// }
+    /// .vertexDescriptor(MyVertex.descriptor)
+    /// ```
+    ///
+    /// - Parameter vertexDescriptor: The Metal vertex descriptor.
     func vertexDescriptor(_ vertexDescriptor: MTLVertexDescriptor?) -> some Element {
         environment(\.vertexDescriptor, vertexDescriptor)
     }
 
+    /// Sets the vertex descriptor from a Model I/O descriptor.
+    ///
+    /// Useful when loading meshes from Model I/O:
+    ///
+    /// ```swift
+    /// .vertexDescriptor(mdlMesh.vertexDescriptor)
+    /// ```
     func vertexDescriptor(_ vertexDescriptor: MDLVertexDescriptor) -> some Element {
         self.vertexDescriptor(MTKMetalVertexDescriptorFromModelIO(vertexDescriptor).orFatalError(.resourceCreationFailure("Failed to create MTLVertexDescriptor from MDLVertexDescriptor")))
     }

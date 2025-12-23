@@ -1,6 +1,55 @@
 import Metal
 import MetalSprocketsSupport
 
+// MARK: - MeshRenderPipeline
+
+/// A render pipeline using mesh shaders for GPU-driven geometry generation.
+///
+/// Mesh shaders replace the traditional vertex shader stage with a more flexible
+/// model where geometry is generated directly on the GPU. This enables advanced
+/// techniques like GPU culling, LOD, and procedural geometry.
+///
+/// ## Overview
+///
+/// Create a mesh pipeline with mesh and fragment shaders:
+///
+/// ```swift
+/// RenderPass {
+///     MeshRenderPipeline(
+///         meshShader: library.myMeshShader,
+///         fragmentShader: library.myFragmentShader
+///     ) {
+///         MeshDraw { encoder in
+///             encoder.drawMeshThreadgroups(
+///                 MTLSize(width: 1, height: 1, depth: 1),
+///                 threadsPerObjectThreadgroup: MTLSize(width: 1, height: 1, depth: 1),
+///                 threadsPerMeshThreadgroup: MTLSize(width: 32, height: 1, depth: 1)
+///             )
+///         }
+///     }
+/// }
+/// ```
+///
+/// ## Object Shaders
+///
+/// Optionally add an object shader for per-object processing:
+///
+/// ```swift
+/// MeshRenderPipeline(
+///     objectShader: library.myObjectShader,
+///     meshShader: library.myMeshShader,
+///     fragmentShader: library.myFragmentShader
+/// ) {
+///     // Draw commands
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Types
+/// - ``MeshShader``
+/// - ``ObjectShader``
+/// - ``RenderPipeline``
 public struct MeshRenderPipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     public typealias Body = Never
     @MSEnvironment(\.device)
@@ -18,6 +67,14 @@ public struct MeshRenderPipeline <Content>: Element, BodylessElement, BodylessCo
     @MSState
     var reflection: Reflection?
 
+    /// Creates a mesh render pipeline.
+    ///
+    /// - Parameters:
+    ///   - label: An optional label for debugging.
+    ///   - objectShader: An optional object shader for per-object processing.
+    ///   - meshShader: The mesh shader that generates geometry.
+    ///   - fragmentShader: The fragment shader for pixel coloring.
+    ///   - content: Child elements (typically mesh draw commands).
     public init(label: String? = nil, objectShader: ObjectShader? = nil, meshShader: MeshShader, fragmentShader: FragmentShader, @ElementBuilder content: () throws -> Content) throws {
         self.label = label
         self.objectShader = objectShader
