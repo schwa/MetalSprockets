@@ -2,6 +2,51 @@ import CoreGraphics
 import Metal
 import MetalSprocketsSupport
 
+// MARK: - OffscreenRenderer
+
+/// Renders MetalSprockets elements to an offscreen texture.
+///
+/// Use `OffscreenRenderer` for headless rendering, image generation, or
+/// render-to-texture workflows without a display.
+///
+/// ## Overview
+///
+/// Create a renderer and render elements to a texture:
+///
+/// ```swift
+/// let renderer = try OffscreenRenderer(size: CGSize(width: 1920, height: 1080))
+///
+/// let rendering = try renderer.render(
+///     RenderPass {
+///         RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+///             Draw { encoder in
+///                 // Draw commands
+///             }
+///         }
+///     }
+/// )
+///
+/// // Access the rendered image
+/// let cgImage = try rendering.cgImage
+/// ```
+///
+/// ## Custom Textures
+///
+/// Provide your own textures for more control:
+///
+/// ```swift
+/// let renderer = try OffscreenRenderer(
+///     size: size,
+///     colorTexture: myColorTexture,
+///     depthTexture: myDepthTexture
+/// )
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Types
+/// - ``RenderView``
+/// - ``OffscreenVideoRenderer``
 public struct OffscreenRenderer {
     public var device: MTLDevice
     public var size: CGSize
@@ -10,6 +55,12 @@ public struct OffscreenRenderer {
     public var renderPassDescriptor: MTLRenderPassDescriptor
     public var commandQueue: MTLCommandQueue
 
+    /// Creates an offscreen renderer with custom textures.
+    ///
+    /// - Parameters:
+    ///   - size: The size of the rendering area.
+    ///   - colorTexture: The texture to render color output to.
+    ///   - depthTexture: The texture to use for depth testing.
     public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture) throws {
         self.device = colorTexture.device
         self.size = size
@@ -30,6 +81,12 @@ public struct OffscreenRenderer {
         commandQueue = try device._makeCommandQueue()
     }
 
+    /// Creates an offscreen renderer with automatically created textures.
+    ///
+    /// Creates color (BGRA8Unorm_sRGB) and depth (Depth32Float) textures
+    /// at the specified size.
+    ///
+    /// - Parameter size: The size of the rendering area in pixels.
     // TODO: #20 Most of this belongs on a RenderSession type API. We should be able to render multiple times with the same setup.
     public init(size: CGSize) throws {
         let device = _MTLCreateSystemDefaultDevice()
@@ -46,12 +103,19 @@ public struct OffscreenRenderer {
         try self.init(size: size, colorTexture: colorTexture, depthTexture: depthTexture)
     }
 
+    /// The result of an offscreen render operation.
     public struct Rendering {
+        /// The texture containing the rendered output.
         public var texture: MTLTexture
     }
 }
 
 public extension OffscreenRenderer {
+    /// Renders the specified element and returns the result.
+    ///
+    /// - Parameter content: The element to render.
+    /// - Returns: A ``Rendering`` containing the output texture.
+    /// - Throws: Any errors that occur during rendering.
     func render<Content>(_ content: Content) throws -> Rendering where Content: Element {
         let device = _MTLCreateSystemDefaultDevice()
         let commandQueue = try device._makeCommandQueue()
@@ -73,6 +137,14 @@ public extension OffscreenRenderer {
 }
 
 public extension OffscreenRenderer.Rendering {
+    /// Converts the rendered texture to a Core Graphics image.
+    ///
+    /// Use this to save the rendering to disk or display in UIKit/AppKit.
+    ///
+    /// ```swift
+    /// let rendering = try renderer.render(myElement)
+    /// let image = try rendering.cgImage
+    /// ```
     var cgImage: CGImage {
         get throws {
             try texture.toCGImage()

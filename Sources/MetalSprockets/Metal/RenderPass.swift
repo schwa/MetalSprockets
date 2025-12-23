@@ -4,10 +4,57 @@ import Metal
 import CompositorServices
 #endif
 
+// MARK: - RenderPass
+
+/// A container element that creates a Metal render command encoder.
+///
+/// `RenderPass` establishes the rendering context for child elements. It creates
+/// an `MTLRenderCommandEncoder` that pipelines and draw commands use to encode GPU work.
+///
+/// ## Overview
+///
+/// A render pass typically contains one or more ``RenderPipeline`` elements:
+///
+/// ```swift
+/// RenderPass {
+///     RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+///         Draw { encoder in
+///             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+///         }
+///     }
+/// }
+/// ```
+///
+/// ## Render Pass Descriptor
+///
+/// The render pass uses the `renderPassDescriptor` from the environment, which is
+/// typically configured by ``RenderView`` or ``OffscreenRenderer``. You can modify
+/// it using render pass descriptor modifiers.
+///
+/// ## Labels
+///
+/// Use the `label` parameter for debugging. Labels appear in Xcode's GPU frame capture:
+///
+/// ```swift
+/// RenderPass(label: "Main Scene") {
+///     // ...
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Elements
+/// - ``RenderPipeline``
+/// - ``Draw``
 public struct RenderPass <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     private let label: String?
     internal let content: Content
 
+    /// Creates a render pass with the specified content.
+    ///
+    /// - Parameters:
+    ///   - label: An optional label for debugging (visible in GPU frame capture).
+    ///   - content: A closure that returns the child elements to render.
     public init(label: String? = nil, @ElementBuilder content: () throws -> Content) throws {
         self.label = label
         self.content = try content()

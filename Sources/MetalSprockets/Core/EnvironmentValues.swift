@@ -1,3 +1,46 @@
+// MARK: - MSEnvironmentValues
+
+/// A collection of environment values propagated through the element tree.
+///
+/// Environment values flow down from parent elements to children, providing
+/// shared context like the Metal device, render pass descriptor, and custom values.
+///
+/// ## Accessing Environment Values
+///
+/// Use the ``MSEnvironment`` property wrapper to read environment values:
+///
+/// ```swift
+/// struct MyElement: Element {
+///     @MSEnvironment(\.device) var device
+///
+///     var body: some Element {
+///         // Use device...
+///     }
+/// }
+/// ```
+///
+/// ## Custom Environment Keys
+///
+/// Define custom environment keys by conforming to ``MSEnvironmentKey``:
+///
+/// ```swift
+/// struct MyCustomKey: MSEnvironmentKey {
+///     static var defaultValue: Int { 0 }
+/// }
+///
+/// extension MSEnvironmentValues {
+///     var myCustomValue: Int {
+///         get { self[MyCustomKey.self] }
+///         set { self[MyCustomKey.self] = newValue }
+///     }
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Types
+/// - ``MSEnvironment``
+/// - ``MSEnvironmentKey``
 public struct MSEnvironmentValues {
     struct Key: Hashable, CustomDebugStringConvertible {
         var id: ObjectIdentifier
@@ -50,8 +93,30 @@ public struct MSEnvironmentValues {
     }
 }
 
+/// A key for accessing values in the environment.
+///
+/// Conform to this protocol to define custom environment values that propagate
+/// through the element tree.
+///
+/// ## Example
+///
+/// ```swift
+/// struct CameraKey: MSEnvironmentKey {
+///     static var defaultValue: Camera? { nil }
+/// }
+///
+/// extension MSEnvironmentValues {
+///     var camera: Camera? {
+///         get { self[CameraKey.self] }
+///         set { self[CameraKey.self] = newValue }
+///     }
+/// }
+/// ```
 public protocol MSEnvironmentKey {
+    /// The type of value stored by this key.
     associatedtype Value
+    
+    /// The default value used when no explicit value has been set.
     static var defaultValue: Value { get }
 }
 
@@ -77,8 +142,45 @@ public extension MSEnvironmentValues {
 
 // MARK: -
 
+/// A property wrapper that reads a value from the element's environment.
+///
+/// `MSEnvironment` is analogous to SwiftUI's `@Environment`. Use it to access
+/// shared context that flows down from parent elements.
+///
+/// ## Overview
+///
+/// Read built-in environment values:
+///
+/// ```swift
+/// struct MyElement: Element {
+///     @MSEnvironment(\.device) var device
+///     @MSEnvironment(\.renderCommandEncoder) var encoder
+///
+///     var body: some Element {
+///         // Use device and encoder...
+///     }
+/// }
+/// ```
+///
+/// ## Built-in Environment Values
+///
+/// Common environment values include:
+/// - `\.device` — The `MTLDevice`
+/// - `\.commandBuffer` — The current `MTLCommandBuffer`
+/// - `\.renderCommandEncoder` — The current `MTLRenderCommandEncoder`
+/// - `\.renderPassDescriptor` — The `MTLRenderPassDescriptor`
+/// - `\.drawableSize` — The size of the drawable in pixels
+///
+/// ## Topics
+///
+/// ### Related Types
+/// - ``MSEnvironmentValues``
+/// - ``MSEnvironmentKey``
+/// - ``MSState``
+/// - ``MSBinding``
 @propertyWrapper
 public struct MSEnvironment <Value> {
+    /// The current value from the environment.
     public var wrappedValue: Value {
         guard let system = System.current else {
             preconditionFailure("Environment must be used within a System.")
@@ -91,6 +193,9 @@ public struct MSEnvironment <Value> {
 
     private var keyPath: KeyPath<MSEnvironmentValues, Value>
 
+    /// Creates an environment property wrapper for the specified key path.
+    ///
+    /// - Parameter keyPath: A key path to the environment value to read.
     public init(_ keyPath: KeyPath<MSEnvironmentValues, Value>) {
         self.keyPath = keyPath
     }

@@ -1,6 +1,51 @@
 @preconcurrency import Metal
 import MetalSprockets
 
+// MARK: - YCbCrBillboardRenderPass
+
+/// Renders YCbCr video textures as a full-screen billboard.
+///
+/// Use this element to display camera feeds or video frames that use YCbCr
+/// color encoding (common in ARKit, AVFoundation, and video codecs).
+///
+/// ## Overview
+///
+/// YCbCr separates luminance (Y) from chrominance (CbCr), which is more
+/// efficient for video compression. This element converts YCbCr to RGB
+/// and renders it as a full-screen quad.
+///
+/// ## ARKit Camera Background
+///
+/// Display ARKit camera feed as a background layer:
+///
+/// ```swift
+/// RenderPass {
+///     if let textureY = frameData.textureY,
+///        let textureCbCr = frameData.textureCbCr {
+///         YCbCrBillboardRenderPass(
+///             textureY: textureY,
+///             textureCbCr: textureCbCr,
+///             textureCoordinates: frameData.textureCoordinates
+///         )
+///     }
+///     // Render 3D content on top...
+/// }
+/// ```
+///
+/// ## Texture Coordinates
+///
+/// The default texture coordinates assume the texture is oriented correctly.
+/// For camera feeds, apply the display transform to match screen orientation:
+///
+/// ```swift
+/// let transform = frame.displayTransform(for: orientation, viewportSize: size)
+/// let texCoords = baseCoords.map { $0.applying(transform) }
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Types
+/// - ``ARFrameData``
 public struct YCbCrBillboardRenderPass: Element {
     @MSState
     private var vertexShader = ShaderLibrary.metalSprocketsUI

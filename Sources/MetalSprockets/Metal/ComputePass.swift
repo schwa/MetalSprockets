@@ -1,10 +1,58 @@
 import Metal
 import MetalSprocketsSupport
 
+// MARK: - ComputePass
+
+/// A container element that creates a Metal compute command encoder.
+///
+/// `ComputePass` establishes the context for compute shader execution. It creates
+/// an `MTLComputeCommandEncoder` that compute pipelines use to dispatch GPU work.
+///
+/// ## Overview
+///
+/// A compute pass typically contains one or more ``ComputePipeline`` elements:
+///
+/// ```swift
+/// ComputePass {
+///     ComputePipeline(computeKernel: library.myKernel) {
+///         Dispatch { encoder, pipelineState in
+///             let threadsPerGroup = MTLSize(width: 8, height: 8, depth: 1)
+///             let threadgroups = MTLSize(width: 32, height: 32, depth: 1)
+///             encoder.dispatchThreadgroups(threadgroups, threadsPerThreadgroup: threadsPerGroup)
+///         }
+///     }
+/// }
+/// ```
+///
+/// ## Mixing Render and Compute
+///
+/// Combine compute and render passes in the same frame:
+///
+/// ```swift
+/// CommandBufferElement {
+///     ComputePass {
+///         // Process data on GPU
+///     }
+///     RenderPass {
+///         // Render using computed data
+///     }
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Elements
+/// - ``ComputePipeline``
+/// - ``RenderPass``
 public struct ComputePass <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     internal let label: String?
     internal let content: Content
 
+    /// Creates a compute pass with the specified content.
+    ///
+    /// - Parameters:
+    ///   - label: An optional label for debugging (visible in GPU frame capture).
+    ///   - content: A closure that returns the child elements to execute.
     public init(label: String? = nil, @ElementBuilder content: () throws -> Content) throws {
         self.label = label
         self.content = try content()
@@ -27,13 +75,43 @@ public struct ComputePass <Content>: Element, BodylessElement, BodylessContentEl
     }
 }
 
-// MARK: -
+// MARK: - ComputePipeline
 
+/// Configures a Metal compute pipeline state with a compute kernel.
+///
+/// `ComputePipeline` creates the pipeline state object that the GPU uses to
+/// execute compute shaders. Place it inside a ``ComputePass``.
+///
+/// ## Overview
+///
+/// Create a compute pipeline by specifying a compute kernel:
+///
+/// ```swift
+/// let library = try ShaderLibrary(bundle: .main)
+///
+/// ComputePipeline(computeKernel: library.myComputeKernel) {
+///     Dispatch { encoder, pipelineState in
+///         // Configure and dispatch threads
+///     }
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Related Elements
+/// - ``ComputePass``
+/// - ``ComputeKernel``
 public struct ComputePipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     private let label: String?
     private let computeKernel: ComputeKernel
     internal let content: Content
 
+    /// Creates a compute pipeline with the specified kernel and content.
+    ///
+    /// - Parameters:
+    ///   - label: An optional label for debugging (visible in GPU frame capture).
+    ///   - computeKernel: The compute kernel function to execute.
+    ///   - content: A closure that returns child elements (typically dispatch elements).
     public init(label: String? = nil, computeKernel: ComputeKernel, @ElementBuilder content: () throws -> Content) throws {
         self.label = label
         self.computeKernel = computeKernel

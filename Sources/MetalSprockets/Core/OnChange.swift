@@ -39,7 +39,31 @@ internal struct OnChange<Value: Equatable, Content>: Element where Content: Elem
     }
 }
 
+// MARK: - onChange Modifier
+
 public extension Element {
+    /// Performs an action when a value changes.
+    ///
+    /// Use this modifier to respond to value changes during the render loop,
+    /// similar to SwiftUI's `onChange`.
+    ///
+    /// ```swift
+    /// struct AnimatedElement: Element {
+    ///     let frameCount: Int
+    ///
+    ///     var body: some Element {
+    ///         MyContent()
+    ///             .onChange(of: frameCount) { oldValue, newValue in
+    ///                 print("Frame changed from \(oldValue) to \(newValue)")
+    ///             }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - value: The value to observe.
+    ///   - initial: If `true`, the action is called on first render with the same value for old and new.
+    ///   - action: A closure called when the value changes, receiving old and new values.
     func onChange<V: Equatable>(
         of value: V,
         initial: Bool = false,
@@ -48,6 +72,11 @@ public extension Element {
         OnChange(value: value, initial: initial, action: action, content: self)
     }
 
+    /// Performs an action when a value changes (simplified version).
+    ///
+    /// - Parameters:
+    ///   - value: The value to observe.
+    ///   - action: A closure called when the value changes.
     func onChange<V: Equatable>(
         of value: V,
         perform action: @escaping () -> Void

@@ -103,32 +103,82 @@ internal struct Parameter {
 
 // MARK: -
 
+// MARK: - parameter Modifiers
+
+/// Modifiers for binding values to shader parameters by name.
+///
+/// The `parameter` modifiers use reflection to automatically find the
+/// correct buffer index for a named shader parameter. This eliminates
+/// the need to manually track buffer indices.
+///
+/// ## Overview
+///
+/// Bind values to shader uniforms by name:
+///
+/// ```swift
+/// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+///     Draw { encoder in ... }
+/// }
+/// .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
+/// .parameter("transform", value: modelViewProjection)
+/// .parameter("diffuseTexture", texture: myTexture)
+/// ```
+///
+/// ## Shader Side
+///
+/// In your Metal shader, parameters are bound to buffers:
+///
+/// ```metal
+/// fragment float4 myFragment(
+///     constant float4 &color [[buffer(0)]],
+///     constant float4x4 &transform [[buffer(1)]],
+///     texture2d<float> diffuseTexture [[texture(0)]]
+/// ) { ... }
+/// ```
+///
+/// ## Targeting Specific Stages
+///
+/// By default, parameters bind to whichever shader stage declares them.
+/// Use `functionType` to explicitly target a stage:
+///
+/// ```swift
+/// .parameter("time", functionType: .fragment, value: elapsedTime)
+/// ```
 public extension Element {
+    /// Binds a SIMD4<Float> value to a shader parameter.
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: SIMD4<Float>) -> some Element {
         ParameterElementModifier(functionType: functionType, name: name, value: .value(value), content: self)
     }
 
+    /// Binds a 4x4 matrix to a shader parameter.
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: simd_float4x4) -> some Element {
         ParameterElementModifier(functionType: functionType, name: name, value: .value(value), content: self)
     }
 
+    /// Binds a texture to a shader parameter.
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, texture: MTLTexture?) -> some Element {
         ParameterElementModifier(functionType: functionType, name: name, value: ParameterValue<()>.texture(texture), content: self)
     }
 
+    /// Binds a sampler state to a shader parameter.
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, samplerState: MTLSamplerState) -> some Element {
         ParameterElementModifier(functionType: functionType, name: name, value: ParameterValue<()>.samplerState(samplerState), content: self)
     }
 
+    /// Binds a buffer to a shader parameter.
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, buffer: MTLBuffer, offset: Int = 0) -> some Element {
         ParameterElementModifier(functionType: functionType, name: name, value: ParameterValue<()>.buffer(buffer, offset), content: self)
     }
 
+    /// Binds an array of values to a shader parameter.
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, values: [some Any]) -> some Element {
         assert(isPODArray(values), "Parameter values must be a POD type.")
         return ParameterElementModifier(functionType: functionType, name: name, value: .array(values), content: self)
     }
 
+    /// Binds a value to a shader parameter.
+    ///
+    /// The value must be a plain-old-data (POD) type like Float, Int, SIMD types, or structs of POD types.
     func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: some Any) -> some Element {
         assert(!isArray(value), "Use 'values:' parameter for arrays, not 'value:'.")
         assert(isPOD(value), "Parameter value must be a POD type.")
