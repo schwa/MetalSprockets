@@ -22,3 +22,4 @@ Before starting, make sure you have:
 - <doc:01-ColorfulTriangle>
 - <doc:02-RainbowQuad>
 - <doc:03-AnimatedRainbowQuad>
+- <doc:04-SpinningCube>
