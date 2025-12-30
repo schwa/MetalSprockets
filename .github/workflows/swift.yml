@@ -29,9 +29,9 @@ jobs:
       - name: Trust plugins
         run: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
       - name: Build (macOS)
-        run: swift build -v
+        run: swift build -v -Xswiftc -warnings-as-errors
       - name: Test (macOS)
-        run: swift test -v
+        run: swift test -v -Xswiftc -warnings-as-errors
       - name: Create visionOS destination
         run: |
           cat > .visionos-destination.json << 'EOF'
@@ -46,7 +46,7 @@ jobs:
           }
           EOF
       - name: Build (visionOS)
-        run: swift build -v --destination .visionos-destination.json
+        run: swift build -v -Xswiftc -warnings-as-errors --destination .visionos-destination.json
       - name: Create iOS destination
         run: |
           cat > .ios-destination.json << 'EOF'
@@ -61,4 +61,6 @@ jobs:
           }
           EOF
       - name: Build (iOS)
-        run: swift build -v --destination .ios-destination.json
+        run: swift build -v -Xswiftc -warnings-as-errors --destination .ios-destination.json
+      - name: Build Example App (macOS)
+        run: xcodebuild build -project Example/MetalSprockets-Example.xcodeproj -scheme MetalSprockets-Example -destination 'platform=macOS'
