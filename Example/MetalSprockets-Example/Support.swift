@@ -8,28 +8,28 @@ struct Vertex {
     var position: SIMD3<Float>
     var color: SIMD4<Float>
     var uv: SIMD2<Float>
-    
+
     // Vertex descriptor tells Metal how to interpret the vertex buffer layout.
     // Must match the VertexIn struct in the shader.
     static let descriptor: MTLVertexDescriptor = {
         let desc = MTLVertexDescriptor()
-        
+
         // position: float3 at offset 0
         desc.attributes[0].format = .float3
         desc.attributes[0].offset = 0
         desc.attributes[0].bufferIndex = 0
-        
+
         // color: float4 at offset 16 (SIMD3 has stride of 16, not 12)
         desc.attributes[1].format = .float4
         desc.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
         desc.attributes[1].bufferIndex = 0
-        
+
         // uv: float2 at offset 32
         desc.attributes[2].format = .float2
         desc.attributes[2].offset = MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
         desc.attributes[2].bufferIndex = 0
-        
-        desc.layouts[0].stride = MemoryLayout<Vertex>.stride
+
+        desc.layouts[0].stride = MemoryLayout<Self>.stride
         desc.layouts[0].stepFunction = .perVertex
         return desc
     }()
@@ -45,7 +45,7 @@ func generateCubeVertices() -> [Vertex] {
         let b = (p.z + 1) * 0.5
         return SIMD4<Float>(r, g, b, 1)
     }
-    
+
     // Each face defined by 4 corners in counter-clockwise order (for correct culling)
     let faces: [[SIMD3<Float>]] = [
         [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]],       // Front +Z
@@ -53,12 +53,12 @@ func generateCubeVertices() -> [Vertex] {
         [[-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]],       // Top +Y
         [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]],   // Bottom -Y
         [[1, -1, 1], [1, -1, -1], [1, 1, -1], [1, 1, 1]],       // Right +X
-        [[-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1]],   // Left -X
+        [[-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1]]   // Left -X
     ]
-    
+
     // UV corners for edge detection
     let uvs: [SIMD2<Float>] = [[0, 0], [1, 0], [1, 1], [0, 1]]
-    
+
     // Build two triangles per face (6 vertices per face, 36 total)
     var vertices: [Vertex] = []
     for face in faces {
@@ -88,11 +88,11 @@ extension float4x4 {
             SIMD4<Float>(x, y, z, 1)
         ))
     }
-    
+
     static func scale(_ x: Float, _ y: Float, _ z: Float) -> float4x4 {
         float4x4(diagonal: SIMD4<Float>(x, y, z, 1))
     }
-    
+
     // Standard perspective projection matrix
     static func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> float4x4 {
         let y = 1 / tan(fovY * 0.5)

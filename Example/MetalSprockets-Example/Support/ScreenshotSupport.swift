@@ -6,8 +6,8 @@ import SwiftUI
 
 @MainActor
 struct Screenshot: Transferable {
-    var width: Int = 1920
-    var height: Int = 1080
+    var width: Int = 1_920
+    var height: Int = 1_080
 
     func render() throws -> Image {
         let size = CGSize(width: width, height: height)
@@ -36,6 +36,7 @@ struct Screenshot: Transferable {
 
     nonisolated static var transferRepresentation: some TransferRepresentation {
         ProxyRepresentation { screenshot in
+            // swiftlint:disable:next force_try
             MainActor.assumeIsolated { try! screenshot.render() }
         }
     }

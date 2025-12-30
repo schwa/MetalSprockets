@@ -43,7 +43,7 @@ import MetalSprocketsSupport
 public protocol Element {
     /// The type of element returned by the `body` property.
     associatedtype Body: Element
-    
+
     /// The content and behavior of this element.
     ///
     /// Implement this property to compose child elements. Use the ``ElementBuilder``

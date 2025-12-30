@@ -2,6 +2,8 @@ import Metal
 
 // MARK: - Draw
 
+// swiftlint:disable orphaned_doc_comment
+
 /// Issues draw commands to a Metal render command encoder.
 ///
 /// `Draw` provides direct access to the `MTLRenderCommandEncoder` to set vertex buffers,

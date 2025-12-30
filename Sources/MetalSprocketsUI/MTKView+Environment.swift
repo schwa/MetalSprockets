@@ -46,22 +46,22 @@ public extension View {
     func metalFramebufferOnly(_ value: Bool) -> some View {
         self.environment(\.metalFramebufferOnly, value)
     }
-    
+
     /// Sets the texture usage for depth/stencil attachments.
     func metalDepthStencilAttachmentTextureUsage(_ value: MTLTextureUsage) -> some View {
         self.environment(\.metalDepthStencilAttachmentTextureUsage, value)
     }
-    
+
     /// Sets the texture usage for multisample color attachments.
     func metalMultisampleColorAttachmentTextureUsage(_ value: MTLTextureUsage) -> some View {
         self.environment(\.metalMultisampleColorAttachmentTextureUsage, value)
     }
-    
+
     /// Sets whether drawable presentation is synchronized with Core Animation transactions.
     func metalPresentsWithTransaction(_ value: Bool) -> some View {
         self.environment(\.metalPresentsWithTransaction, value)
     }
-    
+
     /// Sets the pixel format for the color render target.
     ///
     /// Common formats:
@@ -73,11 +73,12 @@ public extension View {
     /// RenderView { ... }
     ///     .metalColorPixelFormat(.bgra8Unorm_srgb)
     /// ```
-    // TODO: #274 This is so important it should be a parameter on RenderView?
+    ///
+    /// - Note: TODO #274 - This is so important it should be a parameter on RenderView?
     func metalColorPixelFormat(_ value: MTLPixelFormat) -> some View {
         self.environment(\.metalColorPixelFormat, value)
     }
-    
+
     /// Sets the pixel format for the depth/stencil render target.
     ///
     /// Common formats:
@@ -90,23 +91,24 @@ public extension View {
     /// RenderView { ... }
     ///     .metalDepthStencilPixelFormat(.depth32Float)
     /// ```
-    // TODO: #274 This is so important it should be a parameter on RenderView?
+    ///
+    /// - Note: TODO #274 - This is so important it should be a parameter on RenderView?
     func metalDepthStencilPixelFormat(_ value: MTLPixelFormat) -> some View {
         self.environment(\.metalDepthStencilPixelFormat, value)
     }
-    
+
     /// Sets the storage mode for depth/stencil textures.
     func metalDepthStencilStorageMode(_ value: MTLStorageMode) -> some View {
         self.environment(\.metalDepthStencilStorageMode, value)
     }
-    
+
     /// Sets the number of samples for MSAA (multisample anti-aliasing).
     ///
     /// Common values: 1 (no MSAA), 2, 4, 8
     func metalSampleCount(_ value: Int) -> some View {
         self.environment(\.metalSampleCount, value)
     }
-    
+
     /// Sets the color used to clear the drawable at the start of each frame.
     ///
     /// ```swift
@@ -116,17 +118,17 @@ public extension View {
     func metalClearColor(_ value: MTLClearColor) -> some View {
         self.environment(\.metalClearColor, value)
     }
-    
+
     /// Sets the value used to clear the depth buffer (default: 1.0).
     func metalClearDepth(_ value: Double) -> some View {
         self.environment(\.metalClearDepth, value)
     }
-    
+
     /// Sets the value used to clear the stencil buffer.
     func metalClearStencil(_ value: UInt32) -> some View {
         self.environment(\.metalClearStencil, value)
     }
-    
+
     /// Sets the preferred frame rate for rendering.
     ///
     /// The system will attempt to render at this rate but may throttle
@@ -134,7 +136,7 @@ public extension View {
     func metalPreferredFramesPerSecond(_ value: Int) -> some View {
         self.environment(\.metalPreferredFramesPerSecond, value)
     }
-    
+
     /// Sets whether the view uses `setNeedsDisplay` for drawing.
     ///
     /// When `true`, you must call `setNeedsDisplay()` to trigger redraws.
@@ -142,19 +144,19 @@ public extension View {
     func metalEnableSetNeedsDisplay(_ value: Bool) -> some View {
         self.environment(\.metalEnableSetNeedsDisplay, value)
     }
-    
+
     /// Sets whether the drawable automatically resizes with the view.
     func metalAutoResizeDrawable(_ value: Bool) -> some View {
         self.environment(\.metalAutoResizeDrawable, value)
     }
-    
+
     /// Pauses or resumes rendering.
     ///
     /// When `true`, the render loop stops and no frames are drawn.
     func metalIsPaused(_ value: Bool) -> some View {
         self.environment(\.metalIsPaused, value)
     }
-    
+
     #if os(macOS)
     /// Sets the color space for the drawable (macOS only).
     func metalColorspace(_ value: CGColorSpace?) -> some View {

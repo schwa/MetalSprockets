@@ -106,7 +106,6 @@ public extension Element {
                         return
                     }
 
-
                     commandBuffer.addCompletedHandler { commandBuffer in
                         actionCopy(commandBuffer)
                     }

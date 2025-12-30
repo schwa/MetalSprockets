@@ -323,13 +323,13 @@ public struct RenderViewContext {
 public struct FrameUniforms: Equatable, Sendable {
     /// The zero-based frame number, incrementing each frame.
     public var index: UInt32
-    
+
     /// Elapsed time in seconds since rendering started.
     public var time: Float
-    
+
     /// Time in seconds since the previous frame (useful for frame-rate independent animation).
     public var deltaTime: Float
-    
+
     /// The drawable size in pixels as `[width, height]`.
     public var viewportSize: SIMD2<UInt32>
 

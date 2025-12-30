@@ -3,6 +3,7 @@ import SwiftUI
 
 // MARK: - SwiftUI Color Parameter
 
+// swiftlint:disable orphaned_doc_comment
 public extension Element {
     /// Binds a SwiftUI `Color` to a shader parameter as a `SIMD4<Float>`.
     ///

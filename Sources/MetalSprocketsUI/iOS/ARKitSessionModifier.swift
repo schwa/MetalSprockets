@@ -56,22 +56,24 @@ import SwiftUI
 public struct ARFrameData {
     /// The Y (luminance) texture from the camera in r8Unorm format.
     public var textureY: MTLTexture?
-    
+
     /// The CbCr (chrominance) texture from the camera in rg8Unorm format.
     public var textureCbCr: MTLTexture?
-    
+
     /// Texture coordinates for the camera quad, adjusted for screen orientation.
     /// Order: bottom-left, bottom-right, top-left, top-right.
     public var textureCoordinates: [SIMD2<Float>] = [[0, 1], [1, 1], [0, 0], [1, 0]]
-    
+
     /// The projection matrix from ARKit, adjusted for screen orientation.
     public var projectionMatrix: simd_float4x4 = .init(diagonal: [1, 1, 1, 1])
-    
+
     /// The view matrix (inverse camera transform), adjusted for screen orientation.
     public var viewMatrix: simd_float4x4 = .init(diagonal: [1, 1, 1, 1])
 
     /// Creates empty frame data.
-    public init() {}
+    public init() {
+        // Intentionally empty
+    }
 
     /// Returns `true` when both camera textures are available.
     public var isReady: Bool { textureY != nil && textureCbCr != nil }
@@ -90,7 +92,10 @@ private struct ARKitFrameModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onAppear {
-                let device = MTLCreateSystemDefaultDevice()!
+                // swiftlint:disable:next MTLCreateSystemDefaultDevice
+                guard let device = MTLCreateSystemDefaultDevice() else {
+                    return
+                }
                 var cache: CVMetalTextureCache?
                 CVMetalTextureCacheCreate(nil, nil, device, nil, &cache)
                 textureCache = cache
@@ -101,11 +106,15 @@ private struct ARKitFrameModifier: ViewModifier {
     }
 
     private func processFrame() {
-        guard let frame, let textureCache else { return }
+        guard let frame, let textureCache else {
+            return
+        }
 
         // ARKit provides YCbCr in a CVPixelBuffer with two planes
         let pixelBuffer = frame.capturedImage
-        guard CVPixelBufferGetPlaneCount(pixelBuffer) >= 2 else { return }
+        guard CVPixelBufferGetPlaneCount(pixelBuffer) >= 2 else {
+            return
+        }
 
         // Extract Y (luminance) texture from plane 0
         let widthY = CVPixelBufferGetWidthOfPlane(pixelBuffer, 0)
@@ -119,7 +128,9 @@ private struct ARKitFrameModifier: ViewModifier {
         var newCvTextureCbCr: CVMetalTexture?
         CVMetalTextureCacheCreateTextureFromImage(nil, textureCache, pixelBuffer, nil, .rg8Unorm, widthCbCr, heightCbCr, 1, &newCvTextureCbCr)
 
-        guard let newCvTextureY, let newCvTextureCbCr else { return }
+        guard let newCvTextureY, let newCvTextureCbCr else {
+            return
+        }
 
         // Keep CVMetalTexture alive - MTLTexture is only valid while these are retained
         cvTextureY = newCvTextureY
@@ -149,7 +160,7 @@ private struct ARKitFrameModifier: ViewModifier {
 
         // Transform texture coordinates to match screen orientation
         let displayTransform = frame.displayTransform(for: interfaceOrientation, viewportSize: viewportSize).inverted()
-        let baseTexCoords: [CGPoint] = [CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1), CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 0)]
+        let baseTexCoords: [CGPoint] = [CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1), CGPoint.zero, CGPoint(x: 1, y: 0)]
         data.textureCoordinates = baseTexCoords.map { SIMD2<Float>(Float($0.applying(displayTransform).x), Float($0.applying(displayTransform).y)) }
 
         frameData = data

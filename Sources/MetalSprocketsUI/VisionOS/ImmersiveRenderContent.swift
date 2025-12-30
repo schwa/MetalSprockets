@@ -70,7 +70,6 @@ import SwiftUI
 /// - ``ImmersiveContext``
 /// - ``ImmersiveRenderPass``
 public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
-
     let progressive: Bool
     let content: @Sendable (ImmersiveContext) throws -> Content
 
@@ -129,29 +128,29 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
 public struct ImmersiveContext: Sendable {
     /// The Metal device for resource creation.
     public let device: MTLDevice
-    
+
     /// Elapsed time in seconds since rendering started.
     public let time: TimeInterval
-    
+
     /// The current drawable from CompositorServices.
     public let drawable: LayerRenderer.Drawable
-    
+
     /// The current device (head) anchor, if available.
     public let deviceAnchor: DeviceAnchor?
-    
+
     /// The number of views to render (typically 2 for stereo).
     public var viewCount: Int { drawable.views.count }
-    
+
     /// The viewport for each eye.
     public var viewports: [MTLViewport] { drawable.views.map(\.textureMap.viewport) }
-    
+
     internal let renderContext: LayerRenderer.Drawable.RenderContext
-    
+
     /// Whether progressive rendering is enabled.
     public let isProgressive: Bool
-    
+
     internal let stencilValue: UInt8
-    
+
     /// The stencil format used for progressive rendering.
     public let stencilFormat: MTLPixelFormat
 
@@ -174,7 +173,6 @@ public struct ImmersiveContext: Sendable {
 }
 
 // MARK: - ImmersiveRenderPass
-
 
 // MARK: - Layer Configuration
 

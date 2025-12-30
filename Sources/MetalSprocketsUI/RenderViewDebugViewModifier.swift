@@ -55,7 +55,7 @@ internal struct RenderViewDebugViewModifier <Root>: ViewModifier where Root: Ele
             .onChange(of: debugInspectorIsPresented) {
                 refreshCount += 1
             }
-            #endif
+        #endif
     }
 }
 

@@ -30,10 +30,10 @@ import MetalSprocketsSupport
 public protocol ShaderProtocol: Equatable {
     /// The Metal function type this shader represents.
     static var functionType: MTLFunctionType { get }
-    
+
     /// The underlying Metal function.
     var function: MTLFunction { get }
-    
+
     /// Creates a shader from a Metal function.
     init(_ function: MTLFunction)
 }
@@ -204,7 +204,8 @@ public struct MeshShader: ShaderProtocol {
 /// Visible functions enable dynamic function calls from shaders,
 /// useful for ray tracing intersection functions, callable shaders,
 /// and mesh shader pipelines.
-// TODO: Not really a "Shader". Sounds like we have a grand renaming coming. [FILE ISSUE]
+///
+/// - Note: TODO - Not really a "Shader". Sounds like we have a grand renaming coming.
 public struct VisibleFunction: ShaderProtocol {
     public static let functionType: MTLFunctionType = .visible
     public var function: MTLFunction

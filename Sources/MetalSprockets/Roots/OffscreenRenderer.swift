@@ -86,7 +86,8 @@ public struct OffscreenRenderer {
     /// at the specified size.
     ///
     /// - Parameter size: The size of the rendering area in pixels.
-    // TODO: #20 Most of this belongs on a RenderSession type API. We should be able to render multiple times with the same setup.
+    ///
+    /// - Note: TODO #20 - Most of this belongs on a RenderSession type API. We should be able to render multiple times with the same setup.
     public init(size: CGSize) throws {
         let device = _MTLCreateSystemDefaultDevice()
         let colorTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: Int(size.width), height: Int(size.height), mipmapped: false)
