@@ -125,6 +125,11 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
             let colorAttachment0Texture = renderPassDescriptor.colorAttachments[0].texture {
             renderPipelineDescriptor.colorAttachments[0].pixelFormat = colorAttachment0Texture.pixelFormat
         }
+
+        // Set rasterSampleCount from the render pass texture for MSAA support
+        if let colorAttachment0Texture = renderPassDescriptor.colorAttachments[0].texture {
+            renderPipelineDescriptor.rasterSampleCount = colorAttachment0Texture.sampleCount
+        }
         if renderPipelineDescriptor.depthAttachmentPixelFormat == .invalid,
             let depthAttachmentTexture = renderPassDescriptor.depthAttachment?.texture {
             renderPipelineDescriptor.depthAttachmentPixelFormat = depthAttachmentTexture.pixelFormat

@@ -179,6 +179,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     var currentDrawableSize: CGSize = .zero
 
+    @ObservationIgnored
+    var currentSampleCount: Int = 1
+
     init(device: MTLDevice, commandQueue: MTLCommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) throws {
         self.device = device
         self.content = content
@@ -194,6 +197,14 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     }
 
     func draw(in view: MTKView) {
+        // Check if sample count changed (MSAA toggle) by examining the actual texture
+        let actualSampleCount = view.currentRenderPassDescriptor?.colorAttachments[0].texture?.sampleCount ?? 1
+        if actualSampleCount != currentSampleCount {
+            currentSampleCount = actualSampleCount
+            // Mark all nodes as needing setup when sample count changes (MSAA toggle)
+            system.markAllNodesNeedingSetup()
+        }
+
         do {
             if RenderViewDebugging.logFrame {
                 logger?.verbose?.info("Drawing frame #\(self.frame)")

@@ -1,3 +1,4 @@
+import Metal
 import MetalSprockets
 import MetalSprocketsSupport
 import MetalSprocketsUI
@@ -5,6 +6,15 @@ import simd
 import SwiftUI
 
 struct RenderDemoView: View {
+    @State private var msaaEnabled = true
+    @State private var sampleCount = 4
+
+    // Query device for supported MSAA sample counts
+    private var supportedSampleCounts: [Int] {
+        let device = MTLCreateSystemDefaultDevice()!
+        return [2, 4, 8].filter { device.supportsTextureSampleCount($0) }
+    }
+
     var body: some View {
         // RenderView is the bridge between SwiftUI and Metal - closure called every frame
         RenderView { context, size in
@@ -26,8 +36,33 @@ struct RenderDemoView: View {
         .ignoresSafeArea()
         // Required for depth testing
         .metalDepthStencilPixelFormat(.depth32Float)
+        // MSAA - notice how edges are smoother when enabled
+        .metalSampleCount(msaaEnabled ? sampleCount : 1)
         .toolbar {
-            ShareLink(item: Screenshot(), preview: SharePreview("Screenshot", image: Image(systemName: "photo")))
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Toggle("MSAA Enabled", isOn: $msaaEnabled)
+                    if msaaEnabled {
+                        Picker("Sample Count", selection: $sampleCount) {
+                            ForEach(supportedSampleCounts, id: \.self) { count in
+                                Text("\(count)x").tag(count)
+                            }
+                        }
+                    }
+                } label: {
+                    Label("MSAA", systemImage: msaaEnabled ? "square.grid.3x3.fill" : "square.grid.3x3")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                ShareLink(item: Screenshot(), preview: SharePreview("Screenshot", image: Image(systemName: "photo")))
+            }
+        }
+        .overlay(alignment: .bottomLeading) {
+            Text(msaaEnabled ? "MSAA \(sampleCount)x" : "MSAA Off")
+                .font(.caption)
+                .padding(8)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                .padding()
         }
     }
 }
