@@ -8,6 +8,8 @@ import SwiftUI
 struct RenderDemoView: View {
     @State private var msaaEnabled = true
     @State private var sampleCount = 4
+    @State private var isPaused = false
+    @State private var pausedTime: Float = 0
 
     // Query device for supported MSAA sample counts
     private var supportedSampleCounts: [Int] {
@@ -17,9 +19,13 @@ struct RenderDemoView: View {
 
     var body: some View {
         // RenderView is the bridge between SwiftUI and Metal - closure called every frame
-        RenderView { context, size in
-            // Frame timing provided automatically
-            let time = context.frameUniforms.time
+        RenderView { [self] context, size in
+            // Use paused time when paused, otherwise use live time and update pausedTime
+            let time: Float = isPaused ? pausedTime : { 
+                let t = context.frameUniforms.time
+                Task { @MainActor in pausedTime = t }
+                return t
+            }()
 
             // Standard MVP transform chain
             let modelMatrix = cubeRotationMatrix(time: TimeInterval(time))
@@ -39,6 +45,22 @@ struct RenderDemoView: View {
         // MSAA - notice how edges are smoother when enabled
         .metalSampleCount(msaaEnabled ? sampleCount : 1)
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isPaused.toggle()
+                } label: {
+                    Label(isPaused ? "Play" : "Pause", systemImage: isPaused ? "play.fill" : "pause.fill")
+                }
+            }
+            if isPaused {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        pausedTime += 1.0 / 60.0  // Advance by one frame (~16.67ms at 60fps)
+                    } label: {
+                        Label("Step", systemImage: "forward.frame.fill")
+                    }
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Toggle("MSAA Enabled", isOn: $msaaEnabled)
