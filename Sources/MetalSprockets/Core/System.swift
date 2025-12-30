@@ -196,13 +196,16 @@ private extension System {
             existingNode.environmentValues.storage.values = preservedValues
 
             // Only mark as needing setup if the element type requires it
-            if let oldBodyless = oldElement as? any BodylessElement,
-                let newBodyless = element as? any BodylessElement,
-                type(of: oldBodyless) == type(of: newBodyless) {
-                existingNode.needsSetup = requiresSetupErased(old: oldBodyless, new: newBodyless)
-            } else {
-                // Default to needing setup for non-BodylessElements or type changes
-                existingNode.needsSetup = true
+            // Preserve existing needsSetup=true (e.g., from markAllNodesNeedingSetup)
+            if !existingNode.needsSetup {
+                if let oldBodyless = oldElement as? any BodylessElement,
+                    let newBodyless = element as? any BodylessElement,
+                    type(of: oldBodyless) == type(of: newBodyless) {
+                    existingNode.needsSetup = requiresSetupErased(old: oldBodyless, new: newBodyless)
+                } else {
+                    // Default to needing setup for non-BodylessElements or type changes
+                    existingNode.needsSetup = true
+                }
             }
         }
         // Whether changed or not, reuse the existing node
