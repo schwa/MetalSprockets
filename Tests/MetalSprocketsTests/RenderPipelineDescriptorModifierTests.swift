@@ -1,11 +1,11 @@
 import AppKit
 import Combine
+import GoldenImage
 import MetalKit
 @testable import MetalSprockets
 import simd
 import SwiftUI
 import Testing
-import GoldenImage
 
 @Test
 @MainActor
@@ -209,5 +209,5 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
 
     let offscreenRenderer = try OffscreenRenderer(size: CGSize(width: 512, height: 512))
     let rendering = try offscreenRenderer.render(renderPass)
-    let _ = try rendering.cgImage
+    _ = try rendering.cgImage
 }

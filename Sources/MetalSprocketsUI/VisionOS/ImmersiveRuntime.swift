@@ -56,25 +56,33 @@ internal final class ImmersiveRuntime<Content: Element> {
     }
 
     func renderFrame() async throws {
-        guard let frame = layerRenderer.queryNextFrame() else { return }
+        guard let frame = layerRenderer.queryNextFrame() else {
+            return
+        }
 
         frame.startUpdate()
         let time = CACurrentMediaTime() - startTime
         frame.endUpdate()
 
-        guard let timing = frame.predictTiming() else { return }
+        guard let timing = frame.predictTiming() else {
+            return
+        }
 
         // Async sleep instead of blocking wait
         try await LayerRenderer.Clock().sleep(until: timing.optimalInputTime, tolerance: nil)
 
-        guard layerRenderer.state == .running else { return }
+        guard layerRenderer.state == .running else {
+            return
+        }
 
         frame.startSubmission()
         defer {
             frame.endSubmission()
         }
 
-        guard let drawable = frame.queryDrawables().first else { return }
+        guard let drawable = frame.queryDrawables().first else {
+            return
+        }
 
         // Get device anchor at presentation time
         let presentationTime = LayerRenderer.Clock.Instant.epoch.duration(to: drawable.frameTiming.presentationTime)

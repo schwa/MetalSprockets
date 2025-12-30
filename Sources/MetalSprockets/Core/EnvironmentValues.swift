@@ -125,7 +125,7 @@ public struct MSEnvironmentValues {
 public protocol MSEnvironmentKey {
     /// The type of value stored by this key.
     associatedtype Value
-    
+
     /// The default value used when no explicit value has been set.
     static var defaultValue: Value { get }
 }

@@ -60,7 +60,9 @@ internal struct MSAAModifier<Content>: Element, BodylessElement, BodylessContent
     }
 
     func setupEnter(_ node: Node) throws {
-        guard sampleCount > 1 else { return }
+        guard sampleCount > 1 else {
+            return
+        }
 
         let device = try node.environmentValues.device.orThrow(.missingEnvironment(\.device))
         guard let renderPassDescriptor = node.environmentValues.renderPassDescriptor else {
@@ -123,7 +125,9 @@ internal struct MSAAModifier<Content>: Element, BodylessElement, BodylessContent
     }
 
     func configureNodeBodyless(_ node: Node) throws {
-        guard sampleCount > 1, let multisampleTexture, let resolveTexture else { return }
+        guard sampleCount > 1, let multisampleTexture, let resolveTexture else {
+            return
+        }
 
         guard let system = System.current else {
             fatalError("MSAAModifier: No System is currently active.")
