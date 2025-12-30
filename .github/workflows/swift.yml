@@ -6,6 +6,15 @@ on:
   push:
   pull_request:
 jobs:
+  swiftlint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install SwiftLint
+        run: brew install swiftlint
+      - name: Run SwiftLint
+        run: swiftlint --strict
+
   swift-build-26:
     env:
       XCODE_VERSION: "26.0"
