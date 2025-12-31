@@ -7,7 +7,17 @@ internal enum TraversalEvent {
     case exit(Node)
 }
 
-public class System: @unchecked Sendable {
+/// The core engine that manages the element tree, node lifecycle, and render graph traversal.
+///
+/// `System` maintains the mapping between elements and their corresponding nodes,
+/// handles state persistence, environment propagation, and orchestrates the setup
+/// and workload phases of rendering.
+///
+/// - Note: `System` is marked `@unchecked Sendable` because each instance is
+///   confined to a single isolation context (MainActor, custom actor, or
+///   synchronous single-threaded code). Instances must not be shared across
+///   isolation domains.
+public final class System: @unchecked Sendable {
     // TODO: #213 These properties should become private to enforce proper encapsulation
     private(set) var traversalEvents: [TraversalEvent] = []
     private(set) var nodes: [StructuralIdentifier: Node] = [:]
