@@ -63,4 +63,11 @@ jobs:
       - name: Build (iOS)
         run: swift build -v -Xswiftc -warnings-as-errors --destination .ios-destination.json
       - name: Build Example App (macOS)
-        run: xcodebuild build -project Example/MetalSprockets-Example.xcodeproj -scheme MetalSprockets-Example -destination 'platform=macOS'
+        run: |
+          xcodebuild build \
+            -project Example/MetalSprockets-Example.xcodeproj \
+            -scheme MetalSprockets-Example \
+            -destination 'platform=macOS' \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO
