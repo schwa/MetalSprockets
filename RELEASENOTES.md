@@ -8,31 +8,20 @@
 - New `.metalSampleCount()` modifier now works correctly with `RenderView`
 - `RenderPipeline` and `MeshRenderPipeline` automatically infer `rasterSampleCount` from render pass textures
 - New `.msaa(sampleCount:)` element modifier for render-to-texture MSAA scenarios
-- Fixed `System.update()` to preserve `needsSetup` flags set by `markAllNodesNeedingSetup()`
 - `RenderView` now detects sample count changes and triggers pipeline recreation
-
-### Documentation
-
-- Added comprehensive DocC documentation with tutorials
-- New step-by-step tutorials: Rainbow Quad, 3D Spinning Cube
-- Improved README structure and content
-- Documentation now hosted on GitHub Pages
 
 ### ARKit Integration
 
 - Added ARKit camera session support for iOS
-- Refactored AR and rendering views
 
-### Example App
+### Documentation
 
-- Added MSAA toggle with device-supported sample count picker
-- Added pause/play animation controls
-- Added frame step button when paused
+- Added DocC documentation with tutorials
+- Documentation hosted on GitHub Pages
 
 ### Other
 
 - Removed MetalSprocketsSnapshotUI module
-- Various code cleanup and refactoring
 
 ---
 
