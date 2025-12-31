@@ -18,13 +18,8 @@ struct RenderDemoView: View {
 
     var body: some View {
         // RenderView is the bridge between SwiftUI and Metal - closure called every frame
-        RenderView { [self] context, size in
-            // Use paused time when paused, otherwise use live time and update pausedTime
-            let time: Float = isPaused ? pausedTime : {
-                let t = context.frameUniforms.time
-                Task { @MainActor in pausedTime = t }
-                return t
-            }()
+        RenderView { context, size in
+            let time: Float = isPaused ? pausedTime : context.frameUniforms.time
 
             // Standard MVP transform chain
             let modelMatrix = cubeRotationMatrix(time: TimeInterval(time))
