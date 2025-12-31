@@ -3,6 +3,7 @@ import ARKit
 @preconcurrency import CompositorServices
 import Metal
 import MetalSprockets
+import MetalSprocketsSupport
 import simd
 import SwiftUI
 
@@ -28,7 +29,7 @@ internal final class ImmersiveRuntime<Content: Element> {
 
         self.device = layerRenderer.device
         guard let commandQueue = device.makeCommandQueue() else {
-            throw ImmersiveRendererError.resourceCreationFailed("command queue")
+            throw MetalSprocketsError.resourceCreationFailure("command queue")
         }
         self.commandQueue = commandQueue
         self.system = System()
@@ -94,7 +95,7 @@ internal final class ImmersiveRuntime<Content: Element> {
 
     func encodeFrame(drawable: LayerRenderer.Drawable, deviceAnchor: DeviceAnchor?, time: TimeInterval) throws {
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
-            throw ImmersiveRendererError.resourceCreationFailed("command buffer")
+            throw MetalSprocketsError.resourceCreationFailure("command buffer")
         }
 
         let renderPassDescriptor = makeRenderPassDescriptor(drawable: drawable)
