@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import MetalSprockets
 
 // MARK: - YCbCrBillboardRenderPass

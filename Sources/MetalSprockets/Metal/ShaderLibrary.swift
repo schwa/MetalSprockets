@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import MetalSprocketsSupport
 
 // MARK: - ShaderLibrary
@@ -130,6 +130,9 @@ public extension ShaderLibrary {
     /// - Throws: An error if compilation fails.
     init(source: String, options: MTLCompileOptions? = nil) throws {
         let id = ID.source(source, options)
+        // Copy options to satisfy Sendable requirements for the closure.
+        // MTLCompileOptions conforms to NSCopying but not Sendable.
+        nonisolated(unsafe) let options = options?.copy() as? MTLCompileOptions
         self.state = try LibraryRegistry.shared.getOrCreate(id: id) {
             let device = _MTLCreateSystemDefaultDevice()
             return try device.makeLibrary(source: source, options: options)
