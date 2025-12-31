@@ -151,6 +151,7 @@ private struct ARKitFrameModifier: ViewModifier {
         case .portraitUpsideDown: orientationRotation = simd_float4x4(simd_quatf(angle: .pi / 2, axis: [0, 0, 1]))
         case .landscapeLeft: orientationRotation = simd_float4x4(simd_quatf(angle: .pi, axis: [0, 0, 1]))
         case .landscapeRight: orientationRotation = .init(diagonal: [1, 1, 1, 1])
+        case .unknown: orientationRotation = simd_float4x4(simd_quatf(angle: -.pi / 2, axis: [0, 0, 1]))
         @unknown default: orientationRotation = simd_float4x4(simd_quatf(angle: -.pi / 2, axis: [0, 0, 1]))
         }
         data.viewMatrix = orientationRotation * frame.camera.transform.inverse
