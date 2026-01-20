@@ -1,6 +1,6 @@
 #if os(visionOS)
 import ARKit
-import CompositorServices
+@preconcurrency import CompositorServices
 import Metal
 import MetalSprockets
 import simd
