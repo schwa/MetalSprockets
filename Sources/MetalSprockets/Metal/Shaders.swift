@@ -51,8 +51,8 @@ public extension ShaderProtocol {
     init(library: MTLLibrary? = nil, name: String) throws {
         let library = try library ?? _MTLCreateSystemDefaultDevice().makeDefaultLibrary().orThrow(.resourceCreationFailure("Failed to create default library"))
         let function = try library.makeFunction(name: name).orThrow(.resourceCreationFailure("Failed to create function"))
-        if function.functionType != .kernel {
-            try _throw(MetalSprocketsError.resourceCreationFailure("Function type is not kernel"))
+        if function.functionType != Self.functionType {
+            try _throw(MetalSprocketsError.resourceCreationFailure("Function type is not \(Self.functionType)"))
         }
         self.init(function)
     }
