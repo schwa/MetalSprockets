@@ -14,7 +14,10 @@ internal struct ParameterElementModifier<Content>: Element, BodylessElement, Bod
     }
 
     func workloadEnter(_ node: Node) throws {
-        let reflection = try node.environmentValues.reflection.orThrow(.missingEnvironment(\.reflection))
+        guard let reflection = node.environmentValues.reflection else {
+            let hint = "parameter() modifiers must be placed inside a RenderPipeline or ComputePipeline content block, not as a modifier on the pipeline itself."
+            throw MetalSprocketsError.withHint(.missingEnvironment("reflection"), hint: hint)
+        }
         let renderCommandEncoder = node.environmentValues.renderCommandEncoder
         let computeCommandEncoder = node.environmentValues.computeCommandEncoder
         for parameter in parameters.values {

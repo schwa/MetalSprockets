@@ -10,6 +10,35 @@ public indirect enum MetalSprocketsError: Error, Equatable {
     case validationError(String)
     case configurationError(String)
     case unexpectedError(Self)
+    /// Wraps an error with a hint to help the user understand what might be wrong.
+    case withHint(Self, hint: String)
+}
+
+extension MetalSprocketsError: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .undefined:
+            return "Undefined error"
+        case .generic(let message):
+            return message
+        case .missingEnvironment(let name):
+            return "Missing environment value: \(name)"
+        case .missingBinding(let name):
+            return "Missing binding: \(name)"
+        case .resourceCreationFailure(let message):
+            return "Resource creation failure: \(message)"
+        case .deviceCababilityFailure(let message):
+            return "Device capability failure: \(message)"
+        case .validationError(let message):
+            return "Validation error: \(message)"
+        case .configurationError(let message):
+            return "Configuration error: \(message)"
+        case .unexpectedError(let error):
+            return "Unexpected error: \(error)"
+        case .withHint(let error, let hint):
+            return "\(error.description)\nHint: \(hint)"
+        }
+    }
 }
 
 public extension Optional {
