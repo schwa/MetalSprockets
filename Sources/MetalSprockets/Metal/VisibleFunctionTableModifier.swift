@@ -21,7 +21,7 @@ internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement,
 
     func setupEnter(_ node: Node) throws {
         guard let pipelineState = node.environmentValues.renderPipelineState,
-              let reflection = node.environmentValues.reflection else {
+            let reflection = node.environmentValues.reflection else {
             // Not ready yet - will be set up when RenderPipeline runs
             return
         }
@@ -44,8 +44,8 @@ internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement,
         }
 
         guard let table = functionTable,
-              let index = resolvedIndex,
-              let resolvedType = resolvedFunctionType else {
+            let index = resolvedIndex,
+            let resolvedType = resolvedFunctionType else {
             return
         }
 
@@ -100,21 +100,20 @@ internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement,
                 throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' not found in \(functionType) bindings")
             }
             return (index, functionType)
-        } else {
-            // Auto-detect from reflection
-            let vertexIndex = reflection.binding(forType: .vertex, name: name)
-            let fragmentIndex = reflection.binding(forType: .fragment, name: name)
+        }
+        // Auto-detect from reflection
+        let vertexIndex = reflection.binding(forType: .vertex, name: name)
+        let fragmentIndex = reflection.binding(forType: .fragment, name: name)
 
-            switch (vertexIndex, fragmentIndex) {
-            case (.some(let index), nil):
-                return (index, .vertex)
-            case (nil, .some(let index)):
-                return (index, .fragment)
-            case (.some, .some):
-                throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' found in both vertex and fragment - specify functionType explicitly")
-            case (nil, nil):
-                throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' not found in reflection")
-            }
+        switch (vertexIndex, fragmentIndex) {
+        case (.some(let index), nil):
+            return (index, .vertex)
+        case (nil, .some(let index)):
+            return (index, .fragment)
+        case (.some, .some):
+            throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' found in both vertex and fragment - specify functionType explicitly")
+        case (nil, nil):
+            throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' not found in reflection")
         }
     }
 

@@ -35,7 +35,7 @@ extension MetalSprocketsError: CustomStringConvertible {
             return "Configuration error: \(message)"
         case .unexpectedError(let error):
             return "Unexpected error: \(error)"
-        case .withHint(let error, let hint):
+        case let .withHint(error, hint):
             return "\(error.description)\nHint: \(hint)"
         }
     }
