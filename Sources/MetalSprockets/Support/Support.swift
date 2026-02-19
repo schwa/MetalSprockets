@@ -25,6 +25,16 @@ public extension Element {
             self
         }
     }
+
+    /// Mark multiple resources as in use for argument buffer access
+    func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element {
+        onWorkloadEnter { environmentValues in
+            let renderCommandEncoder = environmentValues.renderCommandEncoder.orFatalError("Missing render command encoder")
+            for resource in resources {
+                renderCommandEncoder.useResource(resource, usage: usage, stages: stages)
+            }
+        }
+    }
 }
 
 public extension Element {
