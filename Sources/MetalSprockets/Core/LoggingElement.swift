@@ -10,10 +10,10 @@ public struct LoggingElement: Element, BodylessElement {
             self.rawValue = rawValue
         }
 
-        public static let setupEnter = Phases(rawValue: 1 << 0)
-        public static let setupExit = Phases(rawValue: 1 << 1)
-        public static let workloadEnter = Phases(rawValue: 1 << 2)
-        public static let workloadExit = Phases(rawValue: 1 << 3)
+        public static let setupEnter = Self(rawValue: 1 << 0)
+        public static let setupExit = Self(rawValue: 1 << 1)
+        public static let workloadEnter = Self(rawValue: 1 << 2)
+        public static let workloadExit = Self(rawValue: 1 << 3)
 
         public static let setup: Phases = [.setupEnter, .setupExit]
         public static let workload: Phases = [.workloadEnter, .workloadExit]
