@@ -117,8 +117,8 @@ public extension OffscreenRenderer {
     /// - Returns: A ``Rendering`` containing the output texture.
     /// - Throws: Any errors that occur during rendering.
     func render<Content>(_ content: Content) throws -> Rendering where Content: Element {
-        let device = _MTLCreateSystemDefaultDevice()
-        let commandQueue = try device._makeCommandQueue()
+        // Use the device and commandQueue from init, not new ones
+        // Creating a new device here would cause a device mismatch with the textures
         let content = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
             content
         }
