@@ -1,6 +1,6 @@
 import Metal
 import MetalSprocketsSupport
-internal import os
+import os
 
 public final class ShaderCache: Sendable {
     private struct CacheKey: Hashable, Sendable {

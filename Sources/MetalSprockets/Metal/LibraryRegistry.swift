@@ -1,6 +1,6 @@
 import Metal
 import MetalSprocketsSupport
-internal import os
+import os
 
 internal final class LibraryRegistry: Sendable {
     static let shared = LibraryRegistry()

@@ -1,6 +1,6 @@
 import Foundation
 import MetalSprocketsSupport
-internal import os
+import os
 
 internal let logger: Logger? = {
     guard ProcessInfo.processInfo.loggingEnabled else {

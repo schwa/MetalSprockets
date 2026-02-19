@@ -1,5 +1,5 @@
 import Foundation
-internal import os
+import os
 
 /// Represents a traversal event in the node tree
 internal enum TraversalEvent {

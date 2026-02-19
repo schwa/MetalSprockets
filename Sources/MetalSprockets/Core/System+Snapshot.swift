@@ -1,5 +1,5 @@
 import Foundation
-internal import os
+import os
 
 // MARK: - Snapshot Creation
 

@@ -1,6 +1,6 @@
 import Metal
 import MetalSprocketsSupport
-internal import os
+import os
 
 public extension MetalSprocketsError {
     static func missingEnvironment(_ key: PartialKeyPath<MSEnvironmentValues>) -> Self {
