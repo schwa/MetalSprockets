@@ -179,6 +179,10 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     var currentDrawableSize: CGSize = .zero
 
+    // FPS tracking
+    var drawCallCount: Int = 0
+    var lastFPSPrintTime: CFAbsoluteTime = 0
+
     @ObservationIgnored
     var currentSampleCount: Int = 1
 
@@ -229,6 +233,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 let context = RenderViewContext(frameUniformas: frameUniforms)
 
                 // Return the element produced by the content builder
+                let t0 = CFAbsoluteTimeGetCurrent()
                 let rootElement = try CommandBufferElement(completion: .commit) {
                     try self.content(context, currentDrawableSize)
                 }
@@ -238,13 +243,35 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 .environment(\.renderPipelineDescriptor, MTLRenderPipelineDescriptor())
                 .environment(\.currentDrawable, currentDrawable)
                 .environment(\.drawableSize, view.drawableSize)
+                let t1 = CFAbsoluteTimeGetCurrent()
 
                 do {
                     try system.update(root: rootElement)
+                    let t2 = CFAbsoluteTimeGetCurrent()
                     // Process setup immediately after update
                     // Only nodes that need setup will be processed
                     try system.processSetup()
+                    let t3 = CFAbsoluteTimeGetCurrent()
                     try system.processWorkload()
+                    let t4 = CFAbsoluteTimeGetCurrent()
+                    
+                    if RenderViewDebugging.logFrame {
+                        drawCallCount += 1
+                        let now = CFAbsoluteTimeGetCurrent()
+                        var fpsString = ""
+                        if now - lastFPSPrintTime >= 1.0 {
+                            let fps = Double(drawCallCount) / (now - lastFPSPrintTime)
+                            fpsString = " fps=\(String(format: "%.1f", fps))"
+                            drawCallCount = 0
+                            lastFPSPrintTime = now
+                        }
+                        let contentMs = (t1 - t0) * 1000
+                        let updateMs = (t2 - t1) * 1000
+                        let setupMs = (t3 - t2) * 1000
+                        let workloadMs = (t4 - t3) * 1000
+                        let totalMs = (t4 - t0) * 1000
+                        logger?.info("RenderView.draw: content=\(String(format: "%.1f", contentMs))ms update=\(String(format: "%.1f", updateMs))ms setup=\(String(format: "%.1f", setupMs))ms workload=\(String(format: "%.1f", workloadMs))ms total=\(String(format: "%.1f", totalMs))ms\(fpsString)")
+                    }
                 } catch {
                     handle(error: error)
                 }
@@ -264,12 +291,20 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     }
 }
 
-// TODO: #269 Merge this with environment (ProcessInfo) logic.
 public struct RenderViewDebugging {
-    @MainActor
-    static var logFrame = true
-    @MainActor
-    static var fatalErrorOnCatch = true
+    public static var logFrame: Bool {
+        ProcessInfo.processInfo.environment["RENDERVIEW_LOG_FRAME"]?.isTruthy ?? false
+    }
+
+    public static var fatalErrorOnCatch: Bool {
+        ProcessInfo.processInfo.fatalErrorOnThrow
+    }
+}
+
+private extension String {
+    var isTruthy: Bool {
+        ["yes", "true", "y", "1", "on"].contains(self.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+    }
 }
 
 // MARK: - RenderViewContext
