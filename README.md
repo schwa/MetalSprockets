@@ -86,6 +86,23 @@ See the [Tutorials](https://schwa.github.io/MetalSprockets/documentation/metalsp
 
 ---
 
+## Environment Variables
+
+MetalSprockets supports several environment variables for debugging and development. Set these in Xcode's scheme editor or in your shell.
+
+| Variable | Description |
+|----------|-------------|
+| `LOGGING` | Enable general logging output |
+| `VERBOSE` | Enable verbose logging (more detailed output) |
+| `METAL_LOGGING` | Enable Metal-specific logging |
+| `FATALERROR_ON_THROW` | Convert thrown errors to fatal errors for easier debugging |
+| `RENDERVIEW_LOG_FRAME` | Log frame rendering information in RenderView |
+| `MS_DUMP_SNAPSHOTS` | Dump system snapshots to JSONL files in `$TMPDIR/metal-sprockets_snapshots/` for debugging the element tree |
+
+Truthy values: `yes`, `true`, `y`, `1`, `on` (case-insensitive).
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE)

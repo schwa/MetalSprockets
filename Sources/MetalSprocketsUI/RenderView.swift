@@ -180,8 +180,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     var currentDrawableSize: CGSize = .zero
 
     // FPS tracking
-    var drawCallCount: Int = 0
-    var lastFPSPrintTime: CFAbsoluteTime = 0
+    var fpsFrameCount: Int = 0
+    var fpsLastUpdateTime: CFAbsoluteTime = 0
+    var currentFPS: Double = 0
 
     @ObservationIgnored
     var currentSampleCount: Int = 1
@@ -256,21 +257,19 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     let t4 = CFAbsoluteTimeGetCurrent()
                     
                     if RenderViewDebugging.logFrame {
-                        drawCallCount += 1
+                        fpsFrameCount += 1
                         let now = CFAbsoluteTimeGetCurrent()
-                        var fpsString = ""
-                        if now - lastFPSPrintTime >= 1.0 {
-                            let fps = Double(drawCallCount) / (now - lastFPSPrintTime)
-                            fpsString = " fps=\(String(format: "%.1f", fps))"
-                            drawCallCount = 0
-                            lastFPSPrintTime = now
+                        if now - fpsLastUpdateTime >= 1.0 {
+                            currentFPS = Double(fpsFrameCount) / (now - fpsLastUpdateTime)
+                            fpsFrameCount = 0
+                            fpsLastUpdateTime = now
                         }
                         let contentMs = (t1 - t0) * 1000
                         let updateMs = (t2 - t1) * 1000
                         let setupMs = (t3 - t2) * 1000
                         let workloadMs = (t4 - t3) * 1000
                         let totalMs = (t4 - t0) * 1000
-                        logger?.info("RenderView.draw: content=\(String(format: "%.1f", contentMs))ms update=\(String(format: "%.1f", updateMs))ms setup=\(String(format: "%.1f", setupMs))ms workload=\(String(format: "%.1f", workloadMs))ms total=\(String(format: "%.1f", totalMs))ms\(fpsString)")
+                        logger?.info("RenderView.draw: content=\(String(format: "%.1f", contentMs))ms update=\(String(format: "%.1f", updateMs))ms setup=\(String(format: "%.1f", setupMs))ms workload=\(String(format: "%.1f", workloadMs))ms total=\(String(format: "%.1f", totalMs))ms fps=\(String(format: "%.1f", self.currentFPS))")
                     }
                 } catch {
                     handle(error: error)
