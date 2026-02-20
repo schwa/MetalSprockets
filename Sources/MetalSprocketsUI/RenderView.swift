@@ -292,7 +292,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
 public struct RenderViewDebugging {
     public static var logFrame: Bool {
-        ProcessInfo.processInfo.environment["RENDERVIEW_LOG_FRAME"]?.isTruthy ?? false
+        ProcessInfo.processInfo.environment["MS_RENDERVIEW_LOG_FRAME"]?.isTruthy ?? false
     }
 
     public static var fatalErrorOnCatch: Bool {

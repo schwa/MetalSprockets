@@ -92,11 +92,11 @@ MetalSprockets supports several environment variables for debugging and developm
 
 | Variable | Description |
 |----------|-------------|
-| `LOGGING` | Enable general logging output |
-| `VERBOSE` | Enable verbose logging (more detailed output) |
-| `METAL_LOGGING` | Enable Metal-specific logging |
-| `FATALERROR_ON_THROW` | Convert thrown errors to fatal errors for easier debugging |
-| `RENDERVIEW_LOG_FRAME` | Log frame rendering information in RenderView |
+| `MS_LOGGING` | Enable general logging output (alias: `LOGGING`) |
+| `MS_VERBOSE` | Enable verbose logging (alias: `VERBOSE`) |
+| `MS_METAL_LOGGING` | Enable Metal-specific logging |
+| `MS_FATALERROR_ON_THROW` | Convert thrown errors to fatal errors for easier debugging |
+| `MS_RENDERVIEW_LOG_FRAME` | Log frame rendering information in RenderView |
 | `MS_DUMP_SNAPSHOTS` | Dump system snapshots to JSONL files in `$TMPDIR/metal-sprockets_snapshots/` for debugging the element tree |
 
 Truthy values: `yes`, `true`, `y`, `1`, `on` (case-insensitive).

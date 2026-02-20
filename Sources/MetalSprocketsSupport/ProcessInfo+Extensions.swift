@@ -2,19 +2,19 @@ import Foundation
 
 public extension ProcessInfo {
     var loggingEnabled: Bool {
-        environment["LOGGING"]?.isTruthy ?? false
+        environment["MS_LOGGING"]?.isTruthy ?? false || environment["LOGGING"]?.isTruthy ?? false
     }
 
     var verboseLoggingEnabled: Bool {
-        environment["VERBOSE"]?.isTruthy ?? false
+        environment["MS_VERBOSE"]?.isTruthy ?? false || environment["VERBOSE"]?.isTruthy ?? false
     }
 
     var fatalErrorOnThrow: Bool {
-        environment["FATALERROR_ON_THROW"]?.isTruthy ?? false
+        environment["MS_FATALERROR_ON_THROW"]?.isTruthy ?? false
     }
 
     var metalLoggingEnabled: Bool {
-        environment["METAL_LOGGING"]?.isTruthy ?? false
+        environment["MS_METAL_LOGGING"]?.isTruthy ?? false
     }
 }
 
