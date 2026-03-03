@@ -211,8 +211,11 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
         }
 
         do {
-            if RenderViewDebugging.logFrame {
-                logger?.verbose?.info("Drawing frame #\(self.frame)")
+            let currentFrame = self.frame
+            let threadInfo = Thread.isMainThread ? "main thread" : "thread \(pthread_mach_thread_np(pthread_self()))"
+            logger?.verbose?.info("Enter draw callback (frame #\(currentFrame), \(threadInfo))")
+            defer {
+                logger?.verbose?.info("Exit draw callback (frame #\(currentFrame))")
             }
             try withIntervalSignpost(signposter, name: "RenderViewViewModel.draw()", id: signpostID) {
                 let currentDrawable = try view.currentDrawable.orThrow(.resourceCreationFailure("No drawable available"))
@@ -292,7 +295,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
 public struct RenderViewDebugging {
     public static var logFrame: Bool {
-        ProcessInfo.processInfo.environment["MS_RENDERVIEW_LOG_FRAME"]?.isTruthy ?? false
+        ProcessInfo.processInfo.renderViewLogFrameEnabled
     }
 
     public static var fatalErrorOnCatch: Bool {
@@ -300,11 +303,7 @@ public struct RenderViewDebugging {
     }
 }
 
-private extension String {
-    var isTruthy: Bool {
-        ["yes", "true", "y", "1", "on"].contains(self.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
-    }
-}
+
 
 // MARK: - RenderViewContext
 

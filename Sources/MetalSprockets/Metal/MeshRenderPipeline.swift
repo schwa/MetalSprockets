@@ -127,7 +127,7 @@ public struct MeshRenderPipeline <Content>: Element, BodylessElement, BodylessCo
     }
 
     func workloadEnter(_ node: Node) throws {
-        logger?.verbose?.info("Start mesh render pipeline: \(label ?? "<unlabeled>") (\(node.element.debugName))")
+        logger?.verbose?.info("Enter mesh render pipeline: \(label ?? "<unlabeled>") (\(node.element.debugName))")
 
         let renderCommandEncoder = try node.environmentValues.renderCommandEncoder.orThrow(.missingEnvironment(\.renderCommandEncoder))
         let renderPipelineState = try node.environmentValues.renderPipelineState.orThrow(.missingEnvironment(\.renderPipelineState))

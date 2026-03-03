@@ -59,7 +59,7 @@ public struct ComputePass <Content>: Element, BodylessElement, BodylessContentEl
     }
 
     func workloadEnter(_ node: Node) throws {
-        logger?.verbose?.info("Start compute pass: \(label ?? "<unlabeled>") (\(node.element.internalDescription))")
+        logger?.verbose?.info("Enter compute pass: \(label ?? "<unlabeled>") (\(node.element.internalDescription))")
         let commandBuffer = try node.environmentValues.commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
         let computeCommandEncoder = try commandBuffer._makeComputeCommandEncoder()
         if let label {
@@ -71,7 +71,7 @@ public struct ComputePass <Content>: Element, BodylessElement, BodylessContentEl
     func workloadExit(_ node: Node) throws {
         let computeCommandEncoder = try node.environmentValues.computeCommandEncoder.orThrow(.missingEnvironment(\.computeCommandEncoder))
         computeCommandEncoder.endEncoding()
-        logger?.verbose?.info("Ending compute pass: \(label ?? "<unlabeled>") (\(node.element.internalDescription))")
+        logger?.verbose?.info("Exit compute pass: \(label ?? "<unlabeled>") (\(node.element.internalDescription))")
     }
 }
 

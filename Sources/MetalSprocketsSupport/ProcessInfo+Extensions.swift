@@ -16,6 +16,14 @@ public extension ProcessInfo {
     var metalLoggingEnabled: Bool {
         environment["MS_METAL_LOGGING"]?.isTruthy ?? false
     }
+
+    var dumpSnapshotsEnabled: Bool {
+        environment["MS_DUMP_SNAPSHOTS"]?.isTruthy ?? false
+    }
+
+    var renderViewLogFrameEnabled: Bool {
+        environment["MS_RENDERVIEW_LOG_FRAME"]?.isTruthy ?? false
+    }
 }
 
 private extension String {

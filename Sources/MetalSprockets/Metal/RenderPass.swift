@@ -80,7 +80,7 @@ public struct RenderPass <Content>: Element, BodylessElement, BodylessContentEle
     }
 
     func workloadEnter(_ node: Node) throws {
-        logger?.verbose?.info("Start render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
+        logger?.verbose?.info("Enter render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
         let commandBuffer = try node.environmentValues.commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
         let renderPassDescriptor = try node.environmentValues.renderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor))
         let renderCommandEncoder = try commandBuffer._makeRenderCommandEncoder(descriptor: renderPassDescriptor)
@@ -105,7 +105,7 @@ public struct RenderPass <Content>: Element, BodylessElement, BodylessContentEle
         #endif
 
         node.environmentValues.renderCommandEncoder = nil
-        logger?.verbose?.info("Ending render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
+        logger?.verbose?.info("Exit render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
     }
 
     nonisolated func requiresSetup(comparedTo old: RenderPass<Content>) -> Bool {

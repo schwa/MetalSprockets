@@ -11,7 +11,7 @@ internal class Snapshotter {
     }
 
     private var frameCounter: Int = 0
-    private let shouldDumpSnapshots = ProcessInfo.processInfo.environment["MS_DUMP_SNAPSHOTS"] != nil
+    private let shouldDumpSnapshots = ProcessInfo.processInfo.dumpSnapshotsEnabled
     private var fileHandle: FileHandle?
     private let fileURL: URL
 
