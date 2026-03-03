@@ -264,7 +264,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 frameTimingChange?(frameTimingStatistics)
 
                 // Return the element produced by the content builder
-                let t0 = CFAbsoluteTimeGetCurrent()
+                let t0 = CACurrentMediaTime()
                 let rootElement = try CommandBufferElement(completion: .commit) {
                     try self.content(context, currentDrawableSize)
                 }
@@ -274,17 +274,17 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 .environment(\.renderPipelineDescriptor, MTLRenderPipelineDescriptor())
                 .environment(\.currentDrawable, currentDrawable)
                 .environment(\.drawableSize, view.drawableSize)
-                let t1 = CFAbsoluteTimeGetCurrent()
+                let t1 = CACurrentMediaTime()
 
                 do {
                     try system.update(root: rootElement)
-                    let t2 = CFAbsoluteTimeGetCurrent()
+                    let t2 = CACurrentMediaTime()
                     // Process setup immediately after update
                     // Only nodes that need setup will be processed
                     try system.processSetup()
-                    let t3 = CFAbsoluteTimeGetCurrent()
+                    let t3 = CACurrentMediaTime()
                     try system.processWorkload()
-                    let t4 = CFAbsoluteTimeGetCurrent()
+                    let t4 = CACurrentMediaTime()
                     
                     if RenderViewDebugging.logFrame {
                         let contentMs = (t1 - t0) * 1000
