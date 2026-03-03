@@ -209,6 +209,11 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     var frameTimingTracker = FrameTimingTracker()
 
+    /// GPU execution time from the most recently completed command buffer.
+    /// Written asynchronously from the command buffer completion handler.
+    @ObservationIgnored
+    nonisolated(unsafe) var lastGPUTime: TimeInterval?
+
     @ObservationIgnored
     var currentSampleCount: Int = 1
 
@@ -259,14 +264,20 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 frameTime = currentTime - firstFrameTime
                 let deltaTime = frameTime - lastFrameTime
                 let frameUniforms = FrameUniforms(index: UInt32(frame), time: Float(frameTime), deltaTime: Float(deltaTime), viewportSize: [UInt32(view.drawableSize.width), UInt32(view.drawableSize.height)])
+                frameTimingTracker.lastGPUTime = lastGPUTime
                 let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
                 let context = RenderViewContext(frameUniforms: frameUniforms, frameTimingStatistics: frameTimingStatistics)
                 frameTimingChange?(frameTimingStatistics)
 
                 // Return the element produced by the content builder
                 let t0 = CACurrentMediaTime()
+                nonisolated(unsafe) let viewModel = self
                 let rootElement = try CommandBufferElement(completion: .commit) {
                     try self.content(context, currentDrawableSize)
+                }
+                .onCommandBufferCompleted { commandBuffer in
+                    let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
+                    viewModel.lastGPUTime = gpuTime
                 }
                 .environment(\.device, device)
                 .environment(\.commandQueue, commandQueue)

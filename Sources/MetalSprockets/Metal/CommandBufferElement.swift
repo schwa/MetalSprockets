@@ -64,6 +64,16 @@ public struct CommandBufferElement <Content>: Element, BodylessContentElement wh
 
     func workloadExit(_ node: Node) throws {
         let commandBuffer = try node.environmentValues.commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
+        if let handler = node.environmentValues.commandBufferScheduledHandler {
+            commandBuffer.addScheduledHandler { buffer in
+                handler(buffer)
+            }
+        }
+        if let handler = node.environmentValues.commandBufferCompletedHandler {
+            commandBuffer.addCompletedHandler { buffer in
+                handler(buffer)
+            }
+        }
         switch completion {
         case .none:
             break
@@ -81,36 +91,20 @@ public struct CommandBufferElement <Content>: Element, BodylessContentElement wh
 // MARK: -
 
 public extension Element {
-    func onCommandBufferScheduled(_ action: @escaping (MTLCommandBuffer) -> Void) -> some Element {
-        EnvironmentReader(keyPath: \.commandBuffer) { commandBuffer in
-            // Copy action into a nonisolated(unsafe) local so the @Sendable closure can capture it safely.
-            nonisolated(unsafe) let actionCopy = action
-            return self.onWorkloadEnter { _ in
-                if let commandBuffer {
-                    commandBuffer.addScheduledHandler { commandBuffer in
-                        actionCopy(commandBuffer)
-                    }
-                }
-            }
-        }
+    /// Registers a handler called when the command buffer is scheduled for execution.
+    ///
+    /// The handler is attached to the command buffer in `CommandBufferElement.workloadExit`,
+    /// just before the buffer is committed.
+    func onCommandBufferScheduled(_ action: @escaping @Sendable (MTLCommandBuffer) -> Void) -> some Element {
+        environment(\.commandBufferScheduledHandler, action)
     }
 
-    func onCommandBufferCompleted(_ action: @escaping (MTLCommandBuffer) -> Void) -> some Element {
-        EnvironmentReader(keyPath: \.commandBuffer) { commandBuffer in
-            // Copy action into a nonisolated(unsafe) local so the @Sendable closure can capture it safely.
-            nonisolated(unsafe) let actionCopy = action
-            return self.onWorkloadEnter { _ in
-                if let commandBuffer {
-                    guard commandBuffer.status == .notEnqueued || commandBuffer.status == .enqueued else {
-                        logger?.warning("onCommandBufferCompleted: Command buffer is already completed or in error state; handler will not be added.")
-                        return
-                    }
-
-                    commandBuffer.addCompletedHandler { commandBuffer in
-                        actionCopy(commandBuffer)
-                    }
-                }
-            }
-        }
+    /// Registers a handler called when the command buffer completes execution.
+    ///
+    /// The handler is attached to the command buffer in `CommandBufferElement.workloadExit`,
+    /// just before the buffer is committed. Use this to read GPU timing via
+    /// `commandBuffer.gpuStartTime` / `gpuEndTime`.
+    func onCommandBufferCompleted(_ action: @escaping @Sendable (MTLCommandBuffer) -> Void) -> some Element {
+        environment(\.commandBufferCompletedHandler, action)
     }
 }

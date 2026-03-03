@@ -36,13 +36,21 @@ public struct FrameTimingStatistics: Sendable, Equatable {
     /// Total number of frames rendered since the render view started.
     public var frameCount: Int
 
-    public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int) {
+    /// GPU execution time of the most recent completed frame, in seconds.
+    ///
+    /// This is `nil` until the first command buffer completion handler fires
+    /// (typically one frame behind). Computed from
+    /// `MTLCommandBuffer.gpuEndTime - gpuStartTime`.
+    public var gpuTime: TimeInterval?
+
+    public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil) {
         self.currentFPS = currentFPS
         self.deltaTime = deltaTime
         self.averageDeltaTime = averageDeltaTime
         self.minDeltaTime = minDeltaTime
         self.maxDeltaTime = maxDeltaTime
         self.frameCount = frameCount
+        self.gpuTime = gpuTime
     }
 }
 
@@ -69,6 +77,9 @@ internal struct FrameTimingTracker: Sendable {
 
     /// The timestamp of the previous frame (seconds, from `CACurrentMediaTime`).
     private var lastTimestamp: CFTimeInterval?
+
+    /// GPU execution time from the most recently completed command buffer.
+    var lastGPUTime: TimeInterval?
 
     /// Record a new frame at the given timestamp and return updated statistics.
     @discardableResult
@@ -104,7 +115,8 @@ internal struct FrameTimingTracker: Sendable {
                 averageDeltaTime: 0,
                 minDeltaTime: 0,
                 maxDeltaTime: 0,
-                frameCount: frameCount
+                frameCount: frameCount,
+                gpuTime: lastGPUTime
             )
         }
 
@@ -142,7 +154,8 @@ internal struct FrameTimingTracker: Sendable {
             averageDeltaTime: averageDelta,
             minDeltaTime: windowCount > 0 ? minDelta : 0,
             maxDeltaTime: maxDelta,
-            frameCount: frameCount
+            frameCount: frameCount,
+            gpuTime: lastGPUTime
         )
     }
 }

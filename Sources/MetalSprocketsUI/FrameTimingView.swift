@@ -20,11 +20,14 @@ public struct FrameTimingDisplayOptions: OptionSet, Sendable {
     /// Show the total frame count.
     public static let frameCount = FrameTimingDisplayOptions(rawValue: 1 << 3)
 
+    /// Show GPU execution time in milliseconds (e.g., "GPU 2.1 ms").
+    public static let gpuTime = FrameTimingDisplayOptions(rawValue: 1 << 4)
+
     /// The default display: FPS only.
     public static let `default`: FrameTimingDisplayOptions = [.fps]
 
     /// Show everything.
-    public static let all: FrameTimingDisplayOptions = [.fps, .frameTime, .range, .frameCount]
+    public static let all: FrameTimingDisplayOptions = [.fps, .frameTime, .range, .frameCount, .gpuTime]
 }
 
 /// A compact view that displays frame timing statistics.
@@ -83,6 +86,9 @@ public struct FrameTimingView: View {
                             let rangeText = formattedMilliseconds(statistics.minDeltaTime) + "–" + formattedMilliseconds(statistics.maxDeltaTime)
                             LabeledContent("1s Range", value: rangeText)
                         }
+                        if options.contains(.gpuTime), let gpuTime = statistics.gpuTime {
+                            LabeledContent("GPU", value: formattedMilliseconds(gpuTime))
+                        }
                         if options.contains(.frameCount) {
                             LabeledContent("Frame #", value: "\(statistics.frameCount)")
                         }
@@ -127,5 +133,5 @@ public struct FrameTimingView: View {
 }
 
 #Preview {
-    FrameTimingView(statistics: FrameTimingStatistics(currentFPS: 60, deltaTime: 0.0167, averageDeltaTime: 0.0166, minDeltaTime: 0.0145, maxDeltaTime: 0.0201, frameCount: 4827), options: .all)
+    FrameTimingView(statistics: FrameTimingStatistics(currentFPS: 60, deltaTime: 0.0167, averageDeltaTime: 0.0166, minDeltaTime: 0.0145, maxDeltaTime: 0.0201, frameCount: 4827, gpuTime: 0.0021), options: .all)
 }

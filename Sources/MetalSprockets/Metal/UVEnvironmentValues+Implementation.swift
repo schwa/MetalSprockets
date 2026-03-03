@@ -30,6 +30,8 @@ public extension MSEnvironmentValues {
     @MSEntry var drawableSize: CGSize?
     @MSEntry var blitCommandEncoder: MTLBlitCommandEncoder?
     @MSEntry var linkedFunctions: MTLLinkedFunctions?
+    @MSEntry var commandBufferScheduledHandler: (@Sendable (MTLCommandBuffer) -> Void)?
+    @MSEntry var commandBufferCompletedHandler: (@Sendable (MTLCommandBuffer) -> Void)?
 }
 
 public extension Element {
