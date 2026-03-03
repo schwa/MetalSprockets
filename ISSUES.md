@@ -1996,3 +1996,34 @@ if p1 is Observable { continue }
 
 ---
 
+## 288: Investigate background thread rendering for RenderView
+status: new
+priority: low
+kind: feature
+created: 2026-03-03
+
+## Context
+
+MTKView's draw(in:) callback fires on the main thread via a dispatch source on the main queue. When SwiftUI layout work is heavy (e.g., inspector forms being re-evaluated during camera rotation), it can starve the display link and drop frame rate.
+
+## Investigation Done
+
+- Confirmed via backtrace that draw(in:) comes through CVDisplayLink → dispatch source → main queue drain
+- MTKView has no API to control which thread the delegate callback fires on
+- MTKView supports explicit drawing mode (isPaused=true, enableSetNeedsDisplay=false) where you call draw() yourself
+- However, MTKView.draw() asserts it's on the main queue — cannot be called from a background thread
+- Attempted a CAMetalLayer-based approach (bypass MTKView's draw path, use nextDrawable() directly on a background dispatch timer) but it requires reimplementing too much of MTKView's infrastructure (depth/stencil texture management, resize handling, clear colors, etc.)
+- Approach abandoned as too fragile for the benefit
+
+## Options Still Open
+
+1. Fix the SwiftUI side — prevent unnecessary layout during rapid state changes (see MetalSprocketsGaussianSplats#6)
+2. Throttle state propagation to SwiftUI (e.g., update inspector at 10fps, not 60fps)
+3. Build a dedicated non-MTKView render host that owns its own CAMetalLayer and render thread from the ground up (larger effort, cleaner result)
+
+## Related
+
+- MetalSprocketsGaussianSplats#6: Multi-splat mode FPS drops during camera rotation
+
+---
+
