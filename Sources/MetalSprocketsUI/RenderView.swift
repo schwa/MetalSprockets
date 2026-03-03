@@ -16,11 +16,30 @@ public extension EnvironmentValues {
 
     @Entry
     var drawableSizeChange: ((CGSize) -> Void)?
+
+    @Entry
+    var frameTimingChange: ((FrameTimingStatistics) -> Void)?
 }
 
 public extension View {
     func onDrawableSizeChange(perform action: @escaping (CGSize) -> Void) -> some View {
         environment(\.drawableSizeChange, action)
+    }
+
+    /// Registers a callback that is called every frame with the latest frame timing statistics.
+    ///
+    /// Use this to feed a ``FrameTimingView`` or log frame performance data.
+    ///
+    /// ```swift
+    /// @State var statistics: FrameTimingStatistics?
+    ///
+    /// RenderView { context, size in
+    ///     // ...
+    /// }
+    /// .onFrameTimingChange { statistics = $0 }
+    /// ```
+    func onFrameTimingChange(perform action: @escaping (FrameTimingStatistics) -> Void) -> some View {
+        environment(\.frameTimingChange, action)
     }
 }
 
@@ -116,6 +135,9 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     @Environment(\.drawableSizeChange)
     private var drawableSizeChange
 
+    @Environment(\.frameTimingChange)
+    private var frameTimingChange
+
     @State
     private var viewModel: RenderViewViewModel<Content>
 
@@ -145,6 +167,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             view.configure(from: environment)
             viewModel.content = content
             viewModel.drawableSizeChange = drawableSizeChange
+            viewModel.frameTimingChange = frameTimingChange
         }
         //        .modifier(RenderViewDebugViewModifier<Content>())
         .environment(viewModel)
@@ -171,6 +194,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     var drawableSizeChange: ((CGSize) -> Void)?
 
     @ObservationIgnored
+    var frameTimingChange: ((FrameTimingStatistics) -> Void)?
+
+    @ObservationIgnored
     var signpostID = signposter?.makeSignpostID()
 
     var frame: Int = 0
@@ -179,10 +205,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     var currentDrawableSize: CGSize = .zero
 
-    // FPS tracking
-    var fpsFrameCount: Int = 0
-    var fpsLastUpdateTime: CFAbsoluteTime = 0
-    var currentFPS: Double = 0
+    // Frame timing
+    @ObservationIgnored
+    var frameTimingTracker = FrameTimingTracker()
 
     @ObservationIgnored
     var currentSampleCount: Int = 1
@@ -234,7 +259,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 frameTime = currentTime - firstFrameTime
                 let deltaTime = frameTime - lastFrameTime
                 let frameUniforms = FrameUniforms(index: UInt32(frame), time: Float(frameTime), deltaTime: Float(deltaTime), viewportSize: [UInt32(view.drawableSize.width), UInt32(view.drawableSize.height)])
-                let context = RenderViewContext(frameUniformas: frameUniforms)
+                let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
+                let context = RenderViewContext(frameUniforms: frameUniforms, frameTimingStatistics: frameTimingStatistics)
+                frameTimingChange?(frameTimingStatistics)
 
                 // Return the element produced by the content builder
                 let t0 = CFAbsoluteTimeGetCurrent()
@@ -260,19 +287,12 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     let t4 = CFAbsoluteTimeGetCurrent()
                     
                     if RenderViewDebugging.logFrame {
-                        fpsFrameCount += 1
-                        let now = CFAbsoluteTimeGetCurrent()
-                        if now - fpsLastUpdateTime >= 1.0 {
-                            currentFPS = Double(fpsFrameCount) / (now - fpsLastUpdateTime)
-                            fpsFrameCount = 0
-                            fpsLastUpdateTime = now
-                        }
                         let contentMs = (t1 - t0) * 1000
                         let updateMs = (t2 - t1) * 1000
                         let setupMs = (t3 - t2) * 1000
                         let workloadMs = (t4 - t3) * 1000
                         let totalMs = (t4 - t0) * 1000
-                        logger?.info("RenderView.draw: content=\(String(format: "%.1f", contentMs))ms update=\(String(format: "%.1f", updateMs))ms setup=\(String(format: "%.1f", setupMs))ms workload=\(String(format: "%.1f", workloadMs))ms total=\(String(format: "%.1f", totalMs))ms fps=\(String(format: "%.1f", self.currentFPS))")
+                        logger?.info("RenderView.draw: content=\(contentMs.formatted(.number.precision(.fractionLength(1))))ms update=\(updateMs.formatted(.number.precision(.fractionLength(1))))ms setup=\(setupMs.formatted(.number.precision(.fractionLength(1))))ms workload=\(workloadMs.formatted(.number.precision(.fractionLength(1))))ms total=\(totalMs.formatted(.number.precision(.fractionLength(1))))ms fps=\(frameTimingStatistics.currentFPS.formatted(.number.precision(.fractionLength(1))))")
                     }
                 } catch {
                     handle(error: error)
@@ -324,8 +344,12 @@ public struct RenderViewContext {
     /// Per-frame timing and viewport information.
     public private(set) var frameUniforms: FrameUniforms
 
-    internal init(frameUniformas: FrameUniforms) {
-        self.frameUniforms = frameUniformas
+    /// Frame timing statistics computed over a rolling window.
+    public private(set) var frameTimingStatistics: FrameTimingStatistics
+
+    internal init(frameUniforms: FrameUniforms, frameTimingStatistics: FrameTimingStatistics) {
+        self.frameUniforms = frameUniforms
+        self.frameTimingStatistics = frameTimingStatistics
     }
 }
 
