@@ -298,13 +298,13 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     let t3 = CACurrentMediaTime()
                     try system.processWorkload()
                     let t4 = CACurrentMediaTime()
-                    
+
                     if RenderViewDebugging.logFrame {
-                        let contentMs = (t1 - t0) * 1000
-                        let updateMs = (t2 - t1) * 1000
-                        let setupMs = (t3 - t2) * 1000
-                        let workloadMs = (t4 - t3) * 1000
-                        let totalMs = (t4 - t0) * 1000
+                        let contentMs = (t1 - t0) * 1_000
+                        let updateMs = (t2 - t1) * 1_000
+                        let setupMs = (t3 - t2) * 1_000
+                        let workloadMs = (t4 - t3) * 1_000
+                        let totalMs = (t4 - t0) * 1_000
                         logger?.info("RenderView.draw: content=\(contentMs.formatted(.number.precision(.fractionLength(1))))ms update=\(updateMs.formatted(.number.precision(.fractionLength(1))))ms setup=\(setupMs.formatted(.number.precision(.fractionLength(1))))ms workload=\(workloadMs.formatted(.number.precision(.fractionLength(1))))ms total=\(totalMs.formatted(.number.precision(.fractionLength(1))))ms fps=\(frameTimingStatistics.currentFPS.formatted(.number.precision(.fractionLength(1))))")
                     }
                 } catch {
@@ -336,8 +336,6 @@ public struct RenderViewDebugging {
     }
 }
 
-
-
 // MARK: - RenderViewContext
 
 /// Context information passed to the render view's content closure each frame.
@@ -359,11 +357,6 @@ public struct RenderViewContext {
 
     /// Frame timing statistics computed over a rolling window.
     public private(set) var frameTimingStatistics: FrameTimingStatistics
-
-    internal init(frameUniforms: FrameUniforms, frameTimingStatistics: FrameTimingStatistics) {
-        self.frameUniforms = frameUniforms
-        self.frameTimingStatistics = frameTimingStatistics
-    }
 }
 
 // MARK: - FrameUniforms

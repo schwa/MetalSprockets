@@ -9,19 +9,19 @@ public struct FrameTimingDisplayOptions: OptionSet, Sendable {
     }
 
     /// Show the current FPS (e.g., "60 FPS").
-    public static let fps = FrameTimingDisplayOptions(rawValue: 1 << 0)
+    public static let fps = Self(rawValue: 1 << 0)
 
     /// Show the frame time in milliseconds (e.g., "16.7 ms").
-    public static let frameTime = FrameTimingDisplayOptions(rawValue: 1 << 1)
+    public static let frameTime = Self(rawValue: 1 << 1)
 
     /// Show the min/max frame time range (e.g., "8.3–33.2 ms").
-    public static let range = FrameTimingDisplayOptions(rawValue: 1 << 2)
+    public static let range = Self(rawValue: 1 << 2)
 
     /// Show the total frame count.
-    public static let frameCount = FrameTimingDisplayOptions(rawValue: 1 << 3)
+    public static let frameCount = Self(rawValue: 1 << 3)
 
     /// Show GPU execution time in milliseconds (e.g., "GPU 2.1 ms").
-    public static let gpuTime = FrameTimingDisplayOptions(rawValue: 1 << 4)
+    public static let gpuTime = Self(rawValue: 1 << 4)
 
     /// The default display: FPS only.
     public static let `default`: FrameTimingDisplayOptions = [.fps]
@@ -58,7 +58,7 @@ public struct FrameTimingView: View {
     let minimumUpdateInterval: TimeInterval = 1.0 / 15.0
 
     @State
-    var savedStatistics: FrameTimingStatistics?
+    private var savedStatistics: FrameTimingStatistics?
 
     public init(statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions = .default) {
         self.statistics = statistics
@@ -70,7 +70,6 @@ public struct FrameTimingView: View {
             Group {
                 Form {
                     if let statistics = savedStatistics {
-
                         if options.contains(.fps) {
                             LabeledContent {
                                 Text("\(Int(statistics.currentFPS.rounded()))")
@@ -104,9 +103,7 @@ public struct FrameTimingView: View {
             .onChange(of: timeline.date, initial: true) {
                 savedStatistics = statistics
             }
-
         }
-
     }
 
     private static let millisecondFormat: Measurement<UnitDuration>.FormatStyle = .measurement(
@@ -124,14 +121,14 @@ public struct FrameTimingView: View {
     private func fpsColor(for fps: Double) -> Color {
         if fps >= 55 {
             return .green
-        } else if fps >= 30 {
-            return .yellow
-        } else {
-            return .red
         }
+        if fps >= 30 {
+            return .yellow
+        }
+        return .red
     }
 }
 
 #Preview {
-    FrameTimingView(statistics: FrameTimingStatistics(currentFPS: 60, deltaTime: 0.0167, averageDeltaTime: 0.0166, minDeltaTime: 0.0145, maxDeltaTime: 0.0201, frameCount: 4827, gpuTime: 0.0021), options: .all)
+    FrameTimingView(statistics: FrameTimingStatistics(currentFPS: 60, deltaTime: 0.0167, averageDeltaTime: 0.0166, minDeltaTime: 0.0145, maxDeltaTime: 0.0201, frameCount: 4_827, gpuTime: 0.0021), options: .all)
 }

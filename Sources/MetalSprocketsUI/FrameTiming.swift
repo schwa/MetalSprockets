@@ -136,7 +136,7 @@ internal struct FrameTimingTracker: Sendable {
             let delta = deltas[index]
             accumulated += delta
             // Stop if we've exceeded 1 second of history
-            if accumulated > 1.0 && windowCount > 0 {
+            if accumulated > 1.0, windowCount > 0 {
                 break
             }
             sum += delta
