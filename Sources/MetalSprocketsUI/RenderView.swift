@@ -273,11 +273,13 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 let t0 = CACurrentMediaTime()
                 nonisolated(unsafe) let viewModel = self
                 let rootElement = try CommandBufferElement(completion: .commit) {
-                    try self.content(context, currentDrawableSize)
-                }
-                .onCommandBufferCompleted { commandBuffer in
-                    let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
-                    viewModel.lastGPUTime = gpuTime
+                    try Group {
+                        try self.content(context, currentDrawableSize)
+                    }
+                    .onCommandBufferCompleted { commandBuffer in
+                        let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
+                        viewModel.lastGPUTime = gpuTime
+                    }
                 }
                 .environment(\.device, device)
                 .environment(\.commandQueue, commandQueue)
