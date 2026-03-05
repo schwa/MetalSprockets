@@ -2027,3 +2027,15 @@ MTKView's draw(in:) callback fires on the main thread via a dispatch source on t
 
 ---
 
+## 289: Make MSState Sendable when Value is Sendable
+status: new
+priority: low
+kind: enhancement
+created: 2026-03-05
+
+Add `extension MSState: @unchecked Sendable where Value: Sendable {}`. MSState is backed by a reference type (Box<StateBox<Value>>) so it's safe to send across concurrency boundaries. Currently requires `nonisolated(unsafe)` workarounds when capturing @MSState in Tasks.
+
+- 2026-03-05: Unsafe to implement as described. StateBox has no synchronization — _value, dependencies, and hasBeenConnected are all mutated without locking. Box is similarly unprotected. Concurrent access from multiple isolation domains would cause data races. Would need to add a lock to StateBox (or make access actor-isolated) before this conformance is safe.
+
+---
+
