@@ -271,14 +271,14 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
                 // Return the element produced by the content builder
                 let t0 = CACurrentMediaTime()
-                nonisolated(unsafe) let viewModel = self
+                nonisolated(unsafe) weak var weakViewModel = self
                 let rootElement = try CommandBufferElement(completion: .commit) {
                     try Group {
                         try self.content(context, currentDrawableSize)
                     }
                     .onCommandBufferCompleted { commandBuffer in
                         let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
-                        viewModel.lastGPUTime = gpuTime
+                        weakViewModel?.lastGPUTime = gpuTime
                     }
                 }
                 .environment(\.device, device)
