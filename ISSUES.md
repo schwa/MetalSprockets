@@ -3,7 +3,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 The elephant in room here is that UV is not as type safe as it should be.
 
@@ -26,7 +26,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 It would be nice if `ParameterValues` had better constructors so that we know 2nd parameter of `.buffer(…, …)` is an offset in the buffer and to get rid of the `T` generic parameter.
 
@@ -41,7 +41,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #11*
 
@@ -52,7 +52,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #12*
 
@@ -63,7 +63,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #14*
 
@@ -74,7 +74,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #17*
 
@@ -85,7 +85,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 By default a vertex and fragment shader should be a modifier instead of a parameter
 
@@ -106,7 +106,7 @@ status: open
 priority: none
 kind: none
 labels: concurrency, effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #24*
 
@@ -117,7 +117,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #25*
 
@@ -128,7 +128,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #26*
 
@@ -139,7 +139,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 In file Sources/Ultraviolence/CommandBufferElement.swift
 https://github.com/schwa/Ultraviolence/blob/ebd49f199dbed51331e10ecaf7f9602f391f1d94/Sources/Ultraviolence/CommandBufferElement.swift#L4
@@ -153,7 +153,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ```
 // TODO: SwiftUI.Environment adopts DynamicProperty.
@@ -171,7 +171,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 In file Sources/UltraviolenceExamples/CheckerboardKernel.swift
 https://github.com/schwa/Ultraviolence/blob/ebd49f199dbed51331e10ecaf7f9602f391f1d94/Sources/UltraviolenceExamples/CheckerboardKernel.swift#L23
@@ -185,7 +185,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ```
         // TODO: Hack
@@ -203,7 +203,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #40*
 
@@ -214,7 +214,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #41*
 
@@ -225,7 +225,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #42*
 
@@ -236,7 +236,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #43*
 
@@ -247,7 +247,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 This is akin to .hidden() in SwiftUI.
 
@@ -260,7 +260,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Put parameters into one RenderPass object instead of having a bunch of nested `ParameterRenderPass`
 
@@ -294,7 +294,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #47*
 
@@ -305,7 +305,7 @@ status: open
 priority: none
 kind: none
 labels: effort:xl
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #51*
 
@@ -316,7 +316,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #53*
 
@@ -327,7 +327,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #54*
 
@@ -338,7 +338,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 It's confusing what parts of the Metal stack core elements are responsible for.
 
@@ -355,7 +355,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 We need a nice clean way to allow the user to customise attachments incl (but not limited to) color, depth, stencil etc.
 
@@ -367,7 +367,7 @@ We need a nice clean way to allow the user to customise attachments incl (but no
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #65*
 
@@ -378,7 +378,7 @@ status: open
 priority: low
 kind: none
 labels: effort:m, priority:low
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #68*
 
@@ -389,7 +389,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #69*
 
@@ -400,7 +400,7 @@ status: open
 priority: none
 kind: none
 labels: effort:xl, concurrency
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #71*
 
@@ -411,7 +411,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #73*
 
@@ -422,7 +422,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 /*
     var poi = OSSignposter(subsystem: “…”, category: .pointsOfInterest)
@@ -443,7 +443,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/Ultraviolence/ShaderLibrary.swift at line 47
 
@@ -456,7 +456,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/Ultraviolence/CommandBufferElement.swift at line 20
 
@@ -469,7 +469,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/Ultraviolence/CommandBufferElement.swift at line 25
 
@@ -482,7 +482,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/Ultraviolence/RenderPipelineDescriptorModifier.swift at line 4
 
@@ -495,7 +495,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/Ultraviolence/RenderPipeline.swift at line 41
 
@@ -508,7 +508,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/UltraviolenceUI/Parameter+SwiftUI.swift at line 4
 
@@ -521,7 +521,7 @@ status: open
 priority: none
 kind: none
 labels: source:todo, blocked
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/UltraviolenceUI/ViewAdaptor.swift at line 4
 
@@ -534,7 +534,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/Ultraviolence/UVEnvironmentValues+Implementation.swift at line 6
 
@@ -547,7 +547,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/UltraviolenceSupport/MetalSupport.swift at line 758
 
@@ -560,7 +560,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/UltraviolenceSupport/MetalSupport.swift at line 767
 
@@ -573,7 +573,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/Support/Transforms.swift at line 26
 
@@ -586,7 +586,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/Support/Projection.swift at line 39
 
@@ -599,7 +599,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/Interaction/DraggableValueViewModifier.swift at line 20
 
@@ -612,7 +612,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/Interaction/DraggableValueViewModifier.swift at line 69
 
@@ -625,7 +625,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/ExampleElements/MixedExample.swift at line 29
 
@@ -638,7 +638,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Packed3 should work identically to SIMD3. We need to flesh it out with more operators etc.
 
@@ -651,7 +651,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, source:todo, testing
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/Ultraviolence/Core/ElementBuilder.swift at line 22
 
@@ -664,7 +664,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, concurrency, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Both `SplatCloud` and `SplatIndices` are marked as `@unchecked Sendable`, which bypasses Swift's concurrency safety checks.
 
@@ -696,7 +696,7 @@ status: open
 priority: none
 kind: none
 labels: effort:l, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Tests/UltraviolenceTests/RenderTests.swift at line 60
 
@@ -709,7 +709,7 @@ status: open
 priority: none
 kind: none
 labels: effort:xl, testing
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #137*
 
@@ -720,7 +720,7 @@ status: open
 priority: none
 kind: none
 labels: effort:xl, testing
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #138*
 
@@ -731,7 +731,7 @@ status: open
 priority: none
 kind: documentation
 labels: documentation, effort:xl
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #139*
 
@@ -742,7 +742,7 @@ status: open
 priority: none
 kind: documentation
 labels: documentation, effort:xl
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #140*
 
@@ -753,7 +753,7 @@ status: open
 priority: none
 kind: documentation
 labels: documentation, effort:xl
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #141*
 
@@ -764,7 +764,7 @@ status: open
 priority: low
 kind: documentation
 labels: documentation, priority:low, effort:xl
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #142*
 
@@ -775,7 +775,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Currently, `onWorkloadExit` is only available on `AnyBodylessElement`, while `onWorkloadEnter` is available as a general modifier for all Elements through `WorkloadModifier`.
 
@@ -798,7 +798,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement, demo
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Summary
 Port the barrel distortion post-processing effect to demonstrate image distortion capabilities in Ultraviolence.
@@ -833,7 +833,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Currently in MetalSupport.swift, we have a custom convenience initializer that converts MDLVertexDescriptor to MTLVertexDescriptor. MetalKit provides MTKMetalVertexDescriptorFromModelIO() for this exact purpose. We should replace our custom implementation with the official API.
 
@@ -850,7 +850,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #163*
 
@@ -861,7 +861,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #164*
 
@@ -872,7 +872,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Current State
 After fixing #68, we now always create fresh Storage instances for each node to prevent cycles. This raises the question of whether the parent chain is still necessary.
@@ -912,7 +912,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #169*
 
@@ -923,7 +923,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #172*
 
@@ -934,7 +934,7 @@ status: open
 priority: none
 kind: feature
 labels: feature
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #176*
 
@@ -945,7 +945,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Problem
 Many modifiers use closures which makes element comparison impossible, contributing to the performance issues in #17.
@@ -991,7 +991,7 @@ status: open
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Overview
 Add an id modifier similar to SwiftUI that allows explicit identity control for elements, supporting the structural identity system.
@@ -1041,7 +1041,7 @@ StructuralID.Atom(
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Description
 Currently we have minimal test coverage for NeoNode functionality. We should expand the test suite to cover more scenarios.
@@ -1071,7 +1071,7 @@ Tests should be added to `Tests/UltraviolenceTests/NeoNodeTests.swift`
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #186*
 
@@ -1082,7 +1082,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Problem
 
@@ -1188,7 +1188,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Problem
 
@@ -1341,7 +1341,7 @@ Performance optimization - the current behavior is functionally correct but caus
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #192*
 
@@ -1352,7 +1352,7 @@ status: open
 priority: none
 kind: feature
 labels: feature
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Create a target of standard shaders and pipelines that user can immediately use. 
 
@@ -1367,7 +1367,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 In ForEach.swift:24, there's a TODO noting that we're not using IDs in the System StructuralIdentifier yet. This should be implemented to properly track ForEach elements.
 
@@ -1382,7 +1382,7 @@ status: open
 priority: none
 kind: bug
 labels: bug
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 StateBox has TODO comments about error handling in the getter and setter methods. Need to determine proper error handling strategy.
 
@@ -1398,7 +1398,7 @@ Files:
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 EnvironmentReader should ideally be passed a Node as a parameter as noted in the TODO.
 
@@ -1412,7 +1412,7 @@ File: Sources/Ultraviolence/Core/EnvironmentReader.swift:18
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 System class has properties that need to become private as noted in the TODO.
 
@@ -1426,7 +1426,7 @@ File: Sources/Ultraviolence/Core/System.swift:4
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 System could call cleanup/onDisappear when nodes are removed. Currently just notes they're gone.
 
@@ -1441,7 +1441,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 The Element+SystemExtensions file needs to be renamed to better reflect its purpose.
 
@@ -1455,7 +1455,7 @@ File: Sources/Ultraviolence/Core/Element+SystemExtensions.swift:2
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 There are extensions in AnyBodylessElement whose purpose is unclear. Need to investigate and document or remove.
 
@@ -1470,7 +1470,7 @@ status: open
 priority: none
 kind: bug
 labels: bug
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Walking the tree in Element+Dump can modify state which is dangerous. Elements like EnvironmentReader can break things. Need to only walk the System tree instead.
 
@@ -1486,7 +1486,7 @@ Files:
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Need to determine if AnyElement is still needed in the codebase.
 
@@ -1501,7 +1501,7 @@ status: open
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 We've explicit labels to computepass and friends. Add them to more places. Use them in more places.
 
@@ -1514,7 +1514,7 @@ status: open
 priority: high
 kind: none
 labels: effort:m, priority:high
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #215*
 
@@ -1524,7 +1524,7 @@ created: 2026-02-19
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #225*
 
@@ -1535,7 +1535,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Problem
 
@@ -1609,7 +1609,7 @@ status: open
 priority: none
 kind: bug
 labels: bug
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Problem
 
@@ -1661,7 +1661,7 @@ status: open
 priority: medium
 kind: enhancement
 labels: enhancement, priority:medium
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Problem
 
@@ -1716,7 +1716,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 func parameter(_ name: String, functionType: MTLFunctionType? = nil, values: [some Any])func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: some Any)
 
@@ -1731,7 +1731,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Not really needed now that we broke out geometrylite3d.
 
@@ -1746,7 +1746,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #235*
 
@@ -1757,7 +1757,7 @@ status: open
 priority: none
 kind: bug
 labels: bug
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #237*
 
@@ -1768,7 +1768,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement, priority:urgent
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #238*
 
@@ -1779,7 +1779,7 @@ status: open
 priority: none
 kind: bug
 labels: bug
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 We still haven't solved the shader compilation problem.
 
@@ -1796,7 +1796,7 @@ status: open
 priority: none
 kind: bug
 labels: bug
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 ## Problem
 
@@ -1844,7 +1844,7 @@ Found in `DebugRenderPipeline` where changing the body return type from `any Ele
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #247*
 
@@ -1854,7 +1854,7 @@ created: 2026-02-19
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #248*
 
@@ -1865,7 +1865,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #251*
 
@@ -1876,7 +1876,7 @@ status: open
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #251*
 
@@ -1886,7 +1886,7 @@ created: 2026-02-19
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #260*
 
@@ -1896,7 +1896,7 @@ created: 2026-02-19
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/UltraviolenceUI/RenderView.swift:195
 
@@ -1910,7 +1910,7 @@ The RenderView currently has separate logic for environment and ProcessInfo that
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Found in Sources/UltraviolenceUI/MTKView+Environment.swift:41 and :45
 
@@ -1924,7 +1924,7 @@ These settings are so important they should be parameters on RenderView instead 
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #272*
 
@@ -1934,7 +1934,7 @@ created: 2026-02-19
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 *Imported from #274*
 
@@ -1944,7 +1944,7 @@ created: 2026-02-19
 status: open
 priority: none
 kind: none
-created: 2026-02-19
+created: 2026-02-19T00:00:00+00:00
 
 Implement Swift Observation framework support based on the approach from [objcio/S01E268-state-and-bindings PR #1](https://github.com/objcio/S01E268-state-and-bindings/pull/1).
 
@@ -2000,7 +2000,7 @@ if p1 is Observable { continue }
 status: new
 priority: low
 kind: feature
-created: 2026-03-03
+created: 2026-03-03T00:00:00+00:00
 
 ## Context
 
@@ -2031,11 +2031,58 @@ MTKView's draw(in:) callback fires on the main thread via a dispatch source on t
 status: new
 priority: low
 kind: enhancement
-created: 2026-03-05
+created: 2026-03-05T00:00:00+00:00
 
 Add `extension MSState: @unchecked Sendable where Value: Sendable {}`. MSState is backed by a reference type (Box<StateBox<Value>>) so it's safe to send across concurrency boundaries. Currently requires `nonisolated(unsafe)` workarounds when capturing @MSState in Tasks.
 
-- 2026-03-05: Unsafe to implement as described. StateBox has no synchronization — _value, dependencies, and hasBeenConnected are all mutated without locking. Box is similarly unprotected. Concurrent access from multiple isolation domains would cause data races. Would need to add a lock to StateBox (or make access actor-isolated) before this conformance is safe.
+- 2026-03-05T00:00:00+00:00: Unsafe to implement as described. StateBox has no synchronization — _value, dependencies, and hasBeenConnected are all mutated without locking. Box is similarly unprotected. Concurrent access from multiple isolation domains would cause data races. Would need to add a lock to StateBox (or make access actor-isolated) before this conformance is safe.
+
+---
+
+## 290: onCommandBufferCompleted and onCommandBufferScheduled modifiers are unreliable and underdocumented
+status: new
+priority: high
+kind: bug
+labels: api,documentation
+created: 2026-03-31T16:45:51.891537+00:00
+
+## Problem
+
+The `onCommandBufferCompleted` and `onCommandBufferScheduled` Element modifiers do not fire reliably. When used on a `RenderPass` inside a `RenderView`, the completion handler is never called.
+
+## Reproduction
+
+```swift
+RenderView { _, drawableSize in
+    try RenderPass {
+        // ... render content
+    }
+    .onCommandBufferCompleted { _ in
+        print("This never prints")
+    }
+}
+```
+
+## Expected Behavior
+
+The completion handler should fire after the command buffer completes GPU execution.
+
+## Root Cause (Suspected)
+
+Looking at the implementation in `CommandBufferElement.swift`, the modifier uses `EnvironmentReader` to get the command buffer and `onWorkloadEnter` to register the handler. The command buffer may not be in the environment at the point where the modifier is evaluated, or `onWorkloadEnter` may not be called for all elements in the tree.
+
+## Requirements
+
+1. **Make it work reliably** — The handlers must fire when the command buffer completes/is scheduled
+2. **Document clearly** — Add documentation explaining:
+   - Where in the element tree these modifiers can be used
+   - When the handlers are registered vs when they fire
+   - Any ordering/timing considerations
+   - Example usage patterns
+
+## Impact
+
+This blocks buffer pooling in MetalSprocketsGaussianSplats (issue #22) where we need to release index buffers back to a pool after GPU completion.
 
 ---
 
