@@ -33,7 +33,7 @@ public struct FrameTimingDisplayOptions: OptionSet, Sendable {
 /// A compact view that displays frame timing statistics.
 ///
 /// Each enabled option is shown on its own line. Throttle updates at the source
-/// using the `rate` parameter on ``SwiftUICore/View/onFrameTimingChange(rate:perform:)``.
+/// using ``SwiftUICore/View/onFrameTimingChange(perform:)``.
 ///
 /// ## Example
 ///

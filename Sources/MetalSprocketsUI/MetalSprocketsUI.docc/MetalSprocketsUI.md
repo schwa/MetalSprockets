@@ -28,7 +28,7 @@ MetalSprocketsUI supports multiple rendering targets:
 |----------|-------------|
 | macOS / iOS | ``RenderView`` embeds Metal in SwiftUI |
 | iOS + ARKit | Camera passthrough with AR frame data |
-| visionOS | Immersive spaces with ``ImmersiveRenderContent`` |
+| visionOS | Immersive spaces with `ImmersiveRenderContent` |
 
 ## Topics
 
@@ -39,8 +39,8 @@ MetalSprocketsUI supports multiple rendering targets:
 
 ### visionOS Immersive Rendering
 
-- ``ImmersiveRenderContent``
-- ``ImmersiveRenderPass``
+- `ImmersiveRenderContent`
+- `ImmersiveRenderPass`
 
 ### Debugging
 

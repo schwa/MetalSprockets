@@ -9,7 +9,7 @@ jobs:
   swiftlint:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install SwiftLint
         run: brew install swiftlint
       - name: Run SwiftLint
@@ -23,7 +23,7 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Download MetalToolchain
         run: xcodebuild -downloadComponent MetalToolchain
       - name: Trust plugins
