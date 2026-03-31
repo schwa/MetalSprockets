@@ -83,21 +83,59 @@ public struct CommandBufferElement <Content>: Element, BodylessContentElement wh
 public extension Element {
     /// Registers a handler called when the command buffer is scheduled for execution.
     ///
-    /// The handler is attached directly to the command buffer during the workload phase.
+    /// Use this to track when GPU work begins. The handler fires asynchronously
+    /// after the command buffer is scheduled but before GPU execution completes.
+    ///
+    /// This modifier must be used inside a ``CommandBufferElement`` or ``RenderView``.
+    /// Multiple handlers can be registered and all will fire.
+    ///
+    /// ```swift
+    /// RenderView { context, size in
+    ///     try RenderPass {
+    ///         // render content
+    ///     }
+    ///     .onCommandBufferScheduled { buffer in
+    ///         print("GPU work scheduled")
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Parameter action: The handler to call when the command buffer is scheduled.
+    ///   Called on an unspecified queue.
     func onCommandBufferScheduled(_ action: @escaping @Sendable (MTLCommandBuffer) -> Void) -> some Element {
         onWorkloadEnter { environmentValues in
             if let commandBuffer = environmentValues.commandBuffer {
                 commandBuffer.addScheduledHandler { buffer in
                     action(buffer)
                 }
+            } else {
+                logger?.warning("onCommandBufferScheduled: No command buffer in environment. Ensure this modifier is inside a CommandBufferElement or RenderView.")
             }
         }
     }
 
-    /// Registers a handler called when the command buffer completes execution.
+    /// Registers a handler called when the command buffer completes GPU execution.
     ///
-    /// The handler is attached directly to the command buffer during the workload phase.
-    /// Use this to read GPU timing via `commandBuffer.gpuStartTime` / `gpuEndTime`.
+    /// Use this to perform cleanup after GPU work finishes, such as returning
+    /// buffers to a pool or reading GPU timing information.
+    ///
+    /// This modifier must be used inside a ``CommandBufferElement`` or ``RenderView``.
+    /// Multiple handlers can be registered and all will fire.
+    ///
+    /// ```swift
+    /// RenderView { context, size in
+    ///     try RenderPass {
+    ///         // render content
+    ///     }
+    ///     .onCommandBufferCompleted { buffer in
+    ///         let gpuTime = buffer.gpuEndTime - buffer.gpuStartTime
+    ///         print("GPU time: \(gpuTime * 1000)ms")
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Parameter action: The handler to call when the command buffer completes.
+    ///   Called on an unspecified queue after GPU execution finishes.
     func onCommandBufferCompleted(_ action: @escaping (MTLCommandBuffer) -> Void) -> some Element {
         nonisolated(unsafe) let action = action
         return onWorkloadEnter { environmentValues in
@@ -109,6 +147,8 @@ public extension Element {
                 commandBuffer.addCompletedHandler { buffer in
                     action(buffer)
                 }
+            } else {
+                logger?.warning("onCommandBufferCompleted: No command buffer in environment. Ensure this modifier is inside a CommandBufferElement or RenderView.")
             }
         }
     }
