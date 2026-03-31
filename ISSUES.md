@@ -2035,16 +2035,18 @@ created: 2026-03-05T00:00:00+00:00
 
 Add `extension MSState: @unchecked Sendable where Value: Sendable {}`. MSState is backed by a reference type (Box<StateBox<Value>>) so it's safe to send across concurrency boundaries. Currently requires `nonisolated(unsafe)` workarounds when capturing @MSState in Tasks.
 
-- 2026-03-05T00:00:00+00:00: Unsafe to implement as described. StateBox has no synchronization — _value, dependencies, and hasBeenConnected are all mutated without locking. Box is similarly unprotected. Concurrent access from multiple isolation domains would cause data races. Would need to add a lock to StateBox (or make access actor-isolated) before this conformance is safe.
+- 2026-03-31T17:21:12.733663+00:00: 00: 00: 00: Unsafe to implement as described. StateBox has no synchronization — _value, dependencies, and hasBeenConnected are all mutated without locking. Box is similarly unprotected. Concurrent access from multiple isolation domains would cause data races. Would need to add a lock to StateBox (or make access actor-isolated) before this conformance is safe.
 
 ---
 
 ## 290: onCommandBufferCompleted and onCommandBufferScheduled modifiers are unreliable and underdocumented
-status: new
+status: closed
 priority: high
 kind: bug
-labels: api,documentation
+labels: api, documentation
 created: 2026-03-31T16:45:51.891537+00:00
+updated: 2026-03-31T17:21:12.686172+00:00
+closed: 2026-03-31T17:21:12.686172+00:00
 
 ## Problem
 
@@ -2083,6 +2085,91 @@ Looking at the implementation in `CommandBufferElement.swift`, the modifier uses
 ## Impact
 
 This blocks buffer pooling in MetalSprocketsGaussianSplats (issue #22) where we need to release index buffers back to a pool after GPU completion.
+
+### Tree Structure Analysis
+
+Traced the element tree when using `.onCommandBufferCompleted` on a `RenderPass`:
+
+```
+EnvironmentWritingModifiers...
+└── CommandBufferElement (sets commandBuffer in workloadEnter)
+    └── WorkloadModifier (RenderView's handler)
+        └── Group
+            └── WorkloadModifier (User's handler)
+                └── RenderPass
+```
+
+### Environment Propagation
+
+Analyzed how environment values flow:
+- Parent's `workloadEnter` runs before children are entered
+- Children merge environment from parent before their own `workloadEnter` runs
+- The `commandBuffer` set by `CommandBufferElement` should be visible to all descendants
+
+### Tests Written
+
+Added `CommandBufferCompletionTests.swift` with tests that all pass:
+- Single frame environment propagation ✓
+- Multi-frame environment propagation ✓
+- Multiple nested handlers ✓
+- Deeply nested structures ✓
+- Actual `CommandBufferElement` with real Metal command queue ✓
+
+### Key Finding: Silent Failure
+
+The current implementation silently does nothing if `commandBuffer` is nil:
+
+```swift
+if let commandBuffer = environmentValues.commandBuffer {
+    // register handler
+}
+// No else clause - silent failure!
+```
+
+### Open Questions
+
+Tests prove the mechanism *should* work, yet the issue reports it doesn't. Possible causes:
+1. Something specific to how RenderView rebuilds the tree each frame
+2. A timing issue with command buffer commit vs handler registration
+3. An edge case in environment propagation in the real RenderView flow
+
+### Recommended Fixes
+
+1. Add warning/error when `commandBuffer` is nil in handlers
+2. Add documentation about where these modifiers can/should be used
+3. Consider adding a test that more closely mimics the actual `RenderView.draw()` flow
+
+- 2026-03-31T17:21:12.733894+00:00: 00: 00: ## Investigation Findings
+- 2026-03-31T17:21:12.733909+00:00: ## Cannot Reproduce
+
+After extensive investigation, we cannot reproduce this bug.
+
+### Testing Performed
+
+1. **Unit tests** (13 tests in `CommandBufferCompletionTests.swift`):
+   - Environment propagation from parent `workloadEnter`
+   - Multiple frames with tree rebuilding
+   - Multiple handlers all firing (no "last wins" behavior)
+   - Deeply nested element structures
+   - Actual `CommandBufferElement` and `RenderPass` usage
+   - Handler registration verification
+
+2. **Live app testing** with real `MTKView`:
+   - Single handler: 181+ frames, 100% success
+   - Multiple handlers (3): 238+ frames, all handlers fired every frame
+
+3. **Code analysis**: `RenderView` already uses `onCommandBufferCompleted` internally for GPU timing (line 280-281), proving the mechanism works in production.
+
+### Improvements Made
+
+- Added documentation explaining modifiers must be inside `CommandBufferElement` or `RenderView`
+- Added documentation that multiple handlers all fire
+- Added warning logs when `commandBuffer` is nil (helps debug misuse)
+- Added code examples in doc comments
+
+### Possible Original Cause
+
+The modifier may have been used outside of a `CommandBufferElement` context, which would silently fail (now warns).
 
 ---
 
