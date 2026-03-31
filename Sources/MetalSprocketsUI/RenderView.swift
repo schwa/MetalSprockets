@@ -271,7 +271,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
                 // Return the element produced by the content builder
                 let t0 = CACurrentMediaTime()
-                nonisolated(unsafe) weak var weakViewModel = self
+                nonisolated(unsafe) weak let weakViewModel = self
                 let rootElement = try CommandBufferElement(completion: .commit) {
                     try Group {
                         try self.content(context, currentDrawableSize)

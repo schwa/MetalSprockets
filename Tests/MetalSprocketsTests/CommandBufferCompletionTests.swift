@@ -183,13 +183,12 @@ struct CommandBufferCompletionTests {
     // Test with actual CommandBufferElement (without real Metal)
     @Test
     func testCommandBufferElementCompletionHandler() throws {
-        var handlerCalled = false
         var commandBufferSeen: Bool = false
 
         let root = CommandBufferElement(completion: .none) {
             EmptyElement()
                 .onCommandBufferCompleted { _ in
-                    handlerCalled = true
+                    // Handler won't be called with .none completion
                 }
                 .onWorkloadEnter { env in
                     commandBufferSeen = env.commandBuffer != nil
@@ -203,7 +202,7 @@ struct CommandBufferCompletionTests {
         try system.processWorkload()
 
         #expect(commandBufferSeen, "Command buffer should be in environment")
-        // Note: handlerCalled won't be true because we're using .none completion
+        // Note: completion handler won't fire because we're using .none completion
         // and not actually submitting to GPU. But we can verify the environment.
     }
 
