@@ -17,7 +17,7 @@ jobs:
 
   swift-build-26:
     env:
-      XCODE_VERSION: "26.0"
+      XCODE_VERSION: "26.4"
     runs-on: "macos-26" # macos-latest
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
