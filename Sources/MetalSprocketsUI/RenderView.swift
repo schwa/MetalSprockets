@@ -127,6 +127,7 @@ public struct RenderView <Content>: View where Content: Element {
 
 internal struct RenderViewHelper <Content>: View where Content: Element {
     var device: MTLDevice
+    var commandQueue: MTLCommandQueue
     var content: (RenderViewContext, CGSize) throws -> Content
 
     @Environment(\.self)
@@ -139,17 +140,12 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     private var frameTimingChange
 
     @State
-    private var viewModel: RenderViewViewModel<Content>
+    private var viewModel: RenderViewViewModel<Content>?
 
     init(device: MTLDevice, commandQueue: MTLCommandQueue, @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
-        do {
-            self.device = device
-            self.viewModel = try RenderViewViewModel(device: device, commandQueue: commandQueue, content: content)
-            self.content = content
-        }
-        catch {
-            preconditionFailure("Failed to create RenderView.ViewModel: \(error)")
-        }
+        self.device = device
+        self.commandQueue = commandQueue
+        self.content = content
     }
 
     var body: some View {
@@ -157,6 +153,9 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             MTKView()
         }
         update: { view in
+            guard let viewModel else {
+                return
+            }
             #if os(macOS)
             view.layer?.isOpaque = false
             #else
@@ -165,9 +164,19 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             view.device = device
             view.delegate = viewModel
             view.configure(from: environment)
+            viewModel.device = device
+            viewModel.commandQueue = commandQueue
             viewModel.content = content
             viewModel.drawableSizeChange = drawableSizeChange
             viewModel.frameTimingChange = frameTimingChange
+        }
+        .onAppear {
+            if viewModel == nil {
+                viewModel = RenderViewViewModel<Content>(device: device, commandQueue: commandQueue, content: content)
+            }
+        }
+        .onDisappear {
+            viewModel = nil
         }
         //        .modifier(RenderViewDebugViewModifier<Content>())
         .environment(viewModel)
@@ -183,8 +192,8 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     var commandQueue: MTLCommandQueue
 
     @ObservationIgnored
-
     var content: (RenderViewContext, CGSize) throws -> Content
+
     var lastError: Error?
 
     @ObservationIgnored
@@ -217,11 +226,12 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     var currentSampleCount: Int = 1
 
-    init(device: MTLDevice, commandQueue: MTLCommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) throws {
+    init(device: MTLDevice, commandQueue: MTLCommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
-        self.content = content
         self.commandQueue = commandQueue
+        self.content = content
         self.system = System()
+        super.init()
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
