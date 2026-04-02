@@ -1,5 +1,50 @@
 # Release Notes
 
+## 0.1.6
+
+### Frame timing
+
+- Added `FrameTimingView` and frame timing statistics
+- GPU timing support via command buffer timestamps
+- FPS logging in `RenderView` (controlled by `MS_RENDERVIEW_LOG_FRAME`)
+
+### Fixes
+
+- Fixed retain cycle in `RenderViewViewModel.draw()`
+- Fixed `onCommandBufferCompleted` and `onCommandBufferScheduled` reliability
+- Fixed warnings-as-errors build failures on Xcode 26
+
+### Other
+
+- Environment variables renamed to `MS_` prefix (legacy names still work)
+- Improved logging: symmetrical Enter/Exit messages, thread info in draw callbacks
+- CI bumped to Xcode 26.4 and Node.js 24 compatible GitHub Actions
+
+---
+
+## 0.1.5
+
+### Visible function tables
+
+- Added `VisibleFunctionTableModifier` for binding visible functions to shaders
+
+### Other
+
+- Added `useResources` helper for marking multiple `MTLResource`s in use
+- Enhanced logging in `LoggingElement`
+- Better error hints when `.parameter()` is used incorrectly
+- Fixed device mismatch in `OffscreenRenderer.render`
+- Marked `Node` and `System` as `final`
+- Concurrency cleanups: removed `@preconcurrency`, fixed Sendable conformances
+
+---
+
+## 0.1.4
+
+- Updated `swift-tools-version` and platform deployment targets
+
+---
+
 ## 0.1.3
 
 ### MSAA Support
