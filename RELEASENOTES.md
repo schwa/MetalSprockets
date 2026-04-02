@@ -1,5 +1,22 @@
 # Release Notes
 
+## 0.1.7
+
+### New: MetalSprocketsShaders target
+
+- Added `MetalSprocketsShaders` — a C target providing cross-environment preprocessor macros for shared Metal/Swift header files (`TEXTURE2D`, `DEPTH2D`, `TEXTURECUBE`, `SAMPLER`, `BUFFER`, `ATTRIBUTE`, `MS_ENUM`)
+
+### Fixes
+
+- Fixed RenderView per-frame allocation churn and resource leak on view removal
+
+### Other
+
+- README: removed incorrect mention of `for/in` support in `@ElementBuilder`
+- Documentation updates
+
+---
+
 ## 0.1.6
 
 ### Frame timing
