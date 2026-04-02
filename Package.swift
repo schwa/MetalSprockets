@@ -14,6 +14,7 @@ public let package = Package(
         .library(name: "MetalSprockets", targets: ["MetalSprockets"]),
         .library(name: "MetalSprocketsUI", targets: ["MetalSprocketsUI"]),
         .library(name: "MetalSprocketsUIShaders", targets: ["MetalSprocketsUIShaders"]),
+        .library(name: "MetalSprocketsShaders", targets: ["MetalSprocketsShaders"]),
         .library(name: "MetalSprocketsSupport", targets: ["MetalSprocketsSupport"]),
     ],
     dependencies: [
@@ -37,6 +38,9 @@ public let package = Package(
                 "MetalSprocketsSupport",
                 "MetalSprocketsUIShaders",
             ]
+        ),
+        .target(
+            name: "MetalSprocketsShaders"
         ),
         .target(
             name: "MetalSprocketsUIShaders",
