@@ -80,7 +80,7 @@ struct MyRenderPass: Element {
 }
 ```
 
-`body` uses `@ElementBuilder` (a result builder), so `if`/`else`, `for`/`in`, and optional chaining work directly. `ForEach`, `Group`, and many other combinators work like their SwiftUI counterparts.
+`body` uses `@ElementBuilder` (a result builder), so `if`/`else`, and optional chaining work directly. `ForEach`, `Group`, and many other combinators work like their SwiftUI counterparts.
 
 The built-in elements map to Metal's structure:
 
