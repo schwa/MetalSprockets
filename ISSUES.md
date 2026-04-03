@@ -2792,3 +2792,19 @@ After moving, MetalSprocketsAddOns should import these from MetalSprockets inste
 
 ---
 
+## 306: BlitPass EnvironmentReader cannot access renderPassDescriptor since viewModel became optional
+status: new
+priority: high
+kind: bug
+created: 2026-04-03T04:04:18.696668+00:00
+
+Commit d7f64a82 ('Fix RenderView per-frame allocation churn and resource leak on view removal') changed RenderViewHelper's viewModel from a non-optional @State to an optional one, created lazily in .onAppear. This means .environment(viewModel) can pass nil into the element environment.
+
+This breaks any BlitPass that uses EnvironmentReader to access \.renderPassDescriptor — for example, to blit a texture into the stencil attachment before a render pass. When the environment value is nil, the blit silently doesn't execute. The stencil buffer stays all zeros, so a stencil test with compareFunction .equal (reference 0) passes everywhere and no clipping occurs.
+
+Repro: MetalSprocketsExamples StencilDemoView — the checkerboard stencil clipping no longer works. The triangle renders fully unclipped. Reverting MetalSprockets to 96197d4 (the commit before this change) restores correct behavior.
+
+The core issue is that the viewModel (and any environment values it provides) must be available by the time the first frame's element tree is evaluated, not deferred to .onAppear.
+
+---
+
