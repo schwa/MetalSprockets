@@ -146,6 +146,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
         self.device = device
         self.commandQueue = commandQueue
         self.content = content
+        self._viewModel = State(initialValue: RenderViewViewModel(device: device, commandQueue: commandQueue, content: content))
     }
 
     var body: some View {

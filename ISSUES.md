@@ -2692,9 +2692,10 @@ RenderViewHelper creates a new RenderViewViewModel in its struct init as the def
 
 ## 299: Add regression test or assertion to detect per-frame RenderViewViewModel allocation
 status: new
-priority: medium
+priority: critical
 kind: task
 created: 2026-04-01T21:53:08.387571+00:00
+updated: 2026-04-03T04:07:21.262968+00:00
 
 After fixing #298 (RenderViewHelper allocating a new RenderViewViewModel every frame), we need a way to detect if this regresses. Options: a unit test that counts allocations, a debug-mode assertion that fires if RenderViewViewModel.init is called more than once per RenderView identity, or Instruments signpost tracking. Without this, it's easy to accidentally reintroduce the per-frame churn.
 
@@ -2793,10 +2794,12 @@ After moving, MetalSprocketsAddOns should import these from MetalSprockets inste
 ---
 
 ## 306: BlitPass EnvironmentReader cannot access renderPassDescriptor since viewModel became optional
-status: new
+status: closed
 priority: high
 kind: bug
 created: 2026-04-03T04:04:18.696668+00:00
+updated: 2026-04-03T04:07:55.680747+00:00
+closed: 2026-04-03T04:07:55.680746+00:00
 
 Commit d7f64a82 ('Fix RenderView per-frame allocation churn and resource leak on view removal') changed RenderViewHelper's viewModel from a non-optional @State to an optional one, created lazily in .onAppear. This means .environment(viewModel) can pass nil into the element environment.
 
@@ -2805,6 +2808,8 @@ This breaks any BlitPass that uses EnvironmentReader to access \.renderPassDescr
 Repro: MetalSprocketsExamples StencilDemoView — the checkerboard stencil clipping no longer works. The triangle renders fully unclipped. Reverting MetalSprockets to 96197d4 (the commit before this change) restores correct behavior.
 
 The core issue is that the viewModel (and any environment values it provides) must be available by the time the first frame's element tree is evaluated, not deferred to .onAppear.
+
+- 2026-04-03T04:07:55.728333+00:00: Fixed by creating viewModel eagerly in init while keeping .onDisappear cleanup.
 
 ---
 
