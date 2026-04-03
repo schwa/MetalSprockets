@@ -1,9 +1,10 @@
 ## 11: Address Type Safety
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:01Z
 
 The elephant in room here is that MetalSprockets is not as type safe as it should be.
 
@@ -23,10 +24,11 @@ This may mean we need _more_element builder types (in the same way I think Swift
 
 ## 13: Improve ParameterValues
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:50Z
 
 It would be nice if `ParameterValues` had better constructors so that we know 2nd parameter of `.buffer(…, …)` is an offset in the buffer and to get rid of the `T` generic parameter.
 
@@ -34,15 +36,17 @@ Make make this a struct… that takes closures that will call `MTLXXXCommandEnco
 
 *Imported from #5*
 
+- `2026-04-03T17:33:50Z`: Related: #54 (consolidate parameter nodes)
+
 ---
 
 ## 19: Refactor OffscreenRenderer architecture
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:19:39.757649+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:01Z
 
 Consolidate OffscreenRenderer improvements:
 
@@ -59,23 +63,23 @@ status: closed
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:19:42.919307+00:00
-closed: 2026-03-31T18:19:42.919307+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:19:42Z
+closed: 2026-03-31T18:19:42Z
 
 *Imported from #12*
 
-- 2026-04-02T18:39:04.658175+00:00: Merged into #19 (Refactor OffscreenRenderer architecture)
+- `2026-04-02T18:39:04Z`: Merged into #19 (Refactor OffscreenRenderer architecture)
 
 ---
 
 ## 22: Improve modifier architecture
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:19:46.608257+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:50Z
 
 Consolidate modifier architecture improvements:
 
@@ -87,6 +91,8 @@ Related issues:
 - #186 notes closures make element comparison impossible
 - Need to decide if modifiers should be true Elements or a separate concept
 
+- `2026-04-03T17:33:50Z`: Related: #31 (shaders as modifiers)
+
 ---
 
 ## 25: OffscreenRenderer should be more configurable
@@ -94,22 +100,23 @@ status: closed
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:19:43.012994+00:00
-closed: 2026-03-31T18:19:43.012994+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:19:43Z
+closed: 2026-03-31T18:19:43Z
 
 *Imported from #17*
 
-- 2026-04-02T18:39:04.658606+00:00: Merged into #19 (Refactor OffscreenRenderer architecture)
+- `2026-04-02T18:39:04Z`: Merged into #19 (Refactor OffscreenRenderer architecture)
 
 ---
 
 ## 31: Make shaders/kernels modifiers
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:50Z
 
 By default a vertex and fragment shader should be a modifier instead of a parameter
 
@@ -123,6 +130,8 @@ Also make this change on compute shaders.
 
 *Imported from #23*
 
+- `2026-04-03T17:33:50Z`: Related: #22 (modifier architecture)
+
 ---
 
 ## 32: Re-visit MainActor usage through MetalSprockets
@@ -130,13 +139,13 @@ status: closed
 priority: none
 kind: none
 labels: concurrency, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:27:02.794262+00:00
-closed: 2026-03-31T18:27:02.794262+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:27:02Z
+closed: 2026-03-31T18:27:02Z
 
 *Imported from #24*
 
-- 2026-04-02T18:39:04.659042+00:00: Replaced by new consolidated concurrency issue
+- `2026-04-02T18:39:04Z`: Replaced by new consolidated concurrency issue
 
 ---
 
@@ -145,13 +154,13 @@ status: closed
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:27:48.973498+00:00
-closed: 2026-03-31T18:27:48.973498+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:27:48Z
+closed: 2026-03-31T18:27:48Z
 
 *Imported from #25*
 
-- 2026-04-02T18:39:04.659258+00:00: Already implemented: FrameTimingView, FrameTimingStatistics, and .onFrameTimingChange() modifier
+- `2026-04-02T18:39:04Z`: Already implemented: FrameTimingView, FrameTimingStatistics, and .onFrameTimingChange() modifier
 
 ---
 
@@ -160,8 +169,8 @@ status: open
 priority: low
 kind: bug
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:19:48.147264+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T19:19:48Z
 
 *Imported from #26*
 
@@ -172,24 +181,25 @@ status: closed
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:28:53.054175+00:00
-closed: 2026-03-31T18:28:53.054175+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:28:53Z
+closed: 2026-03-31T18:28:53Z
 
 File: Sources/MetalSprockets/Metal/CommandBufferElement.swift
 
 *Imported from #30*
 
-- 2026-04-02T18:39:04.659747+00:00: Name is fine as-is
+- `2026-04-02T18:39:04Z`: Name is fine as-is
 
 ---
 
 ## 42: Do we need DynamicProperty?
 status: open
-priority: none
-kind: none
-labels: effort:l
-created: 2026-02-19T00:00:00+00:00
+priority: low
+kind: enhancement
+labels: effort:l, needs-info
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:09Z
 
 ```
 // TODO: SwiftUI.Environment adopts DynamicProperty.
@@ -206,16 +216,16 @@ status: closed
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:14.567752+00:00
-closed: 2026-03-31T17:31:14.567752+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:14Z
+closed: 2026-03-31T17:31:14Z
 
 In file Sources/UltraviolenceExamples/CheckerboardKernel.swift
 https://github.com/schwa/Ultraviolence/blob/ebd49f199dbed51331e10ecaf7f9602f391f1d94/Sources/UltraviolenceExamples/CheckerboardKernel.swift#L23
 
 *Imported from #35*
 
-- 2026-04-02T18:39:04.660238+00:00: References old Ultraviolence paths that no longer exist
+- `2026-04-02T18:39:04Z`: References old Ultraviolence paths that no longer exist
 
 ---
 
@@ -224,9 +234,9 @@ status: closed
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:24:01.280295+00:00
-closed: 2026-03-31T18:24:01.280295+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:24:01Z
+closed: 2026-03-31T18:24:01Z
 
 ```
         // TODO: Hack
@@ -237,17 +247,17 @@ https://github.com/schwa/Ultraviolence/blob/ebd49f199dbed51331e10ecaf7f9602f391f
 
 *Imported from #38*
 
-- 2026-04-02T18:39:04.660492+00:00: References old paths that no longer exist
+- `2026-04-02T18:39:04Z`: References old paths that no longer exist
 
 ---
 
 ## 48: Add labels to everything
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:41.586835+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:09Z
 
 Ensure all Metal resources have descriptive labels set:
 - MTLBuffer
@@ -262,11 +272,11 @@ This makes GPU debugging much easier in Xcode and Instruments.
 
 ## 49: Revisit MTLCaptureManager
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:32:38.029878+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:09Z
 
 Improve MTLCaptureManager integration:
 
@@ -285,11 +295,11 @@ This would trigger a GPU capture of the next frame when the boolean becomes true
 
 ## 50: Provide a hook for GPU counters
 status: open
-priority: none
-kind: none
+priority: low
+kind: feature
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:33:06.160375+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:09Z
 
 Expose Metal GPU counter APIs through the framework:
 - Allow users to query GPU execution time, memory bandwidth, etc.
@@ -303,23 +313,23 @@ status: closed
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:34.966895+00:00
-closed: 2026-03-31T18:16:34.966895+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:34Z
+closed: 2026-03-31T18:16:34Z
 
 *Imported from #43*
 
-- 2026-04-02T18:39:04.661375+00:00: Duplicate of #48 (Add labels to everything)
+- `2026-04-02T18:39:04Z`: Duplicate of #48 (Add labels to everything)
 
 ---
 
 ## 53: add disabled() modifier
 status: open
-priority: none
-kind: none
+priority: low
+kind: feature
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:41.643984+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:09Z
 
 Add a `.disabled(_ isDisabled: Bool)` modifier that skips an element's rendering when true. Similar to SwiftUI's `.hidden()`. Useful for:
 - Toggling effects on/off for debugging
@@ -330,11 +340,11 @@ Add a `.disabled(_ isDisabled: Bool)` modifier that skips an element's rendering
 
 ## 54: Put parameters into one RenderPass object instead of having a bunch of nested ParameterRenderPasss
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:34:21.881774+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:50Z
 
 Optimization: consolidate multiple `.parameter()` modifiers into a single node.
 
@@ -356,15 +366,17 @@ CombinedParameters (color, transform, texture)
 
 This would reduce tree depth and improve traversal performance.
 
+- `2026-04-03T17:33:50Z`: Related: #13 (improve ParameterValues)
+
 ---
 
 ## 55: Handle MTLCreateSystemDefaultDevice() everywhere
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:41.697144+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:09Z
 
 Audit usage of `MTLCreateSystemDefaultDevice()` throughout the codebase.
 
@@ -386,23 +398,23 @@ status: closed
 priority: none
 kind: none
 labels: effort:xl
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:36:08.270768+00:00
-closed: 2026-03-31T18:36:08.270768+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:36:08Z
+closed: 2026-03-31T18:36:08Z
 
 *Imported from #51*
 
-- 2026-04-02T18:39:04.662374+00:00: Out of scope for this project
+- `2026-04-02T18:39:04Z`: Out of scope for this project
 
 ---
 
 ## 61: Make API match SwiftUI shader API a little better (parameter vs argument etc)
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:36:26.243016+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:09Z
 
 Align MetalSprockets API terminology with SwiftUI's shader API where it makes sense:
 - SwiftUI uses "argument", MetalSprockets uses "parameter"
@@ -416,23 +428,23 @@ status: closed
 priority: none
 kind: none
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:36:54.666684+00:00
-closed: 2026-03-31T18:36:54.666684+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:36:54Z
+closed: 2026-03-31T18:36:54Z
 
 *Imported from #54*
 
-- 2026-04-02T18:39:04.662817+00:00: Unclear if needed - closing for now
+- `2026-04-02T18:39:04Z`: Unclear if needed - closing for now
 
 ---
 
 ## 67: Formalize element Input and Output
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:37:14.757046+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:50Z
 
 Formalize which environment keys each element reads (inputs) and writes (outputs).
 
@@ -445,30 +457,33 @@ Use an extension on Node (possibly with parameter packs) to explicitly declare i
 - Catch missing dependencies at compile time or with clear runtime errors
 - Document what each element needs and provides
 
+- `2026-04-03T17:33:50Z`: Related: #235 (split BodylessElement protocols)
+
 ---
 
 ## 70: Improve Attachment flow
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:10Z
 
 We need a nice clean way to allow the user to customise attachments incl (but not limited to) color, depth, stencil etc.
 
 *Imported from #62*
 
-- 2026-04-02T18:39:04.663294+00:00: Needs concrete examples of what's painful today before addressing this.
+- `2026-04-02T18:39:04Z`: Needs concrete examples of what's painful today before addressing this.
 
 ---
 
 ## 73: Fix all SwiftLint disable comments
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.391195+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:13Z
 
 *Imported from #65*
 
@@ -479,13 +494,13 @@ status: closed
 priority: low
 kind: none
 labels: effort:m, priority:low
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:38:08.693039+00:00
-closed: 2026-03-31T18:38:08.693039+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:38:08Z
+closed: 2026-03-31T18:38:08Z
 
 *Imported from #68*
 
-- 2026-04-02T18:39:04.663727+00:00: Decision deferred - not actionable
+- `2026-04-02T18:39:04Z`: Decision deferred - not actionable
 
 ---
 
@@ -494,13 +509,13 @@ status: closed
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:34:24.189902+00:00
-closed: 2026-03-31T17:34:24.189902+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:34:24Z
+closed: 2026-03-31T17:34:24Z
 
 *Imported from #69*
 
-- 2026-04-02T18:39:04.663945+00:00: No longer relevant - project restructured from Ultraviolence to MetalSprockets; UltraviolenceSupport and Demo/Packages/UltraviolenceExamples no longer exist
+- `2026-04-02T18:39:04Z`: No longer relevant - project restructured from Ultraviolence to MetalSprockets; UltraviolenceSupport and Demo/Packages/UltraviolenceExamples no longer exist
 
 ---
 
@@ -509,23 +524,23 @@ status: closed
 priority: none
 kind: none
 labels: effort:xl, concurrency
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:27:21.441343+00:00
-closed: 2026-03-31T18:27:21.441343+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:27:21Z
+closed: 2026-03-31T18:27:21Z
 
 *Imported from #71*
 
-- 2026-04-02T18:39:04.664166+00:00: Merged into #291 (Audit and improve Swift concurrency)
+- `2026-04-02T18:39:04Z`: Merged into #291 (Audit and improve Swift concurrency)
 
 ---
 
 ## 81: Clean up all Metal extension code - especially stuff on buffers etc to make sure it's not being stupid.
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:38:34.419791+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 Audit Metal type extensions in MetalSprocketsSupport (especially buffer-related code):
 - Remove unused extensions
@@ -537,11 +552,11 @@ Audit Metal type extensions in MetalSprocketsSupport (especially buffer-related 
 
 ## 82: Emit OS logging POIs for each frame
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:41.749811+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 Add OSSignposter points of interest (POIs) for frame timing. This makes frames visible in Instruments' timeline, helping with profiling.
 
@@ -557,11 +572,11 @@ poi.endInterval(#function, state)
 
 ## 86: Clean up shader function lookup in ShaderLibrary
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: effort:m, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:39:12.272862+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 Clean up shader function lookup logic in ShaderLibrary.swift:
 - Review error handling for missing functions
@@ -572,11 +587,11 @@ Clean up shader function lookup logic in ShaderLibrary.swift:
 
 ## 89: Improve environment/descriptor modification in CommandBufferElement and RenderPipeline
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:l, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:20:16.514193+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 Consolidate issues about environment and descriptor access:
 
@@ -593,25 +608,25 @@ status: closed
 priority: none
 kind: none
 labels: effort:l, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:20:21.589054+00:00
-closed: 2026-03-31T18:20:21.589054+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:20:21Z
+closed: 2026-03-31T18:20:21Z
 
 File: Sources/MetalSprockets/Metal/CommandBufferElement.swift
 
 *Imported from #82*
 
-- 2026-04-02T18:39:04.665246+00:00: Merged into #89 (Improve environment/descriptor modification)
+- `2026-04-02T18:39:04Z`: Merged into #89 (Improve environment/descriptor modification)
 
 ---
 
 ## 91: is this actually necessary? Elements just use an environment?
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: effort:m, source:todo, needs-info
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:39:38.952250+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 File: Sources/MetalSprockets/Metal/RenderPipelineDescriptorModifier.swift (if it exists)
 
@@ -624,25 +639,25 @@ status: closed
 priority: none
 kind: none
 labels: effort:l, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:20:21.680499+00:00
-closed: 2026-03-31T18:20:21.680499+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:20:21Z
+closed: 2026-03-31T18:20:21Z
 
 File: Sources/MetalSprockets/Metal/RenderPipeline.swift
 
 *Imported from #87*
 
-- 2026-04-02T18:39:04.665677+00:00: Merged into #89 (Improve environment/descriptor modification)
+- `2026-04-02T18:39:04Z`: Merged into #89 (Improve environment/descriptor modification)
 
 ---
 
 ## 102: Also it could take a SwiftUI environment(). Also SRGB?
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:40:15.118524+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 Improve the `.parameter(_:color:)` modifier:
 - Consider reading colors from SwiftUI's environment (e.g., accent color, tint)
@@ -653,11 +668,11 @@ Improve the `.parameter(_:color:)` modifier:
 
 ## 104: ViewAdaptor should be internal but is currently used externally
 status: open
-priority: none
-kind: none
+priority: medium
+kind: task
 labels: source:todo, effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.446591+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 Make `ViewAdaptor` internal instead of public. It's only used by RenderView internally.
 
@@ -665,11 +680,11 @@ Make `ViewAdaptor` internal instead of public. It's only used by RenderView inte
 
 ## 106: This is messy and needs organisation and possibly deprecation of unused elements.
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: effort:m, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:40:59.328224+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 Clean up UVEnvironmentValues+Implementation.swift (should probably be renamed to MSEnvironmentValues+Implementation.swift):
 - Organize environment value definitions
@@ -681,11 +696,11 @@ Clean up UVEnvironmentValues+Implementation.swift (should probably be renamed to
 
 ## 112: Reduce MTLTexture descriptor usage flags to only necessary ones
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: source:todo, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:41.802355+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:14Z
 
 Audit MTLTexture creation to use only the necessary usage flags. Over-specifying usage flags can prevent GPU optimizations.
 
@@ -700,15 +715,15 @@ status: closed
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:14.668272+00:00
-closed: 2026-03-31T17:31:14.668272+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:14Z
+closed: 2026-03-31T17:31:14Z
 
 Found in Sources/UltraviolenceSupport/MetalSupport.swift at line 767
 
 *Imported from #105*
 
-- 2026-04-02T18:39:04.666851+00:00: References old Ultraviolence paths that no longer exist
+- `2026-04-02T18:39:04Z`: References old Ultraviolence paths that no longer exist
 
 ---
 
@@ -717,15 +732,15 @@ status: closed
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:14.268218+00:00
-closed: 2026-03-31T17:31:14.268218+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:14Z
+closed: 2026-03-31T17:31:14Z
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/Support/Transforms.swift at line 26
 
 *Imported from #111*
 
-- 2026-04-02T18:39:04.667097+00:00: References old Ultraviolence paths that no longer exist
+- `2026-04-02T18:39:04Z`: References old Ultraviolence paths that no longer exist
 
 ---
 
@@ -734,15 +749,15 @@ status: closed
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:34:24.290715+00:00
-closed: 2026-03-31T17:34:24.290715+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:34:24Z
+closed: 2026-03-31T17:34:24Z
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/Support/Projection.swift at line 39
 
 *Imported from #114*
 
-- 2026-04-02T18:39:04.667338+00:00: No longer relevant - project restructured from Ultraviolence to MetalSprockets; UltraviolenceSupport and Demo/Packages/UltraviolenceExamples no longer exist
+- `2026-04-02T18:39:04Z`: No longer relevant - project restructured from Ultraviolence to MetalSprockets; UltraviolenceSupport and Demo/Packages/UltraviolenceExamples no longer exist
 
 ---
 
@@ -751,15 +766,15 @@ status: closed
 priority: none
 kind: none
 labels: effort:m, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:24:01.185162+00:00
-closed: 2026-03-31T18:24:01.185162+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:24:01Z
+closed: 2026-03-31T18:24:01Z
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/Interaction/DraggableValueViewModifier.swift at line 20
 
 *Imported from #118*
 
-- 2026-04-02T18:39:04.667576+00:00: References old paths that no longer exist
+- `2026-04-02T18:39:04Z`: References old paths that no longer exist
 
 ---
 
@@ -768,15 +783,15 @@ status: closed
 priority: none
 kind: none
 labels: effort:m, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:14.467559+00:00
-closed: 2026-03-31T17:31:14.467559+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:14Z
+closed: 2026-03-31T17:31:14Z
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/Interaction/DraggableValueViewModifier.swift at line 69
 
 *Imported from #119*
 
-- 2026-04-02T18:39:04.667823+00:00: References old Ultraviolence paths that no longer exist
+- `2026-04-02T18:39:04Z`: References old Ultraviolence paths that no longer exist
 
 ---
 
@@ -785,15 +800,15 @@ status: closed
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:14.367735+00:00
-closed: 2026-03-31T17:31:14.367735+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:14Z
+closed: 2026-03-31T17:31:14Z
 
 Found in Demo/Packages/UltraviolenceExamples/Sources/UltraviolenceExamples/ExampleElements/MixedExample.swift at line 29
 
 *Imported from #120*
 
-- 2026-04-02T18:39:04.668065+00:00: References old Ultraviolence paths that no longer exist
+- `2026-04-02T18:39:04Z`: References old Ultraviolence paths that no longer exist
 
 ---
 
@@ -802,25 +817,25 @@ status: closed
 priority: none
 kind: none
 labels: effort:s, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:14.868741+00:00
-closed: 2026-03-31T17:31:14.868741+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:14Z
+closed: 2026-03-31T17:31:14Z
 
 Packed3 should work identically to SIMD3. We need to flesh it out with more operators etc.
 
 *Imported from #121*
 
-- 2026-04-02T18:39:04.668304+00:00: Packed3 does not exist in current codebase
+- `2026-04-02T18:39:04Z`: Packed3 does not exist in current codebase
 
 ---
 
 ## 137: Add unit tests for `ElementBuilder.buildEither`.
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: source:todo, testing, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:41.855516+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:17Z
 
 File: Sources/MetalSprockets/Core/ElementBuilder.swift
 
@@ -833,9 +848,9 @@ status: closed
 priority: none
 kind: none
 labels: effort:s, concurrency, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:14.768211+00:00
-closed: 2026-03-31T17:31:14.768211+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:14Z
+closed: 2026-03-31T17:31:14Z
 
 Both `SplatCloud` and `SplatIndices` are marked as `@unchecked Sendable`, which bypasses Swift's concurrency safety checks.
 
@@ -860,7 +875,7 @@ Found in Sources/UltraviolenceGaussianSplats/Splats/SplatCloud.swift
 
 *Imported from #130*
 
-- 2026-04-02T18:39:04.668773+00:00: SplatCloud/SplatIndices not in current codebase
+- `2026-04-02T18:39:04Z`: SplatCloud/SplatIndices not in current codebase
 
 ---
 
@@ -869,15 +884,15 @@ status: closed
 priority: none
 kind: none
 labels: effort:l, source:todo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:14.969089+00:00
-closed: 2026-03-31T17:31:14.969089+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:14Z
+closed: 2026-03-31T17:31:14Z
 
 Found in Tests/UltraviolenceTests/RenderTests.swift at line 60
 
 *Imported from #134*
 
-- 2026-04-02T18:39:04.669014+00:00: References old Ultraviolence paths that no longer exist
+- `2026-04-02T18:39:04Z`: References old Ultraviolence paths that no longer exist
 
 ---
 
@@ -886,13 +901,13 @@ status: closed
 priority: none
 kind: none
 labels: effort:xl, testing
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:43.834829+00:00
-closed: 2026-03-31T18:16:43.834829+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:43Z
+closed: 2026-03-31T18:16:43Z
 
 *Imported from #137*
 
-- 2026-04-02T18:39:04.669234+00:00: Closing coverage targets for now - not a priority
+- `2026-04-02T18:39:04Z`: Closing coverage targets for now - not a priority
 
 ---
 
@@ -901,13 +916,13 @@ status: closed
 priority: none
 kind: none
 labels: effort:xl, testing
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:43.935528+00:00
-closed: 2026-03-31T18:16:43.935528+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:43Z
+closed: 2026-03-31T18:16:43Z
 
 *Imported from #138*
 
-- 2026-04-02T18:39:04.669448+00:00: Closing coverage targets for now - not a priority
+- `2026-04-02T18:39:04Z`: Closing coverage targets for now - not a priority
 
 ---
 
@@ -916,23 +931,23 @@ status: closed
 priority: none
 kind: documentation
 labels: documentation, effort:xl
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:45:53.585796+00:00
-closed: 2026-03-31T18:45:53.585795+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:45:53Z
+closed: 2026-03-31T18:45:53Z
 
 *Imported from #139*
 
-- 2026-04-02T18:39:04.669665+00:00: Already implemented - DocC workflow exists in .github/workflows/docc.yml, deploys to GitHub Pages
+- `2026-04-02T18:39:04Z`: Already implemented - DocC workflow exists in .github/workflows/docc.yml, deploys to GitHub Pages
 
 ---
 
 ## 148: Header docs
 status: open
-priority: none
+priority: low
 kind: documentation
 labels: documentation, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:06:24.121856+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:30Z
 
 Continue adding documentation comments (///) to public APIs.
 
@@ -947,11 +962,11 @@ Priority:
 
 ## 149: Tutorials
 status: open
-priority: none
+priority: low
 kind: documentation
 labels: documentation, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:06:24.176989+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:30Z
 
 Expand DocC tutorials for MetalSprockets.
 
@@ -974,9 +989,9 @@ Expand DocC tutorials for MetalSprockets.
 status: open
 priority: low
 kind: documentation
-labels: documentation, priority:low, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:06:24.229921+00:00
+labels: documentation, effort:l
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:43Z
 
 *Imported from #142*
 
@@ -984,11 +999,11 @@ updated: 2026-03-31T19:06:24.229921+00:00
 
 ## 152: Add onWorkloadExit modifier for all Elements
 status: open
-priority: none
-kind: none
+priority: low
+kind: feature
 labels: source:todo, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:41.908995+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:17Z
 
 Currently, `onWorkloadExit` is only available on `AnyBodylessElement`, while `onWorkloadEnter` is available as a general modifier for all Elements through `WorkloadModifier`.
 
@@ -1011,9 +1026,9 @@ status: closed
 priority: none
 kind: enhancement
 labels: enhancement, demo
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:21:18.640165+00:00
-closed: 2026-03-31T18:21:18.640165+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:21:18Z
+closed: 2026-03-31T18:21:18Z
 
 ## Summary
 Port the barrel distortion post-processing effect to demonstrate image distortion capabilities in MetalSprockets.
@@ -1041,17 +1056,17 @@ Implement a barrel/pincushion distortion effect as a post-processing shader that
 
 *Imported from #146*
 
-- 2026-04-02T18:39:04.670726+00:00: Examples are now in a separate repo
+- `2026-04-02T18:39:04Z`: Examples are now in a separate repo
 
 ---
 
 ## 170: Replace custom MDLVertexDescriptor to MTLVertexDescriptor conversion with MTKMetalVertexDescriptorFromModelIO
 status: open
-priority: none
+priority: low
 kind: enhancement
 labels: enhancement, effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.499555+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:30Z
 
 Currently in MetalSupport.swift, we have a custom convenience initializer that converts MDLVertexDescriptor to MTLVertexDescriptor. MetalKit provides MTKMetalVertexDescriptorFromModelIO() for this exact purpose. We should replace our custom implementation with the official API.
 
@@ -1065,11 +1080,11 @@ The custom implementation manually iterates through attributes and layouts, conv
 
 ## 171: Might as well make vertex descriptor a parameter to Render
 status: open
-priority: none
+priority: low
 kind: enhancement
 labels: enhancement, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:41.962091+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:30Z
 
 Make vertex descriptor a parameter on Render and RenderPipeline instead of requiring environment setup or modifiers. This would make common cases simpler.
 
@@ -1080,23 +1095,23 @@ status: closed
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:49.562761+00:00
-closed: 2026-03-31T18:16:49.562761+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:49Z
+closed: 2026-03-31T18:16:49Z
 
 *Imported from #164*
 
-- 2026-04-02T18:39:04.671348+00:00: Duplicate of #171 (vertex descriptor as parameter)
+- `2026-04-02T18:39:04Z`: Duplicate of #171 (vertex descriptor as parameter)
 
 ---
 
 ## 174: Parent chain in MSEnvironmentValues.Storage may be unnecessary
 status: open
-priority: none
+priority: low
 kind: enhancement
 labels: enhancement, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.605727+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:30Z
 
 ## Current State
 After fixing #68, we now always create fresh Storage instances for each node to prevent cycles. This raises the question of whether the parent chain is still necessary.
@@ -1133,11 +1148,11 @@ This issue is to track the architectural question of whether the parent chain is
 
 ## 177: Stop using generic errors
 status: open
-priority: none
+priority: medium
 kind: enhancement
 labels: enhancement, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.662030+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:30Z
 
 Replace generic error types with specific, descriptive error types. This improves debugging and error handling by making it clear what went wrong.
 
@@ -1148,13 +1163,13 @@ status: closed
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:37.837446+00:00
-closed: 2026-03-31T18:16:37.837446+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:37Z
+closed: 2026-03-31T18:16:37Z
 
 *Imported from #172*
 
-- 2026-04-02T18:39:04.672033+00:00: Duplicate of #73 (Fix all SwiftLint disable comments)
+- `2026-04-02T18:39:04Z`: Duplicate of #73 (Fix all SwiftLint disable comments)
 
 ---
 
@@ -1163,13 +1178,13 @@ status: closed
 priority: none
 kind: feature
 labels: feature
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:19:49.779945+00:00
-closed: 2026-03-31T18:19:49.779945+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:19:49Z
+closed: 2026-03-31T18:19:49Z
 
 *Imported from #176*
 
-- 2026-04-02T18:39:04.672336+00:00: Merged into #22 (Improve modifier architecture)
+- `2026-04-02T18:39:04Z`: Merged into #22 (Improve modifier architecture)
 
 ---
 
@@ -1178,9 +1193,9 @@ status: closed
 priority: none
 kind: none
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:19:49.872767+00:00
-closed: 2026-03-31T18:19:49.872767+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:19:49Z
+closed: 2026-03-31T18:19:49Z
 
 ## Problem
 Many modifiers use closures which makes element comparison impossible, contributing to the performance issues in #17.
@@ -1219,16 +1234,17 @@ Some closures are fundamental to the API and can't be eliminated (like @ElementB
 
 *Imported from #178*
 
-- 2026-04-02T18:39:04.672610+00:00: Merged into #22 (Improve modifier architecture)
+- `2026-04-02T18:39:04Z`: Merged into #22 (Improve modifier architecture)
 
 ---
 
 ## 187: Add id modifier for explicit identity
 status: open
-priority: none
-kind: none
+priority: medium
+kind: feature
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:17Z
 
 ## Overview
 Add an id modifier similar to SwiftUI that allows explicit identity control for elements, supporting the structural identity system.
@@ -1278,9 +1294,9 @@ StructuralID.Atom(
 status: closed
 priority: none
 kind: none
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T17:31:15.070691+00:00
-closed: 2026-03-31T17:31:15.070691+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T17:31:15Z
+closed: 2026-03-31T17:31:15Z
 
 ## Description
 Currently we have minimal test coverage for NeoNode functionality. We should expand the test suite to cover more scenarios.
@@ -1304,7 +1320,7 @@ Tests should be added to `Tests/UltraviolenceTests/NeoNodeTests.swift`
 
 *Imported from #185*
 
-- 2026-04-02T18:39:04.673112+00:00: NeoNode no longer exists - renamed to Node
+- `2026-04-02T18:39:04Z`: NeoNode no longer exists - renamed to Node
 
 ---
 
@@ -1312,23 +1328,23 @@ Tests should be added to `Tests/UltraviolenceTests/NeoNodeTests.swift`
 status: closed
 priority: none
 kind: none
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:56:27.135871+00:00
-closed: 2026-03-31T18:56:27.135871+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:56:27Z
+closed: 2026-03-31T18:56:27Z
 
 *Imported from #186*
 
-- 2026-04-02T18:39:04.673352+00:00: Out of date - architecture has evolved
+- `2026-04-02T18:39:04Z`: Out of date - architecture has evolved
 
 ---
 
 ## 196: Optimize: Unused bindings cause unnecessary child rebuilds
 status: open
-priority: none
+priority: medium
 kind: enhancement
 labels: enhancement, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.715109+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:50Z
 
 ## Problem
 
@@ -1427,15 +1443,17 @@ This is a performance optimization - the current behavior is functionally correc
 
 *Imported from #188*
 
+- `2026-04-03T17:33:51Z`: Related: #197 (elements without parameters rebuild unnecessarily)
+
 ---
 
 ## 197: Optimize: Elements without parameters rebuild unnecessarily
 status: open
-priority: none
+priority: medium
 kind: enhancement
 labels: enhancement, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.767761+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:51Z
 
 ## Problem
 
@@ -1582,19 +1600,21 @@ Performance optimization - the current behavior is functionally correct but caus
 
 *Imported from #189*
 
+- `2026-04-03T17:33:51Z`: Related: #196 (unused bindings cause unnecessary rebuilds)
+
 ---
 
 ## 200: Get unit test coverage to 60%
 status: closed
 priority: none
 kind: none
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:44.030777+00:00
-closed: 2026-03-31T18:16:44.030777+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:44Z
+closed: 2026-03-31T18:16:44Z
 
 *Imported from #192*
 
-- 2026-04-02T18:39:04.674074+00:00: Closing coverage targets for now - not a priority
+- `2026-04-02T18:39:04Z`: Closing coverage targets for now - not a priority
 
 ---
 
@@ -1603,9 +1623,9 @@ status: closed
 priority: none
 kind: feature
 labels: feature
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:56:43.323580+00:00
-closed: 2026-03-31T18:56:43.323580+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:56:43Z
+closed: 2026-03-31T18:56:43Z
 
 Create a target of standard shaders and pipelines that user can immediately use. 
 
@@ -1613,17 +1633,17 @@ Flat shaders. Basic PBR. MetalFX. Etc etc.
 
 *Imported from #194*
 
-- 2026-04-02T18:39:04.674313+00:00: Out of scope - users can build their own shaders
+- `2026-04-02T18:39:04Z`: Out of scope - users can build their own shaders
 
 ---
 
 ## 209: Use IDs in System StructuralIdentifier for ForEach
 status: open
-priority: none
+priority: low
 kind: enhancement
 labels: enhancement, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.821029+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:31Z
 
 In ForEach.swift:24, there's a TODO noting that we're not using IDs in the System StructuralIdentifier yet. This should be implemented to properly track ForEach elements.
 
@@ -1635,11 +1655,11 @@ File: Sources/MetalSprockets/Core/ForEach.swift
 
 ## 210: Handle errors in StateBox getter/setter
 status: open
-priority: none
+priority: medium
 kind: bug
 labels: bug, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:42.015460+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:31Z
 
 StateBox has TODO comments about error handling in the getter and setter methods. Need to determine proper error handling strategy.
 
@@ -1651,11 +1671,11 @@ File: Sources/MetalSprockets/Core/StateBox.swift
 
 ## 212: Pass Node as parameter to EnvironmentReader
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:42.068484+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:17Z
 
 EnvironmentReader should ideally be passed a Node as a parameter as noted in the TODO.
 
@@ -1667,11 +1687,11 @@ File: Sources/MetalSprockets/Core/EnvironmentReader.swift
 
 ## 213: Make System properties private
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:40.984856+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:18Z
 
 Audit System class and make properties private that shouldn't be public API. Reduce the exposed surface area.
 
@@ -1679,11 +1699,11 @@ Audit System class and make properties private that shouldn't be public API. Red
 
 ## 214: Call cleanup/onDisappear for removed nodes
 status: open
-priority: none
-kind: none
+priority: medium
+kind: bug
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.037890+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:18Z
 
 System could call cleanup/onDisappear when nodes are removed. Currently just notes they're gone.
 
@@ -1698,9 +1718,9 @@ status: closed
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:57:32.247784+00:00
-closed: 2026-03-31T18:57:32.247784+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:57:32Z
+closed: 2026-03-31T18:57:32Z
 
 The Element+SystemExtensions file needs to be renamed to better reflect its purpose.
 
@@ -1708,17 +1728,17 @@ File: Sources/MetalSprockets/Core/Element+SystemExtensions.swift
 
 *Imported from #208*
 
-- 2026-04-02T18:39:04.675703+00:00: Not important enough to track
+- `2026-04-02T18:39:04Z`: Not important enough to track
 
 ---
 
 ## 217: Clarify purpose of AnyBodylessElement extensions
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:42.121182+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:18Z
 
 Document the AnyBodylessElement modifier-style extensions (onSetupEnter, onSetupExit, onWorkloadEnter, onWorkloadExit).
 
@@ -1732,11 +1752,11 @@ Either:
 
 ## 218: Fix dangerous tree walking in Element+Dump
 status: open
-priority: none
+priority: medium
 kind: bug
 labels: bug, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.148715+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:35Z
 
 Walking the tree in Element+Dump can modify state which is dangerous. Elements like EnvironmentReader can break things. Need to only walk the System tree instead.
 
@@ -1750,9 +1770,9 @@ File: Sources/MetalSprockets/Core/Element+Dump.swift
 status: closed
 priority: none
 kind: none
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:58:38.251154+00:00
-closed: 2026-03-31T18:58:38.251154+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:58:38Z
+closed: 2026-03-31T18:58:38Z
 
 Need to determine if AnyElement is still needed in the codebase.
 
@@ -1760,7 +1780,7 @@ File: Sources/MetalSprockets/Core/AnyElement.swift
 
 *Imported from #211*
 
-- 2026-04-02T18:39:04.676346+00:00: AnyElement IS needed - used by ElementBuilder.buildLimitedAvailability for #available checks in result builders
+- `2026-04-02T18:39:04Z`: AnyElement IS needed - used by ElementBuilder.buildLimitedAvailability for #available checks in result builders
 
 ---
 
@@ -1769,15 +1789,15 @@ status: closed
 priority: none
 kind: none
 labels: effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:34.873429+00:00
-closed: 2026-03-31T18:16:34.873429+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:34Z
+closed: 2026-03-31T18:16:34Z
 
 We've explicit labels to computepass and friends. Add them to more places. Use them in more places.
 
 *Imported from #214*
 
-- 2026-04-02T18:39:04.676568+00:00: Duplicate of #48 (Add labels to everything)
+- `2026-04-02T18:39:04Z`: Duplicate of #48 (Add labels to everything)
 
 ---
 
@@ -1786,23 +1806,23 @@ status: closed
 priority: high
 kind: none
 labels: effort:m, priority:high
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:59:05.815940+00:00
-closed: 2026-03-31T18:59:05.815940+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:59:05Z
+closed: 2026-03-31T18:59:05Z
 
 *Imported from #215*
 
-- 2026-04-02T18:39:04.676786+00:00: Already cleaned up in previous work
+- `2026-04-02T18:39:04Z`: Already cleaned up in previous work
 
 ---
 
 ## 233: Bring back DebugLabelModifier
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: needs-info, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:42.174304+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:18Z
 
 *Imported from #225*
 
@@ -1810,11 +1830,11 @@ updated: 2026-03-31T19:05:42.174304+00:00
 
 ## 235: Split BodylessElement into SetupElement and WorkloadElement protocols
 status: open
-priority: none
+priority: medium
 kind: enhancement
 labels: enhancement, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:06:24.282874+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:50Z
 
 Split BodylessElement into focused protocols:
 
@@ -1833,15 +1853,17 @@ Split into two protocols:
 - AnyBodylessElement always triggers setup due to closure comparison limitations (was #237)
 - This would allow automatic setup detection based on protocol conformance
 
+- `2026-04-03T17:33:50Z`: Related: #67 (formalize element I/O), #152 (onWorkloadExit), #214 (cleanup for removed nodes)
+
 ---
 
 ## 236: Pipeline elements need proper requiresSetup implementation for shader constants
 status: open
-priority: none
+priority: high
 kind: bug
 labels: bug, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.306763+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:35Z
 
 ## Problem
 
@@ -1893,9 +1915,9 @@ status: closed
 priority: medium
 kind: enhancement
 labels: enhancement, priority:medium
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:20:11.993219+00:00
-closed: 2026-03-31T18:20:11.993219+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:20:11Z
+closed: 2026-03-31T18:20:11Z
 
 ## Problem
 
@@ -1943,17 +1965,17 @@ This would allow:
 
 *Imported from #229*
 
-- 2026-04-02T18:39:04.677663+00:00: Merged into #235 (Split BodylessElement into SetupElement and WorkloadElement protocols)
+- `2026-04-02T18:39:04Z`: Merged into #235 (Split BodylessElement into SetupElement and WorkloadElement protocols)
 
 ---
 
 ## 239: value vs values is very subtle.
 status: open
-priority: none
+priority: low
 kind: enhancement
 labels: enhancement, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:42.227183+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:35Z
 
 func parameter(_ name: String, functionType: MTLFunctionType? = nil, values: [some Any])func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: some Any)
 
@@ -1965,11 +1987,11 @@ At the very least we should improve the asserts.
 
 ## 240: Get rid of MetalSprocketsSupport
 status: open
-priority: none
+priority: low
 kind: enhancement
 labels: enhancement, needs-info, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.413524+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:35Z
 
 Not really needed now that we broke out geometrylite3d.
 
@@ -1984,13 +2006,13 @@ status: closed
 priority: none
 kind: enhancement
 labels: enhancement
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:40.831721+00:00
-closed: 2026-03-31T18:16:40.831721+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:40Z
+closed: 2026-03-31T18:16:40Z
 
 *Imported from #235*
 
-- 2026-04-02T18:39:04.678308+00:00: Duplicate of #55 (Handle MTLCreateSystemDefaultDevice() everywhere)
+- `2026-04-02T18:39:04Z`: Duplicate of #55 (Handle MTLCreateSystemDefaultDevice() everywhere)
 
 ---
 
@@ -1999,8 +2021,8 @@ status: open
 priority: high
 kind: bug
 labels: bug, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:19:48.202426+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T19:19:48Z
 
 Audit argument buffer usage to ensure `useResources()` is called correctly. Metal requires marking resources used by argument buffers so the GPU can track them. Missing calls can cause undefined behavior or crashes.
 
@@ -2008,11 +2030,11 @@ Audit argument buffer usage to ensure `useResources()` is called correctly. Meta
 
 ## 246: Assert when same shader compiled multiple times
 status: open
-priority: none
+priority: high
 kind: enhancement
-labels: enhancement, priority:urgent, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:19:48.258117+00:00
+labels: enhancement, effort:m
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:35Z
 
 Add an assertion or warning when the same shader source is compiled multiple times. This is a performance issue - shaders should be compiled once and cached. Detecting duplicate compilation helps users optimize their code.
 
@@ -2023,9 +2045,9 @@ status: closed
 priority: none
 kind: bug
 labels: bug
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T18:16:46.759825+00:00
-closed: 2026-03-31T18:16:46.759825+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-03-31T18:16:46Z
+closed: 2026-03-31T18:16:46Z
 
 We still haven't solved the shader compilation problem.
 
@@ -2035,17 +2057,17 @@ Maybe we need to make shaders elements
 
 *Imported from #239*
 
-- 2026-04-02T18:39:04.678950+00:00: Duplicate of #246 (Assert when same shader compiled multiple times)
+- `2026-04-02T18:39:04Z`: Duplicate of #246 (Assert when same shader compiled multiple times)
 
 ---
 
 ## 248: Framework should detect or warn when Element body returns 'any Element' instead of 'some Element'
 status: open
-priority: none
+priority: medium
 kind: bug
 labels: bug, effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.571914+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:35Z
 
 ## Problem
 
@@ -2091,11 +2113,11 @@ Found in `DebugRenderPipeline` where changing the body return type from `any Ele
 
 ## 255: Make a FunctionTypes OptionSet
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:42.279834+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:18Z
 
 Create an OptionSet for Metal function types (vertex, fragment, compute, etc.) to replace individual `MTLFunctionType` parameters. Would allow targeting multiple function types at once, e.g., `.parameter("value", functionTypes: [.vertex, .fragment], ...)`.
 
@@ -2103,11 +2125,11 @@ Create an OptionSet for Metal function types (vertex, fragment, compute, etc.) t
 
 ## 256: Metal 4
 status: open
-priority: none
-kind: none
+priority: low
+kind: feature
 labels: effort:xl
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.677462+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:18Z
 
 Adopt Metal 4 APIs where beneficial:
 - Evaluate new Metal 4 features
@@ -2119,11 +2141,11 @@ Adopt Metal 4 APIs where beneficial:
 
 ## 259: Look at unifying transform/amplification/uniforms
 status: open
-priority: none
+priority: low
 kind: enhancement
 labels: enhancement, effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.732740+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:35Z
 
 Investigate unifying the APIs for transform data, amplification data, and uniforms. These are all ways of passing data to shaders - there may be an opportunity to simplify or consolidate the API.
 
@@ -2131,11 +2153,11 @@ Investigate unifying the APIs for transform data, amplification data, and unifor
 
 ## 260: Rename renderPipelineDescriptorModifier -> renderPipelineDescriptorTransfomer
 status: open
-priority: none
+priority: low
 kind: enhancement
 labels: enhancement, effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.785447+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:35Z
 
 *Imported from #251*
 
@@ -2143,11 +2165,11 @@ updated: 2026-03-31T19:04:41.785447+00:00
 
 ## 268: device.supportsFunctionPointers
 status: open
-priority: none
-kind: none
+priority: medium
+kind: enhancement
 labels: effort:s
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.839017+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:24Z
 
 Check `device.supportsFunctionPointers` before using function pointers / visible function tables. Add graceful fallback or clear error message when not supported.
 
@@ -2155,11 +2177,11 @@ Check `device.supportsFunctionPointers` before using function pointers / visible
 
 ## 269: Merge RenderView with environment (ProcessInfo) logic
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:41.891548+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:24Z
 
 File: Sources/MetalSprocketsUI/RenderView.swift
 
@@ -2171,11 +2193,11 @@ The RenderView currently has separate logic for environment and ProcessInfo that
 
 ## 274: Make sampleCount and colorPixelFormat parameters on RenderView
 status: open
-priority: none
-kind: none
+priority: low
+kind: enhancement
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:05:42.332305+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:24Z
 
 File: Sources/MetalSprocketsUI/MTKView+Environment.swift
 
@@ -2187,11 +2209,11 @@ These settings are so important they should be parameters on RenderView instead 
 
 ## 280: Make sure all .environment values have helper functions (if appropriate)
 status: open
-priority: none
-kind: none
+priority: low
+kind: task
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:42.001296+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:25Z
 
 Audit environment values and add convenience modifiers where appropriate. For example, instead of `.environment(\.device, device)`, provide `.device(device)` where it makes sense.
 
@@ -2199,11 +2221,11 @@ Audit environment values and add convenience modifiers where appropriate. For ex
 
 ## 282: Implement .transformEnvironment()
 status: open
-priority: none
-kind: none
+priority: medium
+kind: feature
 labels: effort:m
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:42.055210+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:25Z
 
 Implement `.transformEnvironment()` modifier similar to SwiftUI's. This allows modifying an environment value based on its current value, rather than just replacing it:
 ```swift
@@ -2216,11 +2238,11 @@ Implement `.transformEnvironment()` modifier similar to SwiftUI's. This allows m
 
 ## 287: Add @Observation support
 status: open
-priority: none
-kind: none
+priority: medium
+kind: feature
 labels: effort:l
-created: 2026-02-19T00:00:00+00:00
-updated: 2026-03-31T19:04:42.109589+00:00
+created: 2026-02-19T00:00:00Z
+updated: 2026-04-03T17:33:25Z
 
 Implement Swift Observation framework support based on the approach from [objcio/S01E268-state-and-bindings PR #1](https://github.com/objcio/S01E268-state-and-bindings/pull/1).
 
@@ -2276,9 +2298,9 @@ if p1 is Observable { continue }
 status: closed
 priority: low
 kind: feature
-created: 2026-03-03T00:00:00+00:00
-updated: 2026-03-31T18:27:21.542034+00:00
-closed: 2026-03-31T18:27:21.542034+00:00
+created: 2026-03-03T00:00:00Z
+updated: 2026-03-31T18:27:21Z
+closed: 2026-03-31T18:27:21Z
 
 ## Context
 
@@ -2303,7 +2325,7 @@ MTKView's draw(in:) callback fires on the main thread via a dispatch source on t
 
 - MetalSprocketsGaussianSplats#6: Multi-splat mode FPS drops during camera rotation
 
-- 2026-04-02T18:39:04.681501+00:00: Merged into #291 (Audit and improve Swift concurrency)
+- `2026-04-02T18:39:04Z`: Merged into #291 (Audit and improve Swift concurrency)
 
 ---
 
@@ -2311,14 +2333,14 @@ MTKView's draw(in:) callback fires on the main thread via a dispatch source on t
 status: closed
 priority: low
 kind: enhancement
-created: 2026-03-05T00:00:00+00:00
-updated: 2026-03-31T18:27:21.640708+00:00
-closed: 2026-03-31T18:27:21.640708+00:00
+created: 2026-03-05T00:00:00Z
+updated: 2026-03-31T18:27:21Z
+closed: 2026-03-31T18:27:21Z
 
 Add `extension MSState: @unchecked Sendable where Value: Sendable {}`. MSState is backed by a reference type (Box<StateBox<Value>>) so it's safe to send across concurrency boundaries. Currently requires `nonisolated(unsafe)` workarounds when capturing @MSState in Tasks.
 
-- 2026-04-02T18:39:04.681727+00:00: Unsafe to implement as described. StateBox has no synchronization — _value, dependencies, and hasBeenConnected are all mutated without locking. Box is similarly unprotected. Concurrent access from multiple isolation domains would cause data races. Would need to add a lock to StateBox (or make access actor-isolated) before this conformance is safe.
-- 2026-04-02T18:39:04.681731+00:00: Merged into #291 (Audit and improve Swift concurrency)
+- `2026-04-02T18:39:04Z`: Unsafe to implement as described. StateBox has no synchronization — _value, dependencies, and hasBeenConnected are all mutated without locking. Box is similarly unprotected. Concurrent access from multiple isolation domains would cause data races. Would need to add a lock to StateBox (or make access actor-isolated) before this conformance is safe.
+- `2026-04-02T18:39:04Z`: Merged into #291 (Audit and improve Swift concurrency)
 
 ---
 
@@ -2327,9 +2349,9 @@ status: closed
 priority: high
 kind: bug
 labels: api, documentation
-created: 2026-03-31T16:45:51.891537+00:00
-updated: 2026-03-31T17:21:12.686172+00:00
-closed: 2026-03-31T17:21:12.686172+00:00
+created: 2026-03-31T16:45:51Z
+updated: 2026-03-31T17:21:12Z
+closed: 2026-03-31T17:21:12Z
 
 ## Problem
 
@@ -2451,8 +2473,8 @@ After extensive investigation, we cannot reproduce this bug.
 
 The modifier may have been used outside of a `CommandBufferElement` context, which would silently fail (now warns).
 
-- 2026-04-02T18:39:04.681959+00:00: ## Investigation Findings
-- 2026-04-02T18:39:04.681964+00:00: ## Cannot Reproduce
+- `2026-04-02T18:39:04Z`: ## Investigation Findings
+- `2026-04-02T18:39:04Z`: ## Cannot Reproduce
 
 ---
 
@@ -2461,8 +2483,8 @@ status: new
 priority: medium
 kind: none
 labels: concurrency, effort:xl
-created: 2026-03-31T18:27:17.539403+00:00
-updated: 2026-03-31T18:27:21.357664+00:00
+created: 2026-03-31T18:27:17Z
+updated: 2026-03-31T18:27:21Z
 
 Consolidate all concurrency-related work:
 
@@ -2490,7 +2512,7 @@ Consolidate all concurrency-related work:
 status: new
 priority: medium
 kind: enhancement
-created: 2026-03-31T19:33:03.885931+00:00
+created: 2026-03-31T19:33:03Z
 
 ## Problem
 
@@ -2524,7 +2546,7 @@ Existing tests in SystemTests, NeedsSetupTests, SystemProcessTests, and NodeTest
 status: new
 priority: medium
 kind: enhancement
-created: 2026-03-31T19:33:38.425652+00:00
+created: 2026-03-31T19:33:38Z
 
 ## Problem
 
@@ -2554,7 +2576,7 @@ EnvironmentTests and UVEnvironmentValuesTests test shallow behavior (values are 
 status: new
 priority: medium
 kind: enhancement
-created: 2026-03-31T19:33:58.576419+00:00
+created: 2026-03-31T19:33:58Z
 
 ## Problem
 
@@ -2586,7 +2608,7 @@ ParametersTests and FunctionConstantsTests currently exercise the happy path onl
 status: new
 priority: low
 kind: enhancement
-created: 2026-03-31T19:34:21.178211+00:00
+created: 2026-03-31T19:34:21Z
 
 ## Problem
 
@@ -2622,7 +2644,7 @@ FunctionConstantsTests currently creates a real MTLDevice and compiles real shad
 status: new
 priority: medium
 kind: enhancement
-created: 2026-03-31T19:34:45.771163+00:00
+created: 2026-03-31T19:34:45Z
 
 ## Problem
 
@@ -2656,9 +2678,9 @@ CommandBufferCompletionTests, MSAATests, and OffscreenVideoRendererTests all tes
 status: closed
 priority: high
 kind: bug
-created: 2026-04-01T21:40:11.873582+00:00
-updated: 2026-04-01T22:16:34.377670+00:00
-closed: 2026-04-01T22:16:34.377670+00:00
+created: 2026-04-01T21:40:11Z
+updated: 2026-04-01T22:16:34Z
+closed: 2026-04-01T22:16:34Z
 
 When a `RenderView` is removed from the SwiftUI view hierarchy (e.g. switching tabs in a TabView), the closures and Metal resources captured by the render closure are not released.
 
@@ -2670,8 +2692,8 @@ When a `RenderView` is removed from the SwiftUI view hierarchy (e.g. switching t
 
 See also: MetalSprocketsSlug issue #16.
 
-- 2026-04-02T18:39:04.683611+00:00: Fix implemented: RenderViewHelper now uses optional @State viewModel, created in .onAppear and nil'd in .onDisappear. This releases the view model (and all Metal resources held by System/nodes/content closure) when the view leaves the hierarchy. Per-frame allocation churn also fixed (#298) by not creating the view model in the struct init. Needs confirmation with MetalSprocketsSlug before closing.
-- 2026-04-02T18:39:04.683613+00:00: Confirmed fixed. SlugBufferStorage deinit fires correctly when switching tabs in MetalSprocketsSlug demo. Resources released on onDisappear.
+- `2026-04-02T18:39:04Z`: Fix implemented: RenderViewHelper now uses optional @State viewModel, created in .onAppear and nil'd in .onDisappear. This releases the view model (and all Metal resources held by System/nodes/content closure) when the view leaves the hierarchy. Per-frame allocation churn also fixed (#298) by not creating the view model in the struct init. Needs confirmation with MetalSprocketsSlug before closing.
+- `2026-04-02T18:39:04Z`: Confirmed fixed. SlugBufferStorage deinit fires correctly when switching tabs in MetalSprocketsSlug demo. Resources released on onDisappear.
 
 ---
 
@@ -2679,14 +2701,14 @@ See also: MetalSprocketsSlug issue #16.
 status: closed
 priority: high
 kind: bug
-created: 2026-04-01T21:52:49.391754+00:00
-updated: 2026-04-01T22:16:58.083878+00:00
-closed: 2026-04-01T22:16:58.083878+00:00
+created: 2026-04-01T21:52:49Z
+updated: 2026-04-01T22:16:58Z
+closed: 2026-04-01T22:16:58Z
 
 RenderViewHelper creates a new RenderViewViewModel in its struct init as the default value for @State. SwiftUI only uses this value once (the first time), but the init expression runs every time the struct is recreated — which happens every frame when parent state changes (e.g. frame timing callback updating @State). This means a class instance + System() is heap-allocated and immediately discarded ~60 times per second for nothing.
 
-- 2026-04-02T18:39:04.683841+00:00: Fixed: viewModel is now @State optional, created lazily in .onAppear instead of in the struct init. No more per-frame allocation churn.
-- 2026-04-02T18:39:04.683842+00:00: Fixed alongside #297. viewModel no longer created in struct init.
+- `2026-04-02T18:39:04Z`: Fixed: viewModel is now @State optional, created lazily in .onAppear instead of in the struct init. No more per-frame allocation churn.
+- `2026-04-02T18:39:04Z`: Fixed alongside #297. viewModel no longer created in struct init.
 
 ---
 
@@ -2694,8 +2716,8 @@ RenderViewHelper creates a new RenderViewViewModel in its struct init as the def
 status: new
 priority: critical
 kind: task
-created: 2026-04-01T21:53:08.387571+00:00
-updated: 2026-04-03T04:07:21.262968+00:00
+created: 2026-04-01T21:53:08Z
+updated: 2026-04-03T04:07:21Z
 
 After fixing #298 (RenderViewHelper allocating a new RenderViewViewModel every frame), we need a way to detect if this regresses. Options: a unit test that counts allocations, a debug-mode assertion that fires if RenderViewViewModel.init is called more than once per RenderView identity, or Instruments signpost tracking. Without this, it's easy to accidentally reintroduce the per-frame churn.
 
@@ -2705,7 +2727,7 @@ After fixing #298 (RenderViewHelper allocating a new RenderViewViewModel every f
 status: new
 priority: low
 kind: bug
-created: 2026-04-01T22:03:32.702985+00:00
+created: 2026-04-01T22:03:32Z
 
 Metal validation warning: Texture 0xb6628b200 "MTKView Depth" has storage mode Private but was a transient render target accessed exclusively by the GPU. Should use .storageModeMemoryless for the depth attachment to avoid wasting VRAM on a texture that does not need to persist between render passes. Seen in the spinning cube demo.
 
@@ -2715,7 +2737,7 @@ Metal validation warning: Texture 0xb6628b200 "MTKView Depth" has storage mode P
 status: new
 priority: low
 kind: enhancement
-created: 2026-04-01T22:07:25.360367+00:00
+created: 2026-04-01T22:07:25Z
 
 ViewAdaptor wraps NSViewRepresentable/UIViewRepresentable but doesn't implement the static dismantle methods. Adding dismantleNSView and dismantleUIView would let us pause the MTKView and clear its delegate when SwiftUI tears down the representable — preventing stray draw callbacks after the view model is released. Belt-and-suspenders for the .onDisappear fix in #297.
 
@@ -2725,8 +2747,8 @@ ViewAdaptor wraps NSViewRepresentable/UIViewRepresentable but doesn't implement 
 status: new
 priority: critical
 kind: bug
-created: 2026-04-02T00:38:43.369586+00:00
-updated: 2026-04-02T00:38:49.326730+00:00
+created: 2026-04-02T00:38:43Z
+updated: 2026-04-02T00:38:49Z
 
 When passing a struct via `.parameter(name, value:)`, MetalSprockets uses `MemoryLayout<T>.size` to determine the buffer length. Metal expects `MemoryLayout<T>.stride` which includes trailing padding for alignment.
 
@@ -2750,7 +2772,7 @@ Vertex Function(slug_vertex): argument view[0] from Buffer(1) with offset(0) and
 status: new
 priority: medium
 kind: none
-created: 2026-04-02T13:55:05.705920+00:00
+created: 2026-04-02T13:55:05Z
 
 Option 2: Configure DocC to publish to root
 
@@ -2760,7 +2782,7 @@ Option 2: Configure DocC to publish to root
 status: new
 priority: medium
 kind: none
-created: 2026-04-02T16:16:32.264391+00:00
+created: 2026-04-02T16:16:32Z
 
 Some of MetalSprokcetsAddsOns can come in - specifically the macros we have for textures etc
 
@@ -2770,9 +2792,9 @@ Some of MetalSprokcetsAddsOns can come in - specifically the macros we have for 
 status: closed
 priority: medium
 kind: feature
-created: 2026-04-02T18:29:46.786735+00:00
-updated: 2026-04-02T18:39:04.657171+00:00
-closed: 2026-04-02T18:39:04.657171+00:00
+created: 2026-04-02T18:29:46Z
+updated: 2026-04-02T18:39:04Z
+closed: 2026-04-02T18:39:04Z
 
 Move the cross-environment preprocessor macros from MetalSprocketsAddOns into MetalSprockets(Shaders), since they are fundamentally useful for any MetalSprockets-based project.
 
@@ -2797,9 +2819,9 @@ After moving, MetalSprocketsAddOns should import these from MetalSprockets inste
 status: closed
 priority: high
 kind: bug
-created: 2026-04-03T04:04:18.696668+00:00
-updated: 2026-04-03T04:07:55.680747+00:00
-closed: 2026-04-03T04:07:55.680746+00:00
+created: 2026-04-03T04:04:18Z
+updated: 2026-04-03T04:07:55Z
+closed: 2026-04-03T04:07:55Z
 
 Commit d7f64a82 ('Fix RenderView per-frame allocation churn and resource leak on view removal') changed RenderViewHelper's viewModel from a non-optional @State to an optional one, created lazily in .onAppear. This means .environment(viewModel) can pass nil into the element environment.
 
@@ -2809,7 +2831,33 @@ Repro: MetalSprocketsExamples StencilDemoView — the checkerboard stencil clipp
 
 The core issue is that the viewModel (and any environment values it provides) must be available by the time the first frame's element tree is evaluated, not deferred to .onAppear.
 
-- 2026-04-03T04:07:55.728333+00:00: Fixed by creating viewModel eagerly in init while keeping .onDisappear cleanup.
+- `2026-04-03T04:07:55Z`: Fixed by creating viewModel eagerly in init while keeping .onDisappear cleanup.
+
+---
+
+## 307: Crash in System.shouldUpdateNode: Set.contains called on NSCFNumber
+status: new
+priority: high
+kind: bug
+created: 2026-04-03T23:14:30Z
+updated: 2026-04-03T23:14:59Z
+
+App crashes with `NSInvalidArgumentException: -[__NSCFNumber member:]: unrecognized selector sent to instance 0x8000000000000000` during `System.shouldUpdateNode`.
+
+The crash occurs in `System.update(root:)` → `processNode` → `reuseNode` → `shouldUpdateNode` at System.swift:237, where `Set.contains` is called on what appears to be a corrupted or mistyped value — an `NSCFNumber` is being treated as a `Set` member.
+
+The stack shows deeply nested `_ConditionalContent` and `ParameterElementModifier<Draw>` types being traversed. The crash happened while cycling through demos via URL scheme (`metalsprockets-examples://next`). Unknown which specific demo triggered it.
+
+Key frames:
+```
+frame #14: System.shouldUpdateNode(...) at System.swift:237:29
+frame #15: System.reuseNode(...) at System.swift:197:12
+frame #16: System.processNode(...) at System.swift:183:20
+```
+
+Instance `0x8000000000000000` suggests a tagged pointer or sentinel value being misinterpreted as an object.
+
+- `2026-04-03T23:14:59Z`: Second occurrence: same crash, same stack trace. Appears to happen intermittently while navigating between demos. Both times the GameOfLife element tree is visible in the stack. Likely triggered by demo switching while the render loop is mid-update.
 
 ---
 
