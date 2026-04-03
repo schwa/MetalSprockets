@@ -130,10 +130,10 @@ MetalCompilerPlugin runs the `metal` compiler as a build tool plugin. It:
 The macros check `__METAL_VERSION__` (defined automatically by the Metal compiler) to decide which types to emit:
 
 - In `.metal` files → Metal types (`metal::texture2d`, etc.)
-- From ObjC/Swift → CPU types (`MTLResourceID`, etc.)
+- From Swift → CPU types (`MTLResourceID`, etc.)
 
 ## Gotchas
 
 - Transitive dependencies work, but every intermediate target needs to list its dependencies in `Package.swift`. The plugin walks the full graph.
 - `dependency-path-suffix` applies to all dependencies the same way. If you have dependencies with different header layouts, add explicit paths via `include-paths`.
-- The `float4x4` typedef (and similar SIMD aliases) is not provided by MetalSprocketsShaders. You'll need to define it yourself — the names differ between Metal (`float4x4` is built in) and CPU (`simd_float4x4`).
+- 
