@@ -2918,10 +2918,12 @@ The Metal GPU performance overlay (enabled via Xcode scheme) disappears while dr
 ---
 
 ## 313: Expose frame timing statistics from ImmersiveRuntime
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-09T21:58:25Z
+updated: 2026-04-09T22:25:45Z
+closed: 2026-04-09T22:25:45Z
 
 ImmersiveRuntime runs its own render loop but doesn't expose frame timing statistics like RenderView does via .onFrameTimingChange. Consumers have no way to get FPS or frame duration for immersive rendering without tracking timestamps manually. Add FrameTimingStatistics support to ImmersiveRenderContent or ImmersiveContext.
 
