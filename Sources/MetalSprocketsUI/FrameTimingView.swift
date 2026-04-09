@@ -116,7 +116,6 @@ public struct FrameTimingView: View {
                 LabeledContent("Frame #", value: "\(statistics.frameCount)")
             }
         }
-
     }
 
     private static let millisecondFormat: Measurement<UnitDuration>.FormatStyle = .measurement(
@@ -145,5 +144,3 @@ public struct FrameTimingView: View {
 #Preview {
     FrameTimingView(statistics: FrameTimingStatistics(currentFPS: 60, deltaTime: 0.0167, averageDeltaTime: 0.0166, minDeltaTime: 0.0145, maxDeltaTime: 0.0201, frameCount: 4_827, gpuTime: 0.0021), options: .all)
 }
-
-
