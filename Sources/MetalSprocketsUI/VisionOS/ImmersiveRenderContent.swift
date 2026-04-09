@@ -72,6 +72,7 @@ import SwiftUI
 public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
     let progressive: Bool
     let content: @Sendable (ImmersiveContext) throws -> Content
+    var frameTimingChange: (@Sendable (FrameTimingStatistics) -> Void)?
 
     /// Creates immersive render content.
     ///
@@ -92,12 +93,33 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
                         progressive: progressive,
                         content: content
                     )
+                    runtime.frameTimingChange = frameTimingChange
                     try await runtime.renderLoop()
                 } catch {
                     print("ImmersiveRuntime failed: \(error)")
                 }
             }
         }
+    }
+}
+
+public extension ImmersiveRenderContent {
+    /// Registers a callback that is called every frame with the latest frame timing statistics.
+    ///
+    /// Use this to feed a ``FrameTimingView`` or log frame performance data from immersive content.
+    ///
+    /// ```swift
+    /// @State var statistics: FrameTimingStatistics?
+    ///
+    /// ImmersiveRenderContent { context in
+    ///     // ...
+    /// }
+    /// .onFrameTimingChange { statistics = $0 }
+    /// ```
+    func onFrameTimingChange(perform action: @Sendable @escaping (FrameTimingStatistics) -> Void) -> Self {
+        var copy = self
+        copy.frameTimingChange = action
+        return copy
     }
 }
 
@@ -153,6 +175,9 @@ public struct ImmersiveContext: Sendable {
 
     /// The stencil format used for progressive rendering.
     public let stencilFormat: MTLPixelFormat
+
+    /// Frame timing statistics computed over a rolling window.
+    public let frameTimingStatistics: FrameTimingStatistics
 
     /// Returns the view matrix for the specified eye.
     ///

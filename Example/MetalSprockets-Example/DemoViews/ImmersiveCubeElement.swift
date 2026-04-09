@@ -38,7 +38,7 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
                     encoder.setViewports(context.viewports)
 
                     // Position cube in world space: 2m in front, 1.5m up, scaled to 30cm
-                    let modelMatrix = float4x4.translation(0, 1.5, -2) * cubeRotationMatrix(time: context.time) * float4x4.scale(0.3, 0.3, 0.3)
+                    let modelMatrix = float4x4.translation(0, 1.5, -1.5) * cubeRotationMatrix(time: context.time) * float4x4.scale(0.3, 0.3, 0.3)
 
                     // ImmersiveContext provides head-tracked view/projection matrices for each eye
                     let leftView = context.viewMatrix(eye: 0)

@@ -21,6 +21,9 @@ internal final class ImmersiveRuntime<Content: Element> {
     let stencilFormat: MTLPixelFormat
     var startTime: CFAbsoluteTime = 0
     var stencilTexture: MTLTexture?
+    var frameTimingTracker = FrameTimingTracker()
+    nonisolated(unsafe) var lastGPUTime: TimeInterval?
+    var frameTimingChange: (@Sendable (FrameTimingStatistics) -> Void)?
 
     init(layerRenderer: LayerRenderer, progressive: Bool, content: @Sendable @escaping (ImmersiveContext) throws -> Content) throws {
         self.layerRenderer = layerRenderer
@@ -90,10 +93,15 @@ internal final class ImmersiveRuntime<Content: Element> {
         let deviceAnchor = worldTracking.queryDeviceAnchor(atTimestamp: presentationTime.toTimeInterval)
         drawable.deviceAnchor = deviceAnchor
 
-        try encodeFrame(drawable: drawable, deviceAnchor: deviceAnchor, time: time)
+        let currentTime = CACurrentMediaTime()
+        frameTimingTracker.lastGPUTime = lastGPUTime
+        let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
+        frameTimingChange?(frameTimingStatistics)
+
+        try encodeFrame(drawable: drawable, deviceAnchor: deviceAnchor, time: time, frameTimingStatistics: frameTimingStatistics)
     }
 
-    func encodeFrame(drawable: LayerRenderer.Drawable, deviceAnchor: DeviceAnchor?, time: TimeInterval) throws {
+    func encodeFrame(drawable: LayerRenderer.Drawable, deviceAnchor: DeviceAnchor?, time: TimeInterval, frameTimingStatistics: FrameTimingStatistics) throws {
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             throw MetalSprocketsError.resourceCreationFailure("command buffer")
         }
@@ -101,7 +109,7 @@ internal final class ImmersiveRuntime<Content: Element> {
         let renderPassDescriptor = makeRenderPassDescriptor(drawable: drawable)
         let renderContext = drawable.addRenderContext(commandBuffer: commandBuffer)
 
-        let context = ImmersiveContext(device: device, time: time, drawable: drawable, deviceAnchor: deviceAnchor, renderContext: renderContext, isProgressive: progressive, stencilValue: stencilValue, stencilFormat: stencilFormat)
+        let context = ImmersiveContext(device: device, time: time, drawable: drawable, deviceAnchor: deviceAnchor, renderContext: renderContext, isProgressive: progressive, stencilValue: stencilValue, stencilFormat: stencilFormat, frameTimingStatistics: frameTimingStatistics)
 
         let userContent = try contentBuilder(context)
 
@@ -117,6 +125,10 @@ internal final class ImmersiveRuntime<Content: Element> {
         try system.processWorkload()
 
         drawable.encodePresent(commandBuffer: commandBuffer)
+        commandBuffer.addCompletedHandler { [weak self] commandBuffer in
+            let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
+            self?.lastGPUTime = gpuTime
+        }
         commandBuffer.commit()
     }
 

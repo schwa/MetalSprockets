@@ -8,7 +8,9 @@ import SwiftUI
 struct VisionOSDemoView: View {
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
+    @Environment(ImmersiveFrameTiming.self) private var immersiveFrameTiming
     @State private var isImmersive = false
+    @State private var isTransitioning = false
 
     var body: some View {
         VStack {
@@ -30,8 +32,15 @@ struct VisionOSDemoView: View {
             } else {
                 Spacer()
             }
-
+        }
+        .overlay {
+            if isImmersive, let statistics = immersiveFrameTiming.statistics {
+                FrameTimingView(statistics: statistics, options: .all)
+            }
+        }
+        .ornament(attachmentAnchor: .scene(.bottom)) {
             Button(isImmersive ? "Exit Immersive" : "Enter Immersive") {
+                isTransitioning = true
                 Task {
                     if isImmersive {
                         await dismissImmersiveSpace()
@@ -40,8 +49,10 @@ struct VisionOSDemoView: View {
                         let result = await openImmersiveSpace(id: "ImmersiveCube")
                         if case .opened = result { isImmersive = true }
                     }
+                    isTransitioning = false
                 }
             }
+            .disabled(isTransitioning)
             .padding()
         }
     }

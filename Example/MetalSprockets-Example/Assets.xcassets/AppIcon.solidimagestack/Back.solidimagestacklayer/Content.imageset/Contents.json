@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "back.png",
+      "idiom" : "vision",
+      "scale" : "2x"
+    }
+  ],
+  "info" : {
+    "author" : "icon-generator",
+    "version" : 1
+  }
+}
