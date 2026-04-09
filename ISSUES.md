@@ -1,3 +1,7 @@
+# ISSUES.md
+
+---
+
 ## 11: Address Type Safety
 status: open
 priority: medium
@@ -173,6 +177,8 @@ created: 2026-02-19T00:00:00Z
 updated: 2026-03-31T19:19:48Z
 
 *Imported from #26*
+
+- `2026-04-09T20:13:12Z`: This is the same issue as #312 — the Metal GPU performance HUD disappears/flickers during drag gestures. Also note: flickering is reduced when shader validation is enabled (slower frame rate masks the issue).
 
 ---
 
@@ -2858,6 +2864,56 @@ frame #16: System.processNode(...) at System.swift:183:20
 Instance `0x8000000000000000` suggests a tagged pointer or sentinel value being misinterpreted as an object.
 
 - `2026-04-03T23:14:59Z`: Second occurrence: same crash, same stack trace. Appears to happen intermittently while navigating between demos. Both times the GameOfLife element tree is visible in the stack. Likely triggered by demo switching while the render loop is mid-update.
+
+---
+
+## 308: Demo app looks broken on iPad Simulator
+status: new
+priority: medium
+kind: bug
+created: 2026-04-09T18:33:18Z
+
+Running the demo app on iPad Pro 11-inch (M5) simulator (iOS 26.4), the UI is essentially blank/empty. Shows a white card with faint horizontal separator lines and a green '60' FPS counter in the top-right, but no actual rendered content is visible. The entire lower portion of the screen is just empty grey. Appears the Metal rendering surface isn't displaying anything.
+
+---
+
+## 309: Verify MSAA is actually working — demo cube still looks aliased
+status: new
+priority: low
+kind: bug
+created: 2026-04-09T19:09:14Z
+
+The demo app claims MSAA 4x is enabled (overlay says so) but the cube edges still look aliased. Need to verify the MSAA pipeline is actually functioning correctly.
+
+---
+
+## 310: fpsColor should be based on target framerate, not hardcoded thresholds
+status: new
+priority: low
+kind: enhancement
+created: 2026-04-09T19:09:28Z
+
+FrameTimingView.fpsColor(for:) uses hardcoded thresholds (55 = green, 30 = yellow, else red). These should be relative to the target framerate (e.g. 120Hz displays would show yellow at 55fps which is wrong).
+
+---
+
+## 311: RenderView renders blank when used with .toolbar on macOS
+status: new
+priority: medium
+kind: bug
+created: 2026-04-09T20:03:35Z
+
+MTKView-backed RenderView renders nothing when a .toolbar modifier is applied (with or without NavigationStack). Resizing the window triggers rendering. Likely the MTKView gets zero initial size from the toolbar layout pass and never redraws when it gets a real size. Overlay-based UI works fine as a workaround.
+
+---
+
+## 312: Metal GPU performance HUD disappears during drag/pan gestures
+status: new
+priority: low
+kind: bug
+created: 2026-04-09T20:12:59Z
+
+The Metal GPU performance overlay (enabled via Xcode scheme) disappears while dragging/panning in RenderView. It reappears when the gesture ends. Likely a SwiftUI overlay/z-ordering issue during gesture handling.
 
 ---
 
