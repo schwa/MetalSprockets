@@ -68,42 +68,55 @@ public struct FrameTimingView: View {
     public var body: some View {
         TimelineView(.animation(minimumInterval: minimumUpdateInterval)) { timeline in
             Group {
+                #if os(macOS)
                 Form {
-                    if let statistics = savedStatistics {
-                        if options.contains(.fps) {
-                            LabeledContent {
-                                Text("\(Int(statistics.currentFPS.rounded()))")
-                                    .foregroundStyle(fpsColor(for: statistics.currentFPS))
-                            } label: {
-                                Text("FPS")
-                            }
-                        }
-                        if options.contains(.frameTime) {
-                            LabeledContent("Frame", value: formattedMilliseconds(statistics.deltaTime))
-                        }
-                        if options.contains(.range) {
-                            let rangeText = formattedMilliseconds(statistics.minDeltaTime) + "–" + formattedMilliseconds(statistics.maxDeltaTime)
-                            LabeledContent("1s Range", value: rangeText)
-                        }
-                        if options.contains(.gpuTime), let gpuTime = statistics.gpuTime {
-                            LabeledContent("GPU", value: formattedMilliseconds(gpuTime))
-                        }
-                        if options.contains(.frameCount) {
-                            LabeledContent("Frame #", value: "\(statistics.frameCount)")
-                        }
-                    }
+                    formContent
+                        .foregroundStyle(.white)
                 }
-                .foregroundStyle(.white)
-                .monospacedDigit()
-                .font(.caption)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                #else
+                VStack(spacing: 4) {
+                    formContent
+                }
+                .fixedSize()
+                #endif
             }
+            .monospacedDigit()
+            .padding(8)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .foregroundStyle(.white)
+            .padding()
             .onChange(of: timeline.date, initial: true) {
                 savedStatistics = statistics
             }
         }
+    }
+
+    @ViewBuilder
+    private var formContent: some View {
+        if let statistics = savedStatistics {
+            if options.contains(.fps) {
+                LabeledContent {
+                    Text("\(Int(statistics.currentFPS.rounded()))")
+                        .foregroundStyle(fpsColor(for: statistics.currentFPS))
+                } label: {
+                    Text("FPS")
+                }
+            }
+            if options.contains(.frameTime) {
+                LabeledContent("Frame", value: formattedMilliseconds(statistics.deltaTime))
+            }
+            if options.contains(.range) {
+                let rangeText = formattedMilliseconds(statistics.minDeltaTime) + "–" + formattedMilliseconds(statistics.maxDeltaTime)
+                LabeledContent("1s Range", value: rangeText)
+            }
+            if options.contains(.gpuTime), let gpuTime = statistics.gpuTime {
+                LabeledContent("GPU", value: formattedMilliseconds(gpuTime))
+            }
+            if options.contains(.frameCount) {
+                LabeledContent("Frame #", value: "\(statistics.frameCount)")
+            }
+        }
+
     }
 
     private static let millisecondFormat: Measurement<UnitDuration>.FormatStyle = .measurement(
@@ -132,3 +145,5 @@ public struct FrameTimingView: View {
 #Preview {
     FrameTimingView(statistics: FrameTimingStatistics(currentFPS: 60, deltaTime: 0.0167, averageDeltaTime: 0.0166, minDeltaTime: 0.0145, maxDeltaTime: 0.0201, frameCount: 4_827, gpuTime: 0.0021), options: .all)
 }
+
+

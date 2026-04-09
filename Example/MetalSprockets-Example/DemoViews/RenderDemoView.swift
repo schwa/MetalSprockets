@@ -83,7 +83,7 @@ struct RenderDemoView: View {
                 .foregroundStyle(.white)
                 .padding()
         }
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .bottomTrailing) {
             if let frameTimingStatistics {
                 FrameTimingView(statistics: frameTimingStatistics, options: .all)
                 .padding()
