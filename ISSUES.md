@@ -2929,3 +2929,28 @@ ImmersiveRuntime runs its own render loop but doesn't expose frame timing statis
 
 ---
 
+## 314: Depth stencil state not invalidated when depthCompare function changes
+status: new
+priority: critical
+kind: bug
+created: 2026-04-13T21:37:45Z
+updated: 2026-04-13T21:38:52Z
+
+When using .depthCompare() with different compare functions across frames (e.g. switching between .lessEqual and .greaterEqual), the depth stencil state is cached from the first configuration and not recreated. The Metal debugger confirmed the stencil state remained .lessEqual even after requesting .greaterEqual. Discovered while implementing switchable inverse-Z shadow mapping in MetalSprocketsAddOns.
+
+---
+
+## 315: @MSState does not update when element is reconstructed with different init values
+status: new
+priority: critical
+kind: bug
+created: 2026-04-13T22:01:50Z
+
+@MSState persists its initial value across frames and never updates, even when the element is reconstructed with a new value. This means function constants or other pipeline configuration stored in @MSState cannot be changed at runtime without destroying and recreating the entire RenderView (e.g. via .id()).
+
+Example: an element with `@MSState var fragmentShader: FragmentShader` initialized with different function constants each frame will keep the first frame's shader forever.
+
+This is the same root cause as #314 (cached depth stencil state). Both are cases where MetalSprockets caches state that should be invalidated when the element's configuration changes.
+
+---
+
