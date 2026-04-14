@@ -209,8 +209,8 @@ private extension System {
             // Preserve existing needsSetup=true (e.g., from markAllNodesNeedingSetup)
             if !existingNode.needsSetup {
                 if let oldBodyless = oldElement as? any BodylessElement,
-                   let newBodyless = element as? any BodylessElement,
-                   type(of: oldBodyless) == type(of: newBodyless) {
+                    let newBodyless = element as? any BodylessElement,
+                    type(of: oldBodyless) == type(of: newBodyless) {
                     existingNode.needsSetup = requiresSetupErased(old: oldBodyless, new: newBodyless)
                 } else {
                     // Default to needing setup for non-BodylessElements or type changes
