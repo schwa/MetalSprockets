@@ -138,7 +138,7 @@ public struct EnvironmentSnapshot: Codable, Sendable {
         let mirror = Mirror(reflecting: environmentValues)
 
         if let storageChild = mirror.children.first(where: { $0.label == "storage" }),
-            let storage = storageChild.value as? MSEnvironmentValues.Storage {
+           let storage = storageChild.value as? MSEnvironmentValues.Storage {
             // Extract values from storage
             let storageMirror = Mirror(reflecting: storage)
 

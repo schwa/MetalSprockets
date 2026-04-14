@@ -21,7 +21,7 @@ internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement,
 
     func setupEnter(_ node: Node) throws {
         guard let pipelineState = node.environmentValues.renderPipelineState,
-            let reflection = node.environmentValues.reflection else {
+              let reflection = node.environmentValues.reflection else {
             // Not ready yet - will be set up when RenderPipeline runs
             return
         }
@@ -44,8 +44,8 @@ internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement,
         }
 
         guard let table = functionTable,
-            let index = resolvedIndex,
-            let resolvedType = resolvedFunctionType else {
+              let index = resolvedIndex,
+              let resolvedType = resolvedFunctionType else {
             return
         }
 

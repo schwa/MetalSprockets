@@ -1,7 +1,7 @@
 import MetalSprockets
 import MetalSprocketsSupport
-import MetalSupport
 import MetalSprocketsUI
+import MetalSupport
 import simd
 import SwiftUI
 
@@ -87,7 +87,7 @@ struct RenderDemoView: View {
         .overlay(alignment: .bottomTrailing) {
             if let frameTimingStatistics {
                 FrameTimingView(statistics: frameTimingStatistics, options: .all)
-                .padding()
+                    .padding()
             }
         }
     }

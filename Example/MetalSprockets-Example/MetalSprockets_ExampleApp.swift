@@ -24,7 +24,7 @@ struct MetalSprockets_ExampleApp: App {
             ContentView()
                 #if os(visionOS)
                 .environment(immersiveFrameTiming)
-                #endif
+            #endif
         }
 
         #if os(visionOS)
