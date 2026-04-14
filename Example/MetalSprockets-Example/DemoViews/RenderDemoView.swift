@@ -1,5 +1,6 @@
 import MetalSprockets
 import MetalSprocketsSupport
+import MetalSupport
 import MetalSprocketsUI
 import simd
 import SwiftUI

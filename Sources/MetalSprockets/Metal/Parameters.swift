@@ -1,6 +1,7 @@
 import CoreGraphics
 import Metal
 import MetalSprocketsSupport
+import MetalSupport
 import simd
 
 // TODO: #54 instead of being typed <T> we need an "AnyParameter" and this needs to take a dictionary of AnyParameters

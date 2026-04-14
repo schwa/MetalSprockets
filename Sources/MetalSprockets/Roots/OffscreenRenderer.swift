@@ -1,6 +1,7 @@
 import CoreGraphics
 import Metal
 import MetalSprocketsSupport
+import MetalSupport
 
 // MARK: - OffscreenRenderer
 

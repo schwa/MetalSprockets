@@ -1,5 +1,6 @@
 import Metal
 import MetalSprocketsSupport
+import MetalSupport
 
 public extension Element {
     func run() throws {

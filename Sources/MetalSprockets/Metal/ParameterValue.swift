@@ -1,4 +1,5 @@
 import Metal
+import MetalSupport
 
 internal enum ParameterValue<T> {
     case texture(MTLTexture?)

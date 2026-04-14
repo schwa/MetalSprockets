@@ -1,5 +1,5 @@
+import Foundation
 import Metal
-import MetalKit
 
 public func isPOD<T>(_ type: T.Type) -> Bool {
     _isPOD(type)

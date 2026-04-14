@@ -20,6 +20,7 @@ public let package = Package(
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0-latest"),
         .package(url: "https://github.com/schwa/MetalCompilerPlugin", from: "0.1.4"),
+        .package(url: "https://github.com/schwa/MetalSupport", from: "1.0.0"),
         .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
         .package(url: "https://github.com/schwa/GoldenImage", branch: "main"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.1.0"),
@@ -28,7 +29,8 @@ public let package = Package(
         .target(
             name: "MetalSprockets",
             dependencies: [
-                "MetalSprocketsSupport"
+                "MetalSprocketsSupport",
+                .product(name: "MetalSupport", package: "MetalSupport"),
             ]
         ),
         .target(
@@ -37,6 +39,7 @@ public let package = Package(
                 "MetalSprockets",
                 "MetalSprocketsSupport",
                 "MetalSprocketsUIShaders",
+                .product(name: "MetalSupport", package: "MetalSupport"),
             ]
         ),
         .target(
@@ -52,7 +55,8 @@ public let package = Package(
         .target(
             name: "MetalSprocketsSupport",
             dependencies: [
-                "MetalSprocketsMacros"
+                "MetalSprocketsMacros",
+                .product(name: "MetalSupport", package: "MetalSupport"),
             ]
         ),
         .macro(
@@ -68,6 +72,7 @@ public let package = Package(
                 "MetalSprockets",
                 "MetalSprocketsUI",
                 "MetalSprocketsSupport",
+                .product(name: "MetalSupport", package: "MetalSupport"),
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
                 "GeometryLite3D",

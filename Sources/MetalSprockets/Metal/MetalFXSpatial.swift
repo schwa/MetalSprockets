@@ -2,6 +2,7 @@
 import Metal
 import MetalFX
 import MetalSprocketsSupport
+import MetalSupport
 
 public struct MetalFXSpatial: Element {
     @MSState

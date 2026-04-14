@@ -1,5 +1,6 @@
 import Metal
 import MetalSprocketsSupport
+import MetalSupport
 
 // MARK: - ShaderLibrary
 

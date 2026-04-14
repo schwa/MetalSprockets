@@ -1,5 +1,5 @@
 {
-  "originHash" : "e46ca3e2442c2961e65d31166acdc154384695728ac02b98f4541c686ba415b3",
+  "originHash" : "ef338e13f8a860ac1559e3b4fe19c40f39a659fbd47ec2908d29476abcd74143",
   "pins" : [
     {
       "identity" : "metalcompilerplugin",
@@ -8,6 +8,24 @@
       "state" : {
         "revision" : "36c761478a8e3fb934acf8ef2db4696af95069b4",
         "version" : "0.1.5"
+      }
+    },
+    {
+      "identity" : "metalsupport",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/schwa/MetalSupport",
+      "state" : {
+        "revision" : "bbd05e3292b7b5808e04c93be11a75e141aadf02",
+        "version" : "1.0.1"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "6675bc0ff86e61436e615df6fc5174e043e57924",
+        "version" : "1.4.1"
       }
     },
     {

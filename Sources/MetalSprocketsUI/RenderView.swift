@@ -2,6 +2,7 @@ import Metal
 import MetalKit
 import MetalSprockets
 import MetalSprocketsSupport
+import MetalSupport
 import Observation
 internal import os
 import QuartzCore

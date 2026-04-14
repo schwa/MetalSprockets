@@ -4,6 +4,7 @@ import CoreMedia
 import CoreVideo
 import Metal
 import MetalSprocketsSupport
+import MetalSupport
 
 public final class OffscreenVideoRenderer {
     public let size: CGSize
