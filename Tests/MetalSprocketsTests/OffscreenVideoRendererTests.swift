@@ -54,7 +54,7 @@ func testVideoRenderer() async throws {
                 }
                 .parameter("color", value: color)
             }
-            .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+            .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         }
         try renderer.render(triangle)
     }

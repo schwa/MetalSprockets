@@ -41,7 +41,7 @@ enum RedTriangle {
                 .parameter("color", value: SIMD4<Float>([1, 0, 0, 1]))
             }
             // Infer vertex layout from shader attributes
-            .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+            .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         }
 
         // Render offscreen

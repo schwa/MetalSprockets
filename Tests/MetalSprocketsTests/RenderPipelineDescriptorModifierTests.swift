@@ -63,7 +63,7 @@ func testRenderPipelineDescriptorModifierWithoutAlphaBlending() throws {
             }
             .parameter("color", value: blueColor)
         }
-        .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+        .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         // NO alpha blending modifier here
     }
 
@@ -133,7 +133,7 @@ func testRenderPipelineDescriptorModifierWithAlphaBlending() throws {
             }
             .parameter("color", value: blueColor)
         }
-        .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+        .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         .renderPipelineDescriptorModifier { descriptor in
             descriptor.colorAttachments[0].isBlendingEnabled = true
             descriptor.colorAttachments[0].rgbBlendOperation = .add
@@ -199,7 +199,7 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
             }
             .parameter("color", value: color)
         }
-        .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+        .vertexDescriptor(vertexShader.inferredVertexDescriptor())
     }
     .renderPassDescriptorModifier { descriptor in
         // Modify the render pass descriptor

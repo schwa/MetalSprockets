@@ -49,7 +49,7 @@ func testRendering() throws {
             }
             .parameter("color", value: color)
         }
-        .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+        .vertexDescriptor(vertexShader.inferredVertexDescriptor())
     }
     let offscreenRenderer = try OffscreenRenderer(size: CGSize(width: 1_600, height: 1_200))
     let texture = try offscreenRenderer.render(renderPass)

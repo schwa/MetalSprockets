@@ -46,7 +46,7 @@ struct MSAATests {
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
                 }
             }
-            .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+            .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         }
         .msaa(sampleCount: 1)
 
@@ -104,7 +104,7 @@ struct MSAATests {
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
                 }
             }
-            .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+            .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         }
 
         let offscreenRenderer = try OffscreenRenderer(size: CGSize(width: 256, height: 256))
