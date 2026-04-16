@@ -22,7 +22,9 @@ internal struct CaptureModifier <Content>: Element, BodylessElement, BodylessCon
     var destination: MTLCaptureDestination
 
     func workloadEnter(_ node: Node) throws {
-        guard enabled else { return }
+        guard enabled else {
+            return
+        }
 
         let manager = MTLCaptureManager.shared()
 
@@ -57,7 +59,9 @@ internal struct CaptureModifier <Content>: Element, BodylessElement, BodylessCon
     }
 
     func workloadExit(_ node: Node) throws {
-        guard enabled else { return }
+        guard enabled else {
+            return
+        }
         let manager = MTLCaptureManager.shared()
         if manager.isCapturing {
             manager.stopCapture()
