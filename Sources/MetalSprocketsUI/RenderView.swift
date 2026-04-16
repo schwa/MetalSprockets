@@ -20,6 +20,46 @@ public extension EnvironmentValues {
 
     @Entry
     var frameTimingChange: ((FrameTimingStatistics) -> Void)?
+
+    @Entry
+    internal var renderViewCapture: RenderViewCaptureConfiguration?
+}
+
+// MARK: - RenderViewCaptureConfiguration
+
+internal struct RenderViewCaptureConfiguration: Equatable {
+    var enabled: Bool
+    var target: CaptureTarget
+    var destination: MTLCaptureDestination
+}
+
+public extension View {
+    /// Wraps each rendered frame in an `MTLCaptureManager` GPU frame capture scope.
+    ///
+    /// Mirrors ``MetalSprockets/Element/capture(_:target:destination:)`` but applies
+    /// to everything rendered inside a ``RenderView``. A capture is started and stopped
+    /// for every frame while enabled, so prefer ``MTLCaptureDestination/developerTools``
+    /// (Xcode) and toggle the modifier off when you have what you need.
+    ///
+    /// ```swift
+    /// RenderView { context, size in
+    ///     // ...
+    /// }
+    /// .capture(shouldCapture)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - enabled: When `false`, the modifier is a no-op. Defaults to `true`.
+    ///   - target: Whether to capture all work on the device or only on the
+    ///     current command queue. Defaults to ``MetalSprockets/CaptureTarget/device``.
+    ///   - destination: The capture destination. Defaults to `.developerTools`.
+    func capture(
+        _ enabled: Bool = true,
+        target: CaptureTarget = .device,
+        destination: MTLCaptureDestination = .developerTools
+    ) -> some View {
+        environment(\.renderViewCapture, RenderViewCaptureConfiguration(enabled: enabled, target: target, destination: destination))
+    }
 }
 
 public extension View {
@@ -140,6 +180,9 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     @Environment(\.frameTimingChange)
     private var frameTimingChange
 
+    @Environment(\.renderViewCapture)
+    private var captureConfiguration
+
     @State
     private var viewModel: RenderViewViewModel<Content>?
 
@@ -171,6 +214,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             viewModel.content = content
             viewModel.drawableSizeChange = drawableSizeChange
             viewModel.frameTimingChange = frameTimingChange
+            viewModel.captureConfiguration = captureConfiguration
         }
         .onAppear {
             if viewModel == nil {
@@ -206,6 +250,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     @ObservationIgnored
     var frameTimingChange: ((FrameTimingStatistics) -> Void)?
+
+    @ObservationIgnored
+    var captureConfiguration: RenderViewCaptureConfiguration?
 
     @ObservationIgnored
     var signpostID = signposter?.makeSignpostID()
@@ -283,6 +330,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
                 // Return the element produced by the content builder
                 let t0 = CACurrentMediaTime()
+                let captureConfiguration = self.captureConfiguration
                 let rootElement = try CommandBufferElement(completion: .commit) {
                     try Group {
                         try self.content(context, currentDrawableSize)
@@ -292,6 +340,11 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                         self?.lastGPUTime = gpuTime
                     }
                 }
+                .capture(
+                    captureConfiguration?.enabled ?? false,
+                    target: captureConfiguration?.target ?? .device,
+                    destination: captureConfiguration?.destination ?? .developerTools
+                )
                 .environment(\.device, device)
                 .environment(\.commandQueue, commandQueue)
                 .environment(\.renderPassDescriptor, currentRenderPassDescriptor)

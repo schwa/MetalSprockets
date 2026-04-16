@@ -3392,3 +3392,20 @@ Add a .capture(_ enabled: Bool = true, target: CaptureTarget = .device, destinat
 - `2026-04-16T14:39:04Z`: Implemented in Sources/MetalSprockets/Metal/CaptureModifier.swift
 
 ---
+
+## 318: Add .capture() View modifier to RenderView
+
++++
+status: closed
+priority: low
+kind: feature
+created: 2026-04-16T14:48:40Z
+updated: 2026-04-16T14:48:45Z
+closed: 2026-04-16T14:48:45Z
++++
+
+Mirror the Element .capture(_:target:destination:) API as a SwiftUI View modifier on RenderView, applying an MTLCaptureManager scope to each rendered frame's element tree. Plumbed via an internal environment value and the RenderView view model.
+
+- `2026-04-16T14:48:45Z`: Implemented in Sources/MetalSprocketsUI/RenderView.swift
+
+---
