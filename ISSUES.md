@@ -3375,3 +3375,20 @@ FlatShader(...) { ... }
 Currently consumers have to call encoder.setDepthBias() inside a Draw closure, which bypasses the declarative pipeline and can conflict with other state.
 
 ---
+
+## 317: Add .capture() Element modifier for MTLCaptureManager
+
++++
+status: closed
+priority: low
+kind: feature
+created: 2026-04-16T14:38:58Z
+updated: 2026-04-16T14:39:04Z
+closed: 2026-04-16T14:39:04Z
++++
+
+Add a .capture(_ enabled: Bool = true, target: CaptureTarget = .device, destination: MTLCaptureDestination = .developerTools) modifier that wraps an Element's workload phase in an MTLCaptureManager scope. Supports targeting either the environment device or the current command queue. No-op when enabled is false. Warns and skips when destination is unsupported or a capture is already in progress.
+
+- `2026-04-16T14:39:04Z`: Implemented in Sources/MetalSprockets/Metal/CaptureModifier.swift
+
+---
