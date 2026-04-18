@@ -2,11 +2,6 @@ internal struct WorkloadEnabledModifier <Content>: Element, BodylessElement, Bod
     var content: Content
     var enabled: Bool
 
-    init(content: Content, enabled: Bool) {
-        self.content = content
-        self.enabled = enabled
-    }
-
     func skipsWorkload(_ node: Node) -> Bool {
         !enabled
     }
