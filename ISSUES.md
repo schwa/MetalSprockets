@@ -2541,6 +2541,8 @@ Adopt Metal 4 APIs where beneficial:
 - Take advantage of performance improvements
 - Consider requiring Metal 4 as minimum or providing fallbacks
 
+- `2026-04-18T17:21:58Z`: Draft RFC: [RFCs/0002-metal-4.md](RFCs/0002-metal-4.md) — proposes a phased rollout (backend abstraction → Metal 4 backend → argument tables → pipeline caching → residency sets → ML dispatch element).
+
 ---
 
 ## 259: Look at unifying transform/amplification/uniforms
