@@ -64,7 +64,7 @@ updated: 2026-04-03T17:33:01Z
 Consolidate OffscreenRenderer improvements:
 
 - Merge ComputePass.compute() & OffscreenRenderer into one thing (was #19)
-- Break OffscreenRenderer into renderer & render session (was #20)  
+- Break OffscreenRenderer into renderer & render session (was #20)
 - Make OffscreenRenderer more configurable (was #25)
 
 The goal is a cleaner, more flexible offscreen rendering API.
@@ -1017,7 +1017,7 @@ Both `SplatCloud` and `SplatIndices` are marked as `@unchecked Sendable`, which 
 - Contains mutable properties that could cause data races
 - No synchronization mechanisms in place
 
-### SplatIndices  
+### SplatIndices
 - Contains `TypedMTLBuffer` which is not Sendable
 - No synchronization for concurrent access
 
@@ -1421,7 +1421,7 @@ Could potentially store keyPath and value directly as properties.
 
 ### Other Modifiers to Investigate
 - RenderPipelineDescriptorModifier
-- RenderPassDescriptorModifier  
+- RenderPassDescriptorModifier
 - WorkloadModifier
 - Event handler modifiers (onCommandBufferScheduled, etc.)
 
@@ -1470,7 +1470,7 @@ extension Element {
 struct IdentifiedElement<Content: Element, ID: Hashable>: Element {
     let content: Content
     let id: ID
-    
+
     var body: some Element {
         content
     }
@@ -1584,7 +1584,7 @@ The issue is in how `MSBinding` equality works:
 
 struct UnusedBindingParent: Element {
     @MSState var value = 0
-    
+
     var body: some Element {
         TestMonitor.shared.logUpdate("parent-body")
         return VStack {
@@ -1598,7 +1598,7 @@ struct UnusedBindingParent: Element {
 
 struct UnusedBindingChild: Element {
     @MSBinding var value: Int
-    
+
     var body: some Element {
         TestMonitor.shared.logUpdate("child-body")
         // Binding is passed but not used in body
@@ -1608,11 +1608,11 @@ struct UnusedBindingChild: Element {
 
 struct VStack<Content: Element>: Element {
     let content: Content
-    
+
     init(@ElementBuilder content: () throws -> Content) rethrows {
         self.content = try content()
     }
-    
+
     var body: some Element {
         content
     }
@@ -1621,23 +1621,23 @@ struct VStack<Content: Element>: Element {
 @Test
 func testUnusedBinding() async throws {
     TestMonitor.shared.reset()
-    
+
     let root = UnusedBindingParent()
     let system = System()
-    
+
     try system.update(root: root)
     #expect(TestMonitor.shared.updates == ["parent-body", "child-body"])
-    
+
     TestMonitor.shared.updates.removeAll()
-    
+
     // Trigger parent state change
     let action = system.element(at: [0, 0, 0, 0], type: ActionElement.self)!
     system.withCurrentSystem {
         action.action()
     }
-    
+
     try system.update(root: root)
-    
+
     // Parent rebuilds, but child should not since it doesn't use the binding
     #expect(TestMonitor.shared.updates == ["parent-body"])  // FAILS: child-body is also called
 }
@@ -1651,7 +1651,7 @@ When a binding is not used in a child's body, the child should not rebuild when 
 
 Modify `MSBinding` equality to compare based on the underlying state source rather than a UUID:
 1. Add a `sourceIdentifier` property to track the underlying StateBox
-2. Update StateBox to pass its ObjectIdentifier when creating bindings  
+2. Update StateBox to pass its ObjectIdentifier when creating bindings
 3. Fix equality comparison to compare sourceIdentifiers instead of UUIDs
 
 This would ensure that bindings pointing to the same state source are considered equal, preventing unnecessary rebuilds.
@@ -1694,7 +1694,7 @@ When comparing elements to determine if they need rebuilding, the `isEqual` func
 
 struct RootWithRebuildTracking: Element {
     @MSState var counter = 0
-    
+
     var body: some Element {
         TestMonitor.shared.logUpdate("root-body")
         return VStack {
@@ -1717,7 +1717,7 @@ struct ConstantChild: Element {
 
 struct DynamicChild: Element {
     let value: Int
-    
+
     var body: some Element {
         TestMonitor.shared.logUpdate("dynamic-body-\(value)")
         return EmptyElement()
@@ -1726,7 +1726,7 @@ struct DynamicChild: Element {
 
 struct ConditionalChild: Element {
     let showExtra: Bool
-    
+
     var body: some Element {
         TestMonitor.shared.logUpdate("conditional-body")
         if showExtra {
@@ -1739,11 +1739,11 @@ struct ConditionalChild: Element {
 
 struct VStack<Content: Element>: Element {
     let content: Content
-    
+
     init(@ElementBuilder content: () throws -> Content) rethrows {
         self.content = try content()
     }
-    
+
     var body: some Element {
         content
     }
@@ -1752,45 +1752,45 @@ struct VStack<Content: Element>: Element {
 @Test
 func testSelectiveRebuilding() async throws {
     TestMonitor.shared.reset()
-    
+
     let root = RootWithRebuildTracking()
     let system = System()
-    
+
     // Initial build
     try system.update(root: root)
-    
+
     #expect(TestMonitor.shared.updates == [
         "root-body",
         "constant-body",
         "dynamic-body-0",
         "conditional-body"
     ])
-    
+
     TestMonitor.shared.updates.removeAll()
-    
+
     // Increment counter
     system.withCurrentSystem {
         root.counter = 1
     }
-    
+
     try system.update(root: root)
-    
+
     // Root rebuilds, constant child should not, dynamic child rebuilds with new value
     #expect(TestMonitor.shared.updates == [
         "root-body",
         "dynamic-body-1",
         "conditional-body"
     ])  // FAILS: constant-body is also called
-    
+
     TestMonitor.shared.updates.removeAll()
-    
+
     // Increment past threshold for conditional
     system.withCurrentSystem {
         root.counter = 3
     }
-    
+
     try system.update(root: root)
-    
+
     #expect(TestMonitor.shared.updates == [
         "root-body",
         "dynamic-body-3",
@@ -1855,9 +1855,9 @@ updated: 2026-03-31T18:56:43Z
 closed: 2026-03-31T18:56:43Z
 +++
 
-Create a target of standard shaders and pipelines that user can immediately use. 
+Create a target of standard shaders and pipelines that user can immediately use.
 
-Flat shaders. Basic PBR. MetalFX. Etc etc. 
+Flat shaders. Basic PBR. MetalFX. Etc etc.
 
 *Imported from #194*
 
@@ -2582,7 +2582,7 @@ Implement Swift Observation framework support based on the approach from [objcio
 
 3. **Add tests** for:
    - Simple observation with `@Observable` models
-   - Bindings passing observable models to child views  
+   - Bindings passing observable models to child views
    - Unused binding scenarios (verify only affected views rebuild)
 
 ## Reference Implementation
@@ -3416,7 +3416,7 @@ Mirror the Element .capture(_:target:destination:) API as a SwiftUI View modifie
 status: new
 priority: high
 kind: bug
-labels: area:metalfx,area:core,effort:m
+labels: area:metalfx, area:core, effort:m
 created: 2026-04-18T17:22:08Z
 +++
 
@@ -3443,3 +3443,128 @@ Anywhere `AnyBodylessElement().onSetupEnter { ... }` is used for one-time resour
 Option 1 is the right general fix. If it's not feasible, at minimum the existing `MetalFXSpatial` should be audited (and its docstring updated) to confirm setup is supposed to be per-frame.
 
 ---
+
+## 320: Add .vertexBuffer(_:layoutIndex:) modifier for stage_in vertex buffers
+
++++
+status: closed
+priority: medium
+kind: feature
+labels: metal4, api-design
+created: 2026-04-18T23:50:57Z
+updated: 2026-04-18T23:52:48Z
+closed: 2026-04-18T23:52:48Z
++++
+
+## Problem
+
+Metal 4 vertex shaders that take input via `[[stage_in]]` + `MTLVertexDescriptor` bind their vertex buffers to the vertex argument table at the layout's `bufferIndex` slot. Those slots are not exposed as named arguments in Metal reflection, so `.parameter(_:buffer:)` — which resolves by name — cannot reach them.
+
+See `Metal4Inventory.md` § "Open problem: stage_in vertex-buffer binding" for the long-form writeup.
+
+## Finding
+
+A reflection probe (`/tmp/reflection-probe/main.swift` during design, now gone) showed that Apple's Metal compiler **does** emit synthetic reflection entries for stage_in layout buffers, under hard-coded names of the form:
+
+    vertexBuffer.0
+    vertexBuffer.1
+    ...
+
+where the integer is the layout's `bufferIndex`. These bindings have `isArgument: false`, distinguishing them from user-declared `[[buffer(n)]]` arguments. The behavior is the same on Metal 3, so this could be used in the pre-Metal-4 codebase too.
+
+The naming convention appears undocumented (no mention in Apple docs or headers), which is a small risk.
+
+## Proposed API
+
+```swift
+RenderPass {
+    RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+        Draw { encoder in
+            encoder.drawPrimitives(primitiveType: .triangle,
+                                   vertexStart: 0,
+                                   vertexCount: vertices.count)
+        }
+        .vertexBuffer(positionsBuffer, layoutIndex: 0)
+        .vertexBuffer(colorsBuffer, layoutIndex: 1)
+    }
+    .vertexDescriptor(myVertexDescriptor)
+}
+```
+
+- Dedicated modifier, not a `.parameter(...)` overload. Reads naturally: "this is a vertex buffer, it goes at layout N." Signals at the call site that this is structurally different from a named argument.
+- Offset parameter for byte offsets: `.vertexBuffer(buf, layoutIndex: 0, offset: 128)`.
+- Auto-register buffer with the lifecycle's root residency set (same as `.parameter(_:buffer:)`).
+
+## Implementation sketch
+
+```swift
+public extension Element {
+    func vertexBuffer(_ buffer: any MTLBuffer, layoutIndex: Int, offset: Int = 0) -> some Element {
+        self.parameter("vertexBuffer.\\(layoutIndex)", buffer: buffer, offset: offset)
+    }
+}
+```
+
+That's it, roughly. It delegates to `.parameter(_:buffer:)` so it gets residency registration, stage/kind validation, and reflection-driven slot lookup for free. The synthetic-name convention is absorbed in one place; if Apple ever renames it, we update one string literal.
+
+## Risks / open questions
+
+- **Undocumented reflection naming.** If Apple's convention changes across Xcode versions, `.vertexBuffer(...)` breaks. Consider a runtime check that accepts either `vertexBuffer.N` or a future name.
+- **Pipelines with only stage_in inputs.** Reflection surfaces the synthetic entries, so the vertex argument table will be sized correctly automatically — no PipelineBindings changes needed. Verify with a test.
+- **Sparse layout indices** (e.g. layout 0 and 2, no 1). `PipelineBindings` already sizes tables to max(index)+1; should work transparently.
+
+## Acceptance
+
+- Depth-compare golden test using stage_in vertex buffers renders correctly (the test that motivated this investigation).
+- Example target's `DemoCubeRenderPipeline.swift` compiles against the new API (minus other unrelated missing APIs).
+- Documentation in `Metal4Inventory.md` updated to close out the "Open problem" section.
+
+## Related
+
+- `Metal4Inventory.md` § Open problem: stage_in vertex-buffer binding.
+- Previous abandoned attempts at the same fix: reverted 2026-04-18.
+- RFC 0002 § Binding.
+
+---
+
+## 321: Replace Thread.sleep polling in OffscreenVideoRenderer.appendFrame with proper back-pressure
+
++++
+status: new
+priority: low
+kind: bug
+labels: metal4, cleanup
+created: 2026-04-18T23:55:21Z
++++
+
+## Problem
+
+`OffscreenVideoRenderer.appendFrame()` currently busy-polls
+`assetWriterInput.isReadyForMoreMediaData` with a 10ms `Thread.sleep`:
+
+```swift
+while !assetWriterInput.isReadyForMoreMediaData {
+    Thread.sleep(forTimeInterval: 0.01)
+}
+```
+
+This was carried over verbatim from the Metal 3 port. It violates the
+agent's "no timing hacks" rule and is a sign of a race-condition
+workaround in the original code.
+
+## Fix
+
+Use AVFoundation's back-pressure API — `requestMediaDataWhenReady(on:using:)`
+or `expectsMediaDataInRealTime = false` + the built-in readiness
+callbacks — to block the caller properly instead of spinning.
+
+Alternatively, wrap `appendFrame` in an `async` function that uses
+`withCheckedContinuation` keyed off a KVO observation of
+`isReadyForMoreMediaData`.
+
+## Acceptance
+
+- `Thread.sleep` removed from `OffscreenVideoRenderer`.
+- Existing `videoRenderer` test still passes.
+- No new timing hacks introduced.
+
