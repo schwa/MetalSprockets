@@ -3409,3 +3409,37 @@ Mirror the Element .capture(_:target:destination:) API as a SwiftUI View modifie
 - `2026-04-16T14:48:45Z`: Implemented in Sources/MetalSprocketsUI/RenderView.swift
 
 ---
+
+## 319: MetalFX scalers recreated every frame due to AnyBodylessElement.requiresSetup = true
+
++++
+status: new
+priority: high
+kind: bug
+labels: area:metalfx,area:core,effort:m
+created: 2026-04-18T17:22:08Z
++++
+
+`AnyBodylessElement.requiresSetup(comparedTo:)` always returns `true`. This means any element whose body is `AnyBodylessElement().onSetupEnter { ... }` has its setup closure re-run every frame.
+
+For `MetalFXSpatial` this is wasteful: it reallocates an `MTLFXSpatialScaler` every frame.
+
+For `MetalFXTemporal` (new) this is a correctness bug: it destroys the scaler's accumulated history every frame, defeating the entire purpose of temporal upscaling. Expected ~50 ms frame times for trivial scenes (3 SDF shapes) dropped to ~6 ms once scaler creation was moved out of `onSetupEnter` and guarded in `onWorkloadEnter` on dimension change.
+
+### Scope
+
+Anywhere `AnyBodylessElement().onSetupEnter { ... }` is used for one-time resource creation. Current call sites I know of:
+
+- `Sources/MetalSprockets/Metal/MetalFXSpatial.swift`
+- `Sources/MetalSprockets/Metal/MetalFXTemporal.swift` (new; worked around by moving init to workload)
+- Probably others (search for `onSetupEnter`).
+
+### Possible fixes
+
+1. Make `AnyBodylessElement` compare the identities of its stored closures (they're reference types under the hood) so `requiresSetup` returns `false` when closures haven't been rebound. Cheapest fix.
+2. Document that `onSetupEnter` runs every frame and audit all current callers. Probably most callers assume it's one-time.
+3. Add an explicit `@MSState` "is initialized" flag pattern to the MetalFX elements so they lazy-init inside `onWorkloadEnter` \u2014 which is what the `MetalFXTemporal` fix does. Works but every caller has to know to do this.
+
+Option 1 is the right general fix. If it's not feasible, at minimum the existing `MetalFXSpatial` should be audited (and its docstring updated) to confirm setup is supposed to be per-frame.
+
+---
