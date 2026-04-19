@@ -1,8 +1,16 @@
 [defaults]
 destination = "mac"
-scheme = "MetalSprockets-Example"
 extra_args = []
+
+[defaults.build]
+scheme = "MetalSprockets-Example"
+
+[defaults.test]
+scheme = "MetalSprockets"
+
+[defaults.run]
+scheme = "MetalSprockets-Example"
 
 [output]
 
-[new]
+[new.blueprint_defaults]
