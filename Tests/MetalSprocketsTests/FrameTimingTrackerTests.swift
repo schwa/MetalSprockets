@@ -74,4 +74,35 @@ struct FrameTimingTrackerTests {
         let stats = tracker.recordFrame(timestamp: 10.0 * 0.016)
         #expect(stats.frameCount == 11)
     }
+
+    @Test("Ring buffer wraps after exceeding maxSamples (300)")
+    func ringBufferWrap() {
+        var tracker = FrameTimingTracker()
+        let dt = 1.0 / 60.0
+        // Record more than maxSamples (300) frames to force ring-buffer wrap.
+        // Use a steady 60 FPS cadence so the rolling-window stats remain stable.
+        for i in 0..<400 {
+            tracker.recordFrame(timestamp: Double(i) * dt)
+        }
+        let stats = tracker.recordFrame(timestamp: 400.0 * dt)
+        #expect(stats.frameCount == 401)
+        // After wrapping, the tracker should still report sensible 60 FPS stats
+        // drawn from the 1-second rolling window.
+        #expect(stats.currentFPS > 59)
+        #expect(stats.currentFPS < 61)
+    }
+
+    @Test("lastGPUTime is surfaced via statistics")
+    func gpuTimeSurfaced() {
+        var tracker = FrameTimingTracker()
+        tracker.recordFrame(timestamp: 0.0)
+        // Before any completion, gpuTime is nil.
+        let before = tracker.recordFrame(timestamp: 0.016)
+        #expect(before.gpuTime == nil)
+
+        // Simulate a command-buffer completion updating the GPU time.
+        tracker.lastGPUTime = 0.0042
+        let after = tracker.recordFrame(timestamp: 0.032)
+        #expect(after.gpuTime == 0.0042)
+    }
 }

@@ -11,15 +11,19 @@ internal class Snapshotter {
     }
 
     private var frameCounter: Int = 0
-    private let shouldDumpSnapshots = ProcessInfo.processInfo.dumpSnapshotsEnabled
+    private let shouldDumpSnapshots: Bool
     private var fileHandle: FileHandle?
     private let fileURL: URL
 
-    init() {
-        // Setup file path
-        let baseDir = FileManager.default.temporaryDirectory.appendingPathComponent("metal-sprockets_snapshots")
-        let filename = "\(ProcessInfo.processInfo.processIdentifier).uvsnapshots"
-        self.fileURL = baseDir.appendingPathComponent(filename)
+    init(shouldDumpSnapshots: Bool? = nil, fileURL: URL? = nil) {
+        self.shouldDumpSnapshots = shouldDumpSnapshots ?? ProcessInfo.processInfo.dumpSnapshotsEnabled
+        if let fileURL {
+            self.fileURL = fileURL
+        } else {
+            let baseDir = FileManager.default.temporaryDirectory.appendingPathComponent("metal-sprockets_snapshots")
+            let filename = "\(ProcessInfo.processInfo.processIdentifier).uvsnapshots"
+            self.fileURL = baseDir.appendingPathComponent(filename)
+        }
     }
 
     deinit {
