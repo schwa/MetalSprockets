@@ -3586,12 +3586,16 @@ Move `Sources/MetalSprocketsSupport/MTKMesh+Extensions.swift` out of MetalSprock
 ## 323: Add public Element.linkedFunctions(_:) modifier
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 created: 2026-04-19T16:22:08Z
+updated: 2026-04-19T16:24:40Z
+closed: 2026-04-19T16:24:40Z
 +++
 
 The env key `\.linkedFunctions` (MTLLinkedFunctions?) is already part of MetalSprockets and consumed by RenderPipeline / MeshRenderPipeline / ComputePass. However there is no public `Element.linkedFunctions(_:)` convenience modifier, so users have to write `.environment(\.linkedFunctions, ...)` by hand — or redefine the one-liner in every project. MetalSprocketsExamples currently has a local copy in the ShaderGraphDemo. Promote the helper into public MS API and remove the duplicate.
+
+- `2026-04-19T16:24:40Z`: Added public Element.linkedFunctions(_:) modifier. Removed duplicate from MetalSprocketsExamples ShaderGraphDemo.
 
 ---

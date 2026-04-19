@@ -173,4 +173,32 @@ public extension Element {
     ) -> some Element {
         visibleFunctionTable(name, functionType: functionType, functions: [function])
     }
+
+    /// Attaches a set of linked Metal functions for pipeline compilation.
+    ///
+    /// Use this modifier when your pipeline needs to call `[[visible]]` functions
+    /// (including stitched functions) at runtime via a `visible_function_table`.
+    /// The functions must be linked into the pipeline's descriptor so Metal can
+    /// produce function handles for them.
+    ///
+    /// This value is read by ``RenderPipeline``, ``MeshRenderPipeline``, and
+    /// ``ComputePass`` when building their pipeline descriptors. Apply this modifier
+    /// to the pipeline — not to a child ``Draw`` — so the linked functions are
+    /// available during pipeline state creation.
+    ///
+    /// ```swift
+    /// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+    ///     Draw { encoder in ... }
+    ///         .visibleFunctionTable("colorFunction", function: stitchedFunction.function)
+    /// }
+    /// .linkedFunctions([stitchedFunction.function])
+    /// ```
+    ///
+    /// - Parameter functions: The Metal functions to link into the pipeline.
+    /// - Returns: A modified element with the linked functions set in the environment.
+    func linkedFunctions(_ functions: [MTLFunction]) -> some Element {
+        let linked = MTLLinkedFunctions()
+        linked.functions = functions
+        return environment(\.linkedFunctions, linked)
+    }
 }

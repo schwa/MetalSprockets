@@ -3,16 +3,6 @@ import Metal
 import MetalSprocketsSupport
 import Testing
 
-// Helper: set MTLLinkedFunctions via the environment, matching the pattern used
-// in the MetalSprocketsShaderGraph demo.
-private extension Element {
-    func linkedFunctions(_ functions: [MTLFunction]) -> some Element {
-        let linked = MTLLinkedFunctions()
-        linked.functions = functions
-        return environment(\.linkedFunctions, linked)
-    }
-}
-
 @MainActor
 @Suite("VisibleFunctionTable Tests")
 struct VisibleFunctionTableTests {
