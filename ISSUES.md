@@ -3607,10 +3607,12 @@ The env key `\.linkedFunctions` (MTLLinkedFunctions?) is already part of MetalSp
 ## 324: visibleFunctionTable modifier doesn't work inside ComputePipeline
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 created: 2026-04-19T17:25:50Z
+updated: 2026-04-19T17:52:59Z
+closed: 2026-04-19T17:52:59Z
 +++
 
 The `.visibleFunctionTable(_:function:)` / `.visibleFunctionTable(_:functions:)` modifier in `Sources/MetalSprockets/Metal/VisibleFunctionTableModifier.swift` only resolves `renderPipelineState` from the environment. `ComputePipeline` sets `computePipelineState` instead, so using the modifier inside a `ComputePipeline { ComputeDispatch { ... }.visibleFunctionTable("table", function: fn) }` throws:
