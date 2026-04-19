@@ -3568,3 +3568,30 @@ Alternatively, wrap `appendFrame` in an `async` function that uses
 - Existing `videoRenderer` test still passes.
 - No new timing hacks introduced.
 
+---
+
+## 322: Move MTKMesh+Extensions.swift to MetalSupport
+
++++
+status: new
+priority: medium
+kind: task
+created: 2026-04-19T15:52:28Z
++++
+
+Move `Sources/MetalSprocketsSupport/MTKMesh+Extensions.swift` out of MetalSprocketsSupport and into the MetalSupport package/module.
+
+---
+
+## 323: Add public Element.linkedFunctions(_:) modifier
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-04-19T16:22:08Z
++++
+
+The env key `\.linkedFunctions` (MTLLinkedFunctions?) is already part of MetalSprockets and consumed by RenderPipeline / MeshRenderPipeline / ComputePass. However there is no public `Element.linkedFunctions(_:)` convenience modifier, so users have to write `.environment(\.linkedFunctions, ...)` by hand — or redefine the one-liner in every project. MetalSprocketsExamples currently has a local copy in the ShaderGraphDemo. Promote the helper into public MS API and remove the duplicate.
+
+---
