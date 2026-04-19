@@ -85,7 +85,7 @@ struct UseResourceTests {
     @Test("useResources with multiple buffers")
     func testUseResources() throws {
         let device = MTLCreateSystemDefaultDevice()!
-        let bufs: [any MTLResource] = [
+        nonisolated(unsafe) let bufs: [any MTLResource] = [
             device.makeBuffer(length: 32, options: .storageModeShared)!,
             device.makeBuffer(length: 32, options: .storageModeShared)!
         ]
