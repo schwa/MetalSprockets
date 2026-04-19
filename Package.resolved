@@ -1,5 +1,5 @@
 {
-  "originHash" : "982184e1833cabf8b66ed261f309d0c32739ac772a406287e28f1dbeb68c21f5",
+  "originHash" : "4ce705df020bd27a2002dd6778165bfb513800521a884f64a09d444f242a7a2e",
   "pins" : [
     {
       "identity" : "geometrylite3d",
@@ -89,6 +89,15 @@
       "state" : {
         "revision" : "0687f71944021d616d34d922343dcef086855920",
         "version" : "600.0.1"
+      }
+    },
+    {
+      "identity" : "viewinspector",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nalexn/ViewInspector",
+      "state" : {
+        "revision" : "e9a06346499a3a889165647e3f23f8a7b2609a1c",
+        "version" : "0.10.3"
       }
     }
   ],
