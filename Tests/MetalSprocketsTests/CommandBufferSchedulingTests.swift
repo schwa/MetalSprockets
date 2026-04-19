@@ -8,7 +8,7 @@ struct CommandBufferSchedulingTests {
     @Test("onCommandBufferScheduled fires after the command buffer is scheduled")
     func scheduledHandlerFires() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
+            let queue = device.makeCommandQueue() else {
             Issue.record("Metal not available")
             return
         }
@@ -44,7 +44,7 @@ struct CommandBufferSchedulingTests {
     @Test("CommandBufferElement with .commit completion commits the buffer")
     func commitCompletionMode() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
+            let queue = device.makeCommandQueue() else {
             Issue.record("Metal not available")
             return
         }

@@ -12,8 +12,10 @@ struct EasyWins3Tests {
         var storage = 0
         let a = MSBinding(get: { storage }, set: { storage = $0 })
         let b = MSBinding(get: { storage }, set: { storage = $0 })
-        #expect(a == a)
         #expect(a != b) // Different identities even though they wrap the same storage.
+        // Comparing `a` with itself via a second reference hits the equal-id branch.
+        let aCopy = a
+        #expect(a == aCopy)
     }
 
     // MARK: RenderPipelineDescriptorModifier.requiresSetup

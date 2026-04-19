@@ -11,8 +11,10 @@ struct ShaderLibraryMoreTests {
 
     constant float scale [[function_constant(0)]];
 
-    kernel void scaled_kernel(device float *out [[buffer(0)]],
-                              uint tid [[thread_position_in_grid]]) {
+    kernel void scaled_kernel(
+        device float *out [[buffer(0)]],
+        uint tid [[thread_position_in_grid]]
+    ) {
         out[tid] = scale * float(tid);
     }
 
