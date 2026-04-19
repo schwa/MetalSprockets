@@ -79,7 +79,8 @@ public let package = Package(
                 "GoldenImage",
             ],
             resources: [
-                .copy("Golden Images")
+                .copy("Golden Images"),
+                .copy("Fixtures")
             ]
         ),
     ],
