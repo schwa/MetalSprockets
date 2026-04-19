@@ -3573,13 +3573,17 @@ Alternatively, wrap `appendFrame` in an `async` function that uses
 ## 322: Move MTKMesh+Extensions.swift to MetalSupport
 
 +++
-status: new
+status: closed
 priority: medium
 kind: task
 created: 2026-04-19T15:52:28Z
+updated: 2026-04-19T17:52:49Z
+closed: 2026-04-19T17:52:49Z
 +++
 
 Move `Sources/MetalSprocketsSupport/MTKMesh+Extensions.swift` out of MetalSprocketsSupport and into the MetalSupport package/module.
+
+- `2026-04-19T17:52:49Z`: Moved to MetalSupport.
 
 ---
 
