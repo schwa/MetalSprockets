@@ -3652,3 +3652,46 @@ Investigate:
 - Re-enable the test once a proper fix or detection mechanism is in place
 
 ---
+
+## 326: Introduce SystemEnvironment type for test-overridable process env
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: testing,architecture
+created: 2026-04-19T18:36:16Z
++++
+
+Several places in MetalSprockets read process environment variables directly via `ProcessInfo.processInfo.environment` (through `ProcessInfo+Extensions`):
+
+- `MS_DUMP_SNAPSHOTS` (Snapshotter)
+- `MS_RENDERVIEW_LOG_FRAME` (RenderView)
+- `MTL_CAPTURE_ENABLED` (CaptureModifier, indirectly via MTLCaptureManager)
+- Logging gates
+- etc.
+
+Because these are captured at init/type-resolution time, they are impossible to flip from inside a test without spawning subprocesses. The result is uncoverable branches (see coverage notes: Snapshotter dump path, CaptureModifier capture path, logging paths).
+
+## Proposal
+
+Introduce a `SystemEnvironment` (or `MSEnvironment`/`EnvironmentSource`) value type that:
+
+1. Defaults to a shared instance backed by `ProcessInfo.processInfo.environment`.
+2. Exposes typed accessors for each flag (e.g. `dumpSnapshotsEnabled: Bool`, `renderViewLogFrameEnabled: Bool`).
+3. Can be overridden for tests by injecting a custom instance (either via initializer parameter, task-local, or a static-override hook scoped with `defer`).
+
+Call sites (Snapshotter, logging, any future env-gated code) take an optional `SystemEnvironment` parameter that falls back to the default.
+
+## Benefits
+
+- Coverage: tests can exercise the enabled paths without subprocesses or env-var juggling.
+- Testability: removes hidden global state from call sites.
+- Single point of truth for which env vars MetalSprockets responds to.
+
+## Notes
+
+- Current Snapshotter already has a test-only injection (`init(shouldDumpSnapshots:fileURL:)`) added during the coverage push. This issue generalizes that pattern.
+- Not a `@MSEnvironment` style thing — this is about *process* environment, not element-tree environment. Pick a name that doesn't collide (e.g. `SystemEnvironment`, `ProcessEnvironment`, or `RuntimeFlags`).
+
+---
