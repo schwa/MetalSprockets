@@ -3629,3 +3629,26 @@ Fix: in `setupEnter`/`workloadEnter`/`createFunctionTable`, also consult `enviro
 Discovered while porting Phosphor (a shadertoy-style app) to MetalSprockets: the kernel declares a `visible_function_table<SnippetFunction>` in `[[buffer(1)]]` for a runtime-compiled user snippet. Current workaround is to bypass the modifier and bind the VFT manually via `encoder.setVisibleFunctionTable(_:bufferIndex:)` inside a `ComputeDispatch` closure.
 
 ---
+
+## 325: Investigate Metal log state failure on CI runners
+
++++
+status: new
+priority: low
+kind: bug
+created: 2026-04-19T18:10:04Z
++++
+
+The CommandBufferLoggingTests.testAddMetalSprocketsLogging test was failing on GitHub Actions with:
+
+    Error Domain=MTLLogStateErrorDomain Code=2 "Cannot create residency set for MTLLogState ..."
+
+This indicates that on the CI macOS runner/GPU configuration, Metal cannot create an MTLLogState (or its underlying residency set). The test has been temporarily disabled when the CI environment variable is set (see Tests/MetalSprocketsTests/EasyWinsTests.swift).
+
+Investigate:
+- Why MTLLogState creation fails on CI (likely software/virtualized GPU lacks support)
+- Whether addMetalSprocketsLogging() should fail more gracefully or be feature-detected
+- Whether we can detect log-state availability at runtime and skip rather than gating on the CI env var
+- Re-enable the test once a proper fix or detection mechanism is in place
+
+---

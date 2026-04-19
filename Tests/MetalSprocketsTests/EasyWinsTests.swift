@@ -89,7 +89,10 @@ struct ProcessInfoExtensionsTests {
 
 @Suite("CommandBufferLogging")
 struct CommandBufferLoggingTests {
-    @Test("addMetalSprocketsLogging attaches a log state")
+    @Test(
+        "addMetalSprocketsLogging attaches a log state",
+        .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Metal log state unavailable on CI runners")
+    )
     func testAddMetalSprocketsLogging() throws {
         let descriptor = MTLCommandBufferDescriptor()
         #expect(descriptor.logState == nil)
