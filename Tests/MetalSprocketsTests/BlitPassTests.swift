@@ -41,5 +41,4 @@ struct BlitPassTests {
         let b = Blit { _ in }
         #expect(a.requiresSetup(comparedTo: b) == false)
     }
-
 }

@@ -74,7 +74,7 @@ internal func sampleCountChanged(current: Int, observed: Int) -> Bool {
 ///   - currentDrawable: The current drawable from the `MTKView`.
 ///   - drawableSize: The drawable size.
 ///   - onCommandBufferCompleted: Invoked when the command buffer completes on the GPU.
-internal func buildRenderViewRootElement<Content: Element>(
+internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable:this function_parameter_count
     content: Content,
     captureConfiguration: RenderViewCaptureConfiguration?,
     device: MTLDevice,

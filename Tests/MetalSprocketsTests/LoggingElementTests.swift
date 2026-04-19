@@ -1,6 +1,6 @@
 import Foundation
-import os
 @testable import MetalSprockets
+import os
 import Testing
 
 @MainActor

@@ -133,5 +133,4 @@ struct ParameterBindingTests {
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
         _ = try renderer.render(pass)
     }
-
 }

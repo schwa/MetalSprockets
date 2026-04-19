@@ -16,8 +16,7 @@ struct YCbCrBillboardRenderPassTests {
             Bundle.module.url(forResource: "Fixtures/Mandrill/\(name)", withExtension: "png")
         )
         let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
-        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        return image
+        return try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
     }
 
     /// Extracts a single-channel 8-bit image into a Metal texture with r8Unorm format.

@@ -1,3 +1,4 @@
+// swiftlint:disable indentation_width
 import Metal
 @testable import MetalSprockets
 import MetalSprocketsSupport
