@@ -74,7 +74,7 @@ struct UseResourceTests {
     @Test("useResource optional: non-nil calls through")
     func testUseResourceOptionalSome() throws {
         let device = MTLCreateSystemDefaultDevice()!
-        let buffer: (any MTLResource)? = device.makeBuffer(length: 16, options: .storageModeShared)
+        nonisolated(unsafe) let buffer: (any MTLResource)? = device.makeBuffer(length: 16, options: .storageModeShared)
         let pass = try renderPassWithDraw { draw in
             draw.useResource(buffer, usage: .read, stages: .fragment)
         }
@@ -150,7 +150,7 @@ struct UseResourceTests {
         let kernel = try ComputeKernel(source: Self.computeSource)
         let count = 4
         let buffer = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
-        let side: (any MTLResource)? = device.makeBuffer(length: 32, options: .storageModeShared)
+        nonisolated(unsafe) let side: (any MTLResource)? = device.makeBuffer(length: 32, options: .storageModeShared)
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
