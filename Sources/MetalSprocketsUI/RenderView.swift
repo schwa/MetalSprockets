@@ -257,9 +257,11 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     var signpostID = signposter?.makeSignpostID()
 
-    var frame: Int = 0
-    var firstFrameTime: CFTimeInterval = .zero
-    var frameTime: CFTimeInterval = .zero
+    @ObservationIgnored
+    var timingState = FrameTimingState()
+
+    /// The zero-based index of the next frame to be produced.
+    var frame: Int { timingState.frame }
 
     var currentDrawableSize: CGSize = .zero
 
@@ -293,14 +295,14 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     func draw(in view: MTKView) {
         // Check if sample count changed (MSAA toggle) by examining the actual texture
         let actualSampleCount = view.currentRenderPassDescriptor?.colorAttachments[0].texture?.sampleCount ?? 1
-        if actualSampleCount != currentSampleCount {
+        if sampleCountChanged(current: currentSampleCount, observed: actualSampleCount) {
             currentSampleCount = actualSampleCount
             // Mark all nodes as needing setup when sample count changes (MSAA toggle)
             system.markAllNodesNeedingSetup()
         }
 
         do {
-            let currentFrame = self.frame
+            let currentFrame = timingState.frame
             let threadInfo = Thread.isMainThread ? "main thread" : "thread \(pthread_mach_thread_np(pthread_self()))"
             logger?.verbose?.info("Enter draw callback (frame #\(currentFrame), \(threadInfo))")
             defer {
@@ -310,19 +312,16 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 let currentDrawable = try view.currentDrawable.orThrow(.resourceCreationFailure("No drawable available"))
                 defer {
                     currentDrawable.present()
-                    frame += 1
+                    timingState.commit()
                 }
                 let currentRenderPassDescriptor = try view.currentRenderPassDescriptor.orThrow(.resourceCreationFailure("No render pass descriptor available"))
 
                 // Update context
                 let currentTime: CFTimeInterval = CACurrentMediaTime()
-                if firstFrameTime == 0 {
-                    firstFrameTime = currentTime
-                }
-                let lastFrameTime = frameTime
-                frameTime = currentTime - firstFrameTime
-                let deltaTime = frameTime - lastFrameTime
-                let frameUniforms = FrameUniforms(index: UInt32(frame), time: Float(frameTime), deltaTime: Float(deltaTime), viewportSize: [UInt32(view.drawableSize.width), UInt32(view.drawableSize.height)])
+                let frameUniforms = timingState.advance(
+                    now: currentTime,
+                    viewportSize: [UInt32(view.drawableSize.width), UInt32(view.drawableSize.height)]
+                )
                 frameTimingTracker.lastGPUTime = lastGPUTime
                 let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
                 let context = RenderViewContext(frameUniforms: frameUniforms, frameTimingStatistics: frameTimingStatistics)
@@ -330,27 +329,19 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
                 // Return the element produced by the content builder
                 let t0 = CACurrentMediaTime()
-                let captureConfiguration = self.captureConfiguration
-                let rootElement = try CommandBufferElement(completion: .commit) {
-                    try Group {
-                        try self.content(context, currentDrawableSize)
-                    }
-                    .onCommandBufferCompleted { [weak self] commandBuffer in
-                        let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
-                        self?.lastGPUTime = gpuTime
-                    }
+                let userContent = try self.content(context, currentDrawableSize)
+                let rootElement = try buildRenderViewRootElement(
+                    content: userContent,
+                    captureConfiguration: self.captureConfiguration,
+                    device: device,
+                    commandQueue: commandQueue,
+                    renderPassDescriptor: currentRenderPassDescriptor,
+                    currentDrawable: currentDrawable,
+                    drawableSize: view.drawableSize
+                ) { [weak self] commandBuffer in
+                    let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
+                    self?.lastGPUTime = gpuTime
                 }
-                .capture(
-                    captureConfiguration?.enabled ?? false,
-                    target: captureConfiguration?.target ?? .device,
-                    destination: captureConfiguration?.destination ?? .developerTools
-                )
-                .environment(\.device, device)
-                .environment(\.commandQueue, commandQueue)
-                .environment(\.renderPassDescriptor, currentRenderPassDescriptor)
-                .environment(\.renderPipelineDescriptor, MTLRenderPipelineDescriptor())
-                .environment(\.currentDrawable, currentDrawable)
-                .environment(\.drawableSize, view.drawableSize)
                 let t1 = CACurrentMediaTime()
 
                 do {
@@ -382,9 +373,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     @MainActor
     func handle(error: Error) {
-        logger?.error("Error when drawing frame #\(self.frame): \(error)")
+        logger?.error("Error when drawing frame #\(self.timingState.frame): \(error)")
         if RenderViewDebugging.fatalErrorOnCatch {
-            fatalError("Error when drawing #\(self.frame): \(error)")
+            fatalError("Error when drawing #\(self.timingState.frame): \(error)")
         }
         lastError = error
     }
