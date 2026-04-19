@@ -3599,3 +3599,27 @@ The env key `\.linkedFunctions` (MTLLinkedFunctions?) is already part of MetalSp
 - `2026-04-19T16:24:40Z`: Added public Element.linkedFunctions(_:) modifier. Removed duplicate from MetalSprocketsExamples ShaderGraphDemo.
 
 ---
+
+## 324: visibleFunctionTable modifier doesn't work inside ComputePipeline
+
++++
+status: new
+priority: medium
+kind: bug
+created: 2026-04-19T17:25:50Z
++++
+
+The `.visibleFunctionTable(_:function:)` / `.visibleFunctionTable(_:functions:)` modifier in `Sources/MetalSprockets/Metal/VisibleFunctionTableModifier.swift` only resolves `renderPipelineState` from the environment. `ComputePipeline` sets `computePipelineState` instead, so using the modifier inside a `ComputePipeline { ComputeDispatch { ... }.visibleFunctionTable("table", function: fn) }` throws:
+
+```
+Missing environment value: renderPipelineState
+Hint: visibleFunctionTable('table') must be placed inside a RenderPipeline content block, not as a modifier on RenderPipeline itself.
+```
+
+The `workloadEnter` already has a `computeCommandEncoder` branch for binding, but it never runs because the guard on `renderPipelineState` fails first.
+
+Fix: in `setupEnter`/`workloadEnter`/`createFunctionTable`, also consult `environmentValues.computePipelineState` and call `MTLComputePipelineState.makeVisibleFunctionTable(descriptor:)` / `functionHandle(function:)` when it's present. Update the error hint to mention compute as well.
+
+Discovered while porting Phosphor (a shadertoy-style app) to MetalSprockets: the kernel declares a `visible_function_table<SnippetFunction>` in `[[buffer(1)]]` for a runtime-compiled user snippet. Current workaround is to bypass the modifier and bind the VFT manually via `encoder.setVisibleFunctionTable(_:bufferIndex:)` inside a `ComputeDispatch` closure.
+
+---
