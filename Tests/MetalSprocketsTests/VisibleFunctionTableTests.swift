@@ -147,6 +147,106 @@ struct VisibleFunctionTableTests {
         _ = try renderer.render(element)
     }
 
+    // A compute kernel with a visible_function_table<uint(uint)> in buffer(1).
+    // `plus_one` is a [[visible]] function that can be plugged into the table.
+    static let computeTableSource = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    using TransformFn = uint(uint);
+
+    [[visible]] uint plus_one(uint v) { return v + 1; }
+    [[visible]] uint times_two(uint v) { return v * 2; }
+
+    kernel void compute_main(
+        device uint *out [[buffer(0)]],
+        visible_function_table<TransformFn> transforms [[buffer(1)]],
+        uint tid [[thread_position_in_grid]]
+    ) {
+        out[tid] = transforms[0](tid);
+    }
+    """
+
+    @Test("Compute visible function table dispatches")
+    func testComputeVisibleFunctionTable() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7) else { return }
+
+        let library = try device.makeLibrary(source: Self.computeTableSource, options: nil)
+        let plusOne = library.makeFunction(name: "plus_one")!
+
+        let count = 64
+        let buffer = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
+
+        let kernel = ComputeKernel(library.makeFunction(name: "compute_main")!)
+
+        try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                AnyBodylessElement()
+                    .onWorkloadEnter { (node: Node) in
+                        let encoder = node.environmentValues.computeCommandEncoder!
+                        encoder.setBuffer(buffer, offset: 0, index: 0)
+                    }
+                try ComputeDispatch(
+                    threadsPerGrid: MTLSize(width: count, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(width: 8, height: 1, depth: 1)
+                )
+                .visibleFunctionTable("transforms", function: plusOne)
+            }
+            .environment(\.linkedFunctions, {
+                let lf = MTLLinkedFunctions()
+                lf.functions = [plusOne]
+                return lf
+            }())
+        }
+        .run()
+
+        let ptr = buffer.contents().bindMemory(to: UInt32.self, capacity: count)
+        for i in 0..<count {
+            #expect(ptr[i] == UInt32(i) + 1)
+        }
+    }
+
+    @Test("Compute visible function table with explicit .kernel functionType")
+    func testComputeVisibleFunctionTableExplicitKernel() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7) else { return }
+
+        let library = try device.makeLibrary(source: Self.computeTableSource, options: nil)
+        let timesTwo = library.makeFunction(name: "times_two")!
+
+        let count = 64
+        let buffer = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
+
+        let kernel = ComputeKernel(library.makeFunction(name: "compute_main")!)
+
+        try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                AnyBodylessElement()
+                    .onWorkloadEnter { (node: Node) in
+                        let encoder = node.environmentValues.computeCommandEncoder!
+                        encoder.setBuffer(buffer, offset: 0, index: 0)
+                    }
+                try ComputeDispatch(
+                    threadsPerGrid: MTLSize(width: count, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(width: 8, height: 1, depth: 1)
+                )
+                .visibleFunctionTable("transforms", functionType: .kernel, functions: [timesTwo])
+            }
+            .environment(\.linkedFunctions, {
+                let lf = MTLLinkedFunctions()
+                lf.functions = [timesTwo]
+                return lf
+            }())
+        }
+        .run()
+
+        let ptr = buffer.contents().bindMemory(to: UInt32.self, capacity: count)
+        for i in 0..<count {
+            #expect(ptr[i] == UInt32(i) * 2)
+        }
+    }
+
     @Test("requiresSetup tracks name + functions")
     func testRequiresSetup() throws {
         let device = MTLCreateSystemDefaultDevice()!
