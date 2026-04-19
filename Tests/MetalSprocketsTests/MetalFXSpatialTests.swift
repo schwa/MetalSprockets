@@ -37,6 +37,31 @@ struct MetalFXSpatialTests {
         commandBuffer.waitUntilCompleted()
     }
 
+    @Test("Spatial upscaler recreates its scaler when output size changes")
+    func testSpatialScalerRecreatesOnSizeChange() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard MTLFXSpatialScalerDescriptor.supportsDevice(device) else {
+            return
+        }
+
+        let input = makeTexture(width: 64, height: 64, usage: [.renderTarget, .shaderRead])
+        let output1 = makeTexture(width: 128, height: 128, usage: [.renderTarget, .shaderWrite, .shaderRead])
+        let output2 = makeTexture(width: 256, height: 256, usage: [.renderTarget, .shaderWrite, .shaderRead])
+        try fillInputTexture(input, device: device)
+
+        // First render at 128x128 -> initial scaler created.
+        let first = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
+            MetalFXSpatial(inputTexture: input, outputTexture: output1)
+        }
+        try first.run()
+
+        // Second render at 256x256 -> size-change branch recreates the scaler.
+        let second = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
+            MetalFXSpatial(inputTexture: input, outputTexture: output2)
+        }
+        try second.run()
+    }
+
     @Test("Spatial upscaler encodes into command buffer")
     func testSpatialScalerEncodes() throws {
         let device = MTLCreateSystemDefaultDevice()!

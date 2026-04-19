@@ -154,4 +154,39 @@ struct StructuralIdentifierTests {
         #expect(child1Identity.atoms[1].index == 0)
         #expect(child2Identity.atoms[1].index == 1)
     }
+
+    struct Leaf: Element {
+        var body: some Element { EmptyElement() }
+    }
+
+    @Test("Atom(element:index:) derives type identifier from value")
+    func atomFromElementWithIndex() {
+        let atom = StructuralIdentifier.Atom(element: Leaf(), index: 7)
+        if case .index(let index) = atom.component {
+            #expect(index == 7)
+        } else {
+            Issue.record("Expected .index component")
+        }
+        // Two atoms built from the same element type should have equal type identifiers.
+        let other = StructuralIdentifier.Atom(element: Leaf(), index: 0)
+        #expect(atom.typeIdentifier == other.typeIdentifier)
+    }
+
+    @Test("Atom(element:explicit:) derives type identifier from value")
+    func atomFromElementWithExplicit() {
+        let atom = StructuralIdentifier.Atom(element: Leaf(), explicit: "custom-id")
+        if case .explicit(let value) = atom.component {
+            #expect(value == "custom-id" as AnyHashable)
+        } else {
+            Issue.record("Expected .explicit component")
+        }
+    }
+
+    @Test("Atom with .explicit component renders value in description")
+    func atomExplicitDescription() {
+        let typeID = ElementTypeIdentifier(Leaf.self)
+        let atom = StructuralIdentifier.Atom(typeIdentifier: typeID, explicit: "my-key")
+        let description = String(describing: atom)
+        #expect(description.contains("my-key"))
+    }
 }
