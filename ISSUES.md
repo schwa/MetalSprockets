@@ -107,9 +107,9 @@ Consolidate modifier architecture improvements:
 - Investigate reducing closure usage in modifiers (was #186)
 
 Related issues:
-- #186 notes closures make element comparison impossible
-- Need to decide if modifiers should be true Elements or a separate concept
 
+- `2026-02-19T00:00:00Z`: #186 notes closures make element comparison impossible
+- `2026-02-19T00:00:00Z`: Need to decide if modifiers should be true Elements or a separate concept
 - `2026-04-03T17:33:50Z`: Related: #31 (shaders as modifiers)
 
 ---
@@ -534,10 +534,10 @@ It's confusing what parts of the Metal stack each element is responsible for. El
 
 ## Proposed solution
 Use an extension on Node (possibly with parameter packs) to explicitly declare input/output environment keys. This would:
-- Make data flow explicit
-- Catch missing dependencies at compile time or with clear runtime errors
-- Document what each element needs and provides
 
+- `2026-02-19T00:00:00Z`: Make data flow explicit
+- `2026-02-19T00:00:00Z`: Catch missing dependencies at compile time or with clear runtime errors
+- `2026-02-19T00:00:00Z`: Document what each element needs and provides
 - `2026-04-03T17:33:50Z`: Related: #235 (split BodylessElement protocols)
 
 ---
@@ -2117,9 +2117,9 @@ Split into two protocols:
 - WorkloadElement: workloadEnter/workloadExit
 
 ## Related
-- AnyBodylessElement always triggers setup due to closure comparison limitations (was #237)
-- This would allow automatic setup detection based on protocol conformance
 
+- `2026-02-19T00:00:00Z`: AnyBodylessElement always triggers setup due to closure comparison limitations (was #237)
+- `2026-02-19T00:00:00Z`: This would allow automatic setup detection based on protocol conformance
 - `2026-04-03T17:33:50Z`: Related: #67 (formalize element I/O), #152 (onWorkloadExit), #214 (cleanup for removed nodes)
 
 ---
@@ -2650,8 +2650,7 @@ MTKView's draw(in:) callback fires on the main thread via a dispatch source on t
 
 ## Related
 
-- MetalSprocketsGaussianSplats#6: Multi-splat mode FPS drops during camera rotation
-
+- `2026-03-03T00:00:00Z`: MetalSprocketsGaussianSplats#6: Multi-splat mode FPS drops during camera rotation
 - `2026-04-02T18:39:04Z`: Merged into #291 (Audit and improve Swift concurrency)
 
 ---
@@ -3219,11 +3218,12 @@ The core issue is that the viewModel (and any environment values it provides) mu
 ## 307: Crash in System.shouldUpdateNode: Set.contains called on NSCFNumber
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 created: 2026-04-03T23:14:30Z
-updated: 2026-04-03T23:14:59Z
+updated: 2026-04-21T00:44:23Z
+closed: 2026-04-21T00:44:23Z
 +++
 
 App crashes with `NSInvalidArgumentException: -[__NSCFNumber member:]: unrecognized selector sent to instance 0x8000000000000000` during `System.shouldUpdateNode`.
@@ -3242,6 +3242,9 @@ frame #16: System.processNode(...) at System.swift:183:20
 Instance `0x8000000000000000` suggests a tagged pointer or sentinel value being misinterpreted as an object.
 
 - `2026-04-03T23:14:59Z`: Second occurrence: same crash, same stack trace. Appears to happen intermittently while navigating between demos. Both times the GameOfLife element tree is visible in the stack. Likely triggered by demo switching while the render loop is mid-update.
+- `2026-04-21T00:44:23Z`: Duplicate of #329. Same crash site (System.swift:237 shouldUpdateNode → Set.contains), same 0x8000000000000000 tagged-pointer signature, same bridge to -[... member:].
+
+Root cause identified in #329: data race on System.dirtyIdentifiers from off-main markDirty calls (e.g. @MSState writes inside onCommandBufferCompleted). Tracked and being fixed in #330.
 
 ---
 
@@ -3659,7 +3662,7 @@ Investigate:
 status: new
 priority: medium
 kind: enhancement
-labels: testing,architecture
+labels: testing, architecture
 created: 2026-04-19T18:36:16Z
 +++
 
@@ -3693,5 +3696,240 @@ Call sites (Snapshotter, logging, any future env-gated code) take an optional `S
 
 - Current Snapshotter already has a test-only injection (`init(shouldDumpSnapshots:fileURL:)`) added during the coverage push. This issue generalizes that pattern.
 - Not a `@MSEnvironment` style thing — this is about *process* environment, not element-tree environment. Pick a name that doesn't collide (e.g. `SystemEnvironment`, `ProcessEnvironment`, or `RuntimeFlags`).
+
+---
+
+## 327: ComputePipeline ignores changes to linkedFunctions (requiresSetup hardcoded false)
+
++++
+status: new
+priority: high
+kind: bug
+created: 2026-04-20T22:26:48Z
++++
+
+`ComputePipeline.requiresSetup(comparedTo:)` in `Sources/MetalSprockets/Metal/ComputePass.swift` currently returns `false` unconditionally with a TODO comment. This means the underlying `MTLComputePipelineState` is built once (during the initial `setupEnter`) and never rebuilt, even if the `ComputeKernel` or `linkedFunctions` environment value changes across frames.
+
+This breaks any use case that swaps a visible-function-table entry at runtime. Repro: the Phosphor demo in MetalSprocketsExamples — switching between shader snippets updates `@State` and the editor contents, but the rendered output never changes because the PSO is still linked against the original snippet function.
+
+Suggested fix: add an opt-in invalidation key to `ComputePipeline` (e.g. `invalidationKey: AnyHashable?` at init) and compare it in `requiresSetup`. That avoids rebuilding the PSO every frame for existing demos while letting consumers that depend on environment values (like `linkedFunctions`) opt in. Alternative: compare `computeKernel.function` identity and stash a hash of `linkedFunctions` on the struct.
+
+File: Sources/MetalSprockets/Metal/ComputePass.swift (the `requiresSetup(comparedTo:)` implementation and the surrounding TODO).
+
+---
+
+## 328: ComputeDispatch has no way to auto-pick threadsPerThreadgroup
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-04-20T23:20:56Z
++++
+
+`ComputeDispatch` requires callers to pass `threadsPerThreadgroup` up front. There is no way to let the framework pick an appropriate threadgroup size based on the actual compute pipeline state's `maxTotalThreadsPerThreadgroup` and `threadExecutionWidth`.
+
+Picking correctly requires the PSO, which isn't available to the caller when constructing `ComputeDispatch` (it's only in the environment at workload-enter time). The PSO's `maxTotalThreadsPerThreadgroup` can also vary with linked functions (e.g. visible_function_table snippets), so a fixed constant isn't always safe.
+
+Repro: Phosphor demo in MetalSprocketsExamples hardcodes `MTLSize(16,16,1)` because there's no alternative; we have no way to ask the pipeline what it supports.
+
+---
+
+## 329: Crash in System.shouldUpdateNode: Set.contains on corrupted storage (tagged-pointer 0x8000000000000000)
+
++++
+status: new
+priority: high
+kind: bug
+created: 2026-04-20T23:28:12Z
++++
+
+While running the Phosphor demo in MetalSprocketsExamples (just steady-state rendering; no snippet switching, no view teardown), the app intermittently crashes with:
+
+    *** Terminating app due to uncaught exception 'NSInvalidArgumentException',
+        reason: '-[__NSTaggedDate member:]: unrecognized selector sent to
+                 instance 0x8000000000000000'
+
+The class that's impersonated varies across runs (`__NSTaggedDate`, `NSIndexPath`, …), but the instance pointer is always `0x8000000000000000` — the poison/zero bit pattern for a ObjC tagged pointer. `member:` is what `Swift.Set.contains` calls on its storage when bridged to NSSet internally; getting there with a bogus tagged pointer means the Set's `__RawSetStorage` has been freed or its storage slot overwritten.
+
+The crash always reproduces on the same call site:
+
+    libswiftCore  Set.contains
+    MetalSprockets  System.shouldUpdateNode(_:with:)
+    MetalSprockets  System.reuseNode(currentId:element:newNodes:)
+    MetalSprockets  System.processNode(currentId:previousNode:element:newNodes:)
+    MetalSprockets  System.update(root:)  [closure process]
+    MetalSprocketsUI  RenderViewViewModel.draw(in:)
+    MetalKit  -[MTKView draw]
+
+So it's inside the normal element-tree diff path, triggered from `MTKView.draw`. No snippet switching / `.id()` teardown is needed — just let the view render for a while.
+
+The repro app uses visible_function_table inside a ComputePass, a ping-pong texture pair, and `.onCommandBufferCompleted { currentTextureIsA.toggle() }`. The toggle closure runs on Metal's completion queue, not main — so it could be mutating `@MSState` (and thus invalidating the element tree / mutating `System`'s identifier set) concurrently with the main-thread `System.update`.
+
+Suspect: `System`'s internal Set<StructuralIdentifier> (the one consulted by `shouldUpdateNode`) is being mutated from a non-main thread, or freed while a `Set.contains` is in flight.
+
+Repro path: MetalSprocketsExamples Phosphor demo on main. Let it run for ~30s–2min.
+
+Related issues: MetalSprockets#327 (ComputePipeline caches `MTLComputePipelineState` — may be unrelated but shares the general `System` re-entry area).
+
+- `2026-04-20T23:31:29Z`: Additional finding while trying to work around this:
+
+Attempted to hop the completion handler's `@MSState` mutation back to main via
+
+    .onCommandBufferCompleted { _ in
+        nonisolated(unsafe) let binding = $currentTextureIsA
+        DispatchQueue.main.async {
+            binding.wrappedValue.toggle()
+        }
+    }
+
+This immediately crashes (even more reliably) with:
+
+    Fatal error: Attempted to read an unowned reference but object 0x… was
+    already destroyed
+
+    swift_abortRetainUnowned
+    closure #1 in StateBox.init() at StateBox.swift:47:13
+    MSBinding.wrappedValue.getter at Binding.swift:69:15
+
+So `MSBinding` captures its enclosing `StateBox` via `unowned`, and the `StateBox` is deallocated between the GPU completion callback and the next main-queue tick. This means `MSBinding`s can't outlive a single synchronous body evaluation — any deferred capture (Task, DispatchQueue.main.async, continuation) can dangle.
+
+Both the original `Set.contains` crash and this `MSBinding` unowned-read crash point at the same general issue: `System`/`StateBox` lifetime assumes all reads and writes happen inline during body evaluation on main, but nothing in the API prevents (or even discourages) off-main or deferred access. `onCommandBufferCompleted` documents that it 'Called on an unspecified queue after GPU execution finishes', yet any realistic use case (ping-pong toggle, frame counter, perf stats) wants to feed that back into `@MSState`, which isn't safe.
+
+- `2026-04-20T23:31:39Z`: Correction to previous comment: the hop-to-main variant did not crash immediately — it took a while to hit, same as the original crash. The rest of the analysis stands (MSBinding captured unowned, dies if deferred past body evaluation).
+- `2026-04-20T23:34:08Z`: Split into follow-ups:
+- #330: data race on System.dirtyIdentifiers (the Set.contains crash).
+- #331: MSBinding [unowned] dangles past body evaluation (the swift_abortRetainUnowned crash).
+
+#329 remains open as the umbrella / API-level isolation contract discussion.
+
+---
+
+## 330: Data race on System.dirtyIdentifiers causes Set.contains crash in shouldUpdateNode
+
++++
+status: new
+priority: high
+kind: bug
+created: 2026-04-20T23:33:42Z
++++
+
+Parent: #329.
+
+`System.dirtyIdentifiers: Set<StructuralIdentifier>` is mutated (`markDirty` →
+`dirtyIdentifiers.insert(id)`) and read (`shouldUpdateNode` →
+`dirtyIdentifiers.contains(id)`) without any synchronization.
+
+`StateBox.valueDidChange` calls `system.markDirty(node.id)` on whatever thread
+wrote the `@MSState` value. In the Phosphor demo, that write happens from
+`onCommandBufferCompleted` on Metal's completion queue, concurrently with
+`MTKView.draw` running `System.update` on main. Swift `Set` is copy-on-write and
+not thread-safe — a concurrent `insert` that triggers storage reallocation while
+another thread is mid-`contains` bridges to `-[NSSet member:]` on freed/poisoned
+storage, producing the `0x8000000000000000` tagged-pointer crash reported in
+#329.
+
+Repro: same as #329 (Phosphor demo, ~30s–2min).
+
+Proposed fix:
+- Wrap `dirtyIdentifiers` reads/writes in an `OSAllocatedUnfairLock`, or
+- Formalize an isolation contract for `System` and make off-isolation `markDirty`
+  a precondition failure (preferred long term; see #329 for API-level
+  discussion).
+
+Files:
+- Sources/MetalSprockets/Core/System.swift (markDirty, shouldUpdateNode)
+- Sources/MetalSprockets/Core/StateBox.swift (valueDidChange → markDirty)
+- Sources/MetalSprockets/Core/ObservedObject.swift (also calls markDirty)
+
+---
+
+## 331: MSBinding holds StateBox unowned, dangles past body evaluation
+
++++
+status: new
+priority: high
+kind: bug
+created: 2026-04-20T23:33:59Z
++++
+
+Parent: #329.
+
+`StateBox.init` constructs its `MSBinding` capturing `[unowned self]`
+(Sources/MetalSprockets/Core/StateBox.swift:47, 50). `MSBinding` therefore
+cannot outlive a single synchronous body evaluation: any deferred capture
+(`Task`, `DispatchQueue.main.async`, GPU completion handler, continuation,
+`@escaping` closure stashed in another element) will, after the next element
+tree rebuild releases the owning `StateBox`, crash with:
+
+  Fatal error: Attempted to read an unowned reference but object 0x… was
+  already destroyed
+  → swift_abortRetainUnowned
+  → closure #1 in StateBox.init() at StateBox.swift:47
+  → MSBinding.wrappedValue.getter at Binding.swift:69
+
+Reproduced in #329 by hopping the `onCommandBufferCompleted` `@MSState` write
+back to main via `DispatchQueue.main.async { binding.wrappedValue.toggle() }`.
+
+The API gives no hint that `MSBinding`s are body-evaluation-scoped. Realistic
+use cases (ping-pong toggles, frame counters, perf stats from GPU completion,
+async load → state) all want to capture a binding past the current body call.
+
+Proposed fix (pick one):
+- Capture `[weak self]` in the binding closures and make get/set a no-op (or
+  precondition failure with a clear message) when `StateBox` is gone, OR
+- Capture `self` strongly so `MSBinding` keeps the `StateBox` alive (note:
+  this changes ownership semantics — bindings would extend state lifetime
+  beyond the element tree), OR
+- Document binding lifetime as body-scoped and provide a sanctioned escape
+  hatch for deferred writes (e.g. an explicit `@MainActor` write API on
+  `System`).
+
+Related: #329 (the original `Set.contains` crash has the same underlying
+cause: nothing prevents off-main / deferred state mutation).
+
+---
+
+## 332: Remove unused StructuralIdentifier.Atom.Component.explicit(AnyHashable) case
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-04-20T23:40:41Z
++++
+
+While fixing #330, `StructuralIdentifier` had to be marked `@unchecked
+Sendable` because `Atom.Component.explicit` wraps an `AnyHashable`, which is
+explicitly non-Sendable in Swift 6.
+
+Survey of call sites shows `.explicit` is **not used anywhere in Sources/** —
+only in tests. The two `explicit:` convenience initializers on `Atom`
+(`init(typeIdentifier:explicit:)` and `init(element:explicit:)`) exist but no
+production code constructs them; the element tree only ever uses
+`.index(Int)` via `nextIndex(for:)` in `System.update`.
+
+Proposal:
+- Delete `Component.explicit(AnyHashable)`.
+- Delete the two `explicit:` initializers on `Atom`.
+- Collapse `Component` into a plain `Int` stored on `Atom` (or keep the enum
+  for future extensibility, but with only a `Sendable` payload).
+- Drop `@unchecked Sendable` on `StructuralIdentifier` / `Atom` / `Component`
+  in favour of plain `Sendable`.
+- Remove the now-dead test coverage in
+  `Tests/MetalSprocketsTests/StructuralIdentifierTests.swift` (the
+  `explicit:`-based cases) and `Tests/MetalSprocketsTests/Support/Support.swift`
+  (the `var explicit: AnyHashable?` helper).
+
+If a future `Element.id(_:)` modifier wants per-instance identity, it should
+be designed deliberately at that point — likely with a generic `ID: Hashable
+& Sendable` constraint rather than `AnyHashable`.
+
+Related: #330 (introduced the `@unchecked Sendable` workaround).
+
+Files:
+- Sources/MetalSprockets/Core/StructuralIdentifier.swift
+- Tests/MetalSprocketsTests/StructuralIdentifierTests.swift
+- Tests/MetalSprocketsTests/Support/Support.swift
 
 ---
