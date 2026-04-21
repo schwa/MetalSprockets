@@ -35,7 +35,18 @@ public final class System: @unchecked Sendable {
     /// IMPORTANT: The stack is empty outside of these traversal contexts.
     /// Accessing @MSEnvironment properties outside traversal will cause a crash.
     private(set) var activeNodeStack: [Node] = []
-    private(set) var dirtyIdentifiers: Set<StructuralIdentifier> = []
+    /// Identifiers of nodes whose element should be re-evaluated on the next update.
+    ///
+    /// Wrapped in `OSAllocatedUnfairLock` because `markDirty(_:)` may be called
+    /// from non-main threads (e.g. `onCommandBufferCompleted` handlers writing
+    /// back to `@MSState`) concurrently with `System.update(root:)` on the
+    /// owning isolation. See #330.
+    private let _dirtyIdentifiers = OSAllocatedUnfairLock<Set<StructuralIdentifier>>(initialState: [])
+
+    /// Read-only snapshot of the current dirty identifiers. Takes the lock.
+    var dirtyIdentifiers: Set<StructuralIdentifier> {
+        _dirtyIdentifiers.withLock { $0 }
+    }
 
     private let snapshotter = Snapshotter()
 
@@ -54,7 +65,21 @@ public final class System: @unchecked Sendable {
 
     /// Mark a node as dirty (needs rebuild on next update)
     internal func markDirty(_ id: StructuralIdentifier) {
-        dirtyIdentifiers.insert(id)
+        _dirtyIdentifiers.withLock { $0.insert(id) }
+    }
+
+    /// Whether the given identifier is currently marked dirty.
+    internal func isDirty(_ id: StructuralIdentifier) -> Bool {
+        _dirtyIdentifiers.withLock { $0.contains(id) }
+    }
+
+    /// Atomically remove and return all currently-dirty identifiers.
+    internal func takeDirtyIdentifiers() -> Set<StructuralIdentifier> {
+        _dirtyIdentifiers.withLock { dirty in
+            let taken = dirty
+            dirty.removeAll()
+            return taken
+        }
     }
 
     /// Push a node onto the active stack
@@ -73,7 +98,7 @@ public final class System: @unchecked Sendable {
             // Clean up after the update
             defer {
                 assert(activeNodeStack.isEmpty, "activeNodeStack should be empty after update")
-                dirtyIdentifiers = []
+                _ = takeDirtyIdentifiers()
                 activeNodeStack.removeAll()
             }
 
@@ -156,7 +181,7 @@ public final class System: @unchecked Sendable {
             try processElement(root)
 
             // Clear dirty identifiers after processing entire tree
-            dirtyIdentifiers = []
+            _ = takeDirtyIdentifiers()
 
             // Find removed nodes by diffing old vs new
             let removedIds = Set(nodes.keys).subtracting(Set(newNodes.keys))
@@ -234,7 +259,7 @@ private extension System {
 
     func shouldUpdateNode(_ node: Node, with element: any Element, id: StructuralIdentifier) -> Bool {
         // Check if element is dirty first
-        if dirtyIdentifiers.contains(id) {
+        if isDirty(id) {
             return true
         }
 

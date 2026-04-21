@@ -1,6 +1,11 @@
-public struct StructuralIdentifier: Hashable {
-    public struct Atom: Hashable {
-        public enum Component: Hashable {
+public struct StructuralIdentifier: Hashable, @unchecked Sendable {
+    // Sendable is `@unchecked` because `Atom.Component.explicit` wraps an
+    // arbitrary `AnyHashable` whose element type isn't statically known to be
+    // Sendable. In practice these identifiers are immutable value types built
+    // from `ObjectIdentifier` (the type id) plus either an `Int` or a user-
+    // supplied `.id(_:)` value, and are only ever used as dictionary/set keys.
+    public struct Atom: Hashable, @unchecked Sendable {
+        public enum Component: Hashable, @unchecked Sendable {
             case index(Int)
             case explicit(AnyHashable)
         }

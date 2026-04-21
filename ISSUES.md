@@ -3808,10 +3808,12 @@ Both the original `Set.contains` crash and this `MSBinding` unowned-read crash p
 ## 330: Data race on System.dirtyIdentifiers causes Set.contains crash in shouldUpdateNode
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 created: 2026-04-20T23:33:42Z
+updated: 2026-04-21T00:47:02Z
+closed: 2026-04-21T00:47:02Z
 +++
 
 Parent: #329.
@@ -3841,6 +3843,13 @@ Files:
 - Sources/MetalSprockets/Core/System.swift (markDirty, shouldUpdateNode)
 - Sources/MetalSprockets/Core/StateBox.swift (valueDidChange → markDirty)
 - Sources/MetalSprockets/Core/ObservedObject.swift (also calls markDirty)
+
+- `2026-04-21T00:47:02Z`: Fixed by lockng System.dirtyIdentifiers with OSAllocatedUnfairLock<Set<StructuralIdentifier>>. Phosphor demo stable in testing.
+
+Follow-ups remain:
+- #329 (umbrella / Phase 2 isolation contract per RFC)
+- #331 (MSBinding unowned dangle)
+- #332 (remove unused AnyHashable in StructuralIdentifier)
 
 ---
 

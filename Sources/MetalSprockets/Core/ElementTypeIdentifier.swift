@@ -1,4 +1,4 @@
-public struct ElementTypeIdentifier: Hashable {
+public struct ElementTypeIdentifier: Hashable, Sendable {
     public var id: ObjectIdentifier
 
     public init(_ type: any Element.Type) {
