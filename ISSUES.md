@@ -3416,11 +3416,13 @@ Mirror the Element .capture(_:target:destination:) API as a SwiftUI View modifie
 ## 319: MetalFX scalers recreated every frame due to AnyBodylessElement.requiresSetup = true
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: area:metalfx, area:core, effort:m
 created: 2026-04-18T17:22:08Z
+updated: 2026-04-21T01:50:13Z
+closed: 2026-04-21T01:50:13Z
 +++
 
 `AnyBodylessElement.requiresSetup(comparedTo:)` always returns `true`. This means any element whose body is `AnyBodylessElement().onSetupEnter { ... }` has its setup closure re-run every frame.
@@ -3444,6 +3446,14 @@ Anywhere `AnyBodylessElement().onSetupEnter { ... }` is used for one-time resour
 3. Add an explicit `@MSState` "is initialized" flag pattern to the MetalFX elements so they lazy-init inside `onWorkloadEnter` \u2014 which is what the `MetalFXTemporal` fix does. Works but every caller has to know to do this.
 
 Option 1 is the right general fix. If it's not feasible, at minimum the existing `MetalFXSpatial` should be audited (and its docstring updated) to confirm setup is supposed to be per-frame.
+
+- `2026-04-21T01:50:13Z`: Fixed: MetalFXSpatial is now a BodylessElement that uses the per-node cache pattern established in #333. The MTLFXSpatialScaler is keyed on (inputFormat, outputFormat, inputWidth, inputHeight, outputWidth, outputHeight) and only rebuilt when one of those changes — so steady-state rendering reuses the same scaler every frame, and the size-change branch still does the right thing.
+
+requiresSetup returns true (AnyBodylessElement's conservative behaviour no longer applies since MetalFXSpatial is now its own BodylessElement), but setupEnter is a cache lookup. No more wasted allocations per frame.
+
+Existing MetalFXSpatialTests (encode path, size-change recreation) still pass.
+
+MetalFXTemporal isn't in the tree yet; when it lands it should follow the same pattern.
 
 ---
 
