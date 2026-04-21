@@ -666,12 +666,13 @@ Audit Metal type extensions in MetalSprocketsSupport (especially buffer-related 
 ## 82: Emit OS logging POIs for each frame
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-04-21T04:29:47Z
+closed: 2026-04-21T04:29:47Z
 +++
 
 Add OSSignposter points of interest (POIs) for frame timing. This makes frames visible in Instruments' timeline, helping with profiling.
@@ -683,6 +684,8 @@ let state = poi.beginInterval(#function, id: id, "\(value)")
 // ... frame work ...
 poi.endInterval(#function, state)
 ```
+
+- `2026-04-21T04:29:47Z`: Already implemented — signposter uses .pointsOfInterest category (Sources/MetalSprocketsUI/Logging.swift, also in MetalSprockets/Support/Logging.swift), and RenderViewViewModel.draw() wraps each frame in withIntervalSignpost.
 
 ---
 
@@ -748,17 +751,20 @@ File: Sources/MetalSprockets/Metal/CommandBufferElement.swift
 ## 91: is this actually necessary? Elements just use an environment?
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:m, source:todo, needs-info
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-04-21T04:30:29Z
+closed: 2026-04-21T04:30:29Z
 +++
 
 File: Sources/MetalSprockets/Metal/RenderPipelineDescriptorModifier.swift (if it exists)
 
 *Imported from #83*
+
+- `2026-04-21T04:30:29Z`: Subsumed by #89 (env/descriptor modification improvements) and #22 (modifier architecture). The 'is it necessary' question is really a design question covered by those.
 
 ---
 
@@ -1129,12 +1135,13 @@ closed: 2026-03-31T18:45:53Z
 ## 148: Header docs
 
 +++
-status: open
+status: closed
 priority: low
 kind: documentation
 labels: documentation, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:30Z
+updated: 2026-04-21T04:32:36Z
+closed: 2026-04-21T04:32:36Z
 +++
 
 Continue adding documentation comments (///) to public APIs.
@@ -1142,21 +1149,24 @@ Continue adding documentation comments (///) to public APIs.
 Current state: ~37% of files have doc comments. Key public APIs (RenderPass, RenderPipeline) are well documented, but many types still need coverage.
 
 Priority:
-- All public types and methods
-- Environment keys
-- Modifiers
+
+- `2026-02-19T00:00:00Z`: All public types and methods
+- `2026-02-19T00:00:00Z`: Environment keys
+- `2026-02-19T00:00:00Z`: Modifiers
+- `2026-04-21T04:32:36Z`: Closing — not actively tracking these as discrete issues.
 
 ---
 
 ## 149: Tutorials
 
 +++
-status: open
+status: closed
 priority: low
 kind: documentation
 labels: documentation, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:30Z
+updated: 2026-04-21T04:32:36Z
+closed: 2026-04-21T04:32:36Z
 +++
 
 Expand DocC tutorials for MetalSprockets.
@@ -1173,6 +1183,8 @@ Expand DocC tutorials for MetalSprockets.
 - MSAA / MetalFX
 - Working with textures
 - Loading 3D models
+
+- `2026-04-21T04:32:36Z`: Closing — not actively tracking these as discrete issues.
 
 ---
 
@@ -2495,10 +2507,18 @@ priority: low
 kind: enhancement
 labels: enhancement, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:35Z
+updated: 2026-04-21T04:32:14Z
 +++
 
-Investigate unifying the APIs for transform data, amplification data, and uniforms. These are all ways of passing data to shaders - there may be an opportunity to simplify or consolidate the API.
+We currently pass data to shaders through three different mechanisms, each with a distinct API:
+
+1. **Per-shader uniforms** — transforms and other constants bound once per draw (e.g. model/view/projection matrices).
+2. **Per-amplification-index data** — values that vary per rendered view in amplified rendering (stereo / visionOS), indexed by amplification ID.
+3. **Per-vertex data** — vertex buffers / attributes.
+
+Conceptually these are all just 'data bound to shaders', differing only in granularity (per-draw, per-amplification, per-vertex). The current APIs evolved independently and don't share a common vocabulary.
+
+Investigate whether these can be unified (or at least aligned) behind a more consistent API — making it easier to reason about what's varying at what rate, and to move data between granularities without rewriting call sites.
 
 ---
 
