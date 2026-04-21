@@ -2301,30 +2301,36 @@ closed: 2026-03-31T18:16:40Z
 ## 245: Make sure all argument buffers are using useResources() correct.
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: bug, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-03-31T19:19:48Z
+updated: 2026-04-21T02:41:30Z
+closed: 2026-04-21T02:41:30Z
 +++
 
 Audit argument buffer usage to ensure `useResources()` is called correctly. Metal requires marking resources used by argument buffers so the GPU can track them. Missing calls can cause undefined behavior or crashes.
+
+- `2026-04-21T02:41:30Z`: Closing. MetalSprockets itself doesn't construct argument buffers internally — the useResource/useResources element modifiers are the API surface for users to call from their own code. No in-tree audit target.
 
 ---
 
 ## 246: Assert when same shader compiled multiple times
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: enhancement, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:35Z
+updated: 2026-04-21T02:37:11Z
+closed: 2026-04-21T02:37:11Z
 +++
 
 Add an assertion or warning when the same shader source is compiled multiple times. This is a performance issue - shaders should be compiled once and cached. Detecting duplicate compilation helps users optimize their code.
+
+- `2026-04-21T02:37:11Z`: Obsolete. Shader compilation is now de-duped structurally: LibraryRegistry caches MTLLibrary by source/bundle identity, ShaderCache caches MTLFunction per library, and RenderPipelineCache/MeshRenderPipelineCache/ComputePipelineCache cache pipeline states per node. Same source compiled multiple times is prevented by construction rather than detected by assertion. See #339 for the related cache-lifetime concern.
 
 ---
 
@@ -3071,14 +3077,17 @@ RenderViewHelper creates a new RenderViewViewModel in its struct init as the def
 ## 299: Add regression test or assertion to detect per-frame RenderViewViewModel allocation
 
 +++
-status: new
+status: closed
 priority: critical
 kind: task
 created: 2026-04-01T21:53:08Z
-updated: 2026-04-03T04:07:21Z
+updated: 2026-04-21T02:12:40Z
+closed: 2026-04-21T02:12:40Z
 +++
 
 After fixing #298 (RenderViewHelper allocating a new RenderViewViewModel every frame), we need a way to detect if this regresses. Options: a unit test that counts allocations, a debug-mode assertion that fires if RenderViewViewModel.init is called more than once per RenderView identity, or Instruments signpost tracking. Without this, it's easy to accidentally reintroduce the per-frame churn.
+
+- `2026-04-21T02:12:40Z`: Added RenderViewViewModelAllocationTracker that counts allocations per Content type and logs a warning at 3 allocations, then every 10 thereafter. Always-on (one atomic increment + dict lookup per allocation). Follow-up #337 filed for the structural fix to make init cheap enough that churn doesn't matter.
 
 ---
 
@@ -3368,10 +3377,12 @@ Tests added in DepthStencilKeyTests (4) cover identical-contents equality, each 
 ## 315: @MSState does not update when element is reconstructed with different init values
 
 +++
-status: new
+status: closed
 priority: critical
 kind: bug
 created: 2026-04-13T22:01:50Z
+updated: 2026-04-21T02:07:25Z
+closed: 2026-04-21T02:07:25Z
 +++
 
 @MSState persists its initial value across frames and never updates, even when the element is reconstructed with a new value. This means function constants or other pipeline configuration stored in @MSState cannot be changed at runtime without destroying and recreating the entire RenderView (e.g. via .id()).
@@ -3379,6 +3390,12 @@ created: 2026-04-13T22:01:50Z
 Example: an element with `@MSState var fragmentShader: FragmentShader` initialized with different function constants each frame will keep the first frame's shader forever.
 
 This is the same root cause as #314 (cached depth stencil state). Both are cases where MetalSprockets caches state that should be invalidated when the element's configuration changes.
+
+- `2026-04-21T02:07:25Z`: Closing: @MSState intentionally ignores subsequent init values, matching SwiftUI's @State semantics. The initial value only applies on first construction; on every subsequent element-tree rebuild the stored value persists. That's the whole point — otherwise @MSState would reset every frame and be useless for element-owned state.
+
+The reporter's example (@MSState var fragmentShader, expecting it to update when init args change) is a misuse of @MSState. For values derived from init arguments that need to rebuild on change, use a plain stored property plus a NodeElementCache inside setupEnter — the pattern established by #327 (ComputePipeline) and #333 (RenderPipeline / MeshRenderPipeline). The cache keys on the init args and rebuilds when they change.
+
+Not related to #314 after all; that was a framework-level identity-vs-contents bug in the shared pipeline cache, independent of @MSState.
 
 ---
 
@@ -4075,10 +4092,12 @@ MetalFX scalers (#319) can use the same pattern when addressed; tracking there r
 ## 334: RenderPipeline mutates env-supplied MTLRenderPipelineDescriptor in place
 
 +++
-status: new
+status: closed
 priority: low
 kind: bug
 created: 2026-04-21T01:40:07Z
+updated: 2026-04-21T02:39:11Z
+closed: 2026-04-21T02:39:11Z
 +++
 
 `RenderPipeline.setupEnter` pulls `renderPipelineDescriptor` out of the
@@ -4117,6 +4136,8 @@ File:
 - Sources/MetalSprockets/Metal/RenderPipeline.swift (setupEnter)
 
 Related: #333 (cache work that surfaced this).
+
+- `2026-04-21T02:39:11Z`: Fixed: RenderPipeline.setupEnter now copies the env-supplied MTLRenderPipelineDescriptor via copyWithType(_:) before mutating it, so sibling RenderPipelines sharing the same env descriptor can no longer race on its fields.
 
 ---
 
@@ -4209,5 +4230,65 @@ verified by inspection, not tests.
 Related: #321, #335.
 
 - `2026-04-21T01:47:30Z`: Done: OffscreenVideoRenderer now takes an optional `waitUntilReady: (() async -> Void)?` closure via an internal designated init. Production passes nil and gets a KVO-based implementation; tests inject a controllable closure and assert invocation count. Verified by testVideoRendererBackPressureSeam.
+
+---
+
+## 337: Make RenderViewViewModel init cheap so per-body churn doesn't matter
+
++++
+status: closed
+priority: medium
+kind: enhancement
+created: 2026-04-21T02:12:26Z
+updated: 2026-04-21T02:25:32Z
+closed: 2026-04-21T02:25:32Z
++++
+
+Follow-up to #299. Currently RenderViewHelper creates a RenderViewViewModel eagerly in its struct init (needed since #306 for environment propagation on first frame). SwiftUI discards all but the first, but each allocation still pays for System() and associated setup.
+
+Structural fix: make RenderViewViewModel.init() allocation cheap — defer System() and signpost ID creation to first draw(in:) (or first access). That way the per-body churn becomes a tiny object shell, and the allocation tracker (added for #299) becomes a dev-only diagnostic rather than a real problem.
+
+Keeps both #298 (no expensive per-frame work) and #306 (environment available on first frame) happy.
+
+- `2026-04-21T02:25:32Z`: Made RenderViewViewModel allocation lazy via a cheap ViewModelBox<Content> holder class. Box is allocated per body eval but contains just an optional; the real RenderViewViewModel is created exactly once on first update closure. System() and signpostID are also lazy. Verified StencilDemoView still works (first-frame environment path from #306 is preserved because update runs before draw).
+
+---
+
+## 338: Revisit RenderViewDebugViewModifier: finish or delete
+
++++
+status: new
+priority: low
+kind: task
+created: 2026-04-21T02:34:25Z
++++
+
+RenderViewDebugViewModifier is currently dead code: it's not applied anywhere (the .modifier call in RenderViewHelper.body is commented out), and its inspector panel body is entirely commented out too. It was a scaffold for a SwiftUI inspector that would browse the render graph (node tree + node details) via @Environment(RenderViewViewModel<Root>.self).
+
+Revisit: either finish it (wire up a proper node browser using a SystemSnapshot API) or delete it. Related: now that RenderViewHelper no longer does .environment(viewModel), this modifier wouldn't even work as-is — it would need viewModel re-plumbed back into the SwiftUI environment if we keep it.
+
+---
+
+## 339: Replace global LibraryRegistry with a non-leaking cache
+
++++
+status: new
+priority: medium
+kind: task
+created: 2026-04-21T02:36:22Z
++++
+
+LibraryRegistry.shared holds MTLLibrary instances via strong references for the lifetime of the process. Every compiled shader library (from bundle, source, or wrapped MTLLibrary) stays resident forever even after no ShaderLibrary value still references it.
+
+For long-running apps, apps that compile shaders on the fly (procedural/generated sources), or test suites that compile many variants, this is a leak.
+
+Options:
+- Weak-reference the cached ShaderLibrary.State so it's freed when the last ShaderLibrary value goes away (the registry becomes a dedupe-while-alive cache, not a retain-forever cache).
+- Scope the cache to a device or a user-owned context instead of a global singleton.
+- Expose an explicit purge API.
+
+Same concern applies to the per-library ShaderCache of MTLFunctions, though those die with their library automatically — so fixing LibraryRegistry should cover it.
+
+- `2026-04-21T02:36:47Z`: Design idea: a .shaderScope() element modifier that establishes a scoped ShaderLibrary cache via the element environment. Libraries/functions compiled inside the scope live in the scope's cache and die with it. No global singleton. Apps get explicit lifetime control — e.g. per-RenderView, per-scene, or per-experimental-area. Default behavior (no explicit scope) could still use a process-wide cache for convenience, but it would be opt-in or overridable.
 
 ---
