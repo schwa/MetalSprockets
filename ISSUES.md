@@ -3533,11 +3533,13 @@ That's it, roughly. It delegates to `.parameter(_:buffer:)` so it gets residency
 ## 321: Replace Thread.sleep polling in OffscreenVideoRenderer.appendFrame with proper back-pressure
 
 +++
-status: new
+status: closed
 priority: low
 kind: bug
 labels: metal4, cleanup
 created: 2026-04-18T23:55:21Z
+updated: 2026-04-21T01:47:30Z
+closed: 2026-04-21T01:47:30Z
 +++
 
 ## Problem
@@ -3567,9 +3569,10 @@ Alternatively, wrap `appendFrame` in an `async` function that uses
 
 ## Acceptance
 
-- `Thread.sleep` removed from `OffscreenVideoRenderer`.
-- Existing `videoRenderer` test still passes.
-- No new timing hacks introduced.
+- `2026-04-18T23:55:21Z`: `Thread.sleep` removed from `OffscreenVideoRenderer`.
+- `2026-04-18T23:55:21Z`: Existing `videoRenderer` test still passes.
+- `2026-04-18T23:55:21Z`: No new timing hacks introduced.
+- `2026-04-21T01:47:30Z`: Done: removed the Thread.sleep(forTimeInterval: 0.01) polling loop in appendFrame. Replaced with an async KVO-based waitUntilReady on AVAssetWriterInput.isReadyForMoreMediaData (see OffscreenVideoRenderer.defaultWaitUntilReady). appendFrame and render are now async throws. Back-pressure path is exercised by testVideoRendererBackPressureSeam (via #336's injection seam).
 
 ---
 
@@ -4087,11 +4090,12 @@ Related: #333 (cache work that surfaced this).
 ## 335: OffscreenVideoRendererTests only asserts file existence — no content verification
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 created: 2026-04-21T01:42:44Z
-updated: 2026-04-21T01:42:56Z
+updated: 2026-04-21T01:47:30Z
+closed: 2026-04-21T01:47:30Z
 +++
 
 The sole test for `OffscreenVideoRenderer` renders 30 frames to
@@ -4127,15 +4131,19 @@ Proposed improvements:
 Related: #321 (the Thread.sleep fix cannot be meaningfully verified by the
 current test).
 
+- `2026-04-21T01:47:30Z`: Done: OffscreenVideoRendererTests now verifies content (AVAsset duration within 0.2s tolerance, video track count, media type, natural size). Uses per-test temporary URLs under FileManager.default.temporaryDirectory with cleanup in defer. Added second test covering sequential runs producing two distinct valid files. Third test (from #336) exercises the back-pressure seam.
+
 ---
 
 ## 336: OffscreenVideoRenderer back-pressure path is not covered by any test
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 created: 2026-04-21T01:43:08Z
+updated: 2026-04-21T01:47:30Z
+closed: 2026-04-21T01:47:30Z
 +++
 
 The polling loop in `OffscreenVideoRenderer.appendFrame` (to be replaced
@@ -4166,5 +4174,7 @@ Until this is addressed, changes to the wait logic (like #321) have to be
 verified by inspection, not tests.
 
 Related: #321, #335.
+
+- `2026-04-21T01:47:30Z`: Done: OffscreenVideoRenderer now takes an optional `waitUntilReady: (() async -> Void)?` closure via an internal designated init. Production passes nil and gets a KVO-based implementation; tests inject a controllable closure and assert invocation count. Verified by testVideoRendererBackPressureSeam.
 
 ---
