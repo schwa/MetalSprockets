@@ -42,13 +42,28 @@ internal final class StateBox<Wrapped> {
 
     internal init(_ wrappedValue: Wrapped) {
         self._value = wrappedValue
-        // swiftlint:disable:next unowned_variable_capture
-        self.binding = MSBinding(get: { [unowned self] in
-            self.wrappedValue
-            // swiftlint:disable:next unowned_variable_capture
-        }, set: { [unowned self] newValue in
-            self.wrappedValue = newValue
-        })
+        // Capture `self` weakly so an `MSBinding` that outlives its owning
+        // `StateBox` (e.g. deferred past body evaluation via Task /
+        // DispatchQueue.main.async / a GPU completion handler) degrades
+        // gracefully instead of crashing with swift_abortRetainUnowned.
+        // See #331.
+        self.binding = MSBinding(
+            get: { [weak self] in
+                guard let self else {
+                    preconditionFailure("MSBinding read after its StateBox was deallocated")
+                }
+                return self.wrappedValue
+            },
+            set: { [weak self] newValue in
+                // Late writes (e.g. GPU completion hopping to main after the
+                // element tree rebuilt) are dropped silently, matching
+                // SwiftUI.Binding's behaviour for bindings to gone state.
+                guard let self else {
+                    return
+                }
+                self.wrappedValue = newValue
+            }
+        )
     }
 
     /// Update dependencies when the value changes

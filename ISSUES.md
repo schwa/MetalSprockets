@@ -3856,10 +3856,12 @@ Follow-ups remain:
 ## 331: MSBinding holds StateBox unowned, dangles past body evaluation
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 created: 2026-04-20T23:33:59Z
+updated: 2026-04-21T00:57:19Z
+closed: 2026-04-21T00:57:19Z
 +++
 
 Parent: #329.
@@ -3896,6 +3898,8 @@ Proposed fix (pick one):
 
 Related: #329 (the original `Set.contains` crash has the same underlying
 cause: nothing prevents off-main / deferred state mutation).
+
+- `2026-04-21T00:57:19Z`: Fixed: StateBox.init now captures [weak self] in its MSBinding closures. Late reads precondition-fail with a clear message; late writes silently drop (matching SwiftUI.Binding). Test added in BindingTests.testBindingSurvivesStateBoxDeallocation.
 
 ---
 

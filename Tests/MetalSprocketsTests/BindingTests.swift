@@ -237,4 +237,28 @@ struct BindingTests {
         #expect(root.z == 12)
         #expect(TestMonitor.shared.values["sum"] as? Int == 20)
     }
+
+    // MARK: - StateBox lifetime / weak capture (#331)
+
+    /// An `MSBinding` must outlive its owning `StateBox` gracefully:
+    /// writes after the `StateBox` is gone are dropped silently, matching
+    /// SwiftUI.Binding's behaviour. This guards against the
+    /// `swift_abortRetainUnowned` crash reported in #329 / #331 when a
+    /// binding is captured past body evaluation (e.g. via a GPU completion
+    /// handler hopping back to main).
+    @Test
+    func testBindingSurvivesStateBoxDeallocation() {
+        let system = System()
+        let binding: MSBinding<Int> = system.withCurrentSystem {
+            var box: StateBox<Int>? = StateBox(42)
+            let binding = box!.binding
+            #expect(binding.wrappedValue == 42)
+            // Drop the StateBox; binding captures it weakly, so it deallocates.
+            box = nil
+            return binding
+        }
+
+        // Late writes must not crash — they're dropped silently.
+        binding.wrappedValue = 99
+    }
 }
