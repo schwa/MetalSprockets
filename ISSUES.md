@@ -3111,11 +3111,12 @@ ViewAdaptor wraps NSViewRepresentable/UIViewRepresentable but doesn't implement 
 ## 302: .parameter() uses MemoryLayout.size instead of .stride, causing Metal validation errors
 
 +++
-status: new
+status: closed
 priority: critical
 kind: bug
 created: 2026-04-02T00:38:43Z
-updated: 2026-04-02T00:38:49Z
+updated: 2026-04-21T01:55:02Z
+closed: 2026-04-21T01:55:02Z
 +++
 
 When passing a struct via `.parameter(name, value:)`, MetalSprockets uses `MemoryLayout<T>.size` to determine the buffer length. Metal expects `MemoryLayout<T>.stride` which includes trailing padding for alignment.
@@ -3133,6 +3134,16 @@ Vertex Function(slug_vertex): argument view[0] from Buffer(1) with offset(0) and
 **Workaround:** Add explicit padding to the Swift struct to make `.size` == `.stride`.
 
 **Fix:** `.parameter()` should use `MemoryLayout<T>.stride` when calling `setVertexBytes` / `setFragmentBytes`.
+
+- `2026-04-21T01:55:02Z`: Root cause is in MetalSupport, not MetalSprockets. The four `setUnsafeBytes` helpers in `MetalSupport/Sources/MetalSupport/UnsafeBytes.swift` pass `buffer.count` (which is `MemoryLayout<T>.size`) as the byte length to `setBytes`/`setVertexBytes`/etc; Metal expects `MemoryLayout<T>.stride`.
+
+Tracked upstream: MetalSupport#9. Once that lands, bump the MetalSupport dependency here.
+
+Reproduction confirmed:
+- struct { simd_float4x4; SIMD2<Float> }: size=72, stride=80, withUnsafeBytes.count=72.
+- Metal validation error length(72) vs length(80) matches exactly.
+
+Closing here as a duplicate redirected to the right repo.
 
 ---
 
