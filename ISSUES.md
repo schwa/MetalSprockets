@@ -404,10 +404,10 @@ closed: 2026-04-21T03:17:54Z
 +++
 
 Add a `.disabled(_ isDisabled: Bool)` modifier that skips an element's rendering when true. Similar to SwiftUI's `.hidden()`. Useful for:
-- Toggling effects on/off for debugging
-- A/B comparisons
-- Conditional rendering without restructuring the element tree
 
+- `2026-02-19T00:00:00Z`: Toggling effects on/off for debugging
+- `2026-02-19T00:00:00Z`: A/B comparisons
+- `2026-02-19T00:00:00Z`: Conditional rendering without restructuring the element tree
 - `2026-04-21T03:17:54Z`: Added .workloadEnabled(_ enabled: Bool = true) element modifier. When false, the element and its entire subtree skip the workload phase (no draws/dispatches/blits) while setup still runs, so pipeline state stays warm and toggling is cheap. Backed by a new BodylessElement.skipsWorkload(_:) protocol method and subtree-skipping logic in System.processWorkloadWithSkipping. Covered by WorkloadEnabledTests (7 cases). Structural removal is still expressible with plain if/ConditionalContent.
 
 ---
@@ -800,15 +800,18 @@ Improve the `.parameter(_:color:)` modifier:
 ## 104: ViewAdaptor should be internal but is currently used externally
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: source:todo, effort:s
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-04-21T03:20:48Z
+closed: 2026-04-21T03:20:48Z
 +++
 
 Make `ViewAdaptor` internal instead of public. It's only used by RenderView internally.
+
+- `2026-04-21T03:20:48Z`: ViewAdaptor is now internal. Only used by RenderView within MetalSprocketsUI.
 
 ---
 

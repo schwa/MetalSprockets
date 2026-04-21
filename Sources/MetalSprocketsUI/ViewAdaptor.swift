@@ -1,16 +1,16 @@
 import SwiftUI
 
 #if os(macOS)
-public struct ViewAdaptor<ViewType>: View where ViewType: NSView {
+internal struct ViewAdaptor<ViewType>: View where ViewType: NSView {
     let make: () -> ViewType
     let update: (ViewType) -> Void
 
-    public init(make: @escaping () -> ViewType, update: @escaping (ViewType) -> Void) {
+    init(make: @escaping () -> ViewType, update: @escaping (ViewType) -> Void) {
         self.make = make
         self.update = update
     }
 
-    public var body: some View {
+    var body: some View {
         Representation(make: make, update: update)
     }
 
@@ -29,16 +29,16 @@ public struct ViewAdaptor<ViewType>: View where ViewType: NSView {
 }
 
 #elseif os(iOS) || os(tvOS) || os(visionOS)
-public struct ViewAdaptor<ViewType>: View where ViewType: UIView {
+internal struct ViewAdaptor<ViewType>: View where ViewType: UIView {
     let make: () -> ViewType
     let update: (ViewType) -> Void
 
-    public init(make: @escaping () -> ViewType, update: @escaping (ViewType) -> Void) {
+    init(make: @escaping () -> ViewType, update: @escaping (ViewType) -> Void) {
         self.make = make
         self.update = update
     }
 
-    public var body: some View {
+    var body: some View {
         Representation(make: make, update: update)
     }
 
