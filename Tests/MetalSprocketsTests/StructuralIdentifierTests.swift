@@ -26,16 +26,10 @@ struct StructuralIdentifierTests {
     @Test
     func testAtomCreation() {
         let typeId = ElementTypeIdentifier(TestElement1.self)
-        let atom1 = StructuralIdentifier.Atom(typeIdentifier: typeId, index: 0)
-        let atom2 = StructuralIdentifier.Atom(typeIdentifier: typeId, explicit: "custom")
+        let atom = StructuralIdentifier.Atom(typeIdentifier: typeId, index: 0)
 
-        #expect(atom1.typeIdentifier == typeId)
-        #expect(atom1.index == 0)
-        #expect(atom1.explicit == nil)
-
-        #expect(atom2.typeIdentifier == typeId)
-        #expect(atom2.index == nil)
-        #expect(atom2.explicit as? String == "custom")
+        #expect(atom.typeIdentifier == typeId)
+        #expect(atom.index == 0)
     }
 
     @Test
@@ -47,14 +41,10 @@ struct StructuralIdentifierTests {
         let atom2 = StructuralIdentifier.Atom(typeIdentifier: typeId1, index: 0)
         let atom3 = StructuralIdentifier.Atom(typeIdentifier: typeId1, index: 1)
         let atom4 = StructuralIdentifier.Atom(typeIdentifier: typeId2, index: 0)
-        let atom5 = StructuralIdentifier.Atom(typeIdentifier: typeId1, explicit: "a")
-        let atom6 = StructuralIdentifier.Atom(typeIdentifier: typeId1, explicit: "b")
 
         #expect(atom1 == atom2)
         #expect(atom1 != atom3)
         #expect(atom1 != atom4)
-        #expect(atom1 != atom5)
-        #expect(atom5 != atom6)
     }
 
     @Test
@@ -121,19 +111,6 @@ struct StructuralIdentifierTests {
     }
 
     @Test
-    func testExplicitIdentifierInAtom() {
-        let typeId = ElementTypeIdentifier(TestElement1.self)
-
-        let atom1 = StructuralIdentifier.Atom(typeIdentifier: typeId, explicit: 42)
-        let atom2 = StructuralIdentifier.Atom(typeIdentifier: typeId, explicit: 42)
-        let atom3 = StructuralIdentifier.Atom(typeIdentifier: typeId, explicit: 43)
-
-        #expect(atom1 == atom2)
-        #expect(atom1 != atom3)
-        #expect(atom1.explicit as? Int == 42)
-    }
-
-    @Test
     func testComplexHierarchy() {
         let rootType = ElementTypeIdentifier(TestElement1.self)
         let childType = ElementTypeIdentifier(TestElement2.self)
@@ -162,31 +139,9 @@ struct StructuralIdentifierTests {
     @Test("Atom(element:index:) derives type identifier from value")
     func atomFromElementWithIndex() {
         let atom = StructuralIdentifier.Atom(element: Leaf(), index: 7)
-        if case .index(let index) = atom.component {
-            #expect(index == 7)
-        } else {
-            Issue.record("Expected .index component")
-        }
+        #expect(atom.index == 7)
         // Two atoms built from the same element type should have equal type identifiers.
         let other = StructuralIdentifier.Atom(element: Leaf(), index: 0)
         #expect(atom.typeIdentifier == other.typeIdentifier)
-    }
-
-    @Test("Atom(element:explicit:) derives type identifier from value")
-    func atomFromElementWithExplicit() {
-        let atom = StructuralIdentifier.Atom(element: Leaf(), explicit: "custom-id")
-        if case .explicit(let value) = atom.component {
-            #expect(value == "custom-id" as AnyHashable)
-        } else {
-            Issue.record("Expected .explicit component")
-        }
-    }
-
-    @Test("Atom with .explicit component renders value in description")
-    func atomExplicitDescription() {
-        let typeID = ElementTypeIdentifier(Leaf.self)
-        let atom = StructuralIdentifier.Atom(typeIdentifier: typeID, explicit: "my-key")
-        let description = String(describing: atom)
-        #expect(description.contains("my-key"))
     }
 }

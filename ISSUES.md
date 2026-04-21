@@ -3914,10 +3914,12 @@ cause: nothing prevents off-main / deferred state mutation).
 ## 332: Remove unused StructuralIdentifier.Atom.Component.explicit(AnyHashable) case
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 created: 2026-04-20T23:40:41Z
+updated: 2026-04-21T01:00:24Z
+closed: 2026-04-21T01:00:24Z
 +++
 
 While fixing #330, `StructuralIdentifier` had to be marked `@unchecked
@@ -3952,5 +3954,12 @@ Files:
 - Sources/MetalSprockets/Core/StructuralIdentifier.swift
 - Tests/MetalSprocketsTests/StructuralIdentifierTests.swift
 - Tests/MetalSprocketsTests/Support/Support.swift
+
+- `2026-04-21T01:00:24Z`: Done:
+- Removed Component.explicit(AnyHashable) and the enum entirely.
+- Atom is now { typeIdentifier: ElementTypeIdentifier, index: Int }.
+- Removed the two explicit: initializers.
+- Dropped @unchecked Sendable in favour of plain Sendable on StructuralIdentifier, Atom, and ElementTypeIdentifier.
+- Removed dead test helpers and 3 obsolete test cases.
 
 ---

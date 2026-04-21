@@ -68,23 +68,6 @@ final class TestMonitor: @unchecked Sendable {
     }
 }
 
-// Test helper extension
-extension StructuralIdentifier.Atom {
-    var index: Int? {
-        if case .index(let value) = component {
-            return value
-        }
-        return nil
-    }
-
-    var explicit: AnyHashable? {
-        if case .explicit(let value) = component {
-            return value
-        }
-        return nil
-    }
-}
-
 // Test helper methods for accessing elements by indices
 extension System {
     // Computed property to extract ordered identifiers from traversal events
