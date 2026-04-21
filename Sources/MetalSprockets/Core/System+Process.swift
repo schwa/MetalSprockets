@@ -1,6 +1,6 @@
 import MetalSprocketsSupport
 
-public extension System {
+package extension System {
     func processSetup() throws {
         try withIntervalSignpost(signposter, name: "System.processSetup()") {
             try process(needsSetup: true) { element, node in

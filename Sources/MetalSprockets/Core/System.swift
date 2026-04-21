@@ -17,7 +17,7 @@ internal enum TraversalEvent {
 ///   confined to a single isolation context (MainActor, custom actor, or
 ///   synchronous single-threaded code). Instances must not be shared across
 ///   isolation domains.
-public final class System: @unchecked Sendable {
+package final class System: @unchecked Sendable {
     private(set) var traversalEvents: [TraversalEvent] = []
     private(set) var nodes: [StructuralIdentifier: Node] = [:]
     /// Stack of nodes currently being processed during system traversal.
@@ -51,12 +51,12 @@ public final class System: @unchecked Sendable {
 
     @TaskLocal internal static var current: System?
 
-    public init() {
+    package init() {
         // This line intentionally left blank.
     }
 
     /// Mark all nodes as needing setup (e.g., when drawable size changes)
-    public func markAllNodesNeedingSetup() {
+    package func markAllNodesNeedingSetup() {
         for node in nodes.values {
             node.needsSetup = true
         }
@@ -91,7 +91,7 @@ public final class System: @unchecked Sendable {
         activeNodeStack.removeLast()
     }
 
-    public func update(root: some Element) throws {
+    package func update(root: some Element) throws {
         assert(activeNodeStack.isEmpty)
         try withCurrentSystem {
             // Clean up after the update

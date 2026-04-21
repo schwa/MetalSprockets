@@ -3,7 +3,7 @@ import os
 
 // MARK: - Snapshot Creation
 
-public extension System {
+package extension System {
     /// Create a snapshot of the current system state
     func snapshot() -> SystemSnapshot {
         SystemSnapshot(system: self)

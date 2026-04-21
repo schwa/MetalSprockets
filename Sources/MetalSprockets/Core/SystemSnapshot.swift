@@ -8,7 +8,7 @@ public struct SystemSnapshot: Codable, Sendable {
     public let dirtyIdentifiers: Set<String>
     public let activeNodeStackDepth: Int
 
-    public init(system: System) {
+    package init(system: System) {
         self.timestamp = Date()
 
         // Extract ordered identifiers from traversal events (only enter events to avoid duplicates)
