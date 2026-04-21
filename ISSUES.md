@@ -198,17 +198,19 @@ closed: 2026-03-31T18:27:48Z
 ## 34: Investigate flickering of Metal FPU counter
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-21T02:47:31Z
+updated: 2026-04-21T02:54:49Z
+closed: 2026-04-21T02:54:49Z
 +++
 
 *Imported from #26*
 
 - `2026-04-09T20:13:12Z`: This is the same issue as #312 — the Metal GPU performance HUD disappears/flickers during drag gestures. Also note: flickering is reduced when shader validation is enabled (slower frame rate masks the issue).
+- `2026-04-21T02:54:49Z`: No longer reproducing — FPS counter flicker appears resolved, likely by the viewModel/frame-timing work (#298, #337).
 
 ---
 
@@ -2417,6 +2419,7 @@ Found in `DebugRenderPipeline` where changing the body return type from `any Ele
 *Imported from #240*
 
 - `2026-04-21T02:51:18Z`: Added a debug-build assertion in Element.visitChildren that fires when an element's Body associatedtype is inferred as any Element (the existential). Writing 'var body: any Element' compiles but silently breaks traversal; the assert now makes that immediate and obvious in debug. No runtime cost in release builds.
+- `2026-04-21T02:51:46Z`: Related: #312 (Metal GPU HUD disappears during drag/pan gestures) may be a symptom of similar traversal/rebuild issues worth checking against the new assert.
 
 ---
 
@@ -3360,15 +3363,20 @@ MTKView-backed RenderView renders nothing when a .toolbar modifier is applied (w
 ## 312: Metal GPU performance HUD disappears during drag/pan gestures
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: effort:m
 created: 2026-04-09T20:12:59Z
-updated: 2026-04-21T02:48:19Z
+updated: 2026-04-21T02:53:28Z
+closed: 2026-04-21T02:53:28Z
 +++
 
 The Metal GPU performance overlay (enabled via Xcode scheme) disappears while dragging/panning in RenderView. It reappears when the gesture ends. Likely a SwiftUI overlay/z-ordering issue during gesture handling.
+
+- `2026-04-21T02:51:46Z`: Related to #248 (closed): the any-Element traversal bug. If the HUD-during-gesture issue turns out to be a traversal/rebuild problem rather than a SwiftUI z-order one, the assertion from #248 might help surface it.
+- `2026-04-21T02:53:28Z`: No longer reproducing — appears to have been fixed alongside the recent traversal/rendering changes (see #248 and related work). Close for now; reopen if it comes back.
+- `2026-04-21T02:53:46Z`: Correction on the previous close comment: this was likely fixed by the RenderView viewModel work (#298, #337), not #248. The per-body RenderViewViewModel churn could cause transient teardown during gesture-triggered re-evaluations, which would take the HUD overlay with it.
 
 ---
 
