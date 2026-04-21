@@ -1887,12 +1887,13 @@ File: Sources/MetalSprockets/Core/ForEach.swift
 ## 210: Handle errors in StateBox getter/setter
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: bug, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:31Z
+updated: 2026-04-21T02:42:14Z
+closed: 2026-04-21T02:42:14Z
 +++
 
 StateBox has TODO comments about error handling in the getter and setter methods. Need to determine proper error handling strategy.
@@ -1900,6 +1901,8 @@ StateBox has TODO comments about error handling in the getter and setter methods
 File: Sources/MetalSprockets/Core/StateBox.swift
 
 *Imported from #202*
+
+- `2026-04-21T02:42:14Z`: Both TODOs were in valueDidChange(). Neither is actually an error: (1) nil system means teardown (harmless) and the 'never attached' case is already caught by assertionFailure in the  getter; (2) a deallocated dependency just needs pruning. Replaced forEach with compactMap so dead entries are cleaned up opportunistically on write, and removed the TODOs with clarifying comments.
 
 ---
 

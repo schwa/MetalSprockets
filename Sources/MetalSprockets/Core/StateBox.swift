@@ -66,19 +66,21 @@ internal final class StateBox<Wrapped> {
         )
     }
 
-    /// Update dependencies when the value changes
+    /// Update dependencies when the value changes.
     private func valueDidChange() {
+        // No system: either the graph is torn down (harmless) or the StateBox
+        // was never attached (the `system` getter already asserts on that).
         guard let system else {
-            // TODO: #210 Handle error when system is nil during value change - could log or assert
             return
         }
-        dependencies.forEach { boxedNode in
+        // Prune dead dependency references opportunistically while we iterate.
+        dependencies = dependencies.compactMap { boxedNode in
             guard let node = boxedNode() else {
-                // TODO: #210 Handle error when node has been deallocated - dependency cleanup needed
-                return
+                return nil
             }
             system.markDirty(node.id)
             node.needsSetup = true
+            return boxedNode
         }
     }
 }

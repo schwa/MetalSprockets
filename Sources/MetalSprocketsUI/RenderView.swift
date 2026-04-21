@@ -183,14 +183,17 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     @Environment(\.renderViewCapture)
     private var captureConfiguration
 
+    /// Holder so we can lazily create the viewModel on first `update` without
+    /// re-allocating per body eval. The box itself is allocated per body (cheap
+    /// empty class), SwiftUI keeps the first, and the real viewModel is created
+    /// at most once per live RenderView identity.
     @State
-    private var viewModel: RenderViewViewModel<Content>?
+    private var viewModelBox = ViewModelBox<Content>()
 
     init(device: MTLDevice, commandQueue: MTLCommandQueue, @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
         self.content = content
-        self._viewModel = State(initialValue: RenderViewViewModel(device: device, commandQueue: commandQueue, content: content))
     }
 
     var body: some View {
@@ -198,8 +201,12 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             MTKView()
         }
         update: { view in
-            guard let viewModel else {
-                return
+            let viewModel: RenderViewViewModel<Content>
+            if let existing = viewModelBox.value {
+                viewModel = existing
+            } else {
+                viewModel = RenderViewViewModel(device: device, commandQueue: commandQueue, content: content)
+                viewModelBox.value = viewModel
             }
             #if os(macOS)
             view.layer?.isOpaque = false
@@ -216,17 +223,16 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             viewModel.frameTimingChange = frameTimingChange
             viewModel.captureConfiguration = captureConfiguration
         }
-        .onAppear {
-            if viewModel == nil {
-                viewModel = RenderViewViewModel<Content>(device: device, commandQueue: commandQueue, content: content)
-            }
-        }
         .onDisappear {
-            viewModel = nil
+            viewModelBox.value = nil
         }
         //        .modifier(RenderViewDebugViewModifier<Content>())
-        .environment(viewModel)
     }
+}
+
+/// Cheap holder class for lazy viewModel creation in `RenderViewHelper`.
+private final class ViewModelBox<Content: Element> {
+    var value: RenderViewViewModel<Content>?
 }
 
 @Observable
@@ -242,8 +248,18 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     var lastError: Error?
 
+    /// Lazily created on first use. See #337 — keeping `init` cheap means
+    /// SwiftUI's per-body churn of unused RenderViewViewModel instances
+    /// doesn't pay for a `System()` each time.
     @ObservationIgnored
-    var system: System
+    private var _system: System?
+    @ObservationIgnored
+    var system: System {
+        if let s = _system { return s }
+        let s = System()
+        _system = s
+        return s
+    }
 
     @ObservationIgnored
     var drawableSizeChange: ((CGSize) -> Void)?
@@ -254,8 +270,16 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     var captureConfiguration: RenderViewCaptureConfiguration?
 
+    /// Lazily created on first use (see #337).
     @ObservationIgnored
-    var signpostID = signposter?.makeSignpostID()
+    private var _signpostID: OSSignpostID?
+    @ObservationIgnored
+    var signpostID: OSSignpostID? {
+        if let id = _signpostID { return id }
+        let id = signposter?.makeSignpostID()
+        _signpostID = id
+        return id
+    }
 
     @ObservationIgnored
     var timingState = FrameTimingState()
@@ -281,8 +305,8 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
         self.device = device
         self.commandQueue = commandQueue
         self.content = content
-        self.system = System()
         super.init()
+        RenderViewViewModelAllocationTracker.shared.recordAllocation()
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -378,6 +402,40 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
             fatalError("Error when drawing #\(self.timingState.frame): \(error)")
         }
         lastError = error
+    }
+}
+
+// MARK: - Allocation tracking
+
+
+/// Tracks `RenderViewViewModel` allocations to catch regressions of per-frame churn
+/// (see issues #298 / #299). Intentionally always-on; cost is one atomic increment
+/// and a dictionary lookup per allocation.
+internal final class RenderViewViewModelAllocationTracker: @unchecked Sendable {
+    static let shared = RenderViewViewModelAllocationTracker()
+
+    /// First warn after this many allocations. 1 is normal, 2 can happen across
+    /// disappear/reappear, 3+ suggests per-body churn has regressed.
+    private let warnThreshold = 3
+    /// After the first warning, warn again every `warnInterval` additional allocations.
+    private let warnInterval = 10
+
+    private let lock = OSAllocatedUnfairLock(initialState: [String: Int]())
+
+    func recordAllocation() {
+        let count = lock.withLock { counts -> Int in
+            let next = (counts["RenderViewViewModel"] ?? 0) + 1
+            counts["RenderViewViewModel"] = next
+            return next
+        }
+        if count == warnThreshold || (count > warnThreshold && (count - warnThreshold) % warnInterval == 0) {
+            logger?.warning("RenderViewViewModel has been allocated \(count) times. This may indicate per-frame allocation churn (regression of #298). See #299/#337.")
+        }
+    }
+
+    /// Current allocation count. Intended for tests/diagnostics.
+    var allocationCount: Int {
+        lock.withLock { $0["RenderViewViewModel"] ?? 0 }
     }
 }
 

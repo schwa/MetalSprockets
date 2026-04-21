@@ -104,7 +104,8 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
         let environment = node.environmentValues
 
         let renderPassDescriptor = try environment.renderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor)).copyWithType(MTLRenderPassDescriptor.self)
-        let renderPipelineDescriptor = try environment.renderPipelineDescriptor.orThrow(.missingEnvironment(\.renderPipelineDescriptor))
+        // Copy so we never mutate a descriptor shared via the environment (see #334).
+        let renderPipelineDescriptor = try environment.renderPipelineDescriptor.orThrow(.missingEnvironment(\.renderPipelineDescriptor)).copyWithType(MTLRenderPipelineDescriptor.self)
         let device = try device.orThrow(.missingEnvironment(\.device))
 
         // Collect the values that actually affect the PSO. Pixel formats come
