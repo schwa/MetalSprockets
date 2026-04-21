@@ -2109,15 +2109,18 @@ closed: 2026-03-31T18:59:05Z
 ## 233: Bring back DebugLabelModifier
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: needs-info, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:18Z
+updated: 2026-04-21T04:28:53Z
+closed: 2026-04-21T04:28:53Z
 +++
 
 *Imported from #225*
+
+- `2026-04-21T04:28:53Z`: Removed commented-out DebugLabelModifier.swift. If we want this back, it'd be simpler to rewrite from scratch.
 
 ---
 
