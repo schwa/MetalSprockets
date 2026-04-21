@@ -3951,15 +3951,66 @@ be designed deliberately at that point — likely with a generic `ID: Hashable
 Related: #330 (introduced the `@unchecked Sendable` workaround).
 
 Files:
-- Sources/MetalSprockets/Core/StructuralIdentifier.swift
-- Tests/MetalSprocketsTests/StructuralIdentifierTests.swift
-- Tests/MetalSprocketsTests/Support/Support.swift
 
+- `2026-04-20T23:40:41Z`: Sources/MetalSprockets/Core/StructuralIdentifier.swift
+- `2026-04-20T23:40:41Z`: Tests/MetalSprocketsTests/StructuralIdentifierTests.swift
+- `2026-04-20T23:40:41Z`: Tests/MetalSprocketsTests/Support/Support.swift
 - `2026-04-21T01:00:24Z`: Done:
-- Removed Component.explicit(AnyHashable) and the enum entirely.
-- Atom is now { typeIdentifier: ElementTypeIdentifier, index: Int }.
-- Removed the two explicit: initializers.
-- Dropped @unchecked Sendable in favour of plain Sendable on StructuralIdentifier, Atom, and ElementTypeIdentifier.
-- Removed dead test helpers and 3 obsolete test cases.
+- `2026-04-21T01:00:24Z`: Removed Component.explicit(AnyHashable) and the enum entirely.
+- `2026-04-21T01:00:24Z`: Atom is now { typeIdentifier: ElementTypeIdentifier, index: Int }.
+- `2026-04-21T01:00:24Z`: Removed the two explicit: initializers.
+- `2026-04-21T01:00:24Z`: Dropped @unchecked Sendable in favour of plain Sendable on StructuralIdentifier, Atom, and ElementTypeIdentifier.
+- `2026-04-21T01:00:24Z`: Removed dead test helpers and 3 obsolete test cases.
+
+---
+
+## 333: Add invalidationKey escape hatch for setup-phase elements that read environment values
+
++++
+status: new
+priority: high
+kind: enhancement
+created: 2026-04-21T01:03:35Z
++++
+
+Several elements build Metal state during `setupEnter` from a mix of struct
+fields *and* environment values, but `requiresSetup(comparedTo:)` can only
+compare struct fields. This means environment-driven changes (e.g. a new
+`linkedFunctions`, a new MSAA sample count, a new color attachment format)
+silently fail to invalidate cached state.
+
+Affected elements:
+- `ComputePipeline` (#327) — returns `false` unconditionally.
+- `MeshRenderPipeline` — returns `false` unconditionally.
+- `RenderPipeline` — compares vertex/fragment shaders only; ignores environment
+  (MSAA, depth format, color attachment formats, linkedFunctions, etc.).
+- MetalFX scalers (#319) — related symptom, different root cause (always
+  rebuilds), but benefits from the same escape hatch.
+
+Proposal: add a standard `invalidationKey: AnyHashable?` parameter to each
+affected elements init (or hoist onto a common protocol). `requiresSetup`
+compares the key in addition to any struct-field comparison it already does.
+
+Callers that depend on environment-driven inputs opt in by passing a hash of
+whatever they know changed (e.g. the selected shader snippet name, the current
+MSAA count, a monotonic counter). Callers who dont pass a key keep todays
+behaviour.
+
+This is an escape hatch, not a real fix. The right long-term solution is for
+`requiresSetup` to have access to the previous nodes environment snapshot,
+so it can diff environment values itself. Thats a bigger architectural
+change; `invalidationKey` unblocks users today without prejudicing that design.
+
+Sub-issues / related:
+- #327 (ComputePipeline) — use this approach.
+- #319 (MetalFX scalers) — related.
+- #236 (Pipeline elements need proper requiresSetup for shader constants) —
+  overlap; shader constants are another env-adjacent input.
+
+Files (at minimum):
+- Sources/MetalSprockets/Metal/ComputePass.swift
+- Sources/MetalSprockets/Metal/RenderPipeline.swift
+- Sources/MetalSprockets/Metal/MeshRenderPipeline.swift
+- Sources/MetalSprockets/Core/BodylessElement.swift (if hoisted to a protocol)
 
 ---
