@@ -644,19 +644,22 @@ closed: 2026-03-31T18:27:21Z
 ## 81: Clean up all Metal extension code - especially stuff on buffers etc to make sure it's not being stupid.
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-04-21T04:28:44Z
+closed: 2026-04-21T04:28:44Z
 +++
 
 Audit Metal type extensions in MetalSprocketsSupport (especially buffer-related code):
-- Remove unused extensions
-- Fix any inefficient implementations
-- Ensure consistency and good practices
-- Check for duplication with MetalKit built-in functionality
+
+- `2026-02-19T00:00:00Z`: Remove unused extensions
+- `2026-02-19T00:00:00Z`: Fix any inefficient implementations
+- `2026-02-19T00:00:00Z`: Ensure consistency and good practices
+- `2026-02-19T00:00:00Z`: Check for duplication with MetalKit built-in functionality
+- `2026-04-21T04:28:44Z`: Scope stale — referenced MetalSupport.swift and buffer extensions no longer exist in MetalSprocketsSupport.
 
 ---
 
@@ -1260,12 +1263,13 @@ Implement a barrel/pincushion distortion effect as a post-processing shader that
 ## 170: Replace custom MDLVertexDescriptor to MTLVertexDescriptor conversion with MTKMetalVertexDescriptorFromModelIO
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: enhancement, effort:s
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:30Z
+updated: 2026-04-21T04:28:44Z
+closed: 2026-04-21T04:28:44Z
 +++
 
 Currently in MetalSupport.swift, we have a custom convenience initializer that converts MDLVertexDescriptor to MTLVertexDescriptor. MetalKit provides MTKMetalVertexDescriptorFromModelIO() for this exact purpose. We should replace our custom implementation with the official API.
@@ -1275,6 +1279,8 @@ File: Sources/MetalSprocketsSupport/MetalSupport.swift
 The custom implementation manually iterates through attributes and layouts, converting formats and copying offsets. This should be replaced with a call to MTKMetalVertexDescriptorFromModelIO().
 
 *Imported from #162*
+
+- `2026-04-21T04:28:45Z`: Stale — referenced MetalSupport.swift no longer exists; MDLVertexDescriptor use is minimal and not worth tracking.
 
 ---
 
@@ -2271,12 +2277,13 @@ This would allow:
 ## 239: value vs values is very subtle.
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: enhancement, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:35Z
+updated: 2026-04-21T04:28:45Z
+closed: 2026-04-21T04:28:45Z
 +++
 
 func parameter(_ name: String, functionType: MTLFunctionType? = nil, values: [some Any])func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: some Any)
@@ -2284,6 +2291,8 @@ func parameter(_ name: String, functionType: MTLFunctionType? = nil, values: [so
 At the very least we should improve the asserts.
 
 *Imported from #231*
+
+- `2026-04-21T04:28:45Z`: Too vague to action.
 
 ---
 
