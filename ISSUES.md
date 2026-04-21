@@ -3975,10 +3975,12 @@ Files:
 ## 333: Add invalidationKey escape hatch for setup-phase elements that read environment values
 
 +++
-status: new
+status: closed
 priority: high
 kind: enhancement
 created: 2026-04-21T01:03:35Z
+updated: 2026-04-21T01:35:21Z
+closed: 2026-04-21T01:35:21Z
 +++
 
 Several elements build Metal state during `setupEnter` from a mix of struct
@@ -4020,5 +4022,16 @@ Files (at minimum):
 - Sources/MetalSprockets/Metal/RenderPipeline.swift
 - Sources/MetalSprockets/Metal/MeshRenderPipeline.swift
 - Sources/MetalSprockets/Core/BodylessElement.swift (if hoisted to a protocol)
+
+- `2026-04-21T01:35:21Z`: Applied the ComputePipeline cache pattern to RenderPipeline and MeshRenderPipeline.
+
+Each pipeline now:
+- Returns true from requiresSetup (stops lying).
+- Keys a per-node NodeElementCache on its actual inputs: function identities, env-provided linkedFunctions identity, vertexDescriptor identity, renderPipelineDescriptor identity, attachment pixel formats and sample count, depthStencilDescriptor identity, and label.
+- Returns the cached PSO / reflection / depth-stencil-state on a hit.
+
+This closes the same class of bug as #327 for render and mesh pipelines (e.g. linkedFunctions changes no longer silently fail to invalidate the PSO).
+
+MetalFX scalers (#319) can use the same pattern when addressed; tracking there remains open.
 
 ---

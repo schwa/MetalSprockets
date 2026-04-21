@@ -104,12 +104,48 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
         let environment = node.environmentValues
 
         let renderPassDescriptor = try environment.renderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor)).copyWithType(MTLRenderPassDescriptor.self)
-
         let renderPipelineDescriptor = try environment.renderPipelineDescriptor.orThrow(.missingEnvironment(\.renderPipelineDescriptor))
+        let device = try device.orThrow(.missingEnvironment(\.device))
+
+        // Collect the values that actually affect the PSO. Pixel formats come
+        // from the render-pass textures by value (texture identity churns per
+        // frame but formats are stable). See #327 / #333.
+        let color0Texture = renderPassDescriptor.colorAttachments[0].texture
+        let depthTexture = renderPassDescriptor.depthAttachment?.texture
+        let stencilTexture = renderPassDescriptor.stencilAttachment?.texture
+
+        let key = RenderPipelineCache.Key(
+            vertexFunction: ObjectIdentifier(vertexShader.function),
+            fragmentFunction: ObjectIdentifier(fragmentShader.function),
+            linkedFunctions: environment.linkedFunctions.map { ObjectIdentifier($0) },
+            vertexDescriptor: environment.vertexDescriptor.map { ObjectIdentifier($0) },
+            renderPipelineDescriptor: ObjectIdentifier(renderPipelineDescriptor),
+            colorPixelFormat0: color0Texture?.pixelFormat ?? .invalid,
+            colorSampleCount0: color0Texture?.sampleCount ?? 1,
+            depthPixelFormat: depthTexture?.pixelFormat ?? .invalid,
+            stencilPixelFormat: stencilTexture?.pixelFormat ?? .invalid,
+            depthStencilDescriptor: environment.depthStencilDescriptor.map { ObjectIdentifier($0) },
+            label: label
+        )
+
+        let cache = node.cache(RenderPipelineCache.self) { RenderPipelineCache() }
+        if cache.key == key,
+            let cachedPSO = cache.pipelineState,
+            let cachedReflection = cache.reflection {
+            node.environmentValues.renderPipelineState = cachedPSO
+            node.environmentValues.reflection = cachedReflection
+            self.reflection = cachedReflection
+            if environment.depthStencilState == nil, let cachedDSS = cache.depthStencilState {
+                node.environmentValues.depthStencilState = cachedDSS
+            }
+            return
+        }
+
+        // Cache miss: (re)configure the descriptor and build a new PSO.
         renderPipelineDescriptor.vertexFunction = vertexShader.function
         renderPipelineDescriptor.fragmentFunction = fragmentShader.function
 
-        if let linkedFunctions = node.environmentValues.linkedFunctions {
+        if let linkedFunctions = environment.linkedFunctions {
             // TODO: How do we handle separate linked functions for vertex and fragment? [FILE ME]
             renderPipelineDescriptor.vertexLinkedFunctions = linkedFunctions
             renderPipelineDescriptor.fragmentLinkedFunctions = linkedFunctions
@@ -122,36 +158,43 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
         // Only set pixel formats if they haven't been explicitly configured
         // TODO: #95 This is copying everything from the render pass descriptor. But really we should be getting this entirely from the environment.
         if renderPipelineDescriptor.colorAttachments[0].pixelFormat == .invalid,
-            let colorAttachment0Texture = renderPassDescriptor.colorAttachments[0].texture {
-            renderPipelineDescriptor.colorAttachments[0].pixelFormat = colorAttachment0Texture.pixelFormat
+            let color0Texture {
+            renderPipelineDescriptor.colorAttachments[0].pixelFormat = color0Texture.pixelFormat
         }
 
         // Set rasterSampleCount from the render pass texture for MSAA support
-        if let colorAttachment0Texture = renderPassDescriptor.colorAttachments[0].texture {
-            renderPipelineDescriptor.rasterSampleCount = colorAttachment0Texture.sampleCount
+        if let color0Texture {
+            renderPipelineDescriptor.rasterSampleCount = color0Texture.sampleCount
         }
         if renderPipelineDescriptor.depthAttachmentPixelFormat == .invalid,
-            let depthAttachmentTexture = renderPassDescriptor.depthAttachment?.texture {
-            renderPipelineDescriptor.depthAttachmentPixelFormat = depthAttachmentTexture.pixelFormat
+            let depthTexture {
+            renderPipelineDescriptor.depthAttachmentPixelFormat = depthTexture.pixelFormat
         }
         if renderPipelineDescriptor.stencilAttachmentPixelFormat == .invalid,
-            let stencilAttachmentTexture = renderPassDescriptor.stencilAttachment?.texture {
-            renderPipelineDescriptor.stencilAttachmentPixelFormat = stencilAttachmentTexture.pixelFormat
+            let stencilTexture {
+            renderPipelineDescriptor.stencilAttachmentPixelFormat = stencilTexture.pixelFormat
         }
         if let label {
             renderPipelineDescriptor.label = label
         }
-        let device = try device.orThrow(.missingEnvironment(\.device))
-        let (renderPipelineState, reflection) = try device.makeRenderPipelineState(descriptor: renderPipelineDescriptor, options: .bindingInfo)
-        self.reflection = .init(reflection.orFatalError(.resourceCreationFailure("Failed to create reflection.")))
 
+        let (renderPipelineState, rawReflection) = try device.makeRenderPipelineState(descriptor: renderPipelineDescriptor, options: .bindingInfo)
+        let reflection = Reflection(rawReflection.orFatalError(.resourceCreationFailure("Failed to create reflection.")))
+        self.reflection = reflection
+
+        var builtDepthStencilState: MTLDepthStencilState?
         if environment.depthStencilState == nil, let depthStencilDescriptor = environment.depthStencilDescriptor {
-            let depthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
-            node.environmentValues.depthStencilState = depthStencilState
+            builtDepthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
+            node.environmentValues.depthStencilState = builtDepthStencilState
         }
 
+        cache.key = key
+        cache.pipelineState = renderPipelineState
+        cache.reflection = reflection
+        cache.depthStencilState = builtDepthStencilState
+
         node.environmentValues.renderPipelineState = renderPipelineState
-        node.environmentValues.reflection = self.reflection
+        node.environmentValues.reflection = reflection
     }
 
     func workloadEnter(_ node: Node) throws {
@@ -172,6 +215,31 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
     }
 
     func requiresSetup(comparedTo old: RenderPipeline<Content>) -> Bool {
-        vertexShader != old.vertexShader || fragmentShader != old.fragmentShader
+        // Always re-run setup. The per-node cache inside setupEnter decides
+        // whether to rebuild the underlying PSO based on its actual inputs,
+        // including environment values (linkedFunctions, descriptors, pixel
+        // formats) that we can't see from here. Setup is cheap on a cache hit.
+        true
     }
+}
+
+private final class RenderPipelineCache: NodeElementCache {
+    struct Key: Hashable {
+        let vertexFunction: ObjectIdentifier
+        let fragmentFunction: ObjectIdentifier
+        let linkedFunctions: ObjectIdentifier?
+        let vertexDescriptor: ObjectIdentifier?
+        let renderPipelineDescriptor: ObjectIdentifier
+        let colorPixelFormat0: MTLPixelFormat
+        let colorSampleCount0: Int
+        let depthPixelFormat: MTLPixelFormat
+        let stencilPixelFormat: MTLPixelFormat
+        let depthStencilDescriptor: ObjectIdentifier?
+        let label: String?
+    }
+
+    var key: Key?
+    var pipelineState: MTLRenderPipelineState?
+    var reflection: Reflection?
+    var depthStencilState: MTLDepthStencilState?
 }

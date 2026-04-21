@@ -87,43 +87,82 @@ public struct MeshRenderPipeline <Content>: Element, BodylessElement, BodylessCo
         let environment = node.environmentValues
 
         let renderPassDescriptor = try environment.renderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor)).copyWithType(MTLRenderPassDescriptor.self)
+        let device = try device.orThrow(.missingEnvironment(\.device))
 
+        let color0Texture = renderPassDescriptor.colorAttachments[0].texture
+        let depthTexture = renderPassDescriptor.depthAttachment?.texture
+        let stencilTexture = renderPassDescriptor.stencilAttachment?.texture
+
+        let key = MeshRenderPipelineCache.Key(
+            objectFunction: objectShader.map { ObjectIdentifier($0.function) },
+            meshFunction: ObjectIdentifier(meshShader.function),
+            fragmentFunction: ObjectIdentifier(fragmentShader.function),
+            linkedFunctions: environment.linkedFunctions.map { ObjectIdentifier($0) },
+            colorPixelFormat0: color0Texture?.pixelFormat ?? .invalid,
+            colorSampleCount0: color0Texture?.sampleCount ?? 1,
+            depthPixelFormat: depthTexture?.pixelFormat ?? .invalid,
+            stencilPixelFormat: stencilTexture?.pixelFormat ?? .invalid,
+            depthStencilDescriptor: environment.depthStencilDescriptor.map { ObjectIdentifier($0) },
+            label: label
+        )
+
+        let cache = node.cache(MeshRenderPipelineCache.self) { MeshRenderPipelineCache() }
+        if cache.key == key,
+            let cachedPSO = cache.pipelineState,
+            let cachedReflection = cache.reflection {
+            node.environmentValues.renderPipelineState = cachedPSO
+            node.environmentValues.reflection = cachedReflection
+            self.reflection = cachedReflection
+            if environment.depthStencilState == nil, let cachedDSS = cache.depthStencilState {
+                node.environmentValues.depthStencilState = cachedDSS
+            }
+            return
+        }
+
+        // Cache miss: build a fresh descriptor and PSO.
         let meshRenderPipelineDescriptor = MTLMeshRenderPipelineDescriptor()
         meshRenderPipelineDescriptor.objectFunction = objectShader?.function
         meshRenderPipelineDescriptor.meshFunction = meshShader.function
         meshRenderPipelineDescriptor.fragmentFunction = fragmentShader.function
 
-        if let linkedFunctions = node.environmentValues.linkedFunctions {
+        if let linkedFunctions = environment.linkedFunctions {
             meshRenderPipelineDescriptor.objectLinkedFunctions = linkedFunctions
             meshRenderPipelineDescriptor.meshLinkedFunctions = linkedFunctions
             meshRenderPipelineDescriptor.fragmentLinkedFunctions = linkedFunctions
         }
 
-        if let colorAttachment0Texture = renderPassDescriptor.colorAttachments[0].texture {
-            meshRenderPipelineDescriptor.colorAttachments[0].pixelFormat = colorAttachment0Texture.pixelFormat
+        if let color0Texture {
+            meshRenderPipelineDescriptor.colorAttachments[0].pixelFormat = color0Texture.pixelFormat
             // Set rasterSampleCount from the render pass texture for MSAA support
-            meshRenderPipelineDescriptor.rasterSampleCount = colorAttachment0Texture.sampleCount
+            meshRenderPipelineDescriptor.rasterSampleCount = color0Texture.sampleCount
         }
-        if let depthAttachmentTexture = renderPassDescriptor.depthAttachment?.texture {
-            meshRenderPipelineDescriptor.depthAttachmentPixelFormat = depthAttachmentTexture.pixelFormat
+        if let depthTexture {
+            meshRenderPipelineDescriptor.depthAttachmentPixelFormat = depthTexture.pixelFormat
         }
-        if let stencilAttachmentTexture = renderPassDescriptor.stencilAttachment?.texture {
-            meshRenderPipelineDescriptor.stencilAttachmentPixelFormat = stencilAttachmentTexture.pixelFormat
+        if let stencilTexture {
+            meshRenderPipelineDescriptor.stencilAttachmentPixelFormat = stencilTexture.pixelFormat
         }
         if let label {
             meshRenderPipelineDescriptor.label = label
         }
-        let device = try device.orThrow(.missingEnvironment(\.device))
-        let (renderPipelineState, reflection) = try device.makeRenderPipelineState(descriptor: meshRenderPipelineDescriptor, options: .bindingInfo)
-        self.reflection = .init(reflection.orFatalError(.resourceCreationFailure("Failed to create reflection.")))
 
+        let (renderPipelineState, rawReflection) = try device.makeRenderPipelineState(descriptor: meshRenderPipelineDescriptor, options: .bindingInfo)
+        let reflection = Reflection(rawReflection.orFatalError(.resourceCreationFailure("Failed to create reflection.")))
+        self.reflection = reflection
+
+        var builtDepthStencilState: MTLDepthStencilState?
         if environment.depthStencilState == nil, let depthStencilDescriptor = environment.depthStencilDescriptor {
-            let depthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
-            node.environmentValues.depthStencilState = depthStencilState
+            builtDepthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
+            node.environmentValues.depthStencilState = builtDepthStencilState
         }
 
+        cache.key = key
+        cache.pipelineState = renderPipelineState
+        cache.reflection = reflection
+        cache.depthStencilState = builtDepthStencilState
+
         node.environmentValues.renderPipelineState = renderPipelineState
-        node.environmentValues.reflection = self.reflection
+        node.environmentValues.reflection = reflection
     }
 
     func workloadEnter(_ node: Node) throws {
@@ -144,6 +183,27 @@ public struct MeshRenderPipeline <Content>: Element, BodylessElement, BodylessCo
     }
 
     nonisolated func requiresSetup(comparedTo old: MeshRenderPipeline<Content>) -> Bool {
-        false
+        // Always re-run setup; the per-node cache handles reuse. See #327 / #333.
+        true
     }
+}
+
+private final class MeshRenderPipelineCache: NodeElementCache {
+    struct Key: Hashable {
+        let objectFunction: ObjectIdentifier?
+        let meshFunction: ObjectIdentifier
+        let fragmentFunction: ObjectIdentifier
+        let linkedFunctions: ObjectIdentifier?
+        let colorPixelFormat0: MTLPixelFormat
+        let colorSampleCount0: Int
+        let depthPixelFormat: MTLPixelFormat
+        let stencilPixelFormat: MTLPixelFormat
+        let depthStencilDescriptor: ObjectIdentifier?
+        let label: String?
+    }
+
+    var key: Key?
+    var pipelineState: MTLRenderPipelineState?
+    var reflection: Reflection?
+    var depthStencilState: MTLDepthStencilState?
 }

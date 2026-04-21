@@ -69,7 +69,9 @@ struct MeshRenderPipelineTests {
         #expect(rendering.texture.width == 64)
     }
 
-    @Test("requiresSetup is false")
+    // MeshRenderPipeline.requiresSetup now always returns true; rebuild decisions
+    // live inside setupEnter's per-node cache (see #327 / #333).
+    @Test("requiresSetup is always true")
     func testRequiresSetup() throws {
         let device = MTLCreateSystemDefaultDevice()!
         guard device.supportsFamily(.apple7) else { return }
@@ -83,6 +85,6 @@ struct MeshRenderPipelineTests {
         let b = try MeshRenderPipeline(meshShader: meshShader, fragmentShader: fragment) {
             EmptyElement()
         }
-        #expect(a.requiresSetup(comparedTo: b) == false)
+        #expect(a.requiresSetup(comparedTo: b) == true)
     }
 }
