@@ -57,7 +57,7 @@ struct EasyWins2Tests {
 
     // MARK: ComputePipeline.requiresSetup
 
-    @Test("ComputePipeline.requiresSetup is false")
+    @Test("ComputePipeline.requiresSetup is false when kernel and invalidationKey match")
     func computePipelineRequiresSetup() throws {
         let kernelSource = """
         #include <metal_stdlib>
@@ -68,6 +68,42 @@ struct EasyWins2Tests {
         let a = try ComputePipeline(computeKernel: kernel) { EmptyElement() }
         let b = try ComputePipeline(computeKernel: kernel) { EmptyElement() }
         #expect(a.requiresSetup(comparedTo: b) == false)
+    }
+
+    @Test("ComputePipeline.requiresSetup is true when kernel changes")
+    func computePipelineRequiresSetupOnKernelChange() throws {
+        let sourceA = """
+        #include <metal_stdlib>
+        using namespace metal;
+        kernel void noop(uint tid [[thread_position_in_grid]]) {}
+        """
+        let sourceB = """
+        #include <metal_stdlib>
+        using namespace metal;
+        kernel void noop2(uint tid [[thread_position_in_grid]]) {}
+        """
+        let kernelA = try ComputeKernel(source: sourceA)
+        let kernelB = try ComputeKernel(source: sourceB)
+        let a = try ComputePipeline(computeKernel: kernelA) { EmptyElement() }
+        let b = try ComputePipeline(computeKernel: kernelB) { EmptyElement() }
+        #expect(a.requiresSetup(comparedTo: b) == true)
+    }
+
+    @Test("ComputePipeline.requiresSetup is true when invalidationKey changes")
+    func computePipelineRequiresSetupOnInvalidationKeyChange() throws {
+        let kernelSource = """
+        #include <metal_stdlib>
+        using namespace metal;
+        kernel void noop(uint tid [[thread_position_in_grid]]) {}
+        """
+        let kernel = try ComputeKernel(source: kernelSource)
+        let a = try ComputePipeline(computeKernel: kernel, invalidationKey: "v1") { EmptyElement() }
+        let b = try ComputePipeline(computeKernel: kernel, invalidationKey: "v2") { EmptyElement() }
+        #expect(a.requiresSetup(comparedTo: b) == true)
+
+        // And stable when the key matches.
+        let c = try ComputePipeline(computeKernel: kernel, invalidationKey: "v1") { EmptyElement() }
+        #expect(a.requiresSetup(comparedTo: c) == false)
     }
 
     // MARK: EnvironmentReader.requiresSetup

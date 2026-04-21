@@ -104,6 +104,7 @@ public struct ComputePass <Content>: Element, BodylessElement, BodylessContentEl
 public struct ComputePipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     private let label: String?
     private let computeKernel: ComputeKernel
+    private let invalidationKey: AnyHashable?
     internal let content: Content
 
     /// Creates a compute pipeline with the specified kernel and content.
@@ -111,10 +112,22 @@ public struct ComputePipeline <Content>: Element, BodylessElement, BodylessConte
     /// - Parameters:
     ///   - label: An optional label for debugging (visible in GPU frame capture).
     ///   - computeKernel: The compute kernel function to execute.
+    ///   - invalidationKey: An optional value whose change forces the pipeline
+    ///     state to be rebuilt. `ComputePipeline` reads some of its inputs
+    ///     (e.g. `linkedFunctions`) from the environment during setup; pass
+    ///     any hashable value that tracks those inputs to opt in to rebuilds
+    ///     when they change. Pass `nil` (the default) to keep the pipeline
+    ///     cached for the lifetime of the element.
     ///   - content: A closure that returns child elements (typically dispatch elements).
-    public init(label: String? = nil, computeKernel: ComputeKernel, @ElementBuilder content: () throws -> Content) throws {
+    public init(
+        label: String? = nil,
+        computeKernel: ComputeKernel,
+        invalidationKey: AnyHashable? = nil,
+        @ElementBuilder content: () throws -> Content
+    ) throws {
         self.label = label
         self.computeKernel = computeKernel
+        self.invalidationKey = invalidationKey
         self.content = try content()
     }
 
@@ -134,9 +147,16 @@ public struct ComputePipeline <Content>: Element, BodylessElement, BodylessConte
     }
 
     nonisolated func requiresSetup(comparedTo old: ComputePipeline<Content>) -> Bool {
-        // For now, always return false since kernels rarely change after initial setup
-        // This prevents pipeline recreation on every frame
-        // TODO: Implement proper comparison when shader constants are added
-        false
+        // Rebuild when the kernel function identity changes or when the
+        // caller-supplied invalidation key changes. The latter is an
+        // escape hatch for environment-driven inputs (e.g. linkedFunctions)
+        // that requiresSetup can't see. See #327 / #333.
+        if computeKernel != old.computeKernel {
+            return true
+        }
+        if invalidationKey != old.invalidationKey {
+            return true
+        }
+        return false
     }
 }

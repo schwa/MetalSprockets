@@ -3702,10 +3702,12 @@ Call sites (Snapshotter, logging, any future env-gated code) take an optional `S
 ## 327: ComputePipeline ignores changes to linkedFunctions (requiresSetup hardcoded false)
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 created: 2026-04-20T22:26:48Z
+updated: 2026-04-21T01:05:12Z
+closed: 2026-04-21T01:05:12Z
 +++
 
 `ComputePipeline.requiresSetup(comparedTo:)` in `Sources/MetalSprockets/Metal/ComputePass.swift` currently returns `false` unconditionally with a TODO comment. This means the underlying `MTLComputePipelineState` is built once (during the initial `setupEnter`) and never rebuilt, even if the `ComputeKernel` or `linkedFunctions` environment value changes across frames.
@@ -3715,6 +3717,12 @@ This breaks any use case that swaps a visible-function-table entry at runtime. R
 Suggested fix: add an opt-in invalidation key to `ComputePipeline` (e.g. `invalidationKey: AnyHashable?` at init) and compare it in `requiresSetup`. That avoids rebuilding the PSO every frame for existing demos while letting consumers that depend on environment values (like `linkedFunctions`) opt in. Alternative: compare `computeKernel.function` identity and stash a hash of `linkedFunctions` on the struct.
 
 File: Sources/MetalSprockets/Metal/ComputePass.swift (the `requiresSetup(comparedTo:)` implementation and the surrounding TODO).
+
+- `2026-04-21T01:05:12Z`: Fixed: ComputePipeline.requiresSetup now compares computeKernel identity and an optional caller-supplied invalidationKey. Callers that depend on environment-driven inputs (linkedFunctions, etc.) opt in by passing a hashable key derived from whatever they know changed.
+
+This is the exemplar implementation for #333. The same pattern should be applied to RenderPipeline and MeshRenderPipeline next.
+
+Phosphor demo can now rebuild its PSO on snippet switch by passing the selected snippet identifier as invalidationKey.
 
 ---
 
