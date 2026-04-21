@@ -394,18 +394,21 @@ closed: 2026-03-31T18:16:34Z
 ## 53: add disabled() modifier
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:09Z
+updated: 2026-04-21T03:17:54Z
+closed: 2026-04-21T03:17:54Z
 +++
 
 Add a `.disabled(_ isDisabled: Bool)` modifier that skips an element's rendering when true. Similar to SwiftUI's `.hidden()`. Useful for:
 - Toggling effects on/off for debugging
 - A/B comparisons
 - Conditional rendering without restructuring the element tree
+
+- `2026-04-21T03:17:54Z`: Added .workloadEnabled(_ enabled: Bool = true) element modifier. When false, the element and its entire subtree skip the workload phase (no draws/dispatches/blits) while setup still runs, so pipeline state stays warm and toggling is cheap. Backed by a new BodylessElement.skipsWorkload(_:) protocol method and subtree-skipping logic in System.processWorkloadWithSkipping. Covered by WorkloadEnabledTests (7 cases). Structural removal is still expressible with plain if/ConditionalContent.
 
 ---
 

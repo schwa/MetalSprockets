@@ -13,6 +13,11 @@ internal protocol BodylessElement {
     /// freed automatically via ARC when the node is released.
     func teardown(_ node: Node) throws
 
+    /// When true, `processWorkload` skips this element and its entire subtree
+    /// during the workload phase. Setup still runs so resources stay built.
+    /// Default: false.
+    func skipsWorkload(_ node: Node) -> Bool
+
     /// Returns true if the change from `old` to `self` requires the setup phase to run again.
     /// This is a SHALLOW check - only considers this element, not its children.
     func requiresSetup(comparedTo old: Self) -> Bool
@@ -41,6 +46,9 @@ extension BodylessElement {
     }
     func teardown(_ node: Node) throws {
         // This line intentionally left blank.
+    }
+    func skipsWorkload(_ node: Node) -> Bool {
+        false
     }
 }
 
