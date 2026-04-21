@@ -4035,3 +4035,136 @@ This closes the same class of bug as #327 for render and mesh pipelines (e.g. li
 MetalFX scalers (#319) can use the same pattern when addressed; tracking there remains open.
 
 ---
+
+## 334: RenderPipeline mutates env-supplied MTLRenderPipelineDescriptor in place
+
++++
+status: new
+priority: low
+kind: bug
+created: 2026-04-21T01:40:07Z
++++
+
+`RenderPipeline.setupEnter` pulls `renderPipelineDescriptor` out of the
+environment and writes into it directly:
+
+```swift
+let renderPipelineDescriptor = try environment.renderPipelineDescriptor.orThrow(...)
+renderPipelineDescriptor.vertexFunction = vertexShader.function
+renderPipelineDescriptor.fragmentFunction = fragmentShader.function
+renderPipelineDescriptor.vertexLinkedFunctions = linkedFunctions
+renderPipelineDescriptor.vertexDescriptor = vertexDescriptor
+renderPipelineDescriptor.rasterSampleCount = ...
+renderPipelineDescriptor.colorAttachments[0].pixelFormat = ...
+// etc
+```
+
+`MTLRenderPipelineDescriptor` is a mutable Obj-C class, and environment
+values flow down by reference. Two `RenderPipeline` elements sharing an
+ancestor `.environment(\.renderPipelineDescriptor, ...)` would scribble
+into the same object and race on its fields.
+
+No one is hitting this in practice today, but nothing prevents it. The
+#333 cache work reduced the blast radius (no mutation on steady-state
+cache hits) but didnt fix the underlying design.
+
+`MeshRenderPipeline` gets this right — it constructs a fresh
+`MTLMeshRenderPipelineDescriptor` inside `setupEnter` each cache miss.
+
+Proposed fix:
+- On cache miss, treat the env descriptor as a *template*. Copy it
+  (`envDesc.copy() as! MTLRenderPipelineDescriptor`) or construct a
+  fresh one and seed the fields we care about from the env one.
+- Mutate the local copy only; never the shared env object.
+
+File:
+- Sources/MetalSprockets/Metal/RenderPipeline.swift (setupEnter)
+
+Related: #333 (cache work that surfaced this).
+
+---
+
+## 335: OffscreenVideoRendererTests only asserts file existence — no content verification
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-04-21T01:42:44Z
+updated: 2026-04-21T01:42:56Z
++++
+
+The sole test for `OffscreenVideoRenderer` renders 30 frames to
+`/tmp/RedTriangleVideo.mov` and checks only that the file exists:
+
+```swift
+try renderer.render(triangle)
+...
+try await renderer.finalize()
+#expect(FileManager.default.fileExists(atPath: outputURL.path))
+```
+
+Gaps:
+- No verification of video duration, frame count, dimensions, or codec.
+- No pixel-content check — a silently-broken encoder that writes an empty
+  container would still pass.
+- Output URL is hard-coded `/tmp/...`, not a temp directory that gets
+  cleaned up. Shared across runs; would race if tests ran concurrently.
+- Only one test case. No coverage for: alternate codecs, alternate pixel
+  formats, zero-frame edge case, `finalize` without frames, reuse across
+  multiple renders.
+
+Proposed improvements:
+- Load the produced `.mov` with `AVAsset`; assert:
+  - `duration` approximately frameCount / frameRate.
+  - track count == 1, media type == `.video`.
+  - natural size matches configured size.
+- Use `FileManager.default.temporaryDirectory` / `NSTemporaryDirectory()`
+  and clean up on teardown.
+- Add at least one test that rendering twice in a row produces distinct,
+  valid files.
+
+Related: #321 (the Thread.sleep fix cannot be meaningfully verified by the
+current test).
+
+---
+
+## 336: OffscreenVideoRenderer back-pressure path is not covered by any test
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-04-21T01:43:08Z
++++
+
+The polling loop in `OffscreenVideoRenderer.appendFrame` (to be replaced
+as part of #321) only runs when `AVAssetWriterInput.isReadyForMoreMediaData`
+is false. At 30 frames of 640x480 into an H.264 encoder that effectively
+never happens, so whether the fix works cannot be meaningfully verified by
+the existing test.
+
+The underlying blocker is that `OffscreenVideoRenderer` takes a hard
+dependency on a concrete `AVAssetWriterInput` constructed internally. We
+cannot inject a fake / stub that reports `isReadyForMoreMediaData = false`
+to exercise the wait path.
+
+Options to consider (design only; no action required until someone wants
+to fix this):
+
+1. Factor the writer-input out behind a small protocol
+   (`VideoSinkInput` or similar) with two methods:
+   `append(_:presentationTime:) -> Bool` and `waitUntilReady() async`.
+   Production implementation wraps `AVAssetWriterInput`; tests inject a
+   controllable fake.
+2. Expose a way to throttle encoding (e.g. artificially small pixel buffer
+   pool) so the real encoder back-pressures on a reasonable workload.
+3. Accept that the wait path is not unit-testable and rely on manual /
+   integration testing for regressions.
+
+Until this is addressed, changes to the wait logic (like #321) have to be
+verified by inspection, not tests.
+
+Related: #321, #335.
+
+---
