@@ -66,6 +66,10 @@ internal extension Element {
         if let bodyless = self as? any BodylessElement {
             try bodyless.visitChildrenBodyless(visit)
         } else if Body.self != Never.self {
+            // See #248. Writing `var body: any Element` satisfies the protocol but
+            // silently breaks traversal because the existential never matches the
+            // concrete-type paths the system expects. Catch it in debug builds.
+            assert(Body.self != (any Element).self, "Element body must return `some Element`, not `any Element` (on \(type(of: self))). See #248.")
             try visit(body)
         }
     }

@@ -2367,12 +2367,13 @@ Maybe we need to make shaders elements
 ## 248: Framework should detect or warn when Element body returns 'any Element' instead of 'some Element'
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: bug, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-21T02:47:31Z
+updated: 2026-04-21T02:51:18Z
+closed: 2026-04-21T02:51:18Z
 +++
 
 ## Problem
@@ -2414,6 +2415,8 @@ public var body: some Element {
 Found in `DebugRenderPipeline` where changing the body return type from `any Element` to `some Element` fixed the issue where no GPU work was being submitted.
 
 *Imported from #240*
+
+- `2026-04-21T02:51:18Z`: Added a debug-build assertion in Element.visitChildren that fires when an element's Body associatedtype is inferred as any Element (the existential). Writing 'var body: any Element' compiles but silently breaks traversal; the assert now makes that immediate and obvious in debug. No runtime cost in release builds.
 
 ---
 
