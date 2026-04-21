@@ -30,6 +30,28 @@ public extension MSEnvironmentValues {
     @MSEntry var drawableSize: CGSize?
     @MSEntry var blitCommandEncoder: MTLBlitCommandEncoder?
     @MSEntry var linkedFunctions: MTLLinkedFunctions?
+    @MSEntry var shaderStore: ShaderStore?
+}
+
+public extension Element {
+    /// Attaches a ``ShaderStore`` to this element and its descendants.
+    ///
+    /// ``ShaderLibrary`` values used inside the scope will share the attached
+    /// store, deduplicating compiled Metal libraries and specialized functions
+    /// across views that mount inside the same store.
+    ///
+    /// ```swift
+    /// RenderPass {
+    ///     try RenderPipeline(vertexShader: vs, fragmentShader: fs) { ... }
+    /// }
+    /// .shaderStore(myStore)
+    /// ```
+    ///
+    /// If no store is attached, ``RenderView`` provides a private one scoped to
+    /// its own lifetime.
+    func shaderStore(_ store: ShaderStore) -> some Element {
+        environment(\.shaderStore, store)
+    }
 }
 
 public extension Element {

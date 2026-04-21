@@ -79,6 +79,7 @@ internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable
     captureConfiguration: RenderViewCaptureConfiguration?,
     device: MTLDevice,
     commandQueue: MTLCommandQueue,
+    shaderStore: ShaderStore,
     renderPassDescriptor: MTLRenderPassDescriptor,
     currentDrawable: CAMetalDrawable?,
     drawableSize: CGSize,
@@ -101,4 +102,5 @@ internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable
     .environment(\.renderPipelineDescriptor, MTLRenderPipelineDescriptor())
     .environment(\.currentDrawable, currentDrawable)
     .environment(\.drawableSize, drawableSize)
+    .environment(\.shaderStore, shaderStore)
 }

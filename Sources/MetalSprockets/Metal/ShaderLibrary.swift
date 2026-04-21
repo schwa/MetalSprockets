@@ -1,6 +1,7 @@
 import Metal
 import MetalSprocketsSupport
 import MetalSupport
+import os
 
 // MARK: - ShaderLibrary
 
@@ -83,19 +84,70 @@ public struct ShaderLibrary: Identifiable {
         }
     }
 
-    private let state: State
-    public var id: ID { state.id }
-    var library: MTLLibrary { state.library }
-    var cache: ShaderCache { state.cache }
+    /// Box holding a `State` that may be swapped on first adoption by a `ShaderStore`.
+    ///
+    /// Adoption is single-shot: once a `ShaderStore` is found in the ambient
+    /// environment and we've resolved which `State` to use (ours, or an
+    /// existing one already in the store), we never swap again for the lifetime
+    /// of this `ShaderLibrary`. Until then, we keep returning the locally-owned
+    /// `State` that was compiled at `init` time.
+    final class StateBox: Sendable {
+        private struct Contents {
+            var state: State
+            var adopted: Bool
+        }
+        private let lock: OSAllocatedUnfairLock<Contents>
+
+        init(_ state: State) {
+            self.lock = OSAllocatedUnfairLock(initialState: Contents(state: state, adopted: false))
+        }
+
+        /// Returns the `State` this library should use, attempting ambient-store
+        /// adoption on first call if possible.
+        func resolve() -> State {
+            // Fast path: already adopted (or no store was around on first attempt
+            // and we're still using the private state — see slow path below).
+            let snapshot = lock.withLock { contents in contents }
+            if snapshot.adopted {
+                return snapshot.state
+            }
+            // Slow path: look for an ambient store.
+            let ambientStore: ShaderStore? = System.current?.activeNodeStack.last?.environmentValues.shaderStore
+            guard let store = ambientStore else {
+                // No ambient store — keep using our private state.
+                // Leave `adopted` false so a future call from inside a System can adopt.
+                return snapshot.state
+            }
+            let adopted = store.adopt(snapshot.state)
+            lock.withLock { contents in
+                contents.state = adopted
+                contents.adopted = true
+            }
+            return adopted
+        }
+    }
+
+    private let box: StateBox
+    public var id: ID { box.resolve().id }
+    var library: MTLLibrary { box.resolve().library }
+    var cache: ShaderCache { box.resolve().cache }
+
+    internal init(state: State) {
+        self.box = StateBox(state)
+    }
 }
 
 public extension ShaderLibrary {
     /// Creates a shader library from an existing Metal library.
     ///
     /// - Parameter library: The `MTLLibrary` to wrap.
+    ///
+    /// The library is eagerly wrapped in backing state. On first use from inside
+    /// a rendering context, the backing state is adopted by the ambient
+    /// ``ShaderStore`` (if any), enabling deduplication across views.
     init(library: MTLLibrary) {
         let id = ID.library(library)
-        self.state = LibraryRegistry.shared.getOrCreate(id: id) { library }
+        self.init(state: State(library: library, id: id))
     }
 
     /// Creates a shader library from a bundle's compiled Metal library.
@@ -103,21 +155,25 @@ public extension ShaderLibrary {
     /// This loads the `default.metallib` compiled from `.metal` files in the bundle.
     /// Falls back to a `debug.metallib` if present.
     ///
+    /// The Metal library is compiled/loaded eagerly at init time so that
+    /// compilation never happens during the render loop. On first use from
+    /// inside a rendering context, the backing state is adopted by the ambient
+    /// ``ShaderStore`` (if any), enabling deduplication across views.
+    ///
     /// - Parameter bundle: The bundle containing the compiled Metal library.
     /// - Throws: `MetalSprocketsError.resourceCreationFailure` if the library cannot be loaded.
     init(bundle: Bundle) throws {
         let id = ID.bundle(bundle)
-        self.state = try LibraryRegistry.shared.getOrCreate(id: id) {
-            let device = _MTLCreateSystemDefaultDevice()
-
-            if let url = bundle.url(forResource: "debug", withExtension: "metallib"), let library = try? device.makeLibrary(URL: url) {
-                return library
-            }
-            if let library = try? device.makeDefaultLibrary(bundle: bundle) {
-                return library
-            }
+        let device = _MTLCreateSystemDefaultDevice()
+        let library: MTLLibrary
+        if let url = bundle.url(forResource: "debug", withExtension: "metallib"), let loaded = try? device.makeLibrary(URL: url) {
+            library = loaded
+        } else if let loaded = try? device.makeDefaultLibrary(bundle: bundle) {
+            library = loaded
+        } else {
             try _throw(MetalSprocketsError.resourceCreationFailure("Failed to load default library from bundle."))
         }
+        self.init(state: State(library: library, id: id))
     }
 
     /// Creates a shader library by compiling Metal source code at runtime.
@@ -125,18 +181,20 @@ public extension ShaderLibrary {
     /// Use this for prototyping or dynamically generated shaders. For production,
     /// prefer pre-compiled `.metal` files loaded via ``init(bundle:)``.
     ///
+    /// The Metal library is compiled eagerly at init time so that compilation
+    /// never happens during the render loop. On first use from inside a
+    /// rendering context, the backing state is adopted by the ambient
+    /// ``ShaderStore`` (if any), enabling deduplication across views.
+    ///
     /// - Parameters:
     ///   - source: The Metal Shading Language source code to compile.
     ///   - options: Optional compile options.
     /// - Throws: An error if compilation fails.
     init(source: String, options: MTLCompileOptions? = nil) throws {
         let id = ID.source(source, options)
-        // Copy to satisfy Sendable requirement - MTLCompileOptions is NSCopying but not Sendable.
-        nonisolated(unsafe) let options = options?.copy() as? MTLCompileOptions
-        self.state = try LibraryRegistry.shared.getOrCreate(id: id) {
-            let device = _MTLCreateSystemDefaultDevice()
-            return try device.makeLibrary(source: source, options: options)
-        }
+        let device = _MTLCreateSystemDefaultDevice()
+        let library = try device.makeLibrary(source: source, options: options)
+        self.init(state: State(library: library, id: id))
     }
 }
 

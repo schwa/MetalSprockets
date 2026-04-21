@@ -189,11 +189,71 @@ struct ShaderLibraryTests {
     }
 
     @Test
-    func testLibraryRegistryReusesInstances() throws {
-        // Two libraries built from the same source should share backing state.
+    func testSameSourceOutsideStoreHasSeparateLibraries() throws {
+        // Without an ambient ShaderStore, two ShaderLibrary values built from
+        // the same source compile independently. No process-global cache.
         let a = try ShaderLibrary(source: Self.source)
         let b = try ShaderLibrary(source: Self.source)
-        #expect(a.library === b.library)
+        #expect(a.library !== b.library)
+    }
+
+    @Test
+    func testSharedStoreDedupesAdoptedLibraries() throws {
+        // When two independently-compiled ShaderLibrary values are adopted by
+        // the same ShaderStore, the second adoption returns the first's State.
+        let store = ShaderStore()
+        let stateA = ShaderLibrary.State(library: try MTLCreateSystemDefaultDevice()!.makeLibrary(source: Self.source, options: nil), id: .source(Self.source, nil))
+        let stateB = ShaderLibrary.State(library: try MTLCreateSystemDefaultDevice()!.makeLibrary(source: Self.source, options: nil), id: .source(Self.source, nil))
+        let adoptedA = store.adopt(stateA)
+        let adoptedB = store.adopt(stateB)
+        #expect(adoptedA === adoptedB)
+        #expect(adoptedA === stateA)
+    }
+
+    @Test
+    @MainActor
+    func testAmbientStoreAdoptsOnFirstUseInSystem() throws {
+        // Resolves ShaderLibrary.library from inside an EnvironmentReader (which
+        // executes with a live activeNodeStack) and verifies both libraries end
+        // up pointing at the same State after adoption by a shared store.
+        let store = ShaderStore()
+        let libA = try ShaderLibrary(source: Self.source)
+        let libB = try ShaderLibrary(source: Self.source)
+
+        // Sanity: they start with distinct MTLLibrary instances.
+        #expect(libA.library !== libB.library)
+
+        final class Captured: @unchecked Sendable { var a: MTLLibrary?; var b: MTLLibrary? }
+        let captured = Captured()
+
+        @MainActor
+        func makeBody() -> EmptyElement {
+            captured.a = libA.library
+            captured.b = libB.library
+            return EmptyElement()
+        }
+
+        let system = System()
+        let root = EnvironmentReader(keyPath: \.shaderStore) { _ in
+            makeBody()
+        }
+        .environment(\.shaderStore, store)
+
+        try system.update(root: root)
+
+        #expect(captured.a != nil)
+        #expect(captured.a === captured.b)
+    }
+
+    @Test
+    func testStoreDoesNotShareAcrossStores() throws {
+        // Separate stores don't share state.
+        let storeA = ShaderStore()
+        let storeB = ShaderStore()
+        let state1 = ShaderLibrary.State(library: try MTLCreateSystemDefaultDevice()!.makeLibrary(source: Self.source, options: nil), id: .source(Self.source, nil))
+        let state2 = ShaderLibrary.State(library: try MTLCreateSystemDefaultDevice()!.makeLibrary(source: Self.source, options: nil), id: .source(Self.source, nil))
+        #expect(storeA.adopt(state1) === state1)
+        #expect(storeB.adopt(state2) === state2)
     }
 
     @Test

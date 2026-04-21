@@ -22,7 +22,36 @@ public extension EnvironmentValues {
     var frameTimingChange: ((FrameTimingStatistics) -> Void)?
 
     @Entry
+    var shaderStore: ShaderStore?
+
+    @Entry
     internal var renderViewCapture: RenderViewCaptureConfiguration?
+}
+
+public extension View {
+    /// Attaches a ``ShaderStore`` to descendant ``RenderView``s.
+    ///
+    /// When multiple `RenderView`s share the same store, they share compiled
+    /// Metal libraries and specialized functions. The store also outlives any
+    /// individual `RenderView`, so shaders survive view teardown/rebuild.
+    ///
+    /// ```swift
+    /// @State var store = ShaderStore()
+    ///
+    /// var body: some View {
+    ///     HStack {
+    ///         RenderView { ... }
+    ///         RenderView { ... }
+    ///     }
+    ///     .shaderStore(store)
+    /// }
+    /// ```
+    ///
+    /// If no store is attached, each ``RenderView`` creates a private one
+    /// scoped to its own lifetime.
+    func shaderStore(_ store: ShaderStore) -> some View {
+        environment(\.shaderStore, store)
+    }
 }
 
 // MARK: - RenderViewCaptureConfiguration
@@ -180,6 +209,9 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     @Environment(\.frameTimingChange)
     private var frameTimingChange
 
+    @Environment(\.shaderStore)
+    private var shaderStore
+
     @Environment(\.renderViewCapture)
     private var captureConfiguration
 
@@ -222,6 +254,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             viewModel.drawableSizeChange = drawableSizeChange
             viewModel.frameTimingChange = frameTimingChange
             viewModel.captureConfiguration = captureConfiguration
+            viewModel.shaderStore = shaderStore
         }
         .onDisappear {
             viewModelBox.value = nil
@@ -271,6 +304,18 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     @ObservationIgnored
     var captureConfiguration: RenderViewCaptureConfiguration?
+
+    /// Ambient shader store from the SwiftUI environment, if any. When `nil`,
+    /// the view model uses its private ``fallbackShaderStore`` so that shaders
+    /// compiled inside this RenderView die with it.
+    @ObservationIgnored
+    var shaderStore: ShaderStore?
+
+    /// Lazily created private store used when no ``ShaderStore`` is provided in
+    /// the SwiftUI environment. Lifetime is tied to this view model so shaders
+    /// cached here are freed when the RenderView goes away.
+    @ObservationIgnored
+    private let fallbackShaderStore = ShaderStore()
 
     /// Lazily created on first use (see #337).
     @ObservationIgnored
@@ -363,6 +408,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     captureConfiguration: self.captureConfiguration,
                     device: device,
                     commandQueue: commandQueue,
+                    shaderStore: shaderStore ?? fallbackShaderStore,
                     renderPassDescriptor: currentRenderPassDescriptor,
                     currentDrawable: currentDrawable,
                     drawableSize: view.drawableSize

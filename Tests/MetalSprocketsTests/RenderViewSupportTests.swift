@@ -132,6 +132,7 @@ struct RenderViewSupportTests {
             captureConfiguration: nil,
             device: device,
             commandQueue: queue,
+            shaderStore: ShaderStore(),
             renderPassDescriptor: rpDesc,
             currentDrawable: nil,
             drawableSize: CGSize(width: 256, height: 256)
@@ -159,6 +160,7 @@ struct RenderViewSupportTests {
             captureConfiguration: config,
             device: device,
             commandQueue: queue,
+            shaderStore: ShaderStore(),
             renderPassDescriptor: rpDesc,
             currentDrawable: nil,
             drawableSize: .zero
@@ -176,6 +178,7 @@ struct RenderViewSupportTests {
             captureConfiguration: nil,
             device: device,
             commandQueue: queue,
+            shaderStore: ShaderStore(),
             renderPassDescriptor: rpDesc,
             currentDrawable: nil,
             drawableSize: CGSize(width: 1, height: 1)
