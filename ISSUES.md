@@ -304,12 +304,13 @@ https://github.com/schwa/Ultraviolence/blob/ebd49f199dbed51331e10ecaf7f9602f391f
 ## 48: Add labels to everything
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:09Z
+updated: 2026-04-21T03:11:06Z
+closed: 2026-04-21T03:11:06Z
 +++
 
 Ensure all Metal resources have descriptive labels set:
@@ -321,17 +322,20 @@ Ensure all Metal resources have descriptive labels set:
 
 This makes GPU debugging much easier in Xcode and Instruments.
 
+- `2026-04-21T03:11:06Z`: Largely done. Pipelines (Render/Compute/Mesh), encoders, and framework-owned textures (MSAA, offscreen) all set descriptive labels. The remaining piece — pushDebugGroup/popDebugGroup — is tracked separately as #340.
+
 ---
 
 ## 49: Revisit MTLCaptureManager
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:09Z
+updated: 2026-04-21T03:11:06Z
+closed: 2026-04-21T03:11:06Z
 +++
 
 Improve MTLCaptureManager integration:
@@ -346,6 +350,8 @@ Add a higher-level API for RenderView, something like:
 ```
 
 This would trigger a GPU capture of the next frame when the boolean becomes true, making it easy to wire up to a button or keyboard shortcut.
+
+- `2026-04-21T03:11:06Z`: Addressed by the existing .capture(_:target:destination:) RenderView modifier (see RenderView.swift). Toggles MTLCaptureManager frame scopes declaratively, wired to a Bool, destination configurable. Exactly the 'higher-level API for RenderView' this issue asked for.
 
 ---
 
@@ -4355,5 +4361,18 @@ Same concern applies to the per-library ShaderCache of MTLFunctions, though thos
 
 - `2026-04-21T02:36:47Z`: Design idea: a .shaderScope() element modifier that establishes a scoped ShaderLibrary cache via the element environment. Libraries/functions compiled inside the scope live in the scope's cache and die with it. No global singleton. Apps get explicit lifetime control — e.g. per-RenderView, per-scene, or per-experimental-area. Default behavior (no explicit scope) could still use a process-wide cache for convenience, but it would be opt-in or overridable.
 - `2026-04-21T02:48:26Z`: Related: #295 is a broader refactor of the whole ShaderLibrary/LibraryRegistry/ShaderCache stack. This issue is the narrower leak subset.
+
+---
+
+## 340: Add .debugGroup() element modifier for pushDebugGroup/popDebugGroup
+
++++
+status: new
+priority: low
+kind: feature
+created: 2026-04-21T03:10:58Z
++++
+
+Expose Metal's pushDebugGroup/popDebugGroup as an element modifier, e.g. .debugGroup("Scene") { ... }. Makes GPU captures and Instruments traces much easier to read. Follow-up from #48 — the label coverage for buffers/textures/pipelines/encoders is already in place; debug groups are the remaining piece.
 
 ---
