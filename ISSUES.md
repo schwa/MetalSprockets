@@ -3738,10 +3738,12 @@ Repro: Phosphor demo in MetalSprocketsExamples hardcodes `MTLSize(16,16,1)` beca
 ## 329: Crash in System.shouldUpdateNode: Set.contains on corrupted storage (tagged-pointer 0x8000000000000000)
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 created: 2026-04-20T23:28:12Z
+updated: 2026-04-21T00:58:45Z
+closed: 2026-04-21T00:58:45Z
 +++
 
 While running the Phosphor demo in MetalSprocketsExamples (just steady-state rendering; no snippet switching, no view teardown), the app intermittently crashes with:
@@ -3802,6 +3804,12 @@ Both the original `Set.contains` crash and this `MSBinding` unowned-read crash p
 - #331: MSBinding [unowned] dangles past body evaluation (the swift_abortRetainUnowned crash).
 
 #329 remains open as the umbrella / API-level isolation contract discussion.
+
+- `2026-04-21T00:58:45Z`: Fixed by:
+- #330 (System.dirtyIdentifiers lock) — closed in commit b64244f4
+- #331 (MSBinding weak capture) — closed in commit 18180917
+
+Phosphor demo stable in testing. Phase 2 isolation contract work (per RFC on desktop) will be filed as a separate issue if pursued.
 
 ---
 
