@@ -18,7 +18,6 @@ internal enum TraversalEvent {
 ///   synchronous single-threaded code). Instances must not be shared across
 ///   isolation domains.
 public final class System: @unchecked Sendable {
-    // TODO: #213 These properties should become private to enforce proper encapsulation
     private(set) var traversalEvents: [TraversalEvent] = []
     private(set) var nodes: [StructuralIdentifier: Node] = [:]
     /// Stack of nodes currently being processed during system traversal.

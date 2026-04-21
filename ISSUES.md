@@ -1930,15 +1930,18 @@ File: Sources/MetalSprockets/Core/EnvironmentReader.swift
 ## 213: Make System properties private
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: effort:s
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-21T02:47:31Z
+updated: 2026-04-21T02:56:37Z
+closed: 2026-04-21T02:56:37Z
 +++
 
 Audit System class and make properties private that shouldn't be public API. Reduce the exposed surface area.
+
+- `2026-04-21T02:56:37Z`: Audit complete. All stored properties are already private(set) var or private let. The one public API (markAllNodesNeedingSetup) must stay public — called from RenderViewViewModel in MetalSprocketsUI. External readers (SystemSnapshot, various modifiers) require read access to activeNodeStack/nodes/traversalEvents, so further tightening would need a broader refactor (tracked in #292). Removed the outdated TODO comment.
 
 ---
 
