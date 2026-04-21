@@ -3342,14 +3342,26 @@ ImmersiveRuntime runs its own render loop but doesn't expose frame timing statis
 ## 314: Depth stencil state not invalidated when depthCompare function changes
 
 +++
-status: new
+status: closed
 priority: critical
 kind: bug
 created: 2026-04-13T21:37:45Z
-updated: 2026-04-13T21:38:52Z
+updated: 2026-04-21T02:04:10Z
+closed: 2026-04-21T02:04:10Z
 +++
 
 When using .depthCompare() with different compare functions across frames (e.g. switching between .lessEqual and .greaterEqual), the depth stencil state is cached from the first configuration and not recreated. The Metal debugger confirmed the stencil state remained .lessEqual even after requesting .greaterEqual. Discovered while implementing switchable inverse-Z shadow mapping in MetalSprocketsAddOns.
+
+- `2026-04-21T02:04:10Z`: Fixed by switching the render/mesh pipeline cache keys to compare MTLDepthStencilDescriptor contents (via a new internal DepthStencilKey helper) instead of object identity.
+
+Prior state after #333: every .depthCompare(function:enabled:) call allocated a fresh MTLDepthStencilDescriptor, so the identity-based key missed the cache every frame. That masked the #314 symptom (stale state could never persist, because we rebuilt every frame) but defeated the cache — any pipeline under .depthCompare rebuilt its PSO every frame, silently costing the perf #327/#333 set out to recover.
+
+Now:
+- DepthStencilKey captures (depthCompareFunction, isDepthWriteEnabled).
+- RenderPipelineCache.Key and MeshRenderPipelineCache.Key carry DepthStencilKey? instead of ObjectIdentifier?.
+- Two descriptors with identical contents hit the same cache entry regardless of identity; a change to function or isDepthWriteEnabled correctly invalidates.
+
+Tests added in DepthStencilKeyTests (4) cover identical-contents equality, each field's independent invalidation, and the .depthCompare fresh-descriptor stability case.
 
 ---
 

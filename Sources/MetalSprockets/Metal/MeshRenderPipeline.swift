@@ -102,7 +102,7 @@ public struct MeshRenderPipeline <Content>: Element, BodylessElement, BodylessCo
             colorSampleCount0: color0Texture?.sampleCount ?? 1,
             depthPixelFormat: depthTexture?.pixelFormat ?? .invalid,
             stencilPixelFormat: stencilTexture?.pixelFormat ?? .invalid,
-            depthStencilDescriptor: environment.depthStencilDescriptor.map { ObjectIdentifier($0) },
+            depthStencil: environment.depthStencilDescriptor.map(DepthStencilKey.init),
             label: label
         )
 
@@ -198,7 +198,7 @@ private final class MeshRenderPipelineCache: NodeElementCache {
         let colorSampleCount0: Int
         let depthPixelFormat: MTLPixelFormat
         let stencilPixelFormat: MTLPixelFormat
-        let depthStencilDescriptor: ObjectIdentifier?
+        let depthStencil: DepthStencilKey?
         let label: String?
     }
 
