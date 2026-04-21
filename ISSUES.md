@@ -199,11 +199,11 @@ closed: 2026-03-31T18:27:48Z
 
 +++
 status: open
-priority: low
+priority: high
 kind: bug
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-03-31T19:19:48Z
+updated: 2026-04-21T02:47:31Z
 +++
 
 *Imported from #26*
@@ -1929,11 +1929,11 @@ File: Sources/MetalSprockets/Core/EnvironmentReader.swift
 
 +++
 status: open
-priority: low
+priority: high
 kind: task
 labels: effort:s
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:18Z
+updated: 2026-04-21T02:47:31Z
 +++
 
 Audit System class and make properties private that shouldn't be public API. Reduce the exposed surface area.
@@ -2006,11 +2006,11 @@ Either:
 
 +++
 status: open
-priority: medium
+priority: low
 kind: bug
 labels: bug, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:35Z
+updated: 2026-04-21T02:46:10Z
 +++
 
 Walking the tree in Element+Dump can modify state which is dangerous. Elements like EnvironmentReader can break things. Need to only walk the System tree instead.
@@ -2130,12 +2130,13 @@ Split into two protocols:
 ## 236: Pipeline elements need proper requiresSetup implementation for shader constants
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: bug, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:35Z
+updated: 2026-04-21T02:44:25Z
+closed: 2026-04-21T02:44:25Z
 +++
 
 ## Problem
@@ -2180,6 +2181,8 @@ Shader constants allow specializing shaders at pipeline creation time for better
 - This is a consequence of the temporary fix applied in #231
 
 *Imported from #228*
+
+- `2026-04-21T02:44:25Z`: Resolved by the cache-key rework in #327/#333. RenderPipeline, ComputePipeline, and MeshRenderPipeline all now return true from requiresSetup and delegate reuse decisions to a per-node cache keyed on the actual inputs (function ObjectIdentifier, linked functions, vertex descriptor, pixel formats, sample count, depth/stencil, label). Shader constants produce a different specialized MTLFunction, which has a different ObjectIdentifier, so the cache key changes and the PSO rebuilds automatically.
 
 ---
 
@@ -2365,11 +2368,11 @@ Maybe we need to make shaders elements
 
 +++
 status: open
-priority: medium
+priority: high
 kind: bug
 labels: bug, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:35Z
+updated: 2026-04-21T02:47:31Z
 +++
 
 ## Problem
@@ -2822,12 +2825,12 @@ The modifier may have been used outside of a `CommandBufferElement` context, whi
 ## 291: Audit and improve Swift concurrency throughout the framework
 
 +++
-status: new
+status: open
 priority: medium
-kind: none
+kind: task
 labels: concurrency, effort:xl
 created: 2026-03-31T18:27:17Z
-updated: 2026-03-31T18:27:21Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 Consolidate all concurrency-related work:
@@ -2855,10 +2858,12 @@ Consolidate all concurrency-related work:
 ## 292: Refactor: System is a god object with a split three-phase personality
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
+labels: effort:xl
 created: 2026-03-31T19:33:03Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 ## Problem
@@ -2892,10 +2897,12 @@ Existing tests in SystemTests, NeedsSetupTests, SystemProcessTests, and NodeTest
 ## 293: Refactor: MSEnvironmentValues storage parent-chain is an invisible runtime contract
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
+labels: effort:xl
 created: 2026-03-31T19:33:38Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 ## Problem
@@ -2925,10 +2932,12 @@ EnvironmentTests and UVEnvironmentValuesTests test shallow behavior (values are 
 ## 294: Refactor: Reflection/RenderPipeline/ParameterElementModifier inter-phase contract is invisible and untested
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
+labels: effort:l
 created: 2026-03-31T19:33:58Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 ## Problem
@@ -2960,10 +2969,12 @@ ParametersTests and FunctionConstantsTests currently exercise the happy path onl
 ## 295: Refactor: ShaderLibrary / LibraryRegistry / ShaderCache are three interlocked process-global singletons
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: effort:xl
 created: 2026-03-31T19:34:21Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 ## Problem
@@ -2994,15 +3005,19 @@ The process-global singleton (LibraryRegistry.shared) should become an optional 
 
 FunctionConstantsTests currently creates a real MTLDevice and compiles real shader source. Cache hit/miss behavior, namespace resolution, and the error paths in function(type:named:) are entirely untested. A ShaderLoader port would allow unit tests for all of these without a GPU: verify cache hits return the same MTLFunction; verify ambiguous namespace constants throw the right error; verify missing constants produce the correct diagnostic.
 
+- `2026-04-21T02:48:26Z`: Related: #339 is a narrower task specifically about the LibraryRegistry leak (global singleton retains MTLLibrary forever). A fix there could be one concrete step toward this broader refactor.
+
 ---
 
 ## 296: Refactor: RenderViewViewModel duplicates frame-orchestration logic that OffscreenRenderer also contains
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
+labels: effort:l
 created: 2026-03-31T19:34:45Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 ## Problem
@@ -3097,10 +3112,12 @@ After fixing #298 (RenderViewHelper allocating a new RenderViewViewModel every f
 ## 300: Example app: MTKView depth texture uses Private storage mode instead of Memoryless
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
+labels: effort:xs
 created: 2026-04-01T22:03:32Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 Metal validation warning: Texture 0xb6628b200 "MTKView Depth" has storage mode Private but was a transient render target accessed exclusively by the GPU. Should use .storageModeMemoryless for the depth attachment to avoid wasting VRAM on a texture that does not need to persist between render passes. Seen in the spinning cube demo.
@@ -3110,10 +3127,12 @@ Metal validation warning: Texture 0xb6628b200 "MTKView Depth" has storage mode P
 ## 301: Add dismantleNSView/dismantleUIView to ViewAdaptor
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: effort:s
 created: 2026-04-01T22:07:25Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 ViewAdaptor wraps NSViewRepresentable/UIViewRepresentable but doesn't implement the static dismantle methods. Adding dismantleNSView and dismantleUIView would let us pause the MTKView and clear its delegate when SwiftUI tears down the representable — preventing stray draw callbacks after the view model is released. Belt-and-suspenders for the .onDisappear fix in #297.
@@ -3162,10 +3181,12 @@ Closing here as a duplicate redirected to the right repo.
 ## 303: Redirect docs.metalsprockets.com
 
 +++
-status: new
+status: open
 priority: medium
-kind: none
+kind: task
+labels: effort:s
 created: 2026-04-02T13:55:05Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 Option 2: Configure DocC to publish to root
@@ -3177,8 +3198,10 @@ Option 2: Configure DocC to publish to root
 +++
 status: new
 priority: medium
-kind: none
+kind: task
+labels: needs-info
 created: 2026-04-02T16:16:32Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 Some of MetalSprokcetsAddsOns can come in - specifically the macros we have for textures etc
@@ -3274,10 +3297,12 @@ Root cause identified in #329: data race on System.dirtyIdentifiers from off-mai
 ## 308: Demo app looks broken on iPad Simulator
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
+labels: effort:m
 created: 2026-04-09T18:33:18Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 Running the demo app on iPad Pro 11-inch (M5) simulator (iOS 26.4), the UI is essentially blank/empty. Shows a white card with faint horizontal separator lines and a green '60' FPS counter in the top-right, but no actual rendered content is visible. The entire lower portion of the screen is just empty grey. Appears the Metal rendering surface isn't displaying anything.
@@ -3287,10 +3312,12 @@ Running the demo app on iPad Pro 11-inch (M5) simulator (iOS 26.4), the UI is es
 ## 309: Verify MSAA is actually working — demo cube still looks aliased
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
+labels: effort:s
 created: 2026-04-09T19:09:14Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 The demo app claims MSAA 4x is enabled (overlay says so) but the cube edges still look aliased. Need to verify the MSAA pipeline is actually functioning correctly.
@@ -3300,10 +3327,12 @@ The demo app claims MSAA 4x is enabled (overlay says so) but the cube edges stil
 ## 310: fpsColor should be based on target framerate, not hardcoded thresholds
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: effort:xs
 created: 2026-04-09T19:09:28Z
+updated: 2026-04-21T02:48:18Z
 +++
 
 FrameTimingView.fpsColor(for:) uses hardcoded thresholds (55 = green, 30 = yellow, else red). These should be relative to the target framerate (e.g. 120Hz displays would show yellow at 55fps which is wrong).
@@ -3313,10 +3342,12 @@ FrameTimingView.fpsColor(for:) uses hardcoded thresholds (55 = green, 30 = yello
 ## 311: RenderView renders blank when used with .toolbar on macOS
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
+labels: effort:m
 created: 2026-04-09T20:03:35Z
+updated: 2026-04-21T02:48:19Z
 +++
 
 MTKView-backed RenderView renders nothing when a .toolbar modifier is applied (with or without NavigationStack). Resizing the window triggers rendering. Likely the MTKView gets zero initial size from the toolbar layout pass and never redraws when it gets a real size. Overlay-based UI works fine as a workaround.
@@ -3326,10 +3357,12 @@ MTKView-backed RenderView renders nothing when a .toolbar modifier is applied (w
 ## 312: Metal GPU performance HUD disappears during drag/pan gestures
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
+labels: effort:m
 created: 2026-04-09T20:12:59Z
+updated: 2026-04-21T02:48:19Z
 +++
 
 The Metal GPU performance overlay (enabled via Xcode scheme) disappears while dragging/panning in RenderView. It reappears when the gesture ends. Likely a SwiftUI overlay/z-ordering issue during gesture handling.
@@ -3405,10 +3438,12 @@ Not related to #314 after all; that was a framework-level identity-vs-contents b
 ## 316: Add .depthBias() Element modifier
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:s
 created: 2026-04-15T23:43:17Z
+updated: 2026-04-21T02:48:19Z
 +++
 
 Expose Metal's setDepthBias(_:slopeScale:clamp:) as a declarative Element modifier, similar to .depthCompare(). Usage:
@@ -3692,10 +3727,12 @@ Discovered while porting Phosphor (a shadertoy-style app) to MetalSprockets: the
 ## 325: Investigate Metal log state failure on CI runners
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
+labels: effort:m
 created: 2026-04-19T18:10:04Z
+updated: 2026-04-21T02:48:19Z
 +++
 
 The CommandBufferLoggingTests.testAddMetalSprocketsLogging test was failing on GitHub Actions with:
@@ -3715,11 +3752,12 @@ Investigate:
 ## 326: Introduce SystemEnvironment type for test-overridable process env
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: testing, architecture
+labels: testing, architecture, effort:l
 created: 2026-04-19T18:36:16Z
+updated: 2026-04-21T02:48:19Z
 +++
 
 Several places in MetalSprockets read process environment variables directly via `ProcessInfo.processInfo.environment` (through `ProcessInfo+Extensions`):
@@ -3785,10 +3823,12 @@ Phosphor demo can now rebuild its PSO on snippet switch by passing the selected 
 ## 328: ComputeDispatch has no way to auto-pick threadsPerThreadgroup
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:m
 created: 2026-04-20T23:20:56Z
+updated: 2026-04-21T02:48:19Z
 +++
 
 `ComputeDispatch` requires callers to pass `threadsPerThreadgroup` up front. There is no way to let the framework pick an appropriate threadgroup size based on the actual compute pipeline state's `maxTotalThreadsPerThreadgroup` and `threadExecutionWidth`.
@@ -4260,10 +4300,12 @@ Keeps both #298 (no expensive per-frame work) and #306 (environment available on
 ## 338: Revisit RenderViewDebugViewModifier: finish or delete
 
 +++
-status: new
+status: open
 priority: low
 kind: task
+labels: effort:s
 created: 2026-04-21T02:34:25Z
+updated: 2026-04-21T02:48:19Z
 +++
 
 RenderViewDebugViewModifier is currently dead code: it's not applied anywhere (the .modifier call in RenderViewHelper.body is commented out), and its inspector panel body is entirely commented out too. It was a scaffold for a SwiftUI inspector that would browse the render graph (node tree + node details) via @Environment(RenderViewViewModel<Root>.self).
@@ -4275,10 +4317,12 @@ Revisit: either finish it (wire up a proper node browser using a SystemSnapshot 
 ## 339: Replace global LibraryRegistry with a non-leaking cache
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
+labels: effort:m
 created: 2026-04-21T02:36:22Z
+updated: 2026-04-21T02:48:19Z
 +++
 
 LibraryRegistry.shared holds MTLLibrary instances via strong references for the lifetime of the process. Every compiled shader library (from bundle, source, or wrapped MTLLibrary) stays resident forever even after no ShaderLibrary value still references it.
@@ -4293,5 +4337,6 @@ Options:
 Same concern applies to the per-library ShaderCache of MTLFunctions, though those die with their library automatically — so fixing LibraryRegistry should cover it.
 
 - `2026-04-21T02:36:47Z`: Design idea: a .shaderScope() element modifier that establishes a scoped ShaderLibrary cache via the element environment. Libraries/functions compiled inside the scope live in the scope's cache and die with it. No global singleton. Apps get explicit lifetime control — e.g. per-RenderView, per-scene, or per-experimental-area. Default behavior (no explicit scope) could still use a process-wide cache for convenience, but it would be opt-in or overridable.
+- `2026-04-21T02:48:26Z`: Related: #295 is a broader refactor of the whole ShaderLibrary/LibraryRegistry/ShaderCache stack. This issue is the narrower leak subset.
 
 ---
