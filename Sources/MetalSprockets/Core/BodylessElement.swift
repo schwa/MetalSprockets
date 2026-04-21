@@ -7,6 +7,12 @@ internal protocol BodylessElement {
     func workloadEnter(_ node: Node) throws
     func workloadExit(_ node: Node) throws
 
+    /// Called once when a node is being removed from the tree (the element is no
+    /// longer present after an `update`). Use this to release external resources
+    /// or unregister observers. GPU resources held in the node's env/caches are
+    /// freed automatically via ARC when the node is released.
+    func teardown(_ node: Node) throws
+
     /// Returns true if the change from `old` to `self` requires the setup phase to run again.
     /// This is a SHALLOW check - only considers this element, not its children.
     func requiresSetup(comparedTo old: Self) -> Bool
@@ -31,6 +37,9 @@ extension BodylessElement {
         // This line intentionally left blank.
     }
     func workloadExit(_ node: Node) throws {
+        // This line intentionally left blank.
+    }
+    func teardown(_ node: Node) throws {
         // This line intentionally left blank.
     }
 }

@@ -1948,12 +1948,13 @@ Audit System class and make properties private that shouldn't be public API. Red
 ## 214: Call cleanup/onDisappear for removed nodes
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:18Z
+updated: 2026-04-21T03:09:00Z
+closed: 2026-04-21T03:09:00Z
 +++
 
 System could call cleanup/onDisappear when nodes are removed. Currently just notes they're gone.
@@ -1961,6 +1962,8 @@ System could call cleanup/onDisappear when nodes are removed. Currently just not
 File: Sources/MetalSprockets/Core/System.swift
 
 *Imported from #206*
+
+- `2026-04-21T03:09:00Z`: Added BodylessElement.teardown(_:) protocol hook with empty default; System.update now calls it for nodes removed from the tree (errors are logged, not propagated, so a misbehaving teardown can't break update). Exposed as a public .onDisappear { ... } element modifier on Element. Covered by OnDisappearTests (8 cases: basic fire/no-fire, reorder, multiple removals, nested modifiers, full replacement, throwing teardown is swallowed).
 
 ---
 

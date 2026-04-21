@@ -182,10 +182,18 @@ package final class System: @unchecked Sendable {
             // Clear dirty identifiers after processing entire tree
             _ = takeDirtyIdentifiers()
 
-            // Find removed nodes by diffing old vs new
+            // Find removed nodes by diffing old vs new, and give their elements a
+            // chance to tear down any external state before they're dropped.
             let removedIds = Set(nodes.keys).subtracting(Set(newNodes.keys))
-            for _ in removedIds {
-                // TODO: #214 Could call cleanup/onDisappear here for proper node lifecycle management
+            for id in removedIds {
+                guard let removedNode = nodes[id] else { continue }
+                if let bodyless = removedNode.element as? any BodylessElement {
+                    do {
+                        try bodyless.teardown(removedNode)
+                    } catch {
+                        logger?.error("teardown failed for removed node \(id): \(error)")
+                    }
+                }
             }
 
             // Replace old with new
