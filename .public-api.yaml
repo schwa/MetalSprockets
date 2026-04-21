@@ -1,0 +1,594 @@
+package: MetalSprockets
+access_level: public
+modules:
+- name: MetalSprockets
+  symbols:
+  - decl: public protocol Element
+    members:
+    - decl: |
+        public func capture(_ enabled: Bool = true, target: CaptureTarget = .device, destination: MTLCaptureDestination = .developerTools) -> some Element
+    - decl: |
+        public func colorAttachment0(_ texture: any MTLTexture, index: Int) -> some Element
+    - decl: |
+        public func depthAttachment(_ texture: any MTLTexture) -> some Element
+    - decl: |
+        public func depthCompare(function: MTLCompareFunction, enabled: Bool) -> some Element
+    - decl: |
+        public func depthStencilDescriptor(_ depthStencilDescriptor: MTLDepthStencilDescriptor) -> some Element
+    - decl: public func dump() throws -> String
+    - decl: 'public func dump(to output: inout String, indent: Int = 0) throws'
+    - decl: public func dumpVerbose() throws -> String
+    - decl: 'public func dumpVerbose(to output: inout String, indent: Int = 0) throws'
+    - decl: |
+        public func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element
+    - decl: public func eraseToAnyElement() -> AnyElement
+    - decl: |
+        public func linkedFunctions(_ functions: [any MTLFunction]) -> some Element
+    - decl: |
+        public func msaa(sampleCount: Int) -> some Element
+    - decl: |
+        public func onChange<V>(of value: V, initial: Bool = false, perform action: @escaping (V, V) -> Void) -> some Element where V : Equatable
+    - decl: |
+        public func onChange<V>(of value: V, perform action: @escaping () -> Void) -> some Element where V : Equatable
+    - decl: |
+        public func onCommandBufferCompleted(_ action: @escaping (any MTLCommandBuffer) -> Void) -> some Element
+    - decl: |
+        public func onCommandBufferScheduled(_ action: @escaping @Sendable (any MTLCommandBuffer) -> Void) -> some Element
+    - decl: |
+        public func onDisappear(perform action: @escaping () -> Void) -> some Element
+    - decl: |
+        public func onSetupEnter(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element
+    - decl: |
+        public func onWorkloadEnter(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element
+    - decl: |
+        public func parameter(_ name: String, functionType: MTLFunctionType? = nil, buffer: any MTLBuffer, offset: Int = 0) -> some Element
+    - decl: |
+        public func parameter(_ name: String, functionType: MTLFunctionType? = nil, samplerState: any MTLSamplerState) -> some Element
+    - decl: |
+        public func parameter(_ name: String, functionType: MTLFunctionType? = nil, texture: (any MTLTexture)?) -> some Element
+    - decl: |
+        public func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: simd_float4x4) -> some Element
+    - decl: |
+        public func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: some Any) -> some Element
+    - decl: |
+        public func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: SIMD4<Float>) -> some Element
+    - decl: |
+        public func parameter(_ name: String, functionType: MTLFunctionType? = nil, values: [some Any]) -> some Element
+    - decl: public func printDump() throws
+    - decl: |
+        public func renderPassDescriptorModifier(_ modify: @escaping (MTLRenderPassDescriptor) -> Void) -> some Element
+    - decl: |
+        public func renderPipelineDescriptorModifier(_ modify: @escaping (MTLRenderPipelineDescriptor) -> Void) -> some Element
+    - decl: public func run() throws
+    - decl: |
+        public func stencilAttachment(_ texture: any MTLTexture) -> some Element
+    - decl: |
+        @ElementBuilder public func useComputeResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage) -> some Element
+    - decl: |
+        public func useComputeResource(_ resource: any MTLResource, usage: MTLResourceUsage) -> some Element
+    - decl: |
+        @ElementBuilder public func useResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
+    - decl: |
+        public func useResource(_ resource: any MTLResource, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
+    - decl: |
+        public func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
+    - decl: |
+        public func vertexDescriptor(_ vertexDescriptor: MDLVertexDescriptor) -> some Element
+    - decl: |
+        public func vertexDescriptor(_ vertexDescriptor: MTLVertexDescriptor?) -> some Element
+    - decl: |
+        public func visibleFunctionTable(_ name: String, functionType: MTLFunctionType? = nil, function: any MTLFunction) -> some Element
+    - decl: |
+        public func visibleFunctionTable(_ name: String, functionType: MTLFunctionType? = nil, functions: [any MTLFunction]) -> some Element
+    - decl: |
+        public func workloadEnabled(_ enabled: Bool = true) -> some Element
+  - decl: public protocol MSEnvironmentKey
+  - decl: 'public protocol ShaderProtocol : Equatable'
+    members:
+    - decl: 'public init(library: (any MTLLibrary)? = nil, name: String) throws'
+    - decl: 'public init(source: String, logging: Bool = false) throws'
+  - decl: public final class OffscreenVideoRenderer
+    members:
+    - decl: 'public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264) throws'
+    - decl: 'public let frameRate: Double'
+    - decl: 'public let outputURL: URL'
+    - decl: 'public let pixelFormat: MTLPixelFormat'
+    - decl: 'public let size: CGSize'
+    - decl: 'public let videoCodec: AVVideoCodecType'
+    - decl: public func finalize() async throws
+    - decl: 'public func render<Content>(_ element: Content) async throws where Content : Element'
+  - decl: public final class ShaderCache
+    members:
+    - decl: public init()
+  - decl: public struct AnyElement
+    members:
+    - decl: 'public init(_ base: some Element)'
+  - decl: public struct Blit
+    members:
+    - decl: 'public init(_ block: @escaping (any MTLBlitCommandEncoder) throws -> Void)'
+  - decl: 'public struct BlitPass<Content> where Content : Element'
+    members:
+    - decl: 'public init(@ElementBuilder content: () throws -> Content) throws'
+  - decl: 'public struct CommandBufferElement<Content> where Content : Element'
+    members:
+    - decl: 'public init(completion: MTLCommandQueueCompletion, @ElementBuilder content: () throws -> Content) rethrows'
+  - decl: public struct ComputeDispatch
+    members:
+    - decl: 'public init(threadgroups: MTLSize, threadsPerThreadgroup: MTLSize) throws'
+    - decl: 'public init(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize) throws'
+  - decl: public struct ComputeKernel
+    members:
+    - decl: 'public init(_ function: any MTLFunction)'
+    - decl: 'public var function: any MTLFunction'
+    - decl: 'public static let functionType: MTLFunctionType'
+    - decl: 'public static func == (lhs: ComputeKernel, rhs: ComputeKernel) -> Bool'
+  - decl: 'public struct ComputePass<Content> where Content : Element'
+    members:
+    - decl: 'public init(label: String? = nil, @ElementBuilder content: () throws -> Content) throws'
+  - decl: 'public struct ComputePipeline<Content> where Content : Element'
+    members:
+    - decl: 'public init(label: String? = nil, computeKernel: ComputeKernel, @ElementBuilder content: () throws -> Content) throws'
+  - decl: public struct Draw
+    members:
+    - decl: public typealias Body = Never
+    - decl: 'public init(encodeGeometry: @escaping (any MTLRenderCommandEncoder) throws -> Void)'
+  - decl: '@resultBuilder public struct ElementBuilder'
+    members:
+    - decl: public static func buildBlock() -> EmptyElement
+    - decl: 'public static func buildBlock<each Content>(_ content: repeat each Content) -> TupleElement<repeat each Content> where repeat each Content : Element'
+    - decl: 'public static func buildBlock<V>(_ content: V) -> V where V : Element'
+    - decl: 'public static func buildEither<TrueContent, FalseContent>(first: TrueContent) -> _ConditionalContent<TrueContent, FalseContent> where TrueContent : Element, FalseContent : Element'
+    - decl: 'public static func buildEither<TrueContent, FalseContent>(second: FalseContent) -> _ConditionalContent<TrueContent, FalseContent> where TrueContent : Element, FalseContent : Element'
+    - decl: 'public static func buildExpression<Content>(_ content: Content) -> Content where Content : Element'
+    - decl: 'public static func buildIf<Content>(_ content: Content?) -> Content? where Content : Element'
+    - decl: 'public static func buildLimitedAvailability<Content>(_ content: Content) -> AnyElement where Content : Element'
+    - decl: |
+        public static func buildOptional<Content>(_ content: Content?) -> some Element where Content : Element
+  - decl: public struct ElementTypeIdentifier
+    members:
+    - decl: 'public init(_ type: any Element.Type)'
+    - decl: 'public var debugDescription: String { get }'
+    - decl: 'public var id: ObjectIdentifier'
+  - decl: public struct EmptyElement
+    members:
+    - decl: public typealias Body = Never
+    - decl: public init()
+  - decl: 'public struct EnvironmentReader<Value, Content> where Content : Element'
+    members:
+    - decl: 'public init(keyPath: KeyPath<MSEnvironmentValues, Value>, @ElementBuilder content: @escaping (Value) throws -> Content)'
+  - decl: public struct EnvironmentSnapshot
+    members:
+    - decl: 'public init(from decoder: any Decoder) throws'
+    - decl: 'public let hasParent: Bool'
+    - decl: 'public let values: [String : String]'
+  - decl: 'public struct ForEach<Data, ID, Content> where Data : RandomAccessCollection, ID : Hashable, Content : Element'
+    members:
+    - decl: 'public init(_ data: Data, @ElementBuilder content: @escaping (Data.Element) throws -> Content) where ID == Data.Element.ID, Data.Element : Identifiable'
+    - decl: 'public init(_ data: Data, id: KeyPath<Data.Element, ID>, @ElementBuilder content: @escaping (Data.Element) throws -> Content) where Content: Element, Data: RandomAccessCollection, ID: Hashable'
+  - decl: public struct FragmentShader
+    members:
+    - decl: 'public init(_ function: any MTLFunction)'
+    - decl: 'public var function: any MTLFunction'
+    - decl: 'public static let functionType: MTLFunctionType'
+    - decl: 'public static func == (lhs: FragmentShader, rhs: FragmentShader) -> Bool'
+  - decl: public struct FunctionConstants
+    members:
+    - decl: public enum Value
+      members:
+      - decl: public case bool(Bool)
+      - decl: public case float(Float)
+      - decl: public case float2(SIMD2<Float>)
+      - decl: public case float3(SIMD3<Float>)
+      - decl: public case float4(SIMD4<Float>)
+      - decl: public case int16(Int16)
+      - decl: public case int32(Int32)
+      - decl: public case int64(Int64)
+      - decl: public case int8(Int8)
+      - decl: public case uint16(UInt16)
+      - decl: public case uint32(UInt32)
+      - decl: public case uint64(UInt64)
+      - decl: public case uint8(UInt8)
+    - decl: public init()
+    - decl: 'public var isEmpty: Bool { get }'
+    - decl: 'public subscript(name: String) -> FunctionConstants.Value? { get set }'
+    - decl: 'public func buildMTLConstants(for library: any MTLLibrary, functionName: String) throws -> MTLFunctionConstantValues'
+  - decl: 'public struct Group<Content> where Content : Element'
+    members:
+    - decl: public typealias Body = Never
+    - decl: 'public init(@ElementBuilder content: () throws -> Content) throws'
+  - decl: public struct LoggingElement
+    members:
+    - decl: public struct Phases
+      members:
+      - decl: 'public init(rawValue: Int)'
+      - decl: 'public let rawValue: Int'
+      - decl: 'public static let all: LoggingElement.Phases'
+      - decl: 'public static let enter: LoggingElement.Phases'
+      - decl: 'public static let exit: LoggingElement.Phases'
+      - decl: 'public static let setup: LoggingElement.Phases'
+      - decl: 'public static let setupEnter: LoggingElement.Phases'
+      - decl: 'public static let setupExit: LoggingElement.Phases'
+      - decl: 'public static let workload: LoggingElement.Phases'
+      - decl: 'public static let workloadEnter: LoggingElement.Phases'
+      - decl: 'public static let workloadExit: LoggingElement.Phases'
+    - decl: 'public init(_ message: String = "", phases: LoggingElement.Phases = .all, logger: Logger? = nil)'
+    - decl: 'public let message: String'
+    - decl: 'public let phases: LoggingElement.Phases'
+  - decl: '@propertyWrapper public struct MSBinding<Value>'
+    members:
+    - decl: 'public init(get: @escaping () -> Value, set: @escaping (Value) -> Void)'
+    - decl: 'public var wrappedValue: Value { get nonmutating set }'
+    - decl: 'public static func == (lhs: MSBinding<Value>, rhs: MSBinding<Value>) -> Bool'
+  - decl: '@propertyWrapper public struct MSEnvironment<Value>'
+    members:
+    - decl: 'public init(_ keyPath: KeyPath<MSEnvironmentValues, Value>)'
+    - decl: 'public var wrappedValue: Value { get }'
+  - decl: public struct MSEnvironmentValues
+    members:
+    - decl: 'public var blitCommandEncoder: (any MTLBlitCommandEncoder)? { get set }'
+    - decl: 'public var colorAttachment0: (any MTLTexture, Int)? { get set }'
+    - decl: 'public var commandBuffer: (any MTLCommandBuffer)? { get set }'
+    - decl: 'public var commandQueue: (any MTLCommandQueue)? { get set }'
+    - decl: 'public var computeCommandEncoder: (any MTLComputeCommandEncoder)? { get set }'
+    - decl: 'public var computePipelineState: (any MTLComputePipelineState)? { get set }'
+    - decl: 'public var currentDrawable: (any CAMetalDrawable)? { get set }'
+    - decl: 'public var debugDescription: String { get }'
+    - decl: 'public var depthAttachment: (any MTLTexture)? { get set }'
+    - decl: 'public var depthStencilDescriptor: MTLDepthStencilDescriptor? { get set }'
+    - decl: 'public var depthStencilState: (any MTLDepthStencilState)? { get set }'
+    - decl: 'public var device: (any MTLDevice)? { get set }'
+    - decl: 'public var drawableSize: CGSize? { get set }'
+    - decl: 'public var linkedFunctions: MTLLinkedFunctions? { get set }'
+    - decl: 'public var reflection: Reflection? { get set }'
+    - decl: 'public var renderCommandEncoder: (any MTLRenderCommandEncoder)? { get set }'
+    - decl: 'public var renderPassDescriptor: MTLRenderPassDescriptor? { get set }'
+    - decl: 'public var renderPipelineDescriptor: MTLRenderPipelineDescriptor? { get set }'
+    - decl: 'public var renderPipelineState: (any MTLRenderPipelineState)? { get set }'
+    - decl: 'public var stencilAttachment: (any MTLTexture)? { get set }'
+    - decl: 'public var vertexDescriptor: MTLVertexDescriptor? { get set }'
+    - decl: 'public subscript<Key>(key: Key.Type) -> Key.Value where Key : MSEnvironmentKey { get set }'
+  - decl: '@propertyWrapper public struct MSObservedObject<ObjectType> where ObjectType : ObservableObject'
+    members:
+    - decl: 'public init(wrappedValue: ObjectType)'
+    - decl: 'public var projectedValue: ProjectedValue<ObjectType> { get }'
+    - decl: 'public var wrappedValue: ObjectType { get }'
+    - decl: 'public static func == (l: MSObservedObject<ObjectType>, r: MSObservedObject<ObjectType>) -> Bool where ObjectType: ObservableObject'
+  - decl: '@propertyWrapper public struct MSState<Value>'
+    members:
+    - decl: 'public init(wrappedValue: Value)'
+    - decl: 'public var projectedValue: MSBinding<Value> { get }'
+    - decl: 'public var wrappedValue: Value { get nonmutating set }'
+  - decl: 'public struct MeshRenderPipeline<Content> where Content : Element'
+    members:
+    - decl: public typealias Body = Never
+    - decl: 'public init(label: String? = nil, objectShader: ObjectShader? = nil, meshShader: MeshShader, fragmentShader: FragmentShader, @ElementBuilder content: () throws -> Content) throws'
+  - decl: public struct MeshShader
+    members:
+    - decl: 'public init(_ function: any MTLFunction)'
+    - decl: 'public var function: any MTLFunction'
+    - decl: 'public static let functionType: MTLFunctionType'
+    - decl: 'public static func == (lhs: MeshShader, rhs: MeshShader) -> Bool'
+  - decl: public struct MetalFXSpatial
+    members:
+    - decl: public typealias Body = Never
+    - decl: 'public init(inputTexture: any MTLTexture, outputTexture: any MTLTexture)'
+  - decl: public struct MetalFXTemporal
+    members:
+    - decl: 'public init(inputTexture: any MTLTexture, depthTexture: any MTLTexture, motionTexture: any MTLTexture, outputTexture: any MTLTexture, jitter: SIMD2<Float> = .zero, reset: Bool = false)'
+    - decl: 'public var body: some Element { get }'
+  - decl: public struct NodeSnapshot
+    members:
+    - decl: 'public init(from decoder: any Decoder) throws'
+    - decl: 'public let elementDescription: String'
+    - decl: 'public let elementType: String'
+    - decl: 'public let environmentValues: EnvironmentSnapshot'
+    - decl: 'public let identifier: String'
+    - decl: 'public let needsSetup: Bool'
+    - decl: 'public let parentIdentifier: String?'
+    - decl: 'public let stateProperties: [StatePropertySnapshot]'
+  - decl: public struct ObjectShader
+    members:
+    - decl: 'public init(_ function: any MTLFunction)'
+    - decl: 'public var function: any MTLFunction'
+    - decl: 'public static let functionType: MTLFunctionType'
+    - decl: 'public static func == (lhs: ObjectShader, rhs: ObjectShader) -> Bool'
+  - decl: public struct OffscreenRenderer
+    members:
+    - decl: public struct Rendering
+      members:
+      - decl: 'public var cgImage: CGImage { get throws }'
+      - decl: 'public var texture: any MTLTexture'
+    - decl: 'public init(size: CGSize) throws'
+    - decl: 'public init(size: CGSize, colorTexture: any MTLTexture, depthTexture: any MTLTexture) throws'
+    - decl: 'public var colorTexture: any MTLTexture'
+    - decl: 'public var commandQueue: any MTLCommandQueue'
+    - decl: 'public var depthTexture: any MTLTexture'
+    - decl: 'public var device: any MTLDevice'
+    - decl: 'public var renderPassDescriptor: MTLRenderPassDescriptor'
+    - decl: 'public var size: CGSize'
+    - decl: 'public func render<Content>(_ content: Content) throws -> OffscreenRenderer.Rendering where Content : Element'
+  - decl: '@dynamicMemberLookup public struct ProjectedValue<ObjectType> where ObjectType : ObservableObject'
+    members:
+    - decl: 'public subscript<Value>(dynamicMember keyPath: ReferenceWritableKeyPath<ObjectType, Value>) -> MSBinding<Value> { get }'
+  - decl: public struct Reflection
+    members:
+    - decl: public struct Key
+      members:
+      - decl: 'public var debugDescription: String { get }'
+      - decl: 'public var functionType: MTLFunctionType'
+      - decl: 'public var name: String'
+    - decl: 'public var debugDescription: String { get }'
+    - decl: 'public func binding(forType functionType: MTLFunctionType, name: String) -> Int?'
+  - decl: 'public struct RenderPass<Content> where Content : Element'
+    members:
+    - decl: 'public init(label: String? = nil, @ElementBuilder content: () throws -> Content) throws'
+  - decl: 'public struct RenderPipeline<Content> where Content : Element'
+    members:
+    - decl: public typealias Body = Never
+    - decl: 'public init(label: String? = nil, vertexShader: VertexShader, fragmentShader: FragmentShader, @ElementBuilder content: () throws -> Content) throws'
+  - decl: 'public struct RenderPipelineDescriptorModifier<Content> where Content : Element'
+  - decl: '@dynamicMemberLookup public struct ShaderLibrary'
+    members:
+    - decl: public enum ID
+      members:
+      - decl: public case bundle(Bundle)
+      - decl: public case library(any MTLLibrary)
+      - decl: public case source(String, MTLCompileOptions?)
+      - decl: 'public func hash(into hasher: inout Hasher)'
+      - decl: 'public static func == (lhs: ShaderLibrary.ID, rhs: ShaderLibrary.ID) -> Bool'
+    - decl: 'public init(bundle: Bundle) throws'
+    - decl: 'public init(library: any MTLLibrary)'
+    - decl: 'public init(source: String, options: MTLCompileOptions? = nil) throws'
+    - decl: 'public var id: ShaderLibrary.ID { get }'
+    - decl: 'public subscript(dynamicMember name: String) -> VertexShader { get throws }'
+    - decl: 'public subscript(dynamicMember name: String) -> FragmentShader { get throws }'
+    - decl: 'public subscript(dynamicMember name: String) -> ComputeKernel { get throws }'
+    - decl: 'public func function<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T : ShaderProtocol'
+    - decl: 'public func namespaced(_ name: String) -> ShaderNamespace'
+    - decl: 'public func requiredFunction<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) -> T where T : ShaderProtocol'
+  - decl: '@dynamicMemberLookup public struct ShaderNamespace'
+    members:
+    - decl: 'public init(library: ShaderLibrary, namespace: String)'
+    - decl: 'public subscript(dynamicMember name: String) -> VertexShader { get throws }'
+    - decl: 'public subscript(dynamicMember name: String) -> FragmentShader { get throws }'
+    - decl: 'public subscript(dynamicMember name: String) -> ComputeKernel { get throws }'
+    - decl: 'public func function<T>(named name: String, type: T.Type, constants: FunctionConstants = FunctionConstants()) throws -> T where T : ShaderProtocol'
+    - decl: 'public func requiredFunction<T>(named name: String, type: T.Type, constants: FunctionConstants = FunctionConstants()) -> T where T : ShaderProtocol'
+  - decl: public struct StatePropertySnapshot
+    members:
+    - decl: 'public init(from decoder: any Decoder) throws'
+    - decl: 'public let dependencies: [String]'
+    - decl: 'public let key: String'
+    - decl: 'public let type: String'
+    - decl: 'public let value: String'
+  - decl: public struct StructuralIdentifier
+    members:
+    - decl: public struct Atom
+      members:
+      - decl: 'public init(element: some Element, index: Int)'
+      - decl: 'public init(typeIdentifier: ElementTypeIdentifier, index: Int)'
+      - decl: 'public var description: String { get }'
+      - decl: 'public let index: Int'
+      - decl: 'public let typeIdentifier: ElementTypeIdentifier'
+    - decl: 'public init(atoms: [StructuralIdentifier.Atom])'
+    - decl: 'public let atoms: [StructuralIdentifier.Atom]'
+    - decl: 'public var description: String { get }'
+    - decl: 'public func appending(_ atom: StructuralIdentifier.Atom) -> StructuralIdentifier'
+  - decl: public struct SystemSnapshot
+    members:
+    - decl: 'public init(from decoder: any Decoder) throws'
+    - decl: 'public let activeNodeStackDepth: Int'
+    - decl: 'public let dirtyIdentifiers: Set<String>'
+    - decl: 'public let nodes: [NodeSnapshot]'
+    - decl: 'public let orderedIdentifiers: [String]'
+    - decl: 'public let timestamp: Date'
+    - decl: 'public func textDump(includeEnvironment: Bool = false) -> String'
+  - decl: 'public struct TupleElement<each T> where repeat each T : Element'
+    members:
+    - decl: public typealias Body = Never
+    - decl: 'public init(_ children: repeat each T)'
+  - decl: public struct VertexShader
+    members:
+    - decl: 'public init(_ function: any MTLFunction)'
+    - decl: 'public var function: any MTLFunction'
+    - decl: 'public static let functionType: MTLFunctionType'
+    - decl: public func inferredVertexDescriptor() -> MTLVertexDescriptor?
+    - decl: 'public static func == (lhs: VertexShader, rhs: VertexShader) -> Bool'
+  - decl: public struct VisibleFunction
+    members:
+    - decl: 'public init(_ function: any MTLFunction)'
+    - decl: 'public var function: any MTLFunction'
+    - decl: 'public static let functionType: MTLFunctionType'
+    - decl: 'public static func == (lhs: VisibleFunction, rhs: VisibleFunction) -> Bool'
+  - decl: public enum CaptureTarget
+    members:
+    - decl: public case commandQueue
+    - decl: public case device
+  - decl: 'public associatedtype Body : Element'
+  - decl: public associatedtype Value
+  - decl: 'public init(_ function: any MTLFunction)'
+  - decl: '@ElementBuilder public var body: Self.Body { get throws }'
+  - decl: 'public var body: Never { get } where Self.Body == Never'
+  - decl: 'public var function: any MTLFunction { get }'
+  - decl: 'public static var defaultValue: Self.Value { get }'
+  - decl: 'public static var functionType: MTLFunctionType { get }'
+  extensions:
+  - extended_module: Metal
+    symbols:
+    - decl: extension MTLFunctionType
+      members:
+      - decl: 'public var debugDescription: String { get }'
+  - extended_module: MetalSprocketsSupport
+    symbols:
+    - decl: extension MetalSprocketsError
+      members:
+      - decl: 'public static func missingEnvironment(_ key: PartialKeyPath<MSEnvironmentValues>) -> MetalSprocketsError'
+  - extended_module: Swift
+    symbols:
+    - decl: extension Never
+      members:
+      - decl: public typealias Body = Never
+    - decl: extension Optional
+      members:
+      - decl: 'public typealias Body = Never where Wrapped: Element'
+- name: MetalSprocketsSupport
+  symbols:
+  - decl: public indirect enum MetalSprocketsError
+    members:
+    - decl: public case configurationError(String)
+    - decl: public case deviceCababilityFailure(String)
+    - decl: public case generic(String)
+    - decl: public case missingBinding(String)
+    - decl: public case missingEnvironment(String)
+    - decl: public case resourceCreationFailure(String)
+    - decl: public case undefined
+    - decl: public case unexpectedError(MetalSprocketsError)
+    - decl: public case validationError(String)
+    - decl: 'public case withHint(MetalSprocketsError, hint: String)'
+    - decl: 'public var description: String { get }'
+  - decl: 'public func isArray(_ value: Any) -> Bool'
+  - decl: 'public func isPOD<T>(_: T) -> Bool'
+  - decl: 'public func isPOD<T>(_ type: T.Type) -> Bool'
+  - decl: 'public func isPODArray<T>(_: [T]) -> Bool'
+  - decl: 'public func unreachable(_ message: @autoclosure () -> String = String(), file: StaticString = #file, line: UInt = #line) -> Never'
+  - decl: 'public func withIntervalSignpost<T>(_ signposter: OSSignposter?, name: StaticString, id: OSSignpostID? = nil, around task: () throws -> T) rethrows -> T'
+  - decl: '@attached public (accessor) @attached(peer, names: prefixed(__Key_)) macro MSEntry()'
+  extensions:
+  - extended_module: Foundation
+    symbols:
+    - decl: extension ProcessInfo
+      members:
+      - decl: 'public var dumpSnapshotsEnabled: Bool { get }'
+      - decl: 'public var fatalErrorOnThrow: Bool { get }'
+      - decl: 'public var loggingEnabled: Bool { get }'
+      - decl: 'public var metalLoggingEnabled: Bool { get }'
+      - decl: 'public var renderViewLogFrameEnabled: Bool { get }'
+      - decl: 'public var verboseLoggingEnabled: Bool { get }'
+  - extended_module: Metal
+    symbols:
+    - decl: extension MTLCommandBufferDescriptor
+      members:
+      - decl: public func addMetalSprocketsLogging() throws
+  - extended_module: ObjectiveC
+    symbols:
+    - decl: extension NSObject
+      members:
+      - decl: 'public func copyWithType<T>(_ type: T.Type) -> T where T : NSObject'
+  - extended_module: Swift
+    symbols:
+    - decl: extension Optional
+      members:
+      - decl: 'public func orFatalError(_ error: @autoclosure () -> MetalSprocketsError) -> Wrapped'
+      - decl: 'public func orFatalError(_ message: @autoclosure () -> String = String()) -> Wrapped'
+      - decl: 'public func orThrow(_ error: @autoclosure () -> MetalSprocketsError) throws -> Wrapped'
+  - extended_module: os
+    symbols:
+    - decl: extension Logger
+      members:
+      - decl: 'public var verbose: Logger? { get }'
+- name: MetalSprocketsUI
+  symbols:
+  - decl: public struct FrameTimingDisplayOptions
+    members:
+    - decl: 'public init(rawValue: Int)'
+    - decl: 'public let rawValue: Int'
+    - decl: 'public static let all: FrameTimingDisplayOptions'
+    - decl: 'public static let `default`: FrameTimingDisplayOptions'
+    - decl: 'public static let fps: FrameTimingDisplayOptions'
+    - decl: 'public static let frameCount: FrameTimingDisplayOptions'
+    - decl: 'public static let frameTime: FrameTimingDisplayOptions'
+    - decl: 'public static let gpuTime: FrameTimingDisplayOptions'
+    - decl: 'public static let range: FrameTimingDisplayOptions'
+  - decl: public struct FrameTimingStatistics
+    members:
+    - decl: 'public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil)'
+    - decl: 'public var averageDeltaTime: TimeInterval'
+    - decl: 'public var currentFPS: Double'
+    - decl: 'public var deltaTime: TimeInterval'
+    - decl: 'public var frameCount: Int'
+    - decl: 'public var gpuTime: TimeInterval?'
+    - decl: 'public var maxDeltaTime: TimeInterval'
+    - decl: 'public var minDeltaTime: TimeInterval'
+  - decl: '@MainActor public struct FrameTimingView'
+    members:
+    - decl: '@MainActor public init(statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions = .default)'
+    - decl: '@MainActor public var body: some View { get }'
+  - decl: public struct FrameUniforms
+    members:
+    - decl: 'public init(index: UInt32, time: Float, deltaTime: Float, viewportSize: SIMD2<UInt32>)'
+    - decl: 'public var deltaTime: Float'
+    - decl: 'public var index: UInt32'
+    - decl: 'public var time: Float'
+    - decl: 'public var viewportSize: SIMD2<UInt32>'
+  - decl: '@MainActor public struct RenderView<Content> where Content : Element'
+    members:
+    - decl: '@MainActor public init(@ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content)'
+    - decl: '@MainActor public var body: some View { get }'
+  - decl: public struct RenderViewContext
+    members:
+    - decl: 'public var frameTimingStatistics: FrameTimingStatistics { get }'
+    - decl: 'public var frameUniforms: FrameUniforms { get }'
+  - decl: public struct RenderViewDebugging
+    members:
+    - decl: 'public static var fatalErrorOnCatch: Bool { get }'
+    - decl: 'public static var logFrame: Bool { get }'
+  - decl: public struct YCbCrBillboardRenderPass
+    members:
+    - decl: 'public init(textureY: any MTLTexture, textureCbCr: any MTLTexture)'
+    - decl: 'public init(textureY: any MTLTexture, textureCbCr: any MTLTexture, textureCoordinates: [SIMD2<Float>])'
+    - decl: 'public var body: some Element { get throws }'
+  extensions:
+  - extended_module: MetalSprockets
+    symbols:
+    - decl: extension Element
+      members:
+      - decl: |
+          public func parameter(_ name: String, color: Color, functionType: MTLFunctionType? = nil) -> some Element
+  - extended_module: SwiftUICore
+    symbols:
+    - decl: extension EnvironmentValues
+      members:
+      - decl: 'public var commandQueue: (any MTLCommandQueue)? { get set }'
+      - decl: 'public var device: (any MTLDevice)? { get set }'
+      - decl: 'public var drawableSizeChange: ((CGSize) -> Void)? { get set }'
+      - decl: 'public var frameTimingChange: ((FrameTimingStatistics) -> Void)? { get set }'
+    - decl: extension View
+      members:
+      - decl: |
+          @MainActor public func capture(_ enabled: Bool = true, target: CaptureTarget = .device, destination: MTLCaptureDestination = .developerTools) -> some View
+      - decl: |
+          @MainActor public func metalAutoResizeDrawable(_ value: Bool) -> some View
+      - decl: |
+          @MainActor public func metalClearColor(_ value: MTLClearColor) -> some View
+      - decl: |
+          @MainActor public func metalClearDepth(_ value: Double) -> some View
+      - decl: |
+          @MainActor public func metalClearStencil(_ value: UInt32) -> some View
+      - decl: |
+          @MainActor public func metalColorPixelFormat(_ value: MTLPixelFormat) -> some View
+      - decl: |
+          @MainActor public func metalColorspace(_ value: CGColorSpace?) -> some View
+      - decl: |
+          @MainActor public func metalDepthStencilAttachmentTextureUsage(_ value: MTLTextureUsage) -> some View
+      - decl: |
+          @MainActor public func metalDepthStencilPixelFormat(_ value: MTLPixelFormat) -> some View
+      - decl: |
+          @MainActor public func metalDepthStencilStorageMode(_ value: MTLStorageMode) -> some View
+      - decl: |
+          @MainActor public func metalEnableSetNeedsDisplay(_ value: Bool) -> some View
+      - decl: |
+          @MainActor public func metalFramebufferOnly(_ value: Bool) -> some View
+      - decl: |
+          @MainActor public func metalIsPaused(_ value: Bool) -> some View
+      - decl: |
+          @MainActor public func metalMultisampleColorAttachmentTextureUsage(_ value: MTLTextureUsage) -> some View
+      - decl: |
+          @MainActor public func metalPreferredFramesPerSecond(_ value: Int) -> some View
+      - decl: |
+          @MainActor public func metalPresentsWithTransaction(_ value: Bool) -> some View
+      - decl: |
+          @MainActor public func metalSampleCount(_ value: Int) -> some View
+      - decl: |
+          @MainActor public func onDrawableSizeChange(perform action: @escaping (CGSize) -> Void) -> some View
+      - decl: |
+          @MainActor public func onFrameTimingChange(perform action: @escaping (FrameTimingStatistics) -> Void) -> some View

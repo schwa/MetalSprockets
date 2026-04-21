@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  XCODE_VERSION: "26.2"
+  XCODE_VERSION: "26.4"
 
 jobs:
   swiftlint:
@@ -61,3 +61,25 @@ jobs:
             -skipPackagePluginValidation \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO
+  api-check:
+    runs-on: "macos-26"
+    steps:
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download MetalToolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Trust plugins
+        run: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
+      - name: Install swift-api-tool
+        run: cargo install swift-api-tool --version 0.2.0
+      - name: Regenerate public API snapshot
+        run: swift-api-tool . -o /tmp/public-api.yaml
+      - name: Compare against committed snapshot
+        run: |
+          if ! diff -u .public-api.yaml /tmp/public-api.yaml; then
+            echo ""
+            echo "::error::Public API has changed. Run 'swift-api-tool . -o .public-api.yaml' locally and commit the update."
+            exit 1
+          fi
