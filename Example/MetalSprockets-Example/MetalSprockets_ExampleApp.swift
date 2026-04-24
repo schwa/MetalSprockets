@@ -37,9 +37,9 @@ struct MetalSprockets_ExampleApp: App {
                     try ImmersiveCubeContent(context: context)
                 }
             }
-            .onFrameTimingChange { [weak immersiveFrameTiming] statistics in
+            .onFrameTimingChange { [immersiveFrameTiming] statistics in
                 Task { @MainActor in
-                    immersiveFrameTiming?.statistics = statistics
+                    immersiveFrameTiming.statistics = statistics
                 }
             }
         }

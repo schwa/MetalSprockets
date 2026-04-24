@@ -11,7 +11,7 @@ struct Vertex {
 
     // Vertex descriptor tells Metal how to interpret the vertex buffer layout.
     // Must match the VertexIn struct in the shader.
-    static let descriptor: MTLVertexDescriptor = {
+    nonisolated(unsafe) static let descriptor: MTLVertexDescriptor = {
         let desc = MTLVertexDescriptor()
 
         // position: float3 at offset 0
@@ -37,7 +37,7 @@ struct Vertex {
 
 // Generates a unit cube (-1 to 1) with RGB gradient colors based on vertex position.
 // Each face has UV coordinates for edge detection in the fragment shader.
-func generateCubeVertices() -> [Vertex] {
+nonisolated func generateCubeVertices() -> [Vertex] {
     // Map position components to RGB: (-1,1) -> (0,1)
     func colorForPosition(_ p: SIMD3<Float>) -> SIMD4<Float> {
         let r = (p.x + 1) * 0.5
@@ -73,13 +73,13 @@ func generateCubeVertices() -> [Vertex] {
 }
 
 // Creates a tumbling rotation matrix for the spinning cube animation
-func cubeRotationMatrix(time: TimeInterval) -> float4x4 {
+nonisolated func cubeRotationMatrix(time: TimeInterval) -> float4x4 {
     let rotationY = float4x4(simd_quatf(angle: Float(time), axis: [0, 1, 0]))
     let rotationX = float4x4(simd_quatf(angle: Float(time) * 0.7, axis: [1, 0, 0]))
     return rotationX * rotationY
 }
 
-extension float4x4 {
+nonisolated extension float4x4 {
     static func translation(_ x: Float, _ y: Float, _ z: Float) -> float4x4 {
         float4x4(columns: (
             SIMD4<Float>(1, 0, 0, 0),
