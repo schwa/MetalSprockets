@@ -1178,12 +1178,12 @@ Expand DocC tutorials for MetalSprockets.
 4. Spinning Cube
 
 ## Ideas for more:
-- Compute shaders
-- Post-processing effects
-- MSAA / MetalFX
-- Working with textures
-- Loading 3D models
 
+- `2026-02-19T00:00:00Z`: Compute shaders
+- `2026-02-19T00:00:00Z`: Post-processing effects
+- `2026-02-19T00:00:00Z`: MSAA / MetalFX
+- `2026-02-19T00:00:00Z`: Working with textures
+- `2026-02-19T00:00:00Z`: Loading 3D models
 - `2026-04-21T04:32:36Z`: Closing — not actively tracking these as discrete issues.
 
 ---
@@ -4412,5 +4412,18 @@ created: 2026-04-21T03:10:58Z
 +++
 
 Expose Metal's pushDebugGroup/popDebugGroup as an element modifier, e.g. .debugGroup("Scene") { ... }. Makes GPU captures and Instruments traces much easier to read. Follow-up from #48 — the label coverage for buffers/textures/pipelines/encoders is already in place; debug groups are the remaining piece.
+
+---
+
+## 341: RenderPipeline PSO cache never hits — ObjectIdentifier of copied descriptor
+
++++
+status: new
+priority: critical
+kind: bug
+created: 2026-05-04T21:33:59Z
++++
+
+RenderPipelineCache.Key includes ObjectIdentifier(renderPipelineDescriptor) but the descriptor is a fresh copy every frame (copyWithType on line ~110 of RenderPipeline.swift). Fresh copy = new ObjectIdentifier = cache miss every time = makeRenderPipelineState called every frame for every RenderPipeline element. With 60+ surfaces × 2 passes this causes 120+ PSO compilations per frame, dropping from 60fps to ~37fps. The other key fields (vertex/fragment function, vertex descriptor, pixel formats, depth/stencil) already capture what matters — the descriptor ObjectIdentifier should be removed from the key.
 
 ---
