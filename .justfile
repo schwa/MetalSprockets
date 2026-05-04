@@ -75,6 +75,9 @@ check-docs: generate-doccarchive
 list-external-links: generate-doccarchive
     lychee '/tmp/MetalSprockets.doccarchive/**/*.json' --scheme https --scheme http --verbose 2>&1 | grep -oE 'https?://[^ |]+' | sort -u
 
+update-api:
+    swift-api-tool . -o .public-api.yaml
+
 check-docs-diagnostics:
     #!/usr/bin/env bash
     for target in MetalSprockets MetalSprocketsUI; do

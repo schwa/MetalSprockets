@@ -120,7 +120,6 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
             fragmentFunction: ObjectIdentifier(fragmentShader.function),
             linkedFunctions: environment.linkedFunctions.map { ObjectIdentifier($0) },
             vertexDescriptor: environment.vertexDescriptor.map { ObjectIdentifier($0) },
-            renderPipelineDescriptor: ObjectIdentifier(renderPipelineDescriptor),
             colorPixelFormat0: color0Texture?.pixelFormat ?? .invalid,
             colorSampleCount0: color0Texture?.sampleCount ?? 1,
             depthPixelFormat: depthTexture?.pixelFormat ?? .invalid,
@@ -230,7 +229,6 @@ private final class RenderPipelineCache: NodeElementCache {
         let fragmentFunction: ObjectIdentifier
         let linkedFunctions: ObjectIdentifier?
         let vertexDescriptor: ObjectIdentifier?
-        let renderPipelineDescriptor: ObjectIdentifier
         let colorPixelFormat0: MTLPixelFormat
         let colorSampleCount0: Int
         let depthPixelFormat: MTLPixelFormat
