@@ -76,7 +76,14 @@ list-external-links: generate-doccarchive
     lychee '/tmp/MetalSprockets.doccarchive/**/*.json' --scheme https --scheme http --verbose 2>&1 | grep -oE 'https?://[^ |]+' | sort -u
 
 update-api:
-    swift-api-tool . -o .public-api.yaml
+    #!/usr/bin/env bash
+    swift-api-tool . -o /tmp/public-api-new.yaml
+    if diff -u .public-api.yaml /tmp/public-api-new.yaml | delta; then
+        echo "No API changes."
+    else
+        cp /tmp/public-api-new.yaml .public-api.yaml
+        echo "Updated .public-api.yaml"
+    fi
 
 check-docs-diagnostics:
     #!/usr/bin/env bash
