@@ -77,10 +77,12 @@ list-external-links: generate-doccarchive
 
 update-api:
     #!/usr/bin/env bash
+    set -euo pipefail
     swift-api-tool . -o /tmp/public-api-new.yaml
-    if diff -u .public-api.yaml /tmp/public-api-new.yaml | delta; then
+    if diff -u .public-api.yaml /tmp/public-api-new.yaml > /tmp/public-api-diff 2>/dev/null; then
         echo "No API changes."
     else
+        delta < /tmp/public-api-diff
         cp /tmp/public-api-new.yaml .public-api.yaml
         echo "Updated .public-api.yaml"
     fi

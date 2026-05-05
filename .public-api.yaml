@@ -61,6 +61,8 @@ modules:
         public func renderPipelineDescriptorModifier(_ modify: @escaping (MTLRenderPipelineDescriptor) -> Void) -> some Element
     - decl: public func run() throws
     - decl: |
+        public func shaderStore(_ store: ShaderStore) -> some Element
+    - decl: |
         public func stencilAttachment(_ texture: any MTLTexture) -> some Element
     - decl: |
         @ElementBuilder public func useComputeResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage) -> some Element
@@ -98,6 +100,9 @@ modules:
     - decl: public func finalize() async throws
     - decl: 'public func render<Content>(_ element: Content) async throws where Content : Element'
   - decl: public final class ShaderCache
+    members:
+    - decl: public init()
+  - decl: public final class ShaderStore
     members:
     - decl: public init()
   - decl: public struct AnyElement
@@ -244,6 +249,7 @@ modules:
     - decl: 'public var renderPassDescriptor: MTLRenderPassDescriptor? { get set }'
     - decl: 'public var renderPipelineDescriptor: MTLRenderPipelineDescriptor? { get set }'
     - decl: 'public var renderPipelineState: (any MTLRenderPipelineState)? { get set }'
+    - decl: 'public var shaderStore: ShaderStore? { get set }'
     - decl: 'public var stencilAttachment: (any MTLTexture)? { get set }'
     - decl: 'public var vertexDescriptor: MTLVertexDescriptor? { get set }'
     - decl: 'public subscript<Key>(key: Key.Type) -> Key.Value where Key : MSEnvironmentKey { get set }'
@@ -552,6 +558,7 @@ modules:
       - decl: 'public var device: (any MTLDevice)? { get set }'
       - decl: 'public var drawableSizeChange: ((CGSize) -> Void)? { get set }'
       - decl: 'public var frameTimingChange: ((FrameTimingStatistics) -> Void)? { get set }'
+      - decl: 'public var shaderStore: ShaderStore? { get set }'
     - decl: extension View
       members:
       - decl: |
@@ -592,3 +599,5 @@ modules:
           @MainActor public func onDrawableSizeChange(perform action: @escaping (CGSize) -> Void) -> some View
       - decl: |
           @MainActor public func onFrameTimingChange(perform action: @escaping (FrameTimingStatistics) -> Void) -> some View
+      - decl: |
+          @MainActor public func shaderStore(_ store: ShaderStore) -> some View
