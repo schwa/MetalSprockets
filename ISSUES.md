@@ -4509,3 +4509,20 @@ created: 2026-05-05T21:12:22Z
 Find all code similar to:\n\n```swift\nnonisolated func requiresSetup(comparedTo old: RenderPipelineDescriptorModifier<Content>) -> Bool {\n    // Since we can't compare closures, be conservative\n    true\n}\n```\n\nThese always return `true` because closures can't be compared, causing unnecessary pipeline rebuilds. Investigate alternative approaches (e.g., identity tokens, dirty flags, or value-based descriptors) to avoid redundant setup work.
 
 ---
+
+## 344: RenderView.body creates MTLCommandQueue during GPU work
+
++++
+status: new
+priority: high
+kind: bug
+created: 2026-05-05T21:45:06Z
++++
+
+RenderView.body evaluates `device.makeCommandQueue()` every time SwiftUI re-evaluates the body (when no commandQueue is provided via the environment). This can happen during an active draw callback, triggering the Metal warning:
+
+> Your application created a MTLCommandQueue object during GPU work
+
+The commandQueue should be created once and cached, similar to how RenderViewViewModel is lazily created via ViewModelBox (#337). The `device ?? _MTLCreateSystemDefaultDevice()` line has the same potential issue.
+
+---
