@@ -4429,3 +4429,49 @@ closed: 2026-05-04T21:58:17Z
 RenderPipelineCache.Key includes ObjectIdentifier(renderPipelineDescriptor) but the descriptor is a fresh copy every frame (copyWithType on line ~110 of RenderPipeline.swift). Fresh copy = new ObjectIdentifier = cache miss every time = makeRenderPipelineState called every frame for every RenderPipeline element. With 60+ surfaces × 2 passes this causes 120+ PSO compilations per frame, dropping from 60fps to ~37fps. The other key fields (vertex/fragment function, vertex descriptor, pixel formats, depth/stencil) already capture what matters — the descriptor ObjectIdentifier should be removed from the key.
 
 ---
+
+## 342: RenderPipelineDescriptorModifier forces PSO rebuild every frame
+
++++
+status: new
+priority: critical
+kind: bug
+created: 2026-05-05T21:08:57Z
++++
+
+RenderPipelineDescriptorModifier.requiresSetup always returns true (can't compare closures). This causes setupEnter to run every frame, which calls copyWithType on the descriptor. The copy creates new object identities for vertexDescriptor (and potentially other sub-objects), causing RenderPipeline's PSO cache key to change every frame — defeating the #341 fix. Result: makeRenderPipelineState called every frame for every RenderPipeline that has a renderPipelineDescriptorModifier ancestor.
+
+- `2026-05-05T21:12:14Z`: ## Analysis
+
+The problem has two parts:
+
+1. `RenderPipelineDescriptorModifier.requiresSetup(comparedTo:)` always returns `true` because closures aren't comparable. This means `setupEnter` runs every frame.
+
+2. `setupEnter` calls `copyWithType` on the `MTLRenderPipelineDescriptor`, creating a new object identity each frame. Downstream, `RenderPipeline`'s PSO cache key may be affected by the fresh descriptor identity (e.g. if the modifier sets a new `vertexDescriptor` on the copy, that sub-object gets a new identity each frame).
+
+Even if child `needsSetup` flags aren't directly propagated, the modifier writing a fresh-identity descriptor into the environment every frame means any child `RenderPipeline` that *does* run setup (for any reason) will always cache-miss.
+
+## Proposed Fix
+
+Follow the same pattern as `RenderPassDescriptorModifier`:
+
+- Move the modification logic from `setupEnter` to `configureNodeBodyless`, which runs every frame during the update/tree-walk phase (before setup). Environment values set here are inherited by children via `applyInheritedEnvironment`.
+- Return `false` from `requiresSetup(comparedTo:)` since the modifier no longer has setup-phase work.
+- Read the descriptor from the parent node's environment (like `RenderPassDescriptorModifier` does) to get the fresh value for the current frame.
+
+This way the descriptor is always correctly modified for children, but no unnecessary `needsSetup` flags are set, and `RenderPipeline`'s cache can work properly.
+
+---
+
+## 343: Investigate conservative requiresSetup patterns that always return true due to closure comparison
+
++++
+status: new
+priority: medium
+kind: task
+created: 2026-05-05T21:12:22Z
++++
+
+Find all code similar to:\n\n```swift\nnonisolated func requiresSetup(comparedTo old: RenderPipelineDescriptorModifier<Content>) -> Bool {\n    // Since we can't compare closures, be conservative\n    true\n}\n```\n\nThese always return `true` because closures can't be compared, causing unnecessary pipeline rebuilds. Investigate alternative approaches (e.g., identity tokens, dirty flags, or value-based descriptors) to avoid redundant setup work.
+
+---
