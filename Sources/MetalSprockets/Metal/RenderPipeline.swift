@@ -119,7 +119,7 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
             vertexFunction: ObjectIdentifier(vertexShader.function),
             fragmentFunction: ObjectIdentifier(fragmentShader.function),
             linkedFunctions: environment.linkedFunctions.map { ObjectIdentifier($0) },
-            vertexDescriptor: environment.vertexDescriptor.map { ObjectIdentifier($0) },
+            vertexDescriptor: environment.vertexDescriptor.map { NSObjectValueKey(object: $0) },
             colorPixelFormat0: color0Texture?.pixelFormat ?? .invalid,
             colorSampleCount0: color0Texture?.sampleCount ?? 1,
             depthPixelFormat: depthTexture?.pixelFormat ?? .invalid,
@@ -223,12 +223,22 @@ public struct RenderPipeline <Content>: Element, BodylessElement, BodylessConten
     }
 }
 
+/// Wraps an `NSObject` for value-based `Hashable` conformance using
+/// `isEqual(_:)` / `hash`. Use instead of `ObjectIdentifier` when the
+/// object may be recreated each frame with identical contents (e.g.
+/// `MTLVertexDescriptor`). See #342.
+private struct NSObjectValueKey<T: NSObject>: Hashable {
+    let object: T
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.object.isEqual(rhs.object) }
+    func hash(into hasher: inout Hasher) { hasher.combine(object.hash) }
+}
+
 private final class RenderPipelineCache: NodeElementCache {
     struct Key: Hashable {
         let vertexFunction: ObjectIdentifier
         let fragmentFunction: ObjectIdentifier
         let linkedFunctions: ObjectIdentifier?
-        let vertexDescriptor: ObjectIdentifier?
+        let vertexDescriptor: NSObjectValueKey<MTLVertexDescriptor>?
         let colorPixelFormat0: MTLPixelFormat
         let colorSampleCount0: Int
         let depthPixelFormat: MTLPixelFormat

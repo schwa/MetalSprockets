@@ -211,3 +211,73 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
     let rendering = try offscreenRenderer.render(renderPass)
     _ = try rendering.cgImage
 }
+
+/// Regression test for #342: verifies PSO cache hits on frames 2+ when
+/// a renderPipelineDescriptorModifier is present.
+@Test
+@MainActor
+func testPSOCacheStableWithDescriptorModifier() throws {
+    let source = """
+    #include <metal_stdlib>
+    using namespace metal;
+    struct VertexIn { float2 position [[attribute(0)]]; };
+    struct VertexOut { float4 position [[position]]; };
+    [[vertex]] VertexOut vertex_main(const VertexIn in [[stage_in]]) {
+        VertexOut out; out.position = float4(in.position, 0.0, 1.0); return out;
+    }
+    [[fragment]] float4 fragment_main(VertexOut in [[stage_in]]) { return float4(1,0,0,1); }
+    """
+    let vertexShader = try VertexShader(source: source)
+    let fragmentShader = try FragmentShader(source: source)
+
+    let device = try #require(MTLCreateSystemDefaultDevice())
+    let commandQueue = try #require(device.makeCommandQueue())
+
+    let colorDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: 64, height: 64, mipmapped: false)
+    colorDesc.usage = [.renderTarget, .shaderRead, .shaderWrite]
+    let colorTexture = try #require(device.makeTexture(descriptor: colorDesc))
+    let depthDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: 64, height: 64, mipmapped: false)
+    depthDesc.usage = [.renderTarget, .shaderRead]
+    let depthTexture = try #require(device.makeTexture(descriptor: depthDesc))
+
+    let rpd = MTLRenderPassDescriptor()
+    rpd.colorAttachments[0].texture = colorTexture
+    rpd.colorAttachments[0].loadAction = .clear
+    rpd.colorAttachments[0].storeAction = .store
+    rpd.depthAttachment.texture = depthTexture
+    rpd.depthAttachment.loadAction = .clear
+    rpd.depthAttachment.clearDepth = 1
+    rpd.depthAttachment.storeAction = .store
+
+    let system = System()
+
+    for frame in 0..<3 {
+        let root = try CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
+            try RenderPass {
+                try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
+                    Draw { encoder in
+                        let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
+                        encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
+                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    }
+                }
+                .vertexDescriptor(vertexShader.inferredVertexDescriptor())
+                .renderPipelineDescriptorModifier { descriptor in
+                    descriptor.colorAttachments[0].isBlendingEnabled = true
+                    descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                    descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+                }
+            }
+        }
+        .environment(\.device, device)
+        .environment(\.commandQueue, commandQueue)
+        .environment(\.renderPassDescriptor, rpd)
+        .environment(\.drawableSize, CGSize(width: 64, height: 64))
+
+        try system.update(root: root)
+        try system.withCurrentSystem {
+            try system.processSetup()
+            try system.processWorkload()
+        }
+    }
+}

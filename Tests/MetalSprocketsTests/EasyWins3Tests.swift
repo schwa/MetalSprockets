@@ -20,11 +20,14 @@ struct EasyWins3Tests {
 
     // MARK: RenderPipelineDescriptorModifier.requiresSetup
 
-    @Test("RenderPipelineDescriptorModifier.requiresSetup is true (conservative)")
+    // RenderPipelineDescriptorModifier now applies its modification during
+    // configureNodeBodyless (every frame) instead of setupEnter, so it no
+    // longer needs setup. See #342.
+    @Test("RenderPipelineDescriptorModifier.requiresSetup is false")
     func renderPipelineDescriptorModifierRequiresSetup() {
         let a = RenderPipelineDescriptorModifier(content: EmptyElement()) { _ in }
         let b = RenderPipelineDescriptorModifier(content: EmptyElement()) { _ in }
-        #expect(a.requiresSetup(comparedTo: b) == true)
+        #expect(a.requiresSetup(comparedTo: b) == false)
     }
 
     // MARK: Element.printDump / dump

@@ -74,7 +74,11 @@ public struct RenderPass <Content>: Element, BodylessElement, BodylessContentEle
         self.content = try content()
     }
 
-    func setupEnter(_ node: Node) throws {
+    func configureNodeBodyless(_ node: Node) throws {
+        // Create a fresh pipeline descriptor each frame. This is lightweight
+        // (just an ObjC alloc) and ensures children — including any
+        // RenderPipelineDescriptorModifier — always start from a clean slate
+        // during the update phase. See #342.
         let renderPipelineDescriptor = MTLRenderPipelineDescriptor()
         node.environmentValues.renderPipelineDescriptor = renderPipelineDescriptor
     }

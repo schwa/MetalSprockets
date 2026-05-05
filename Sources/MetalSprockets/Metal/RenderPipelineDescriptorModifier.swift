@@ -9,10 +9,18 @@ public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElemen
         try visit(content)
     }
 
-    func setupEnter(_ node: Node) throws {
-        // Run during setup phase AFTER RenderPass.setupEnter() creates the descriptor
-        // but BEFORE RenderPipeline.setupEnter() uses it
-        guard let renderPipelineDescriptor = node.environmentValues.renderPipelineDescriptor else {
+    // Apply modifier during configureNode phase (runs every frame during update).
+    // This ensures the modified descriptor is inherited by children.
+    // We read from the PARENT's environment to get the fresh descriptor for this frame,
+    // since the node's own environment may have a stale cached value.
+    // Mirrors the pattern used by RenderPassDescriptorModifier. See #342.
+    func configureNodeBodyless(_ node: Node) throws {
+        guard let system = System.current else {
+            fatalError("RenderPipelineDescriptorModifier: No System is currently active.")
+        }
+
+        let parent = system.activeNodeStack.count >= 2 ? system.activeNodeStack[system.activeNodeStack.count - 2] : nil
+        guard let renderPipelineDescriptor = parent?.environmentValues.renderPipelineDescriptor ?? node.environmentValues.renderPipelineDescriptor else {
             return // Descriptor not set yet
         }
 
@@ -22,8 +30,7 @@ public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElemen
     }
 
     nonisolated func requiresSetup(comparedTo old: RenderPipelineDescriptorModifier<Content>) -> Bool {
-        // Since we can't compare closures, be conservative
-        true
+        false
     }
 }
 

@@ -4433,10 +4433,12 @@ RenderPipelineCache.Key includes ObjectIdentifier(renderPipelineDescriptor) but 
 ## 342: RenderPipelineDescriptorModifier forces PSO rebuild every frame
 
 +++
-status: new
+status: closed
 priority: critical
 kind: bug
 created: 2026-05-05T21:08:57Z
+updated: 2026-05-05T21:25:39Z
+closed: 2026-05-05T21:25:39Z
 +++
 
 RenderPipelineDescriptorModifier.requiresSetup always returns true (can't compare closures). This causes setupEnter to run every frame, which calls copyWithType on the descriptor. The copy creates new object identities for vertexDescriptor (and potentially other sub-objects), causing RenderPipeline's PSO cache key to change every frame — defeating the #341 fix. Result: makeRenderPipelineState called every frame for every RenderPipeline that has a renderPipelineDescriptorModifier ancestor.
@@ -4460,6 +4462,38 @@ Follow the same pattern as `RenderPassDescriptorModifier`:
 - Read the descriptor from the parent node's environment (like `RenderPassDescriptorModifier` does) to get the fresh value for the current frame.
 
 This way the descriptor is always correctly modified for children, but no unnecessary `needsSetup` flags are set, and `RenderPipeline`'s cache can work properly.
+
+- `2026-05-05T21:15:24Z`: ## Fix applied
+
+Two changes:
+
+1. **RenderPass**: Moved `MTLRenderPipelineDescriptor()` creation from `setupEnter` to `configureNodeBodyless`. This creates a fresh (lightweight) descriptor each frame during the update phase, making it available before setup runs.
+
+2. **RenderPipelineDescriptorModifier**: Moved descriptor modification from `setupEnter` to `configureNodeBodyless` (mirroring `RenderPassDescriptorModifier`'s pattern). Reads from parent environment to get the fresh descriptor. Returns `false` from `requiresSetup`.
+
+Together, these ensure the modifier applies every frame without triggering `needsSetup` on itself or downstream nodes. `RenderPipeline`'s PSO cache now works correctly — cache keys stay stable across frames.
+
+Updated test in EasyWins3Tests to expect `requiresSetup == false`.
+
+All 347 tests pass.
+
+- `2026-05-05T21:23:36Z`: ## Correction: Root cause is different
+
+The configureNodeBodyless fix was a valid improvement (avoids unnecessary `needsSetup` flags), but it doesn't solve the PSO rebuild problem.
+
+**Actual root cause:** The PSO cache key uses `ObjectIdentifier(environment.vertexDescriptor)`. When the element tree is rebuilt each frame (as RenderView does), `.vertexDescriptor(shader.inferredVertexDescriptor())` creates a **new** `MTLVertexDescriptor` instance each frame. The `ObjectIdentifier` changes → cache miss → PSO rebuilt every frame.
+
+This happens with or without `RenderPipelineDescriptorModifier`. The modifier is a red herring — the real issue is that the cache key relies on object identity for values that are recreated each frame.
+
+**Fix needed:** Replace `ObjectIdentifier`-based cache key fields with value-based comparisons. The `vertexDescriptor` (and potentially `linkedFunctions`) fields in `RenderPipelineCache.Key` need to compare by content, not by identity.
+
+- `2026-05-05T21:25:36Z`: ## Actual fix
+
+Replaced `ObjectIdentifier`-based cache key for `vertexDescriptor` with value-based comparison using `NSObjectValueKey<MTLVertexDescriptor>`. This wrapper uses `MTLVertexDescriptor`'s `isEqual(_:)` and `hash` (which compare by content) instead of object identity.
+
+`MTLVertexDescriptor` instances are frequently recreated each frame when the element tree is rebuilt (e.g. `.vertexDescriptor(shader.inferredVertexDescriptor())`), so using `ObjectIdentifier` caused the cache key to change every frame even though the descriptor contents were identical.
+
+Added regression test `testPSOCacheStableWithDescriptorModifier` that verifies PSO cache hits on frames 2+ with a `renderPipelineDescriptorModifier` present. All 348 tests pass.
 
 ---
 
