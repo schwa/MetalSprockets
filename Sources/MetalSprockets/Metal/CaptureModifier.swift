@@ -23,8 +23,11 @@ internal struct CaptureModifier <Content>: Element, BodylessElement, BodylessCon
 
     func workloadEnter(_ node: Node) throws {
         guard enabled else {
+            logger?.verbose?.info("capture: disabled, skipping.")
             return
         }
+
+        logger?.info("capture: starting capture (target=\(String(describing: target)), destination=\(String(describing: destination)))")
 
         let manager = MTLCaptureManager.shared()
 
@@ -45,14 +48,17 @@ internal struct CaptureModifier <Content>: Element, BodylessElement, BodylessCon
         case .device:
             let device = try node.environmentValues.device.orThrow(.missingEnvironment(\.device))
             descriptor.captureObject = device
+            logger?.verbose?.info("capture: target is device.")
 
         case .commandQueue:
             let commandQueue = try node.environmentValues.commandQueue.orThrow(.missingEnvironment(\.commandQueue))
             descriptor.captureObject = commandQueue
+            logger?.verbose?.info("capture: target is commandQueue.")
         }
 
         do {
             try manager.startCapture(with: descriptor)
+            logger?.info("capture: capture started successfully.")
         } catch {
             logger?.warning("capture: Failed to start capture: \(error)")
         }
@@ -65,6 +71,9 @@ internal struct CaptureModifier <Content>: Element, BodylessElement, BodylessCon
         let manager = MTLCaptureManager.shared()
         if manager.isCapturing {
             manager.stopCapture()
+            logger?.info("capture: capture stopped.")
+        } else {
+            logger?.verbose?.info("capture: workloadExit called but manager was not capturing.")
         }
     }
 

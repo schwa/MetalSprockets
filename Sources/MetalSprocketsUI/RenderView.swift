@@ -253,6 +253,9 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             viewModel.content = content
             viewModel.drawableSizeChange = drawableSizeChange
             viewModel.frameTimingChange = frameTimingChange
+            if viewModel.captureConfiguration != captureConfiguration {
+                logger?.info("RenderView: capture configuration changed to \(String(describing: captureConfiguration))")
+            }
             viewModel.captureConfiguration = captureConfiguration
             viewModel.shaderStore = shaderStore
         }
