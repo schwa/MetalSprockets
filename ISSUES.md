@@ -4418,10 +4418,12 @@ Expose Metal's pushDebugGroup/popDebugGroup as an element modifier, e.g. .debugG
 ## 341: RenderPipeline PSO cache never hits — ObjectIdentifier of copied descriptor
 
 +++
-status: new
+status: closed
 priority: critical
 kind: bug
 created: 2026-05-04T21:33:59Z
+updated: 2026-05-04T21:58:17Z
+closed: 2026-05-04T21:58:17Z
 +++
 
 RenderPipelineCache.Key includes ObjectIdentifier(renderPipelineDescriptor) but the descriptor is a fresh copy every frame (copyWithType on line ~110 of RenderPipeline.swift). Fresh copy = new ObjectIdentifier = cache miss every time = makeRenderPipelineState called every frame for every RenderPipeline element. With 60+ surfaces × 2 passes this causes 120+ PSO compilations per frame, dropping from 60fps to ~37fps. The other key fields (vertex/fragment function, vertex descriptor, pixel formats, depth/stencil) already capture what matters — the descriptor ObjectIdentifier should be removed from the key.
