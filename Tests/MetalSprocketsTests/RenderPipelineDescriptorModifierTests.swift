@@ -251,7 +251,7 @@ func testPSOCacheStableWithDescriptorModifier() throws {
 
     let system = System()
 
-    for frame in 0..<3 {
+    for _ in 0..<3 {
         let root = try CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
             try RenderPass {
                 try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
