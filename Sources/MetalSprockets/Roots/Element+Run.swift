@@ -3,20 +3,14 @@ import MetalSprocketsSupport
 import MetalSupport
 
 public extension Element {
+    /// Runs the element tree once against a freshly-created device and command
+    /// queue.
+    ///
+    /// This is a convenience for one-shot, headless execution. For repeated
+    /// execution of the same (or structurally similar) tree, prefer ``Runner``,
+    /// which amortizes setup work across calls.
     func run() throws {
-        // TODO: #19 This has surprisingly little to do with compute. It's basically the same as offscreen renderer.
-        let device = _MTLCreateSystemDefaultDevice()
-        let commandQueue = try device._makeCommandQueue()
-
-        let content = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
-            self
-        }
-        .environment(\.commandQueue, commandQueue)
-        .environment(\.device, device)
-
-        let system = System()
-        try system.update(root: content)
-        try system.processSetup()
-        try system.processWorkload()
+        let runner = try Runner()
+        try runner.run(self)
     }
 }

@@ -99,6 +99,12 @@ modules:
     - decl: 'public let videoCodec: AVVideoCodecType'
     - decl: public func finalize() async throws
     - decl: 'public func render<Content>(_ element: Content) async throws where Content : Element'
+  - decl: public final class Runner
+    members:
+    - decl: 'public init(device: (any MTLDevice)? = nil, commandQueue: (any MTLCommandQueue)? = nil) throws'
+    - decl: 'public let commandQueue: any MTLCommandQueue'
+    - decl: 'public let device: any MTLDevice'
+    - decl: 'public func run<Content>(_ content: Content) throws where Content : Element'
   - decl: public final class ShaderCache
     members:
     - decl: public init()

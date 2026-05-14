@@ -4554,3 +4554,40 @@ Real-world use case: an offline UV-atlas visibility bake in <https://github.com/
 Not prescribing the shape of the fix — could be a new public "Runner" type, a reusable `System`, an extended `OffscreenRenderer`, or something else entirely. Flagging the problem so it can be considered.
 
 ---
+
+## 346: EnvironmentWritingModifier.requiresSetup always returns true, defeating setup-phase amortization
+
++++
+status: new
+priority: medium
+kind: bug
+labels: performance
+depends: 345
+created: 2026-05-14T04:14:09Z
++++
+
+[`EnvironmentWritingModifier.requiresSetup(comparedTo:)`](Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift) currently returns `true` unconditionally, with the comment "Since we can't compare closures, be conservative".
+
+Because every `.environment(_:_:)` modifier produces an `EnvironmentWritingModifier`, this means that any element tree wrapped in `.environment()` always re-triggers per-node setup on every `System.update(root:)`, even when the tree is structurally identical to the previous one.
+
+This is the main remaining blocker for #345 (Runner amortization). With a reused `System`, nodes are preserved across runs and `processSetup` could skip them — but the conservative `requiresSetup = true` here forces setup to re-run anyway. The wins from `Runner` today are limited to:
+
+- Not allocating a new `System` per call.
+- Not creating a new `MTLCommandQueue` per call.
+- Reusing cached environment values on nodes (e.g. `renderPipelineState`), so PSO lookups hit cache.
+
+The full "setup phase is a no-op on repeated calls with stable trees" win is gated on this.
+
+### Possible approaches
+
+1. **Compare the resulting environment values.** The modifier applies a closure to `MSEnvironmentValues`; if we apply both old and new closures to a baseline and diff the resulting storage, we can detect when nothing meaningful changed. Cost: one extra `MSEnvironmentValues` construction per modifier per update.
+2. **Specialize the public `environment(_:_:)` overload.** The keypath + value form has enough information to compare — store the keypath + `AnyHashable` value on the modifier and compare directly. Only the closure-form (if there is one) needs to stay conservative.
+3. **Track `requiresSetup` more granularly.** Most env values don't affect setup at all; only a small set (pipeline-relevant ones like `renderPipelineDescriptor`, MSAA settings, etc.) actually do. Could opt into setup invalidation per environment key.
+
+Approach 2 is probably the cleanest first step and covers the vast majority of real-world uses.
+
+### Repro / impact
+
+Easy to demonstrate with a `Runner` test: run the same element tree N times, count how many times `BodylessElement.setup` is invoked. Today it's invoked on every run; with this fixed it should drop to once (on the first run) for any subtree under a stable `.environment()` chain.
+
+---

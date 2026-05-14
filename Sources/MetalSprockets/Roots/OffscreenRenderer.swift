@@ -54,6 +54,7 @@ public struct OffscreenRenderer {
     public var depthTexture: MTLTexture
     public var renderPassDescriptor: MTLRenderPassDescriptor
     public var commandQueue: MTLCommandQueue
+    private let runner: Runner
 
     /// Creates an offscreen renderer with custom textures.
     ///
@@ -78,7 +79,8 @@ public struct OffscreenRenderer {
         renderPassDescriptor.depthAttachment.storeAction = .store // TODO: #25 This is hardcoded. Should usually be .dontCare but we need to read back in some examples.
         self.renderPassDescriptor = renderPassDescriptor
 
-        commandQueue = try device._makeCommandQueue()
+        self.runner = try Runner(device: device)
+        self.commandQueue = runner.commandQueue
     }
 
     /// Creates an offscreen renderer with automatically created textures.
@@ -118,21 +120,10 @@ public extension OffscreenRenderer {
     /// - Returns: A ``Rendering`` containing the output texture.
     /// - Throws: Any errors that occur during rendering.
     func render<Content>(_ content: Content) throws -> Rendering where Content: Element {
-        // Use the device and commandQueue from init, not new ones
-        // Creating a new device here would cause a device mismatch with the textures
-        let content = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
-            content
-        }
-        .environment(\.device, device)
-        .environment(\.commandQueue, commandQueue)
-        .environment(\.renderPassDescriptor, renderPassDescriptor)
-        .environment(\.drawableSize, size)
-        let system = System()
-        try system.update(root: content)
-        try system.withCurrentSystem {
-            try system.processSetup()
-            try system.processWorkload()
-        }
+        let wrapped = content
+            .environment(\.renderPassDescriptor, renderPassDescriptor)
+            .environment(\.drawableSize, size)
+        try runner.run(wrapped)
         return .init(texture: colorTexture)
     }
 }

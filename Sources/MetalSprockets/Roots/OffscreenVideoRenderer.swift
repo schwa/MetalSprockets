@@ -15,6 +15,7 @@ public final class OffscreenVideoRenderer {
     public let videoCodec: AVVideoCodecType
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
+    let runner: Runner
     let assetWriter: AVAssetWriter
     let assetWriterInput: AVAssetWriterInput
     let pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor
@@ -30,7 +31,6 @@ public final class OffscreenVideoRenderer {
 
     var frameNumber: Int = 0
     let frameDuration: CMTime
-    let system: System
 
     public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264) throws {
         try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, waitUntilReady: nil)
@@ -46,8 +46,9 @@ public final class OffscreenVideoRenderer {
         self.pixelFormat = pixelFormat
         self.videoCodec = videoCodec
 
-        device = _MTLCreateSystemDefaultDevice()
-        commandQueue = try device._makeCommandQueue()
+        runner = try Runner()
+        device = runner.device
+        commandQueue = runner.commandQueue
 
         let colorTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: pixelFormat,
@@ -118,7 +119,6 @@ public final class OffscreenVideoRenderer {
         assetWriter.startSession(atSourceTime: .zero)
 
         frameDuration = CMTime(value: 1, timescale: CMTimeScale(frameRate))
-        system = System()
 
         if let waitUntilReady {
             self.waitUntilReady = waitUntilReady
@@ -165,24 +165,12 @@ public final class OffscreenVideoRenderer {
     }
 
     public func render<Content>(_ element: Content) async throws where Content: Element {
-        // Wrap the element with necessary environment values
-        let wrappedElement = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
-            element
-        }
-        .environment(\.device, device)
-        .environment(\.commandQueue, commandQueue)
-        .environment(\.renderPassDescriptor, renderPassDescriptor)
-        .environment(\.drawableSize, size)
+        let wrapped = element
+            .environment(\.renderPassDescriptor, renderPassDescriptor)
+            .environment(\.drawableSize, size)
 
-        // Update the system with the element (could be same element with mutations or new element)
-        try system.update(root: wrappedElement)
-
-        // Process the render
-        try system.withCurrentSystem {
-            // TODO: #220 Setup should be smart enough to skip elements that are already configured - avoid redundant setup every frame
-            try system.processSetup()
-            try system.processWorkload()
-        }
+        // TODO: #220 Setup should be smart enough to skip elements that are already configured - avoid redundant setup every frame
+        try runner.run(wrapped)
 
         // Write the frame to video
         try await appendFrame()
