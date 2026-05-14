@@ -4526,3 +4526,31 @@ RenderView.body evaluates `device.makeCommandQueue()` every time SwiftUI re-eval
 The commandQueue should be created once and cached, similar to how RenderViewViewModel is lazily created via ViewModelBox (#337). The `device ?? _MTLCreateSystemDefaultDevice()` line has the same potential issue.
 
 ---
+
+## 345: Repeated .run() calls rebuild System and pay per-call overhead
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: performance
+created: 2026-05-14T04:06:44Z
++++
+
+When driving MetalSprockets headlessly across many independent one-shot workloads (e.g. an offline bake that runs a fixed element tree per input sample, hundreds or thousands of times), `Element.run()` is the obvious entry point.
+
+Each `.run()` call:
+- Looks up the default `MTLDevice` and creates a new `MTLCommandQueue`.
+- Allocates a new `System`.
+- Runs the full setup phase (PSO cache lookups, descriptor resolution, etc.).
+- Runs the workload phase, commits a command buffer, and `waitUntilCompleted`s.
+
+For a high-throughput batch workload, this per-call setup adds up. Profiling a bake that runs ~2900 `.run()` calls (each a one-frame depth render + compute dispatch on a stable element tree) shows non-trivial time spent re-running setup and re-creating per-call infrastructure that, in principle, could be amortised across all the calls.
+
+There's no obvious public API for "run this element tree N times against a persistent driver / System / command queue." `OffscreenRenderer` is the closest, but it's targeted at a single render surface; `Element.run()` is general but throws everything away each call. Users have to either tolerate the overhead or reach into package-internal types (`System` is `package final class`) to roll their own.
+
+Real-world use case: an offline UV-atlas visibility bake in <https://github.com/schwa/RoomCaptureTestbed>. Reusing one driver across all frames is the last big remaining win after caching the `ShaderLibrary` + resolved shader functions and reducing the per-frame attachment sizes.
+
+Not prescribing the shape of the fix — could be a new public "Runner" type, a reusable `System`, an extended `OffscreenRenderer`, or something else entirely. Flagging the problem so it can be considered.
+
+---
