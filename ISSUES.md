@@ -4591,3 +4591,27 @@ Approach 2 is probably the cleanest first step and covers the vast majority of r
 Easy to demonstrate with a `Runner` test: run the same element tree N times, count how many times `BodylessElement.setup` is invoked. Today it's invoked on every run; with this fixed it should drop to once (on the first run) for any subtree under a stable `.environment()` chain.
 
 ---
+
+## 347: Replace isPOD with BitwiseCopyable where possible
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-05-18T04:25:45Z
++++
+
+Swift 6's `BitwiseCopyable` protocol covers most of what our `isPOD`/`_isPOD` helper checks (trivially copyable, no refs, no ARC), but as a compile-time constraint rather than a runtime check.
+
+Investigate replacing uses of `isPOD` in `Sources/MetalSprocketsSupport/BaseSupport.swift` and its call sites:
+
+- `Sources/MetalSprockets/Metal/Parameters.swift` (lines 189, 203): currently runtime `assert(isPOD(...))`. If the surrounding APIs can be made generic over `<T: BitwiseCopyable>`, the checks become compile-time and stricter.
+- Tests in `Tests/MetalSprocketsTests/EasyWins2Tests.swift` would need updating.
+
+Caveats:
+- `BitwiseCopyable` requires declared/synthesized conformance; `_isPOD` is purely structural at runtime, so it can return true for types not marked `BitwiseCopyable`.
+- If any call site takes erased `Any` values, a runtime check still needs to stay.
+
+Decide: convert what we can to generic `BitwiseCopyable` constraints, keep `isPOD` only where runtime erasure forces it (or drop it entirely if no such sites remain).
+
+---
