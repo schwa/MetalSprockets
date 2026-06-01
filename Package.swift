@@ -18,7 +18,7 @@ public let package = Package(
         .library(name: "MetalSprocketsSupport", targets: ["MetalSprocketsSupport"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0-latest"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0"),
         .package(url: "https://github.com/schwa/MetalCompilerPlugin", from: "0.1.4"),
         .package(url: "https://github.com/schwa/MetalSupport", from: "1.0.0"),
         .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
