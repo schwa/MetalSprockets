@@ -1,5 +1,5 @@
 {
-  "originHash" : "4ce705df020bd27a2002dd6778165bfb513800521a884f64a09d444f242a7a2e",
+  "originHash" : "47f899038cf09fabc122cd38ad2d8b3a93baa75c1da91304bf5da8b4fc4864bf",
   "pins" : [
     {
       "identity" : "geometrylite3d",
@@ -87,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax.git",
       "state" : {
-        "revision" : "0687f71944021d616d34d922343dcef086855920",
-        "version" : "600.0.1"
+        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
+        "version" : "602.0.0"
       }
     },
     {
