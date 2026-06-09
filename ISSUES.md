@@ -4615,3 +4615,29 @@ Caveats:
 Decide: convert what we can to generic `BitwiseCopyable` constraints, keep `isPOD` only where runtime erasure forces it (or drop it entirely if no such sites remain).
 
 ---
+
+## 348: Investigate SwiftUI 27 @ContentBuilder
+
++++
+status: new
+priority: medium
+kind: task
+created: 2026-06-09T21:14:28Z
++++
+
+Look at SwiftUI 27's @ContentBuilder result builder. Evaluate whether/how it could apply to MetalSprockets' DSL (e.g. replacing or complementing existing @PassBuilder/result builders, ambiguous overload behavior, etc.). See skill: swiftui-whats-new-27.
+
+---
+
+## 349: Investigate SwiftUI 27 @State macro changes
+
++++
+status: new
+priority: medium
+kind: task
+created: 2026-06-09T21:14:43Z
++++
+
+In SwiftUI 27, @State became a macro. This can cause compile errors like 'used before being initialized', 'invalid redeclaration of synthesized property', or 'extraneous argument label' after SDK update. Reordering init is the WRONG fix. Audit MetalSprockets for affected @State usage and apply correct migration. See skill: swiftui-whats-new-27.
+
+---
