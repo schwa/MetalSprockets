@@ -1,6 +1,7 @@
 [defaults]
 destination = "mac"
 extra_args = []
+skip_plugin_validation = true
 
 [defaults.build]
 scheme = "MetalSprockets-Example"
