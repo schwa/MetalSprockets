@@ -31,6 +31,7 @@ public extension Element {
         let typeName = String(describing: type(of: self))
 
         // Get type identifier for structural identity
+        // swiftlint:disable:next prefer_self_in_static_references
         let typeId = ObjectIdentifier(type(of: self) as any Element.Type).shortId
 
         // Check if it's a BodylessElement
