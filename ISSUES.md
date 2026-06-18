@@ -4641,3 +4641,34 @@ created: 2026-06-09T21:14:43Z
 In SwiftUI 27, @State became a macro. This can cause compile errors like 'used before being initialized', 'invalid redeclaration of synthesized property', or 'extraneous argument label' after SDK update. Reordering init is the WRONG fix. Audit MetalSprockets for affected @State usage and apply correct migration. See skill: swiftui-whats-new-27.
 
 ---
+
+## 350: Missing useComputeResources(_:usage:) array variant
+
++++
+status: new
+priority: low
+kind: none
+created: 2026-06-18T17:32:16Z
++++
+
+`Support.swift` defines:
+
+- `Element.useResource(_ resource:, usage:, stages:)` (single, render)
+- `Element.useResource(_ resource:?, usage:, stages:)` (optional, render)
+- `Element.useResources(_ resources: [any MTLResource], usage:, stages:)` (array, render)
+- `Element.useComputeResource(_ resource:, usage:)` (single, compute)
+- `Element.useComputeResource(_ resource:?, usage:)` (optional, compute)
+
+But there is **no `useComputeResources(_ resources: [any MTLResource], usage:)`** array variant for compute.
+
+Use case: Phosphor 2 binds a Metal 3 bindless argument buffer of N textures (`iChannel0..N`) to a compute kernel, and needs to call `useResource` on each so they're resident when the GPU dereferences the argument buffer. Today you have to either chain individual `useComputeResource` modifiers (compile-time loop fights the result builder) or drop into an `.onWorkloadEnter { env.computeCommandEncoder?.useResource(...) }` and lose the nice element modifier shape.
+
+Mirror the render-side `useResources(_:usage:stages:)` signature, minus `stages`:
+
+```swift
+func useComputeResources(_ resources: [any MTLResource], usage: MTLResourceUsage) -> some Element
+```
+
+(Also probably worth adding an optional-array variant for symmetry.)
+
+---
