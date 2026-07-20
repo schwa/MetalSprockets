@@ -4672,3 +4672,16 @@ func useComputeResources(_ resources: [any MTLResource], usage: MTLResourceUsage
 (Also probably worth adding an optional-array variant for symmetry.)
 
 ---
+
+## 351: ComputeDispatch does not support indirect dispatch
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-07-20T19:44:57Z
++++
+
+ComputeDispatch only supports CPU-specified grid sizes (threadgroupsPerGrid / threadsPerGrid). Metal's MTLComputeCommandEncoder.dispatchThreadgroups(indirectBuffer:indirectBufferOffset:threadsPerThreadgroup:) has no equivalent, so GPU-driven pipelines whose workload size is computed on the GPU (e.g. survivor counts after culling, expanded entry counts after binning) cannot size their dispatches without over-dispatching to capacity or reading counts back to the CPU. Needed by MetalSprocketsGaussianSplats RFC 0002 (TileAlt renderer).
+
+---
