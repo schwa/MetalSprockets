@@ -48,6 +48,49 @@ struct ComputePassTests {
     }
 
     @Test
+    func testComputePassIndirectDispatch() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let kernel = try ComputeKernel(source: Self.kernelSource)
+        let count = 64
+        let buffer = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
+        var arguments = MTLDispatchThreadgroupsIndirectArguments(threadgroupsPerGrid: (UInt32(count / 8), 1, 1))
+        let indirectBuffer = try #require(device.makeBuffer(bytes: &arguments, length: MemoryLayout<MTLDispatchThreadgroupsIndirectArguments>.stride, options: .storageModeShared))
+
+        try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                AnyBodylessElement()
+                    .onWorkloadEnter { (node: Node) in
+                        let encoder = node.environmentValues.computeCommandEncoder!
+                        encoder.setBuffer(buffer, offset: 0, index: 0)
+                    }
+                try ComputeDispatch(
+                    indirectBuffer: indirectBuffer,
+                    threadsPerThreadgroup: MTLSize(width: 8, height: 1, depth: 1)
+                )
+            }
+        }
+        .run()
+
+        let ptr = buffer.contents().bindMemory(to: UInt32.self, capacity: count)
+        for i in 0..<count {
+            #expect(ptr[i] == UInt32(i + 1))
+        }
+    }
+
+    @Test
+    func testIndirectDispatchRejectsMisalignedOffset() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let buffer = try #require(device.makeBuffer(length: 64, options: .storageModeShared))
+        #expect(throws: (any Error).self) {
+            _ = try ComputeDispatch(
+                indirectBuffer: buffer,
+                indirectBufferOffset: 2,
+                threadsPerThreadgroup: MTLSize(width: 8, height: 1, depth: 1)
+            )
+        }
+    }
+
+    @Test
     func testComputePassLabel() throws {
         // Construct succeeds with a label; actual label is applied during workloadEnter.
         let element = try ComputePass(label: "MyPass") {

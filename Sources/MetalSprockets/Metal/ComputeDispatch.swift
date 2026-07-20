@@ -49,10 +49,24 @@ import MetalSupport
 ///     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1)
 /// )
 /// ```
+///
+/// ### Indirect Dispatch
+/// Read the threadgroup count from a GPU buffer containing an
+/// `MTLDispatchThreadgroupsIndirectArguments` value, enabling GPU-driven
+/// pipelines to size their own dispatches.
+///
+/// ```swift
+/// ComputeDispatch(
+///     indirectBuffer: argumentsBuffer,
+///     indirectBufferOffset: 0,
+///     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1)
+/// )
+/// ```
 public struct ComputeDispatch: Element, BodylessElement {
     private enum Dimensions {
         case threadgroupsPerGrid(MTLSize)
         case threadsPerGrid(MTLSize)
+        case indirect(buffer: MTLBuffer, offset: Int)
     }
 
     private var dimensions: Dimensions
@@ -84,6 +98,23 @@ public struct ComputeDispatch: Element, BodylessElement {
         self.threadsPerThreadgroup = threadsPerThreadgroup
     }
 
+    /// Creates a dispatch whose threadgroup count is read from a GPU buffer.
+    ///
+    /// The buffer must contain an `MTLDispatchThreadgroupsIndirectArguments`
+    /// value at `indirectBufferOffset`, which must be a multiple of 4.
+    ///
+    /// - Parameters:
+    ///   - indirectBuffer: The buffer containing the dispatch arguments.
+    ///   - indirectBufferOffset: The byte offset of the arguments in the buffer.
+    ///   - threadsPerThreadgroup: The number of threads per threadgroup.
+    public init(indirectBuffer: MTLBuffer, indirectBufferOffset: Int = 0, threadsPerThreadgroup: MTLSize) throws {
+        guard indirectBufferOffset >= 0, indirectBufferOffset.isMultiple(of: 4) else {
+            try _throw(MetalSprocketsError.configurationError("indirectBufferOffset must be a non-negative multiple of 4."))
+        }
+        self.dimensions = .indirect(buffer: indirectBuffer, offset: indirectBufferOffset)
+        self.threadsPerThreadgroup = threadsPerThreadgroup
+    }
+
     func workloadEnter(_ node: Node) throws {
         guard let computeCommandEncoder = node.environmentValues.computeCommandEncoder, let computePipelineState = node.environmentValues.computePipelineState else {
             preconditionFailure("No compute command encoder/compute pipeline state found.")
@@ -95,6 +126,8 @@ public struct ComputeDispatch: Element, BodylessElement {
             computeCommandEncoder.dispatchThreadgroups(threadgroupCount, threadsPerThreadgroup: threadsPerThreadgroup)
         case .threadsPerGrid(let threads):
             computeCommandEncoder.dispatchThreads(threads, threadsPerThreadgroup: threadsPerThreadgroup)
+        case .indirect(let buffer, let offset):
+            computeCommandEncoder.dispatchThreadgroups(indirectBuffer: buffer, indirectBufferOffset: offset, threadsPerThreadgroup: threadsPerThreadgroup)
         }
     }
 
