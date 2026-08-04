@@ -64,7 +64,7 @@ package final class System: @unchecked Sendable {
 
     /// Mark a node as dirty (needs rebuild on next update)
     internal func markDirty(_ id: StructuralIdentifier) {
-        _dirtyIdentifiers.withLock { $0.insert(id) }
+        _dirtyIdentifiers.withLock { _ = $0.insert(id) }
     }
 
     /// Whether the given identifier is currently marked dirty.

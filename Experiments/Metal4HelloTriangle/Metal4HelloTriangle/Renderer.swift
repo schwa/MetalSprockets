@@ -18,9 +18,29 @@ private struct Vertex {
 /// guidance. One allocator per in-flight frame.
 private let maxFramesInFlight = 3
 
+// MARK: - Failure helpers
+
+/// Experiment code: a missing Metal object means the machine or SDK can't run
+/// this sample at all, so trap rather than propagate.
+private func require<T>(_ value: T?, _ what: @autoclosure () -> String) -> T {
+    guard let value else {
+        fatalError("Failed to create \(what()).")
+    }
+    return value
+}
+
+private func require<T>(_ what: @autoclosure () -> String, _ body: () throws -> T) -> T {
+    do {
+        return try body()
+    }
+    catch {
+        fatalError("Failed to create \(what()): \(error).")
+    }
+}
+
 // MARK: - Renderer
 
-final class Renderer: NSObject, MTKViewDelegate {
+internal final class Renderer: NSObject, MTKViewDelegate {
     let device: any MTLDevice
 
     // Metal 4 infrastructure.
@@ -61,18 +81,18 @@ final class Renderer: NSObject, MTKViewDelegate {
         do {
             let descriptor = MTL4CommandQueueDescriptor()
             descriptor.label = "Main MTL4CommandQueue"
-            self.commandQueue = try! device.makeMTL4CommandQueue(descriptor: descriptor)
+            self.commandQueue = require("command queue") { try device.makeMTL4CommandQueue(descriptor: descriptor) }
         }
 
         // 2. ONE command buffer, reused across frames.
-        self.commandBuffer = device.makeCommandBuffer()!
+        self.commandBuffer = require(device.makeCommandBuffer(), "command buffer")
         self.commandBuffer.label = "Frame Command Buffer"
 
         // 3. `maxFramesInFlight` command allocators, one per in-flight frame.
         self.commandAllocators = (0..<maxFramesInFlight).map { i in
             let descriptor = MTL4CommandAllocatorDescriptor()
             descriptor.label = "Allocator \(i)"
-            return try! device.makeCommandAllocator(descriptor: descriptor)
+            return require("command allocator") { try device.makeCommandAllocator(descriptor: descriptor) }
         }
 
         // 4. Compiler + default library.
@@ -80,9 +100,9 @@ final class Renderer: NSObject, MTKViewDelegate {
         do {
             let descriptor = MTL4CompilerDescriptor()
             descriptor.label = "Main MTL4Compiler"
-            compiler = try! device.makeCompiler(descriptor: descriptor)
+            compiler = require("compiler") { try device.makeCompiler(descriptor: descriptor) }
         }
-        let library = try! device.makeDefaultLibrary(bundle: .main)
+        let library = require("default library") { try device.makeDefaultLibrary(bundle: .main) }
 
         // 5. Render pipeline.
         do {
@@ -100,7 +120,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             descriptor.fragmentFunctionDescriptor = fragmentFunctionDescriptor
             descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
 
-            self.renderPipelineState = try! compiler.makeRenderPipelineState(descriptor: descriptor)
+            self.renderPipelineState = require("render pipeline state") { try compiler.makeRenderPipelineState(descriptor: descriptor) }
         }
 
         // 6. Compute pipeline.
@@ -113,7 +133,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             descriptor.label = "Gradient Pipeline"
             descriptor.computeFunctionDescriptor = functionDescriptor
 
-            self.computePipelineState = try! compiler.makeComputePipelineState(descriptor: descriptor)
+            self.computePipelineState = require("compute pipeline state") { try compiler.makeComputePipelineState(descriptor: descriptor) }
         }
 
         // 7. Argument tables (built once, stable slots populated below).
@@ -122,7 +142,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             descriptor.label = "Vertex Argument Table"
             descriptor.maxBufferBindCount = 1
             descriptor.initializeBindings = true
-            self.vertexArgumentTable = try! device.makeArgumentTable(descriptor: descriptor)
+            self.vertexArgumentTable = require("vertex argument table") { try device.makeArgumentTable(descriptor: descriptor) }
         }
         do {
             let descriptor = MTL4ArgumentTableDescriptor()
@@ -130,7 +150,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             descriptor.maxTextureBindCount = 1
             descriptor.maxSamplerStateBindCount = 1
             descriptor.initializeBindings = true
-            self.fragmentArgumentTable = try! device.makeArgumentTable(descriptor: descriptor)
+            self.fragmentArgumentTable = require("fragment argument table") { try device.makeArgumentTable(descriptor: descriptor) }
         }
         do {
             let descriptor = MTL4ArgumentTableDescriptor()
@@ -138,17 +158,17 @@ final class Renderer: NSObject, MTKViewDelegate {
             descriptor.maxBufferBindCount = 1
             descriptor.maxTextureBindCount = 1
             descriptor.initializeBindings = true
-            self.computeArgumentTable = try! device.makeArgumentTable(descriptor: descriptor)
+            self.computeArgumentTable = require("compute argument table") { try device.makeArgumentTable(descriptor: descriptor) }
         }
 
         // 8. Geometry.
         let vertices: [Vertex] = [
-            Vertex(position: [ 0.0,  0.7], uv: [0.5, 0.0]),
+            Vertex(position: [0.0, 0.7], uv: [0.5, 0.0]),
             Vertex(position: [-0.7, -0.7], uv: [0.0, 1.0]),
-            Vertex(position: [ 0.7, -0.7], uv: [1.0, 1.0]),
+            Vertex(position: [0.7, -0.7], uv: [1.0, 1.0])
         ]
         let length = MemoryLayout<Vertex>.stride * vertices.count
-        self.vertexBuffer = device.makeBuffer(bytes: vertices, length: length, options: .storageModeShared)!
+        self.vertexBuffer = require(device.makeBuffer(bytes: vertices, length: length, options: .storageModeShared), "vertex buffer")
         self.vertexBuffer.label = "Triangle Vertices"
 
         // 9. Gradient texture (compute writes, fragment reads).
@@ -161,7 +181,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             )
             descriptor.usage = [.shaderWrite, .shaderRead]
             descriptor.storageMode = .private
-            self.gradientTexture = device.makeTexture(descriptor: descriptor)!
+            self.gradientTexture = require(device.makeTexture(descriptor: descriptor), "gradient texture")
             self.gradientTexture.label = "Gradient Texture"
         }
 
@@ -172,11 +192,11 @@ final class Renderer: NSObject, MTKViewDelegate {
             descriptor.magFilter = .linear
             descriptor.sAddressMode = .clampToEdge
             descriptor.tAddressMode = .clampToEdge
-            self.linearSampler = device.makeSamplerState(descriptor: descriptor)!
+            self.linearSampler = require(device.makeSamplerState(descriptor: descriptor), "linear sampler")
         }
 
         // 11. Time uniform buffer (updated per frame).
-        self.timeBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride, options: .storageModeShared)!
+        self.timeBuffer = require(device.makeBuffer(length: MemoryLayout<Float>.stride, options: .storageModeShared), "time buffer")
         self.timeBuffer.label = "Time"
 
         // 12. Root residency set for our own long-lived allocations. Attach
@@ -187,7 +207,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             let descriptor = MTLResidencySetDescriptor()
             descriptor.label = "Root Residency Set"
             descriptor.initialCapacity = 3
-            self.frameRootResidencySet = try! device.makeResidencySet(descriptor: descriptor)
+            self.frameRootResidencySet = require("residency set") { try device.makeResidencySet(descriptor: descriptor) }
         }
         frameRootResidencySet.addAllocations([vertexBuffer, gradientTexture, timeBuffer])
         frameRootResidencySet.commit()
@@ -206,7 +226,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         //     maxFramesInFlight - 1. First frame's wait-value is
         //     frameIndex - maxFramesInFlight = 0, which is already
         //     satisfied.
-        self.endFrameEvent = device.makeSharedEvent()!
+        self.endFrameEvent = require(device.makeSharedEvent(), "shared event")
         self.endFrameEvent.label = "End Frame Event"
         self.frameIndex = maxFramesInFlight
         self.endFrameEvent.signaledValue = UInt64(maxFramesInFlight - 1)
@@ -221,7 +241,9 @@ final class Renderer: NSObject, MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
-        guard let drawable = view.currentDrawable else { return }
+        guard let drawable = view.currentDrawable else {
+            return
+        }
 
         // Delay grabbing the render pass descriptor until we need it so we
         // don't hold the drawable longer than necessary.

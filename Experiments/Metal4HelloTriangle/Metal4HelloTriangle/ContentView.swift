@@ -1,15 +1,17 @@
 import MetalKit
 import SwiftUI
 
-struct ContentView: View {
+internal struct ContentView: View {
     var body: some View {
         MetalView()
     }
 }
 
-struct MetalView: NSViewRepresentable {
+internal struct MetalView: NSViewRepresentable {
     func makeCoordinator() -> Renderer {
-        let device = MTLCreateSystemDefaultDevice()!
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            fatalError("No Metal device available.")
+        }
         return Renderer(device: device)
     }
 
@@ -24,5 +26,7 @@ struct MetalView: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: MTKView, context: Context) {}
+    func updateNSView(_ nsView: MTKView, context: Context) {
+        // Nothing to update; the renderer owns all mutable state.
+    }
 }

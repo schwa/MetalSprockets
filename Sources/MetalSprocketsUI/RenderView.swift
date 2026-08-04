@@ -255,7 +255,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     private var _system: System?
     @ObservationIgnored
     var system: System {
-        if let s = _system { return s }
+        if let s = _system {
+            return s
+        }
         let s = System()
         _system = s
         return s
@@ -275,7 +277,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     private var _signpostID: OSSignpostID?
     @ObservationIgnored
     var signpostID: OSSignpostID? {
-        if let id = _signpostID { return id }
+        if let id = _signpostID {
+            return id
+        }
         let id = signposter?.makeSignpostID()
         _signpostID = id
         return id
@@ -407,7 +411,6 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
 // MARK: - Allocation tracking
 
-
 /// Tracks `RenderViewViewModel` allocations to catch regressions of per-frame churn
 /// (see issues #298 / #299). Intentionally always-on; cost is one atomic increment
 /// and a dictionary lookup per allocation.
@@ -428,7 +431,7 @@ internal final class RenderViewViewModelAllocationTracker: @unchecked Sendable {
             counts["RenderViewViewModel"] = next
             return next
         }
-        if count == warnThreshold || (count > warnThreshold && (count - warnThreshold) % warnInterval == 0) {
+        if count == warnThreshold || (count > warnThreshold && (count - warnThreshold).isMultiple(of: warnInterval)) {
             logger?.warning("RenderViewViewModel has been allocated \(count) times. This may indicate per-frame allocation churn (regression of #298). See #299/#337.")
         }
     }
