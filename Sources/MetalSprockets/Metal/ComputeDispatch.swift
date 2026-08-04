@@ -126,7 +126,7 @@ public struct ComputeDispatch: Element, BodylessElement {
             computeCommandEncoder.dispatchThreadgroups(threadgroupCount, threadsPerThreadgroup: threadsPerThreadgroup)
         case .threadsPerGrid(let threads):
             computeCommandEncoder.dispatchThreads(threads, threadsPerThreadgroup: threadsPerThreadgroup)
-        case .indirect(let buffer, let offset):
+        case let .indirect(buffer, offset):
             computeCommandEncoder.dispatchThreadgroups(indirectBuffer: buffer, indirectBufferOffset: offset, threadsPerThreadgroup: threadsPerThreadgroup)
         }
     }

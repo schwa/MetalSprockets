@@ -125,6 +125,7 @@ modules:
     - decl: 'public init(completion: MTLCommandQueueCompletion, @ElementBuilder content: () throws -> Content) rethrows'
   - decl: public struct ComputeDispatch
     members:
+    - decl: 'public init(indirectBuffer: any MTLBuffer, indirectBufferOffset: Int = 0, threadsPerThreadgroup: MTLSize) throws'
     - decl: 'public init(threadgroups: MTLSize, threadsPerThreadgroup: MTLSize) throws'
     - decl: 'public init(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize) throws'
   - decl: public struct ComputeKernel
