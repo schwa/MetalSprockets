@@ -37,6 +37,31 @@ struct MetalFXSpatialTests {
         commandBuffer.waitUntilCompleted()
     }
 
+    @Test("Rendering twice at the same size reuses the cached scaler")
+    func testSpatialScalerCacheHit() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard MTLFXSpatialScalerDescriptor.supportsDevice(device) else {
+            return
+        }
+        let input = makeTexture(width: 64, height: 64, usage: [.renderTarget, .shaderRead])
+        let output = makeTexture(width: 128, height: 128, usage: [.renderTarget, .shaderWrite, .shaderRead])
+        try fillInputTexture(input, device: device)
+
+        // One runner keeps the node, so the second run takes the cache-hit path in setupEnter.
+        let runner = try Runner(device: device)
+        try runner.run(MetalFXSpatial(inputTexture: input, outputTexture: output))
+        try runner.run(MetalFXSpatial(inputTexture: input, outputTexture: output))
+    }
+
+    @Test("Spatial upscaling always reports that it needs setup")
+    func testSpatialRequiresSetup() throws {
+        let input = makeTexture(width: 64, height: 64, usage: [.renderTarget, .shaderRead])
+        let output = makeTexture(width: 128, height: 128, usage: [.renderTarget, .shaderWrite, .shaderRead])
+        let element = MetalFXSpatial(inputTexture: input, outputTexture: output)
+        // The per-node cache decides whether the scaler is rebuilt, so the element itself never opts out.
+        #expect(element.requiresSetup(comparedTo: element))
+    }
+
     @Test("Spatial upscaler recreates its scaler when output size changes")
     func testSpatialScalerRecreatesOnSizeChange() throws {
         let device = MTLCreateSystemDefaultDevice()!

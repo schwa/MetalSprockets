@@ -196,6 +196,33 @@ struct UseResourceTests {
         .run()
     }
 
+    @Test("useComputeResources optional: non-nil calls through")
+    func testUseComputeResourcesOptionalSome() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let kernel = try ComputeKernel(source: Self.computeSource)
+        let count = 4
+        let buffer = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
+        // swiftlint:disable:next discouraged_optional_collection
+        nonisolated(unsafe) let sides: [any MTLResource]? = [
+            device.makeBuffer(length: 32, options: .storageModeShared)!
+        ]
+
+        try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                AnyBodylessElement()
+                    .onWorkloadEnter { (node: Node) in
+                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
+                    }
+                try ComputeDispatch(
+                    threadgroups: MTLSize(width: 1, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(width: count, height: 1, depth: 1)
+                )
+                .useComputeResources(sides, usage: .read)
+            }
+        }
+        .run()
+    }
+
     @Test("useComputeResources optional: nil is a no-op")
     func testUseComputeResourcesOptionalNil() throws {
         let device = MTLCreateSystemDefaultDevice()!
