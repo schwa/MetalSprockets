@@ -26,8 +26,23 @@ Two things worth knowing before writing tests:
 
 ## How to Run
 
-`./.auto/measure.sh` — runs `xcb test --coverage-summary --coverage-sort-by-impact`, emits `METRIC` lines and
-prints the current worst-covered files. A run takes roughly 60–90s.
+`./.auto/measure.sh` — runs the suite three times, reports the **median** covered-line count and the spread
+between samples, then prints the current worst-covered files. Roughly 16s with a warm build, longer after a source
+change. `COVERAGE_RUNS=1 ./.auto/measure.sh` for a quick look.
+
+**The measurement is not deterministic.** The ViewHosting tests put a real SwiftUI view on screen, and whether the
+hosted `RenderView` gets a frame drawn depends on the run loop; that alone swings the total by ~70 lines. Watch
+`sample_spread`: 0–2 means trust the number, large means re-run before concluding anything. Never discard a change
+on a single down measurement.
+
+To see exactly which lines are uncovered in a file:
+
+```sh
+xcrun llvm-cov show \
+  .build/out/Products/Debug/MetalSprocketsTests.xctest/Contents/MacOS/MetalSprocketsTests \
+  -instr-profile=.build/out/Products/Debug/codecov/default.profdata \
+  Sources/MetalSprockets/Metal/Parameters.swift | rg '^ *[0-9]+\| +0\|'
+```
 
 `./.auto/checks.sh` runs automatically afterwards: swiftlint must be clean, `Sources` must not lose net lines,
 and no new golden reference image may appear without deliberate blessing (see below).
@@ -77,20 +92,48 @@ Never bless an image you have not viewed — that enshrines a bug as the referen
 
 ## What's Been Tried
 
-Starting point: 82.1% lines / 70.4% functions. After the first manual pass: ~88% lines / ~74% functions.
+82.1% → 92.3% lines (5,008 → 5,282 covered) over the manual pass plus eleven loop iterations.
 
-Worked well:
-- Driving `RenderViewViewModel.draw(in:)` with a headless `MTKView` (5% → 58% on `RenderView.swift`).
-- Extracting `FrameTimingView`'s row construction out of the `TimelineView` body (13.6% → 39.2%).
-- Golden images for depth ordering, depth bias, parameter binding, function constants, and object/mesh stages.
-- Reusing one `OffscreenRenderer`/`Runner` across two renders to reach cache-hit and second-frame paths.
+### Techniques that worked, in rough order of value
 
-Bugs found this way (do not "fix" the tests to match the buggy behaviour):
+1. **`ViewHosting.host(view:size:)`** (ViewInspector). Anything behind a SwiftUI `body` or a `Representable` is
+   unreachable by constructing values — it needs a host. This was +113 lines from one small test (`RenderView`)
+   and +77 from another (`FrameTimingView`). Pattern:
+   `ViewHosting.host(view: v, size: ...); defer { ViewHosting.expel() }`.
+2. **Driving `RenderViewViewModel.draw(in:)` directly.** An `MTKView` vends drawables without being in a window.
+3. **Reusing one `Runner`/`OffscreenRenderer` across renders** to reach second-frame paths. Pipeline caches key on
+   `ObjectIdentifier(MTLFunction)`, so **build the shaders once and share them** — a fresh `ShaderLibrary` per
+   render always misses the cache and the hit path stays uncovered.
+4. **`System().update(root:)` + `processSetup()` with no renderer at all**, for elements whose setup only reads the
+   environment. Cheaper and more precise than rendering, and no encoder is created.
+5. **Extracting a pure function out of a view body** (`FrameTimingView.rows(for:options:targetFramesPerSecond:)`).
+6. **Golden images** for anything with a visual result.
+
+### The rule for error paths
+
+- **Setup-phase throws are safe** to test end-to-end: no encoder exists yet.
+- **Workload-phase throws abort the process** (#357). Do not test them through `OffscreenRenderer`/`Runner`; the
+  test binary dies. Instead build the encoder in the test and call the unit directly (see the "Rejected bindings"
+  section of `ParameterBindingTests`), ending the encoder in a `defer`.
+
+### Bugs found this way (do not "fix" the tests to match the buggy behaviour)
+
 - **#354** `.msaa(sampleCount:)` never anti-aliases and drops rendering after frame 1.
 - **#355** a misplaced `.msaa()` is a silent no-op.
 - **#356** the capture modifier can never produce a `.gpuTraceDocument`.
+- **#357** an error thrown during the workload phase aborts the process.
 
-Known-hard, low-yield (deprioritise):
-- The remaining ~150 uncovered lines in `RenderView.swift` are SwiftUI `body`/modifier plumbing.
-- The remaining ~79 in `FrameTimingView.swift` are the `TimelineView` shell.
-- Capture paths need the host launched with `MTL_CAPTURE_ENABLED=1`; tests skip otherwise.
+### What is left, and why it is mostly not worth chasing
+
+Of the ~440 uncovered lines, the bulk is unreachable by design:
+
+- `fatalError` / `preconditionFailure` / `assertionFailure` bodies (`Error.swift`, `StateBox`, `Parameters`,
+  `System`, `Support`) — covering these would mean crashing the test process.
+- `#if os(visionOS)` blocks (`RenderPass`, `ComputePass`) — not compiled on macOS.
+- Defensive `Mirror` fallbacks in `SystemSnapshot` for shapes that never occur.
+- Workload-phase error paths blocked on #357 (`VisibleFunctionTableModifier`, `Parameters`).
+
+The one large genuinely reachable block left is **`CaptureModifier` (36 lines)**, which needs the test host
+launched with `MTL_CAPTURE_ENABLED=1`. The tests for it already exist and skip cleanly without it. Turning that on
+in `measure.sh` would raise the number without adding a single test, so it is a decision for the user, not
+something to slip in mid-session.
