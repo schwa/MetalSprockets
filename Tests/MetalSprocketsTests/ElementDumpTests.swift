@@ -53,6 +53,44 @@ struct ElementDumpTests {
         #expect(dump.contains("SimpleElement"))
     }
 
+    struct EnvironmentReadingElement: Element {
+        var body: some Element {
+            EnvironmentReader(keyPath: \.device) { _ in
+                SimpleElement()
+            }
+        }
+    }
+
+    struct StatefulElement: Element {
+        @MSState private var counter = 0
+
+        var body: some Element {
+            SimpleElement()
+        }
+    }
+
+    @Test
+    @MainActor
+    func `dumping an element that reads the environment expands its content`() throws {
+        let dump = try EnvironmentReadingElement().dump()
+        #expect(dump.contains("EnvironmentReader"))
+        #expect(dump.contains("SimpleElement"))
+    }
+
+    @Test
+    @MainActor
+    func `dumping an element with state does not disturb a live system`() throws {
+        let system = System()
+        let element = StatefulElement()
+        try system.update(root: element)
+        let nodesBefore = system.nodes.count
+
+        _ = try element.dump()
+
+        #expect(system.nodes.count == nodesBefore)
+        #expect(System.current == nil)
+    }
+
     @Test
     @MainActor
     func testVerboseDump() throws {

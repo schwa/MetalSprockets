@@ -2084,12 +2084,13 @@ Either:
 ## 218: Fix dangerous tree walking in Element+Dump
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: bug, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-21T02:46:10Z
+updated: 2026-08-08T15:53:24Z
+closed: 2026-08-08T15:53:24Z
 +++
 
 Walking the tree in Element+Dump can modify state which is dangerous. Elements like EnvironmentReader can break things. Need to only walk the System tree instead.
@@ -2097,6 +2098,8 @@ Walking the tree in Element+Dump can modify state which is dangerous. Elements l
 File: Sources/MetalSprockets/Core/Element+Dump.swift
 
 *Imported from #210*
+
+- `2026-08-08T15:53:24Z`: Element.dump()/dumpVerbose() now expand the tree into a throwaway System and walk its traversal events instead of re-walking the element tree.
 
 ---
 
