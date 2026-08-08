@@ -3910,12 +3910,13 @@ Phosphor demo can now rebuild its PSO on snippet switch by passing the selected 
 ## 328: ComputeDispatch has no way to auto-pick threadsPerThreadgroup
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:m
 created: 2026-04-20T23:20:56Z
-updated: 2026-04-21T02:48:19Z
+updated: 2026-08-08T06:50:37Z
+closed: 2026-08-08T06:50:37Z
 +++
 
 `ComputeDispatch` requires callers to pass `threadsPerThreadgroup` up front. There is no way to let the framework pick an appropriate threadgroup size based on the actual compute pipeline state's `maxTotalThreadsPerThreadgroup` and `threadExecutionWidth`.
@@ -3923,6 +3924,8 @@ updated: 2026-04-21T02:48:19Z
 Picking correctly requires the PSO, which isn't available to the caller when constructing `ComputeDispatch` (it's only in the environment at workload-enter time). The PSO's `maxTotalThreadsPerThreadgroup` can also vary with linked functions (e.g. visible_function_table snippets), so a fixed constant isn't always safe.
 
 Repro: Phosphor demo in MetalSprocketsExamples hardcodes `MTLSize(16,16,1)` because there's no alternative; we have no way to ask the pipeline what it supports.
+
+- `2026-08-08T06:50:38Z`: ComputeDispatch's threadsPerThreadgroup is now optional across all three inits; when omitted it is derived at dispatch time from the pipeline state (threadExecutionWidth x maxTotalThreadsPerThreadgroup/threadExecutionWidth, 1D grids get a 1D threadgroup). Tests added.
 
 ---
 

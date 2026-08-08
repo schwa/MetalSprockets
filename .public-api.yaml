@@ -20,6 +20,8 @@ modules:
     - decl: public func dumpVerbose() throws -> String
     - decl: 'public func dumpVerbose(to output: inout String, indent: Int = 0) throws'
     - decl: |
+        public func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element where Value : Equatable
+    - decl: |
         public func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element
     - decl: public func eraseToAnyElement() -> AnyElement
     - decl: |
@@ -64,6 +66,8 @@ modules:
         public func shaderStore(_ store: ShaderStore) -> some Element
     - decl: |
         public func stencilAttachment(_ texture: any MTLTexture) -> some Element
+    - decl: |
+        public func transformEnvironment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, transform: @escaping (inout Value) -> Void) -> some Element
     - decl: |
         @ElementBuilder public func useComputeResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage) -> some Element
     - decl: |
@@ -125,9 +129,9 @@ modules:
     - decl: 'public init(completion: MTLCommandQueueCompletion, @ElementBuilder content: () throws -> Content) rethrows'
   - decl: public struct ComputeDispatch
     members:
-    - decl: 'public init(indirectBuffer: any MTLBuffer, indirectBufferOffset: Int = 0, threadsPerThreadgroup: MTLSize) throws'
-    - decl: 'public init(threadgroups: MTLSize, threadsPerThreadgroup: MTLSize) throws'
-    - decl: 'public init(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize) throws'
+    - decl: 'public init(indirectBuffer: any MTLBuffer, indirectBufferOffset: Int = 0, threadsPerThreadgroup: MTLSize? = nil) throws'
+    - decl: 'public init(threadgroups: MTLSize, threadsPerThreadgroup: MTLSize? = nil) throws'
+    - decl: 'public init(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize? = nil) throws'
   - decl: public struct ComputeKernel
     members:
     - decl: 'public init(_ function: any MTLFunction)'

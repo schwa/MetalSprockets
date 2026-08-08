@@ -67,17 +67,29 @@ public struct ComputeDispatch: Element, BodylessElement {
         case threadgroupsPerGrid(MTLSize)
         case threadsPerGrid(MTLSize)
         case indirect(buffer: MTLBuffer, offset: Int)
+
+        /// The grid this dispatch covers, when known. Indirect dispatches size themselves on the GPU.
+        var gridSize: MTLSize? {
+            switch self {
+            case .threadsPerGrid(let size):
+                return size
+            case .threadgroupsPerGrid, .indirect:
+                return nil
+            }
+        }
     }
 
     private var dimensions: Dimensions
-    private var threadsPerThreadgroup: MTLSize
+    /// `nil` means "pick a threadgroup size from the pipeline state at dispatch time".
+    private var threadsPerThreadgroup: MTLSize?
 
     /// Creates a dispatch with explicit threadgroup counts.
     ///
     /// - Parameters:
     ///   - threadgroups: The number of threadgroups in each dimension.
-    ///   - threadsPerThreadgroup: The number of threads per threadgroup.
-    public init(threadgroups: MTLSize, threadsPerThreadgroup: MTLSize) throws {
+    ///   - threadsPerThreadgroup: The number of threads per threadgroup. Pass `nil` (the default)
+    ///     to derive it from the compute pipeline state at dispatch time.
+    public init(threadgroups: MTLSize, threadsPerThreadgroup: MTLSize? = nil) throws {
         self.dimensions = .threadgroupsPerGrid(threadgroups)
         self.threadsPerThreadgroup = threadsPerThreadgroup
     }
@@ -88,8 +100,9 @@ public struct ComputeDispatch: Element, BodylessElement {
     ///
     /// - Parameters:
     ///   - threadsPerGrid: The total number of threads in each dimension.
-    ///   - threadsPerThreadgroup: The number of threads per threadgroup.
-    public init(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize) throws {
+    ///   - threadsPerThreadgroup: The number of threads per threadgroup. Pass `nil` (the default)
+    ///     to derive it from the compute pipeline state at dispatch time.
+    public init(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize? = nil) throws {
         let device = _MTLCreateSystemDefaultDevice()
         guard device.supportsFamily(.apple4) else {
             try _throw(MetalSprocketsError.deviceCababilityFailure("Non-uniform threadgroup sizes require Apple GPU Family 4+ (A11 or later)"))
@@ -106,8 +119,9 @@ public struct ComputeDispatch: Element, BodylessElement {
     /// - Parameters:
     ///   - indirectBuffer: The buffer containing the dispatch arguments.
     ///   - indirectBufferOffset: The byte offset of the arguments in the buffer.
-    ///   - threadsPerThreadgroup: The number of threads per threadgroup.
-    public init(indirectBuffer: MTLBuffer, indirectBufferOffset: Int = 0, threadsPerThreadgroup: MTLSize) throws {
+    ///   - threadsPerThreadgroup: The number of threads per threadgroup. Pass `nil` (the default)
+    ///     to derive it from the compute pipeline state at dispatch time.
+    public init(indirectBuffer: MTLBuffer, indirectBufferOffset: Int = 0, threadsPerThreadgroup: MTLSize? = nil) throws {
         guard indirectBufferOffset >= 0, indirectBufferOffset.isMultiple(of: 4) else {
             try _throw(MetalSprocketsError.configurationError("indirectBufferOffset must be a non-negative multiple of 4."))
         }
@@ -121,6 +135,8 @@ public struct ComputeDispatch: Element, BodylessElement {
         }
         computeCommandEncoder.setComputePipelineState(computePipelineState)
 
+        let threadsPerThreadgroup = self.threadsPerThreadgroup ?? Self.automaticThreadsPerThreadgroup(for: computePipelineState, gridSize: dimensions.gridSize)
+
         switch dimensions {
         case .threadgroupsPerGrid(let threadgroupCount):
             computeCommandEncoder.dispatchThreadgroups(threadgroupCount, threadsPerThreadgroup: threadsPerThreadgroup)
@@ -129,6 +145,22 @@ public struct ComputeDispatch: Element, BodylessElement {
         case let .indirect(buffer, offset):
             computeCommandEncoder.dispatchThreadgroups(indirectBuffer: buffer, indirectBufferOffset: offset, threadsPerThreadgroup: threadsPerThreadgroup)
         }
+    }
+
+    /// Derives a threadgroup size from the pipeline state, following Apple's recommended
+    /// `threadExecutionWidth` × (`maxTotalThreadsPerThreadgroup` / `threadExecutionWidth`) split.
+    /// The pipeline state is only available at dispatch time, and its limits can vary with
+    /// linked functions, so this can't be computed when the element is constructed (#328).
+    internal static func automaticThreadsPerThreadgroup(for pipelineState: MTLComputePipelineState, gridSize: MTLSize?) -> MTLSize {
+        let maxTotal = max(1, pipelineState.maxTotalThreadsPerThreadgroup)
+        let executionWidth = max(1, min(pipelineState.threadExecutionWidth, maxTotal))
+        // A 1D grid gets a 1D threadgroup; anything else (or an unknown grid) gets a 2D one.
+        if let gridSize, gridSize.height <= 1, gridSize.depth <= 1 {
+            let width = min(maxTotal, max(executionWidth, gridSize.width))
+            return MTLSize(width: max(1, width), height: 1, depth: 1)
+        }
+        let height = max(1, maxTotal / executionWidth)
+        return MTLSize(width: executionWidth, height: height, depth: 1)
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool {

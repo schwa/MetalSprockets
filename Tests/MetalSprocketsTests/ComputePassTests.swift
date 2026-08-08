@@ -90,6 +90,50 @@ struct ComputePassTests {
         }
     }
 
+    // See #328: threadsPerThreadgroup can be omitted and derived from the pipeline state.
+    @Test
+    func testAutomaticThreadsPerThreadgroup() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let kernel = try ComputeKernel(source: Self.kernelSource)
+        let count = 64
+        let buffer = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
+
+        try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                AnyBodylessElement()
+                    .onWorkloadEnter { (node: Node) in
+                        let encoder = node.environmentValues.computeCommandEncoder!
+                        encoder.setBuffer(buffer, offset: 0, index: 0)
+                    }
+                try ComputeDispatch(threadsPerGrid: MTLSize(width: count, height: 1, depth: 1))
+            }
+        }
+        .run()
+
+        let ptr = buffer.contents().bindMemory(to: UInt32.self, capacity: count)
+        for i in 0..<count {
+            #expect(ptr[i] == UInt32(i + 1))
+        }
+    }
+
+    @Test
+    func testAutomaticThreadsPerThreadgroupRespectsPipelineLimits() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let kernel = try ComputeKernel(source: Self.kernelSource)
+        let pipelineState = try device.makeComputePipelineState(function: kernel.function)
+
+        let oneDimensional = ComputeDispatch.automaticThreadsPerThreadgroup(for: pipelineState, gridSize: MTLSize(width: 1_000_000, height: 1, depth: 1))
+        #expect(oneDimensional.height == 1)
+        #expect(oneDimensional.depth == 1)
+        #expect(oneDimensional.width <= pipelineState.maxTotalThreadsPerThreadgroup)
+
+        let twoDimensional = ComputeDispatch.automaticThreadsPerThreadgroup(for: pipelineState, gridSize: MTLSize(width: 1_920, height: 1_080, depth: 1))
+        #expect(twoDimensional.width * twoDimensional.height * twoDimensional.depth <= pipelineState.maxTotalThreadsPerThreadgroup)
+
+        let unknownGrid = ComputeDispatch.automaticThreadsPerThreadgroup(for: pipelineState, gridSize: nil)
+        #expect(unknownGrid.width * unknownGrid.height * unknownGrid.depth <= pipelineState.maxTotalThreadsPerThreadgroup)
+    }
+
     @Test
     func testComputePassLabel() throws {
         // Construct succeeds with a label; actual label is applied during workloadEnter.
