@@ -274,7 +274,6 @@ public extension ShaderLibrary {
         }
         return T(function)
     }
-
 }
 
 extension MTLFunctionType {

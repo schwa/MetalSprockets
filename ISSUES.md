@@ -5615,13 +5615,14 @@ Acceptance criteria:
 ## 379: Add GPU-free tests for shader loading and constants
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:s, subtask
 depends: 378
 created: 2026-08-08T20:40:05Z
-updated: 2026-08-08T20:40:17Z
+updated: 2026-08-08T20:50:44Z
+closed: 2026-08-08T20:50:44Z
 +++
 
 Part of #295. Depends on #378.
