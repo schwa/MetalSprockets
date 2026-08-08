@@ -19,7 +19,7 @@ public struct RenderPipelineDescriptorTransformer<Content>: Element, BodylessEle
             fatalError("RenderPipelineDescriptorTransformer: No System is currently active.")
         }
 
-        let parent = system.activeNodeStack.count >= 2 ? system.activeNodeStack[system.activeNodeStack.count - 2] : nil
+        let parent = system.traversalContext.parentNode
         guard let renderPipelineDescriptor = parent?.environmentValues.renderPipelineDescriptor ?? node.environmentValues.renderPipelineDescriptor else {
             return // Descriptor not set yet
         }

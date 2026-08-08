@@ -335,7 +335,7 @@ MetalSprockets currently operates on a **single-threaded model**:
 
 The framework is **not thread-safe**. The `System` class uses `@unchecked Sendable` as a temporary measure but does not actually provide thread safety. Key limitations:
 
-- `activeNodeStack` is shared mutable state without synchronization
+- The traversal context's node stack is mutable state without synchronization
 - All System methods must be called from the same thread
 - `@MSEnvironment` property wrappers rely on global state
 

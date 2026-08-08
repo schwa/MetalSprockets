@@ -21,7 +21,7 @@ public struct SystemSnapshot: Codable, Sendable {
 
         self.orderedIdentifiers = extractedIdentifiers.map(\.description)
         self.dirtyIdentifiers = Set(system.dirtyIdentifiers.map(\.description))
-        self.activeNodeStackDepth = system.activeNodeStack.count
+        self.activeNodeStackDepth = system.traversalContext.depth
 
         // Create node snapshots
         self.nodes = extractedIdentifiers.compactMap { identifier in

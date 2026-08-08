@@ -26,8 +26,8 @@ internal extension System {
     /// unaffected.
     func processWorkloadWithSkipping() throws {
         try withCurrentSystem {
-            assert(activeNodeStack.isEmpty)
-            defer { clearActiveNodeStack() }
+            assert(traversalContext.isEmpty)
+            defer { traversalContext.clear() }
             var skipDepth = 0
             // Nodes whose workloadEnter has run but whose workloadExit has not. If a
             // descendant throws we unwind these in reverse so encoders are always ended
@@ -50,7 +50,7 @@ internal extension System {
                 for event in traversalEvents {
                     switch event {
                     case .enter(let node):
-                        pushActiveNode(node)
+                        traversalContext.push(node)
                         inheritEnvironmentFromActiveParent(node)
                         if skipDepth > 0 {
                             skipDepth += 1
@@ -67,7 +67,7 @@ internal extension System {
                             }
                         }
                     case .exit(let node):
-                        defer { popActiveNode() }
+                        defer { traversalContext.pop() }
                         if skipDepth > 0 {
                             skipDepth -= 1
                             continue
@@ -87,7 +87,7 @@ internal extension System {
                 unwindEnteredWorkloadNodes()
                 throw error
             }
-            assert(activeNodeStack.isEmpty)
+            assert(traversalContext.isEmpty)
             assert(skipDepth == 0, "skipDepth should be zero after workload traversal")
         }
     }
@@ -99,21 +99,20 @@ internal extension System {
     /// Runs on every node entered during a traversal, including nodes that take no part in the
     /// current phase, so values written by an ancestor propagate through intermediate nodes.
     func inheritEnvironmentFromActiveParent(_ node: Node) {
-        guard activeNodeStack.count > 1 else {
+        guard let parentNode = traversalContext.parentNode else {
             return
         }
-        let parentNode = activeNodeStack[activeNodeStack.count - 2]
         node.environmentValues.inherit(from: parentNode.environmentValues)
     }
 
     func process(needsSetup: Bool = false, enter: (any SetupElement, Node) throws -> Void, exit: (any SetupElement, Node) throws -> Void) throws {
         try withCurrentSystem {
-            assert(activeNodeStack.isEmpty)
-            defer { clearActiveNodeStack() }
+            assert(traversalContext.isEmpty)
+            defer { traversalContext.clear() }
             for event in traversalEvents {
                 switch event {
                 case .enter(let node):
-                    pushActiveNode(node)
+                    traversalContext.push(node)
                     inheritEnvironmentFromActiveParent(node)
                     if let bodylessElement = node.element as? any SetupElement, !needsSetup || node.needsSetup {
                         try enter(bodylessElement, node)
@@ -122,10 +121,10 @@ internal extension System {
                     if let bodylessElement = node.element as? any SetupElement, !needsSetup || node.needsSetup {
                         try exit(bodylessElement, node)
                     }
-                    popActiveNode()
+                    traversalContext.pop()
                 }
             }
-            assert(activeNodeStack.isEmpty)
+            assert(traversalContext.isEmpty)
         }
     }
 }

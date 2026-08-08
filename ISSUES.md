@@ -5506,13 +5506,14 @@ Acceptance criteria:
 ## 373: Make activeNodeStack private to the phase runner and pass environment explicitly
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, subtask
 depends: 372
 created: 2026-08-08T20:39:47Z
-updated: 2026-08-08T20:40:17Z
+updated: 2026-08-08T21:11:06Z
+closed: 2026-08-08T21:11:06Z
 +++
 
 Part of #292. Depends on #372.

@@ -79,7 +79,7 @@ internal extension Element {
     /// owning node dirty. This is the `@Observable` counterpart of ``StateBox``'s read-tracking. See #287.
     private var trackedBody: Body {
         get throws {
-            guard let system = System.current, let node = system.activeNodeStack.last else {
+            guard let system = System.current, let node = system.traversalContext.currentNode else {
                 return try body
             }
             // Only the identifier is captured: the change handler is `@Sendable` and may run off the owning

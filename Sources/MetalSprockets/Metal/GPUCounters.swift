@@ -133,7 +133,7 @@ internal struct GPUCountersModifier <Content>: Element, BodylessElement, Bodyles
             logger?.warning("gpuCounters: No device in environment; counters disabled.")
             return
         }
-        let parent = system.activeNodeStack.count >= 2 ? system.activeNodeStack[system.activeNodeStack.count - 2] : nil
+        let parent = system.traversalContext.parentNode
         guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
             return
         }

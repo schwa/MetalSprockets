@@ -19,7 +19,7 @@ internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement,
         }
 
         // Get parent's renderPassDescriptor (fresh for this frame)
-        let parent = system.activeNodeStack.count >= 2 ? system.activeNodeStack[system.activeNodeStack.count - 2] : nil
+        let parent = system.traversalContext.parentNode
         guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
             fatalError("RenderPassDescriptorModifier: renderPassDescriptor not available.")
         }

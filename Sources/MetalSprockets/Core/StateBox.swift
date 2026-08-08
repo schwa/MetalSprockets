@@ -29,7 +29,7 @@ internal final class StateBox<Wrapped> {
 
     internal var wrappedValue: Wrapped {
         get {
-            let currentNode = resolveSystem()?.activeNodeStack.last
+            let currentNode = resolveSystem()?.traversalContext.currentNode
             return lock.withLockUnchecked {
                 // Remove dependnecies whose values have been deallocated
                 dependencies = dependencies.filter { $0.wrappedValue != nil }

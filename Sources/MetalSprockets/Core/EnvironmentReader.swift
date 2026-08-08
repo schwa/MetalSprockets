@@ -15,9 +15,9 @@ public struct EnvironmentReader<Value, Content: Element>: Element, BodylessEleme
     }
 
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
-        // TODO: #212 Ideally we would be passed a Node as a parameter here instead of accessing activeNodeStack
-        guard let system = System.current, let node = system.activeNodeStack.last else {
-            fatalError("EnvironmentReader must be visited within a System context, with a valid non-empty activeNodeStack.")
+        // TODO: #212 Ideally we would be passed a Node as a parameter here instead of asking the traversal context
+        guard let system = System.current, let node = system.traversalContext.currentNode else {
+            fatalError("EnvironmentReader must be visited within a System context, during an active traversal.")
         }
         let value = node.environmentValues[keyPath: keyPath]
         let content = try content(value)

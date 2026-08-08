@@ -16,7 +16,7 @@ The `System` class is the central coordinator that manages the element tree, str
 
 - **orderedIdentifiers**: Array of StructuralIdentifiers in depth-first traversal order
 - **nodes**: Dictionary mapping identifiers to Node instances
-- **activeNodeStack**: Stack tracking current node during traversal
+- **traversalContext**: `TraversalContext` owning the stack of nodes being visited by the current phase
 - **dirtyIdentifiers**: Set of identifiers that need re-processing due to state changes
 
 ## Structural Identity
@@ -76,14 +76,14 @@ The framework has an architectural inconsistency in how environment values are a
 
 - `workloadEnter/Exit` and `setupEnter/Exit` methods receive a `node` parameter directly
 - However, `@MSEnvironment` property wrappers cannot access this parameter
-- Instead, they rely on a global `activeNodeStack` maintained by the System
+- Instead, they resolve through the `TraversalContext` reached via `System.current`
 
 #### Why This Is Problematic
 
 1. **Hidden coupling**: Elements appear to have local access but actually depend on global mutable state
 2. **Thread safety concerns**: Global mutable state complicates concurrent processing
 3. **Testing difficulties**: Tests must set up global state correctly
-4. **Refactoring hazard**: Easy to break by forgetting to maintain activeNodeStack
+4. **Refactoring hazard**: Easy to break by forgetting to push/pop the traversal context
 
 #### Potential Solutions
 
@@ -132,7 +132,7 @@ The depth-first traversal with proper sibling handling ensures:
 
 ### Planned Improvements
 
-- Remove activeNodeStack dependency
+- Pass the traversal context to elements explicitly instead of via `System.current`
 - Implement proper ElementModifier protocol
 - Add explicit ID support via `.id()` modifier
 - Performance optimizations for large graphs

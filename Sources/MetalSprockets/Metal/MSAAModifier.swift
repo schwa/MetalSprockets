@@ -64,12 +64,12 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
 
         // The modifier rewrites the render pass descriptor, so it only means anything when it
         // wraps a whole pass. Placed inside one it used to be a silent no-op (see #355).
-        if system.activeNodeStack.dropLast().contains(where: { $0.element is any RenderPassElement }) {
+        if system.traversalContext.hasAncestor(where: { $0.element is any RenderPassElement }) {
             throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` must be placed on a RenderPass (or an element containing one), not on content inside a render pass.")
         }
 
         // Get parent's renderPassDescriptor
-        let parent = system.activeNodeStack.count >= 2 ? system.activeNodeStack[system.activeNodeStack.count - 2] : nil
+        let parent = system.traversalContext.parentNode
         guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
             throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` must be placed on an element that renders into a render pass; no render pass descriptor was found in the environment.")
         }

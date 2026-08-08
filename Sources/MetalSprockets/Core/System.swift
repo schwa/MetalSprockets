@@ -27,20 +27,9 @@ internal enum TraversalEvent {
 package final class System: @unchecked Sendable {
     private(set) var traversalEvents: [TraversalEvent] = []
     private(set) var nodes: [StructuralIdentifier: Node] = [:]
-    /// Stack of nodes currently being processed during system traversal.
-    /// This stack is maintained during:
-    /// - Initial system update (`update(root:)`) - populated during element tree traversal
-    /// - Setup phase (`setup()`) - populated during node visitation
-    /// - Process/workload phase (`process()`) - populated during node visitation
-    ///
-    /// The stack enables:
-    /// - Environment value resolution via @MSEnvironment property wrapper
-    /// - State dependency tracking for reactive updates
-    /// - Parent-child context during node configuration
-    ///
-    /// IMPORTANT: The stack is empty outside of these traversal contexts.
-    /// Accessing @MSEnvironment properties outside traversal will cause a crash.
-    private(set) var activeNodeStack: [Node] = []
+    /// The node stack for the traversal currently in flight. Owned by the phase doing the traversal; empty outside
+    /// one. Environment and state resolve through this context (see ``TraversalContext``).
+    let traversalContext = TraversalContext()
     /// Identifiers of nodes whose element should be re-evaluated on the next update.
     ///
     /// Wrapped in `OSAllocatedUnfairLock` because `markDirty(_:)` may be called
@@ -179,30 +168,14 @@ package final class System: @unchecked Sendable {
         }
     }
 
-    /// Push a node onto the active stack
-    internal func pushActiveNode(_ node: Node) {
-        activeNodeStack.append(node)
-    }
-
-    /// Pop the last node from the active stack
-    internal func popActiveNode() {
-        activeNodeStack.removeLast()
-    }
-
-    /// Abandon the active stack. Used to recover from a phase that threw part-way through a traversal, so the next
-    /// frame starts from a clean stack rather than tripping the empty-stack assertions. See #296.
-    internal func clearActiveNodeStack() {
-        activeNodeStack.removeAll()
-    }
-
     package func update(root: some Element) throws {
-        assert(activeNodeStack.isEmpty)
+        assert(traversalContext.isEmpty)
         try withCurrentSystem {
             // Clean up after the update
             defer {
-                assert(activeNodeStack.isEmpty, "activeNodeStack should be empty after update")
+                assert(traversalContext.isEmpty, "traversal context should be empty after update")
                 _ = takeDirtyIdentifiers()
-                activeNodeStack.removeAll()
+                traversalContext.clear()
             }
 
             let reconciliation = try TreeReconciler(system: self).reconcile(root: root)
@@ -251,7 +224,7 @@ internal extension System {
             fatalError("Found matching structural ID \(currentId) but no existing node - this indicates a bug in the System")
         }
         // Update parent identifier (in case the node moved in the tree)
-        existingNode.parentIdentifier = activeNodeStack.last?.id
+        existingNode.parentIdentifier = traversalContext.currentNode?.id
 
         if shouldUpdateNode(existingNode, with: element, id: currentId) {
             // Save the old element BEFORE updating for requiresSetup check
@@ -282,7 +255,7 @@ internal extension System {
     }
 
     func makeNode(currentId: StructuralIdentifier, element: any Element, newNodes: inout [StructuralIdentifier: Node]) -> Node {
-        let parentId = activeNodeStack.last?.id
+        let parentId = traversalContext.currentNode?.id
         let currentNode = Node(system: self, id: currentId, parentIdentifier: parentId, element: element)
         newNodes[currentId] = currentNode
         // New nodes need setup, unless the element takes no part in the setup phase. (#235)

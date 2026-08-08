@@ -108,9 +108,9 @@ internal final class TreeReconciler {
         let currentNode = system.processNode(currentId: currentId, previousId: previousId, element: element, newNodes: &newNodes)
 
         newEvents.append(.enter(currentNode))
-        system.pushActiveNode(currentNode)
+        system.traversalContext.push(currentNode)
         defer {
-            system.popActiveNode()
+            system.traversalContext.pop()
             newEvents.append(.exit(currentNode))
         }
 

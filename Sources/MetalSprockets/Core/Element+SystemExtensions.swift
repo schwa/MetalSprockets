@@ -5,8 +5,8 @@ internal extension Element {
         }
 
         // TODO: #27 Avoid this in future
-        // Get the parent node (second to last in stack, since current node is already pushed)
-        let parent = system.activeNodeStack.count >= 2 ? system.activeNodeStack[system.activeNodeStack.count - 2] : nil
+        // The current node is already pushed, so the environment parent is the node above it.
+        let parent = system.traversalContext.parentNode
 
         applyInheritedEnvironment(from: parent, to: node)
 

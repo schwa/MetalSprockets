@@ -172,8 +172,8 @@ public struct MSEnvironment <Value>: EnvironmentDependentProperty {
         guard let system = System.current else {
             preconditionFailure("Environment must be used within a System.")
         }
-        guard let currentNode = system.activeNodeStack.last else {
-            preconditionFailure("Environment must be used within a System that has an activeNodeStack.")
+        guard let currentNode = system.traversalContext.currentNode else {
+            preconditionFailure("Environment must be used within a System during an active traversal.")
         }
         return currentNode.environmentValues[keyPath: keyPath]
     }
