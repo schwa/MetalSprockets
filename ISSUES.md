@@ -4911,11 +4911,13 @@ ComputeDispatch only supports CPU-specified grid sizes (threadgroupsPerGrid / th
 ## 352: Elements holding an @Observable model are treated as changed every frame
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m
 created: 2026-08-08T16:09:14Z
+updated: 2026-08-08T21:12:51Z
+closed: 2026-08-08T21:12:51Z
 +++
 
 An element whose stored properties are class references (e.g. an @Observable model) is not Equatable, so isEqual(node.element, element) returns false on every update. shouldUpdateNode therefore reports a change each frame, which resets the node's environment and sets needsSetup = true, so the setup phase re-runs for that node every frame even when nothing about the model changed.
