@@ -219,6 +219,51 @@ struct MeshRenderPipelineTests {
         #expect(rendering.texture.width == 64)
     }
 
+    @Test("A stencil attachment contributes its pixel format to the mesh pipeline")
+    func testMeshPipelineWithStencilAttachment() throws {
+        guard try meshShadersSupported() else {
+            return
+        }
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let size = 128
+
+        func makeTexture(format: MTLPixelFormat, usage: MTLTextureUsage, storage: MTLStorageMode) throws -> MTLTexture {
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: size, height: size, mipmapped: false)
+            descriptor.usage = usage
+            descriptor.storageMode = storage
+            return try #require(device.makeTexture(descriptor: descriptor))
+        }
+
+        // A combined depth/stencil attachment. The mesh pipeline has to pick the stencil format up from the render
+        // pass descriptor, otherwise building the pipeline state fails against this attachment.
+        // Shared storage so the result can be read back and compared, not just rendered into the void.
+        let colorTexture = try makeTexture(format: .bgra8Unorm_srgb, usage: [.renderTarget, .shaderRead], storage: .shared)
+        let depthStencilTexture = try makeTexture(format: .depth32Float_stencil8, usage: [.renderTarget], storage: .private)
+
+        let descriptor = MTLRenderPassDescriptor()
+        descriptor.colorAttachments[0].texture = colorTexture
+        descriptor.colorAttachments[0].loadAction = .clear
+        descriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        descriptor.colorAttachments[0].storeAction = .store
+        descriptor.depthAttachment.texture = depthStencilTexture
+        descriptor.depthAttachment.loadAction = .clear
+        descriptor.depthAttachment.clearDepth = 1
+        descriptor.depthAttachment.storeAction = .dontCare
+        descriptor.stencilAttachment.texture = depthStencilTexture
+        descriptor.stencilAttachment.loadAction = .clear
+        descriptor.stencilAttachment.storeAction = .dontCare
+
+        let runner = try Runner(device: device)
+        try runner.run(
+            try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: true)
+                .renderPassDescriptor(descriptor)
+                .drawableSize(CGSize(width: size, height: size))
+        )
+
+        // The stencil attachment changes the pipeline, not the picture: the same green triangle has to come out.
+        try Golden.verify(try OffscreenRenderer.Rendering(texture: colorTexture).cgImage, named: "MeshTriangle")
+    }
+
     // MeshRenderPipeline.requiresSetup now always returns true; rebuild decisions
     // live inside setupEnter's per-node cache (see #327 / #333).
     @Test("requiresSetup is always true")

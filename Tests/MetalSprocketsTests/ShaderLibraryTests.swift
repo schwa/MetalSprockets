@@ -271,4 +271,28 @@ struct ShaderLibraryTests {
         #expect(ShaderLibrary.ID.library(mtl1) == .library(mtl1))
         #expect(ShaderLibrary.ID.library(mtl1) != .library(mtl2))
     }
+
+    @Test("Two IDs for the same bundle collapse to one entry in a Set")
+    func testBundleIDHashesByBundleURL() throws {
+        // `ShaderStore` keys its cache on `ID`, so equal IDs have to hash equally or an adopted library would never
+        // be found again.
+        let ids: Set<ShaderLibrary.ID> = [.bundle(.main), .bundle(.main), .bundle(Bundle.module)]
+        #expect(ids.count == 2)
+        #expect(ids.contains(.bundle(.main)))
+    }
+
+    @Test("Library IDs hash by object identity")
+    func testLibraryIDHashesByIdentity() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let mtl1 = try device.makeLibrary(source: Self.source, options: nil)
+        let mtl2 = try device.makeLibrary(source: Self.source, options: nil)
+
+        // Same source, two distinct MTLLibrary objects: identity, not content, decides.
+        let ids: Set<ShaderLibrary.ID> = [.library(mtl1), .library(mtl1), .library(mtl2)]
+        #expect(ids.count == 2)
+
+        // And the three cases never collide into each other.
+        let mixed: Set<ShaderLibrary.ID> = [.library(mtl1), .bundle(.main), .source(Self.source, nil)]
+        #expect(mixed.count == 3)
+    }
 }
