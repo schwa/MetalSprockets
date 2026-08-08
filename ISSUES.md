@@ -5551,12 +5551,13 @@ Acceptance criteria:
 ## 376: Define a ShaderLoader port for shader function lookup
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m, subtask
 created: 2026-08-08T20:40:04Z
-updated: 2026-08-08T20:40:17Z
+updated: 2026-08-08T20:46:50Z
+closed: 2026-08-08T20:46:50Z
 +++
 
 Part of #295.

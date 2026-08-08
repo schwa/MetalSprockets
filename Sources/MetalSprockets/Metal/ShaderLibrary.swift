@@ -85,14 +85,21 @@ public struct ShaderLibrary: Identifiable {
     }
 
     final class State: Sendable {
-        let library: MTLLibrary
-        let cache: ShaderCache
+        let loader: ShaderLoader
         let id: ShaderLibrary.ID
 
-        init(library: MTLLibrary, id: ShaderLibrary.ID) {
-            self.library = library
-            self.id = id
-            self.cache = ShaderCache()
+        init(loader: ShaderLoader) {
+            self.loader = loader
+            self.id = loader.libraryID
+        }
+
+        convenience init(library: MTLLibrary, id: ShaderLibrary.ID) {
+            self.init(loader: MetalShaderLoader(library: library, id: id))
+        }
+
+        /// The wrapped `MTLLibrary`, when the loader is the real Metal-backed one.
+        var library: MTLLibrary? {
+            (loader as? MetalShaderLoader)?.library
         }
     }
 
@@ -141,8 +148,8 @@ public struct ShaderLibrary: Identifiable {
 
     private let box: StateBox
     public var id: ID { box.resolve().id }
-    var library: MTLLibrary { box.resolve().library }
-    var cache: ShaderCache { box.resolve().cache }
+    var loader: ShaderLoader { box.resolve().loader }
+    var library: MTLLibrary? { box.resolve().library }
 
     internal init(state: State) {
         self.box = StateBox(state)
@@ -250,32 +257,13 @@ public extension ShaderLibrary {
     func function<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
         let scopedName = namespace.map { "\($0)::\(name)" } ?? name
         let expectedType = T.functionType
-        let function = try makeFunction(scopedName: scopedName, expectedType: expectedType, constants: constants)
+        let function = try loader.function(named: scopedName, type: expectedType, constants: constants)
         guard function.functionType == expectedType else {
             try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedName)' is a \(function.functionType.shaderDescription) function, but a \(expectedType.shaderDescription) function (\(T.self)) was requested."))
         }
         return T(function)
     }
 
-    /// Returns the cached `MTLFunction` for `scopedName`, loading and caching it on a miss.
-    private func makeFunction(scopedName: String, expectedType: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction {
-        if let cached = cache.get(scopedName: scopedName, functionType: expectedType, constants: constants) {
-            return cached
-        }
-        let function: MTLFunction
-        if constants.isEmpty {
-            guard let basicFunction = library.makeFunction(name: scopedName) else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedName)' not found in library (available: \(library.functionNames))."))
-            }
-            function = basicFunction
-        } else {
-            // `buildMTLConstants` introspects the unspecialized function; `makeFunction` then applies the constants.
-            let mtlConstants = try constants.buildMTLConstants(for: library, functionName: scopedName)
-            function = try library.makeFunction(name: scopedName, constantValues: mtlConstants)
-        }
-        cache.set(scopedName: scopedName, functionType: expectedType, constants: constants, function: function)
-        return function
-    }
 }
 
 extension MTLFunctionType {
