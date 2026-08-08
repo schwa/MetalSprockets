@@ -4951,7 +4951,7 @@ Env: macOS, Apple silicon, Xcode 27.0 beta 4, MetalSprockets @ 61a6c479.
 status: new
 priority: medium
 kind: bug
-labels: bug,effort:s
+labels: bug, effort:s
 created: 2026-08-08T18:49:44Z
 +++
 
@@ -4974,5 +4974,32 @@ Actual: silently ignored.
 Found while writing golden-image tests: the first version of the test applied the modifier to the pipeline and produced an image byte-identical to the no-MSAA render, with nothing to indicate why.
 
 Related: #354 (msaa does not anti-alias even when correctly placed), #11 (element graphs that compile but are meaningless).
+
+---
+
+## 356: Capture modifier cannot produce a .gpuTraceDocument
+
++++
+status: new
+priority: medium
+kind: bug
+labels: bug,effort:s
+created: 2026-08-08T18:52:50Z
++++
+
+`.capture(_:target:destination:)` accepts any `MTLCaptureDestination`, but `.gpuTraceDocument` can never succeed: the modifier builds an `MTLCaptureDescriptor` with a destination and a capture object and never sets `outputURL`, which Metal requires for that destination.
+
+Repro (host launched with MTL_CAPTURE_ENABLED=1, so captures are permitted):
+
+1. Render any element wrapped in `.capture(true, target: .device, destination: .gpuTraceDocument)`.
+2. Observe `MTLCaptureManager.shared().isCapturing` during and after the render.
+
+Expected: a .gputrace file is written somewhere the caller can find it.
+
+Actual: `startCapture(with:)` throws, the error is swallowed by the modifier's do/catch and logged as 'capture: Failed to start capture: ...', rendering proceeds, and no capture ever runs. Nothing surfaces to the caller.
+
+There is also no way for a caller to say where the trace should be written, so the destination is unusable even if the start succeeded.
+
+Applies to both `Element.capture(_:target:destination:)` and the `View.capture(_:target:destination:)` used by RenderView.
 
 ---

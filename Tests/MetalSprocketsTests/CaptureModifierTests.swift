@@ -73,6 +73,58 @@ struct CaptureModifierTests {
         _ = try renderer.render(pass)
     }
 
+    @Test("A capture scope runs when captures are enabled")
+    func testCaptureEnabledPath() throws {
+        let manager = MTLCaptureManager.shared()
+        // Only reachable when the host was launched with MTL_CAPTURE_ENABLED=1.
+        guard manager.supportsDestination(.gpuTraceDocument) else {
+            return
+        }
+
+        let pass = try makeTriangleRenderPass().capture(true, target: .device, destination: .gpuTraceDocument)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
+        _ = try renderer.render(pass)
+
+        // The modifier never sets an outputURL, so starting the capture fails and is logged rather than thrown.
+        // See #356.
+        #expect(manager.isCapturing == false)
+    }
+
+    @Test("A nested capture scope is skipped")
+    func testCaptureAlreadyCapturing() throws {
+        let manager = MTLCaptureManager.shared()
+        guard manager.supportsDestination(.gpuTraceDocument) else {
+            return
+        }
+        let device = try #require(MTLCreateSystemDefaultDevice())
+
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("CaptureModifierTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let descriptor = MTLCaptureDescriptor()
+        descriptor.destination = .gpuTraceDocument
+        descriptor.captureObject = device
+        descriptor.outputURL = directory.appendingPathComponent("outer.gputrace")
+        // Capturing can still be refused for reasons outside this test's control (e.g. shader logging having been
+        // used earlier in the run), in which case there is nothing to nest inside.
+        guard (try? manager.startCapture(with: descriptor)) != nil else {
+            try? FileManager.default.removeItem(at: directory)
+            return
+        }
+        defer {
+            if manager.isCapturing {
+                manager.stopCapture()
+            }
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        let pass = try makeTriangleRenderPass().capture(true, target: .device, destination: .gpuTraceDocument)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
+        _ = try renderer.render(pass)
+
+        // The outer capture is still the one in charge: the modifier neither started nor stopped a capture.
+        #expect(manager.isCapturing)
+    }
+
     @Test("CaptureModifier.requiresSetup is false")
     func testCaptureRequiresSetupIsFalse() throws {
         struct Leaf: Element, BodylessElement { var body: Never { fatalError() } }
