@@ -20,7 +20,7 @@ import SwiftUI
 /// ```swift
 /// struct ARView: View {
 ///     @State private var frameData = ARFrameData()
-///     @StateObject private var session = ARSessionManager()
+///     @State private var session = ARSessionManager()
 ///
 ///     var body: some View {
 ///         RenderView { context, size in
@@ -85,17 +85,31 @@ private struct ARKitFrameModifier: ViewModifier {
     let frame: ARFrame?
     @Binding var frameData: ARFrameData
 
+    @Environment(\.device)
+    private var environmentDevice
+
     @State private var textureCache: CVMetalTextureCache?
     @State private var cvTextureY: CVMetalTexture?
     @State private var cvTextureCbCr: CVMetalTexture?
 
+    /// Size of the view this modifier is attached to, in points. ARKit's `projectionMatrix(for:viewportSize:)` and
+    /// `displayTransform(for:viewportSize:)` want the size of the surface the camera image is being fitted to, which
+    /// is this view — not the screen. Reading `UIScreen.main.bounds` here produced a wrong fit under Split View,
+    /// Stage Manager, and on external displays.
+    @State private var viewportSize: CGSize = .zero
+
     func body(content: Content) -> some View {
         content
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { size in
+                viewportSize = size
+            }
             .onAppear {
-                // The texture cache is created before any element tree exists, so there is no environment device to
-                // take here. See #55.
+                // Prefer the device from the environment so the textures live on the same device the RenderView
+                // draws with; fall back to the system default when nothing was supplied. See #55.
                 // swiftlint:disable:next MTLCreateSystemDefaultDevice
-                guard let device = MTLCreateSystemDefaultDevice() else {
+                guard let device = environmentDevice ?? MTLCreateSystemDefaultDevice() else {
                     return
                 }
                 var cache: CVMetalTextureCache?
@@ -109,6 +123,9 @@ private struct ARKitFrameModifier: ViewModifier {
 
     private func processFrame() {
         guard let frame, let textureCache else {
+            return
+        }
+        guard viewportSize.width > 0, viewportSize.height > 0 else {
             return
         }
 
@@ -156,7 +173,6 @@ private struct ARKitFrameModifier: ViewModifier {
         }
         data.viewMatrix = orientationRotation * frame.camera.transform.inverse
 
-        let viewportSize = UIScreen.main.bounds.size
         data.projectionMatrix = frame.camera.projectionMatrix(for: interfaceOrientation, viewportSize: viewportSize, zNear: 0.01, zFar: 100.0)
 
         let displayTransform = frame.displayTransform(for: interfaceOrientation, viewportSize: viewportSize).inverted()

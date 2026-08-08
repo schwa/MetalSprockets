@@ -39,42 +39,19 @@ struct MobileDemoView: View {
 
     var body: some View {
         NavigationStack {
-            content
-                .ignoresSafeArea()
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("AR", systemImage: "arkit") { toggleARMode() }
-                    }
-                }
-        }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        if isARMode, let textureY = frameData.textureY, let textureCbCr = frameData.textureCbCr {
-            // Capture textures to avoid race during teardown
-            let textureCoordinates = frameData.textureCoordinates
-            let projectionMatrix = frameData.projectionMatrix
-            let viewMatrix = frameData.viewMatrix
-
-            RenderView { context, _ in
-                let time = context.frameUniforms.time
-                let modelMatrix = float4x4.translation(0, -0.25, -2) * cubeRotationMatrix(time: TimeInterval(time)) * float4x4.scale(0.25, 0.25, 0.25)
-                let transform = projectionMatrix * viewMatrix * modelMatrix
-
-                try RenderPass {
-                    YCbCrBillboardRenderPass(textureY: textureY, textureCbCr: textureCbCr, textureCoordinates: textureCoordinates)
-                    try DemoCubeRenderPipeline(transform: transform, time: time)
+            Group {
+                if isARMode {
+                    ARDemoView(frame: viewModel.currentFrame, frameData: $frameData)
+                } else {
+                    RenderDemoView()
                 }
             }
-            .metalDepthStencilPixelFormat(.depth32Float)
-            .metalClearColor(.init(red: 0, green: 0, blue: 0, alpha: 0))
-            .arkit(frame: viewModel.currentFrame, frameData: $frameData)
-        } else if isARMode {
-            ProgressView()
-                .arkit(frame: viewModel.currentFrame, frameData: $frameData)
-        } else {
-            RenderDemoView()
+            .ignoresSafeArea()
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("AR", systemImage: "arkit") { toggleARMode() }
+                }
+            }
         }
     }
 
@@ -92,5 +69,48 @@ struct MobileDemoView: View {
 
 #Preview {
     MobileDemoView()
+}
+
+// MARK: - ARDemoView
+
+/// Renders the demo cube composited over the ARKit camera feed.
+struct ARDemoView: View {
+    var frame: ARFrame?
+    @Binding var frameData: ARFrameData
+
+    var body: some View {
+        Group {
+            if let textureY = frameData.textureY, let textureCbCr = frameData.textureCbCr {
+                // Read out of `frameData` once, so the closure captures this frame's textures rather than racing
+                // with the next ARKit update (or with teardown).
+                let textureCoordinates = frameData.textureCoordinates
+                let projectionMatrix = frameData.projectionMatrix
+                let viewMatrix = frameData.viewMatrix
+
+                RenderView { context, _ in
+                    let time = context.frameUniforms.time
+                    let modelMatrix = float4x4.translation(0, -0.25, -2) * cubeRotationMatrix(time: TimeInterval(time)) * float4x4.scale(0.25, 0.25, 0.25)
+                    let transform = projectionMatrix * viewMatrix * modelMatrix
+
+                    try RenderPass {
+                        YCbCrBillboardRenderPass(textureY: textureY, textureCbCr: textureCbCr, textureCoordinates: textureCoordinates)
+                        try DemoCubeRenderPipeline(transform: transform, time: time)
+                    }
+                }
+                .metalDepthStencilPixelFormat(.depth32Float)
+                .metalClearColor(.init(red: 0, green: 0, blue: 0, alpha: 0))
+            } else {
+                ProgressView("Starting camera…")
+            }
+        }
+        // Stays attached in both states: the modifier is what turns ARKit frames into the textures the first branch
+        // is waiting for.
+        .arkit(frame: frame, frameData: $frameData)
+    }
+}
+
+#Preview("AR, waiting for camera") {
+    @Previewable @State var frameData = ARFrameData()
+    ARDemoView(frame: nil, frameData: $frameData)
 }
 #endif

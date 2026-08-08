@@ -27,11 +27,9 @@ struct Screenshot: Transferable {
         let rendering = try renderer.render(renderPass)
         let cgImage = try rendering.cgImage
 
-        #if os(iOS) || os(visionOS)
-        return Image(uiImage: UIImage(cgImage: cgImage))
-        #else
-        return Image(nsImage: NSImage(cgImage: cgImage, size: size))
-        #endif
+        // `Image(decorative:scale:)` is the cross-platform SwiftUI spelling; UIImage/NSImage would need a #if and
+        // buy nothing. Decorative because the accessibility description belongs on the SharePreview.
+        return Image(decorative: cgImage, scale: 1)
     }
 
     nonisolated static var transferRepresentation: some TransferRepresentation {

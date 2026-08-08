@@ -13,8 +13,11 @@ struct VisionOSDemoView: View {
     @State private var isTransitioning = false
 
     var body: some View {
-        VStack {
-            if !isImmersive {
+        Group {
+            if isImmersive {
+                // The cube has moved into the immersive space, so the window has nothing left to show.
+                ContentUnavailableView("Rendering Immersively", systemImage: "visionpro", description: Text("The cube is being rendered in the immersive space."))
+            } else {
                 RenderView { context, size in
                     let time = context.frameUniforms.time
 
@@ -29,8 +32,6 @@ struct VisionOSDemoView: View {
                     }
                 }
                 .metalDepthStencilPixelFormat(.depth32Float)
-            } else {
-                Spacer()
             }
         }
         .overlay {

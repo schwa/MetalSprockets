@@ -301,10 +301,10 @@ public struct RenderView <Content>: View where Content: Element {
     }
 
     public var body: some View {
-        // Device and command queue are resolved lazily inside RenderViewHelper's update
+        // Device and command queue are resolved lazily inside MetalHostView's update
         // closure rather than here: creating them during body evaluation can happen while
         // a draw callback is in flight, which Metal warns about (#344).
-        RenderViewHelper(
+        MetalHostView(
             device: device,
             commandQueue: commandQueue,
             overrides: MTKViewOverrides(
@@ -339,7 +339,7 @@ internal struct MTKViewOverrides: Equatable {
     }
 }
 
-internal struct RenderViewHelper <Content>: View where Content: Element {
+internal struct MetalHostView <Content>: View where Content: Element {
     var device: MTLDevice?
     var commandQueue: MTLCommandQueue?
     var overrides: MTKViewOverrides
@@ -375,7 +375,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     }
 
     var body: some View {
-        ViewAdaptor<MTKView> {
+        PlatformAdaptorView<MTKView> {
             MTKView()
         }
         update: { view in
@@ -420,7 +420,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     }
 }
 
-/// Cheap holder class for lazy viewModel, device and command queue creation in `RenderViewHelper`.
+/// Cheap holder class for lazy viewModel, device and command queue creation in `MetalHostView`.
 ///
 /// Internal rather than private so the caching behaviour that #337 depends on can be tested directly.
 internal final class ViewModelBox<Content: Element> {

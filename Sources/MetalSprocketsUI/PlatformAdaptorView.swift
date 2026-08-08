@@ -1,7 +1,7 @@
 import SwiftUI
 
 #if os(macOS)
-internal struct ViewAdaptor<ViewType>: View where ViewType: NSView {
+internal struct PlatformAdaptorView<ViewType>: View where ViewType: NSView {
     let make: () -> ViewType
     let update: (ViewType) -> Void
     let dismantle: (ViewType) -> Void
@@ -21,8 +21,8 @@ internal struct ViewAdaptor<ViewType>: View where ViewType: NSView {
         let update: (ViewType) -> Void
         let dismantle: (ViewType) -> Void
 
-        func makeCoordinator() -> ViewAdaptorCoordinator<ViewType> {
-            ViewAdaptorCoordinator(dismantle: dismantle)
+        func makeCoordinator() -> PlatformAdaptorCoordinator<ViewType> {
+            PlatformAdaptorCoordinator(dismantle: dismantle)
         }
 
         func makeNSView(context: Context) -> ViewType {
@@ -33,14 +33,14 @@ internal struct ViewAdaptor<ViewType>: View where ViewType: NSView {
             update(nsView)
         }
 
-        static func dismantleNSView(_ nsView: ViewType, coordinator: ViewAdaptorCoordinator<ViewType>) {
+        static func dismantleNSView(_ nsView: ViewType, coordinator: PlatformAdaptorCoordinator<ViewType>) {
             coordinator.dismantle(nsView)
         }
     }
 }
 
 #elseif os(iOS) || os(tvOS) || os(visionOS)
-internal struct ViewAdaptor<ViewType>: View where ViewType: UIView {
+internal struct PlatformAdaptorView<ViewType>: View where ViewType: UIView {
     let make: () -> ViewType
     let update: (ViewType) -> Void
     let dismantle: (ViewType) -> Void
@@ -60,8 +60,8 @@ internal struct ViewAdaptor<ViewType>: View where ViewType: UIView {
         let update: (ViewType) -> Void
         let dismantle: (ViewType) -> Void
 
-        func makeCoordinator() -> ViewAdaptorCoordinator<ViewType> {
-            ViewAdaptorCoordinator(dismantle: dismantle)
+        func makeCoordinator() -> PlatformAdaptorCoordinator<ViewType> {
+            PlatformAdaptorCoordinator(dismantle: dismantle)
         }
 
         func makeUIView(context: Context) -> ViewType {
@@ -72,16 +72,21 @@ internal struct ViewAdaptor<ViewType>: View where ViewType: UIView {
             update(uiView)
         }
 
-        static func dismantleUIView(_ uiView: ViewType, coordinator: ViewAdaptorCoordinator<ViewType>) {
+        static func dismantleUIView(_ uiView: ViewType, coordinator: PlatformAdaptorCoordinator<ViewType>) {
             coordinator.dismantle(uiView)
         }
     }
 }
+
+#else
+// Without this the failure on a new platform is a confusing "cannot find PlatformAdaptorView in scope" at every use
+// site rather than a statement of what is actually missing.
+#error("MetalSprocketsUI has no platform view representable for this platform.")
 #endif
 
 /// Carries the teardown action to the static `dismantle` entry points, which cannot see the representable's own
 /// properties. See #301.
-internal final class ViewAdaptorCoordinator<ViewType> {
+internal final class PlatformAdaptorCoordinator<ViewType> {
     let dismantle: (ViewType) -> Void
 
     init(dismantle: @escaping (ViewType) -> Void) {

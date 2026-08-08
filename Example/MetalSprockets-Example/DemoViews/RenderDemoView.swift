@@ -12,11 +12,12 @@ struct RenderDemoView: View {
     @State private var pausedTime: Float = 0
     @State private var frameTimingStatistics: FrameTimingStatistics?
 
-    // Query device for supported MSAA sample counts
-    private var supportedSampleCounts: [Int] {
+    // Queried once: this view redraws every frame, so probing the device from `body` would create a device and
+    // rebuild this array 60+ times a second.
+    private static let supportedSampleCounts: [Int] = {
         let device = _MTLCreateSystemDefaultDevice()
         return [2, 4, 8].filter { device.supportsTextureSampleCount($0) }
-    }
+    }()
 
     var body: some View {
         // RenderView is the bridge between SwiftUI and Metal - closure called every frame
@@ -43,18 +44,14 @@ struct RenderDemoView: View {
         .onFrameTimingChange { frameTimingStatistics = $0 }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
+                Button(isPaused ? "Play" : "Pause", systemImage: isPaused ? "play.fill" : "pause.fill") {
                     isPaused.toggle()
-                } label: {
-                    Label(isPaused ? "Play" : "Pause", systemImage: isPaused ? "play.fill" : "pause.fill")
                 }
             }
             if isPaused {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
+                    Button("Step", systemImage: "forward.frame.fill") {
                         pausedTime += 1.0 / 60.0  // Advance by one frame (~16.67ms at 60fps)
-                    } label: {
-                        Label("Step", systemImage: "forward.frame.fill")
                     }
                 }
             }
@@ -63,7 +60,7 @@ struct RenderDemoView: View {
                     Toggle("MSAA Enabled", isOn: $msaaEnabled)
                     if msaaEnabled {
                         Picker("Sample Count", selection: $sampleCount) {
-                            ForEach(supportedSampleCounts, id: \.self) { count in
+                            ForEach(Self.supportedSampleCounts, id: \.self) { count in
                                 Text("\(count)x").tag(count)
                             }
                         }
@@ -81,15 +78,11 @@ struct RenderDemoView: View {
         }
         .overlay(alignment: .bottomLeading) {
             Text(msaaEnabled ? "MSAA \(sampleCount)x" : "MSAA Off")
-                .padding(8)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                .foregroundStyle(.white)
-                .padding()
+                .modifier(OverlayBadgeModifier())
         }
         .overlay(alignment: .bottomTrailing) {
             if let frameTimingStatistics {
                 FrameTimingView(statistics: frameTimingStatistics, options: .all)
-                    .padding()
             }
         }
     }

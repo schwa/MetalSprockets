@@ -71,40 +71,12 @@ public struct FrameTimingView: View {
 
     public var body: some View {
         TimelineView(.animation(minimumInterval: minimumUpdateInterval)) { timeline in
-            Group {
-                #if os(macOS)
-                Form {
-                    formContent
-                        .foregroundStyle(.white)
-                }
-                #else
-                VStack(spacing: 4) {
-                    formContent
-                }
-                .fixedSize()
-                #endif
-            }
-            .monospacedDigit()
-            .padding(8)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-            .foregroundStyle(.white)
-            .padding()
+            FrameTimingRowsView(rows: savedStatistics.map { statistics in
+                Self.rows(for: statistics, options: options, targetFramesPerSecond: targetFramesPerSecond)
+            } ?? [])
+            .modifier(OverlayBadgeModifier())
             .onChange(of: timeline.date, initial: true) {
                 savedStatistics = statistics
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var formContent: some View {
-        if let statistics = savedStatistics {
-            ForEach(Self.rows(for: statistics, options: options, targetFramesPerSecond: targetFramesPerSecond)) { row in
-                LabeledContent {
-                    Text(row.value)
-                        .foregroundStyle(row.valueColor ?? .white)
-                } label: {
-                    Text(row.label)
-                }
             }
         }
     }
@@ -176,6 +148,7 @@ public struct FrameTimingView: View {
         }
         return Double(screen.maximumFramesPerSecond)
         #elseif os(iOS) || os(tvOS)
+        // No SwiftUI equivalent: refresh-rate capability is not surfaced through the environment.
         let screen = UIScreen.main
         guard screen.maximumFramesPerSecond > 0 else {
             return fallbackFramesPerSecond
@@ -188,6 +161,51 @@ public struct FrameTimingView: View {
     }
 }
 
-#Preview {
-    FrameTimingView(statistics: FrameTimingStatistics(currentFPS: 60, deltaTime: 0.0167, averageDeltaTime: 0.0166, minDeltaTime: 0.0145, maxDeltaTime: 0.0201, frameCount: 4_827, gpuTime: 0.0021), options: .all)
+// MARK: - FrameTimingRowsView
+
+/// The label/value grid inside a ``FrameTimingView``.
+///
+/// A `Grid` rather than a `Form`: it keeps the two columns aligned identically on every platform, where `Form` is a
+/// page-level container that only aligns `LabeledContent` on macOS.
+internal struct FrameTimingRowsView: View {
+    var rows: [FrameTimingView.Row]
+
+    var body: some View {
+        Grid(alignment: .leading) {
+            ForEach(rows) { row in
+                GridRow {
+                    Text(row.label)
+                    Text(row.value)
+                        .foregroundStyle(row.valueColor ?? .primary)
+                        .gridColumnAlignment(.trailing)
+                }
+            }
+        }
+        .monospacedDigit()
+        .fixedSize()
+    }
+}
+
+// MARK: - Previews
+
+private extension FrameTimingStatistics {
+    static func preview(currentFPS: Double) -> Self {
+        let deltaTime = 1 / currentFPS
+        return Self(currentFPS: currentFPS, deltaTime: deltaTime, averageDeltaTime: deltaTime, minDeltaTime: deltaTime * 0.9, maxDeltaTime: deltaTime * 1.2, frameCount: 4_827, gpuTime: deltaTime * 0.125)
+    }
+}
+
+#Preview("All options") {
+    FrameTimingView(statistics: .preview(currentFPS: 60), options: .all, targetFramesPerSecond: 60)
+}
+
+#Preview("Default options") {
+    FrameTimingView(statistics: .preview(currentFPS: 60), options: .default, targetFramesPerSecond: 60)
+}
+
+#Preview("Degraded") {
+    VStack {
+        FrameTimingView(statistics: .preview(currentFPS: 45), options: .all, targetFramesPerSecond: 60)
+        FrameTimingView(statistics: .preview(currentFPS: 20), options: .all, targetFramesPerSecond: 60)
+    }
 }
