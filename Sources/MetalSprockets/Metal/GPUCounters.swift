@@ -186,8 +186,6 @@ internal struct GPUCountersModifier <Content>: Element, BodylessElement, Bodyles
     }
 }
 
-// MARK: -
-
 public extension Element {
     /// Samples GPU timestamps around a render pass and reports the elapsed GPU time.
     ///

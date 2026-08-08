@@ -114,7 +114,6 @@ internal final class TreeReconciler {
             newEvents.append(.exit(currentNode))
         }
 
-        // Configure the node (applies environment, state, etc.)
         try element.configureNode(currentNode)
 
         siblingIndices.append([:])

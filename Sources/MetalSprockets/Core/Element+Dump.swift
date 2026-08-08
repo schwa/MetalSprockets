@@ -16,7 +16,6 @@ public extension Element {
     }
 }
 
-// More detailed dump with additional information
 public extension Element {
     func dumpVerbose(to output: inout String, indent: Int = 0) throws {
         output.append(try dumpedTree(indent: indent) { element in

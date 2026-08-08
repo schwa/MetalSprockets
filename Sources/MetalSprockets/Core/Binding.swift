@@ -51,7 +51,7 @@ import Foundation
 public struct MSBinding<Value>: Equatable {
     private let get: () -> Value
     private let set: (Value) -> Void
-    // TOOD: Use a less expensive unique identifier
+    // TODO: #384 Use a less expensive unique identifier.
     private let id = UUID()
 
     /// Creates a binding with custom getter and setter closures.

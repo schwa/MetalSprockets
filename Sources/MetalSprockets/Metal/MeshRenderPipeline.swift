@@ -146,7 +146,7 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadEleme
 
         if let color0Texture {
             meshRenderPipelineDescriptor.colorAttachments[0].pixelFormat = color0Texture.pixelFormat
-            // Set rasterSampleCount from the render pass texture for MSAA support
+            // rasterSampleCount has to match the render pass attachments for MSAA to work.
             meshRenderPipelineDescriptor.rasterSampleCount = color0Texture.sampleCount
         }
         if let depthTexture {

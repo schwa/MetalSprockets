@@ -71,7 +71,6 @@ internal final class ImmersiveRuntime<Content: Element> {
             return
         }
 
-        // Async sleep instead of blocking wait
         try await LayerRenderer.Clock().sleep(until: timing.optimalInputTime, tolerance: nil)
 
         guard layerRenderer.state == .running else {
@@ -87,7 +86,6 @@ internal final class ImmersiveRuntime<Content: Element> {
             return
         }
 
-        // Get device anchor at presentation time
         let presentationTime = LayerRenderer.Clock.Instant.epoch.duration(to: drawable.frameTiming.presentationTime)
         let deviceAnchor = worldTracking.queryDeviceAnchor(atTimestamp: presentationTime.toTimeInterval)
         drawable.deviceAnchor = deviceAnchor

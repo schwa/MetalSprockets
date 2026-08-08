@@ -68,7 +68,6 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
             throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` must be placed on a RenderPass (or an element containing one), not on content inside a render pass.")
         }
 
-        // Get parent's renderPassDescriptor
         let parent = system.traversalContext.parentNode
         guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
             throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` must be placed on an element that renders into a render pass; no render pass descriptor was found in the environment.")

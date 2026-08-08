@@ -18,7 +18,7 @@ public final class ShaderCache: Sendable {
     private let cache = OSAllocatedUnfairLock<[CacheKey: MTLFunction]>(initialState: [:])
 
     public init() {
-        // Default initializer
+        // This line intentionally left blank.
     }
 
     func get(scopedName: String, functionType: MTLFunctionType, constants: FunctionConstants) -> MTLFunction? {

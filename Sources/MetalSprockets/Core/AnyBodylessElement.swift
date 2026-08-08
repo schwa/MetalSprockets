@@ -25,11 +25,11 @@ internal struct AnyBodylessElement: Element, SetupElement, WorkloadElement {
     fileprivate var _workloadExit: ((Node) throws -> Void)?
 
     init() {
-        // This line intentionally left blank
+        // This line intentionally left blank.
     }
 
     func configureNodeBodyless(_ node: Node) throws {
-        // This line intentionally left blank
+        // This line intentionally left blank.
     }
 
     func setupEnter(_ node: Node) throws {
@@ -49,8 +49,7 @@ internal struct AnyBodylessElement: Element, SetupElement, WorkloadElement {
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool {
-        // AnyBodylessElement wraps closures - if the closures change, we need setup
-        // Since we can't compare closures, always return true for safety
+        // Closures are not comparable, so a changed closure is indistinguishable from an unchanged one.
         true
     }
 }

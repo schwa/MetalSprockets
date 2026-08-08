@@ -101,8 +101,6 @@ internal struct CaptureModifier <Content>: Element, WorkloadElement, BodylessCon
     }
 }
 
-// MARK: -
-
 public extension Element {
     /// Wraps the element in an `MTLCaptureManager` GPU frame capture scope.
     ///

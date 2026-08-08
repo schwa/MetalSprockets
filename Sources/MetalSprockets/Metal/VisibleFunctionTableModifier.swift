@@ -36,7 +36,6 @@ internal struct VisibleFunctionTableModifier<Content>: Element, SetupElement, Wo
         let hint = "\(usage) must be placed inside a RenderPipeline or ComputePipeline content block, not as a modifier on the pipeline itself."
         let reflection = try node.environmentValues.requireReflection(for: usage)
 
-        // Create table if not already created during setup
         if functionTable == nil {
             if let pipelineState = node.environmentValues.renderPipelineState {
                 try createFunctionTable(renderPipelineState: pipelineState, reflection: reflection)
@@ -53,7 +52,6 @@ internal struct VisibleFunctionTableModifier<Content>: Element, SetupElement, Wo
             return
         }
 
-        // Bind the table to the encoder
         if let encoder = node.environmentValues.renderCommandEncoder {
             switch resolvedType {
             case .vertex:
@@ -156,7 +154,6 @@ internal struct VisibleFunctionTableModifier<Content>: Element, SetupElement, Wo
     }
 
     nonisolated func requiresSetup(comparedTo old: VisibleFunctionTableModifier<Content>) -> Bool {
-        // Require setup if name or functions changed
         name != old.name ||
             functions.count != old.functions.count ||
             !zip(functions, old.functions).allSatisfy { $0 === $1 }

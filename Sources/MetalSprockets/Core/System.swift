@@ -201,7 +201,6 @@ package final class System: @unchecked Sendable {
     internal func update(root: some Element) throws {
         assert(traversalContext.isEmpty)
         try withCurrentSystem {
-            // Clean up after the update
             defer {
                 assert(traversalContext.isEmpty, "traversal context should be empty after update")
                 _ = takeDirtyIdentifiers()
@@ -210,7 +209,6 @@ package final class System: @unchecked Sendable {
 
             let reconciliation = try TreeReconciler(system: self).reconcile(root: root)
 
-            // Clear dirty identifiers after processing entire tree
             _ = takeDirtyIdentifiers()
 
             // Find removed nodes by diffing old vs new, and give their elements a
@@ -230,7 +228,6 @@ package final class System: @unchecked Sendable {
             self.nodes = reconciliation.nodes
             self.traversalEvents = reconciliation.events
 
-            // Dump snapshot if environment variable is set
             snapshotter.dumpSnapshotIfNeeded(self)
         }
     }
@@ -250,36 +247,30 @@ internal extension System {
     /// Reuse an existing node, updating it if its element has changed
     func reuseNode(currentId: StructuralIdentifier, element: any Element, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         guard let existingNode = nodes[currentId] else {
-            // This should never happen - same ID but no existing node
             fatalError("Found matching structural ID \(currentId) but no existing node - this indicates a bug in the System")
         }
-        // Update parent identifier (in case the node moved in the tree)
         existingNode.parentIdentifier = traversalContext.currentNode?.id
 
         if shouldUpdateNode(existingNode, with: element, id: currentId) {
-            // Save the old element BEFORE updating for requiresSetup check
             let oldElement = existingNode.element
             existingNode.element = element
-            // When element changes, preserve setup-phase values while clearing others
-            // This ensures values like renderPipelineState set during setup are retained
+            // Setup-phase values (e.g. renderPipelineState) must survive an element change, so only
+            // inherited values are cleared.
             existingNode.environmentValues.removeInheritedValues()
 
-            // Only mark as needing setup if the element type requires it
-            // Preserve existing needsSetup=true (e.g., from markAllNodesNeedingSetup)
+            // An already-set needsSetup (e.g. from markAllNodesNeedingSetup) is preserved.
             if !existingNode.needsSetup {
                 if let oldBodyless = oldElement as? any BodylessElement,
                     let newBodyless = element as? any BodylessElement,
                     type(of: oldBodyless) == type(of: newBodyless) {
                     existingNode.needsSetup = requiresSetupErased(old: oldBodyless, new: newBodyless)
                 } else {
-                    // Default to needing setup for non-BodylessElements or type changes
                     existingNode.needsSetup = true
                 }
             }
             // Only elements that take part in the setup phase can need setup. (#235)
             existingNode.needsSetup = existingNode.needsSetup && element is any SetupElement
         }
-        // Whether changed or not, reuse the existing node
         newNodes[currentId] = existingNode
         return existingNode
     }
@@ -294,18 +285,17 @@ internal extension System {
     }
 
     func shouldUpdateNode(_ node: Node, with element: any Element, id: StructuralIdentifier) -> Bool {
-        // Check if element is dirty first
         if isDirty(id) {
             return true
         }
 
-        // Always check if the element has changed using equality
-        // Don't use requiresSetup here - that's only for determining if setup phase is needed
+        // requiresSetup is deliberately not consulted here: it only decides whether the setup phase
+        // has to re-run, not whether the node changed.
         return !isEqual(node.element, element)
     }
 
     private func requiresSetupErased(old: any BodylessElement, new: any BodylessElement) -> Bool {
-        // This function handles the type erasure needed to call requiresSetup
+        // The generic helper recovers the concrete type that `any BodylessElement` erased.
         func helper<T: BodylessElement>(_ old: T, _ new: any BodylessElement) -> Bool {
             guard let new = new as? T else {
                 return true
@@ -313,7 +303,6 @@ internal extension System {
             return new.requiresSetup(comparedTo: old)
         }
 
-        // Use a protocol witness to preserve the concrete type
         return helper(old, new)
     }
 }

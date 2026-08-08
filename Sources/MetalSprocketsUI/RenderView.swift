@@ -486,7 +486,6 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     var currentDrawableSize: CGSize = .zero
 
-    // Frame timing
     @ObservationIgnored
     var frameTimingTracker = FrameTimingTracker()
 
@@ -507,7 +506,6 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         drawableSizeChange?(size)
-        // Mark all nodes as needing setup when drawable size changes
         frameRenderer.invalidateSetup()
         self.currentDrawableSize = size
     }
@@ -522,11 +520,10 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
             frameRenderer.invalidateSetup()
         }
 
-        // Check if sample count changed (MSAA toggle) by examining the actual texture
+        // An MSAA toggle only shows up on the drawable's texture, not on any value MTKView reports.
         let actualSampleCount = view.currentRenderPassDescriptor?.colorAttachments[0].texture?.sampleCount ?? 1
         if sampleCountChanged(current: currentSampleCount, observed: actualSampleCount) {
             currentSampleCount = actualSampleCount
-            // Mark all nodes as needing setup when sample count changes (MSAA toggle)
             frameRenderer.invalidateSetup()
         }
 
@@ -545,7 +542,6 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 }
                 let currentRenderPassDescriptor = try view.currentRenderPassDescriptor.orThrow(.resourceCreationFailure("No render pass descriptor available"))
 
-                // Update context
                 let currentTime: CFTimeInterval = CACurrentMediaTime()
                 let frameUniforms = timingState.advance(
                     now: currentTime,
@@ -556,7 +552,6 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 let context = RenderViewContext(frameUniforms: frameUniforms, frameTimingStatistics: frameTimingStatistics)
                 frameTimingChange?(frameTimingStatistics)
 
-                // Return the element produced by the content builder
                 let t0 = CACurrentMediaTime()
                 let userContent = try self.content(context, currentDrawableSize)
                 let rootElement = try buildRenderViewRootElement(

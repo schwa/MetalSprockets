@@ -8,6 +8,6 @@ public struct MetalSprocketsMacros: CompilerPlugin {
     ]
 
     public init() {
-        // This line intentionaly left blank.
+        // This line intentionally left blank.
     }
 }

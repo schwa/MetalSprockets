@@ -77,8 +77,6 @@ public struct CommandBufferElement <Content>: Element, WorkloadElement, Bodyless
     }
 }
 
-// MARK: -
-
 public extension Element {
     /// Registers a handler called when the command buffer is scheduled for execution.
     ///

@@ -21,16 +21,13 @@ internal struct OnChange<Value: Equatable, Content>: Element where Content: Elem
     }
 
     var body: some Element {
-        // Check if this is the initial setup
         if !hasInitialized {
             if initial {
-                // Call action with same value for both old and new on initial setup
                 action(value, value)
             }
             hasInitialized = true
             previousValue = value
         } else if let oldValue = previousValue, oldValue != value {
-            // Value has changed, call the action
             action(oldValue, value)
             previousValue = value
         }

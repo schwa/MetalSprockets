@@ -27,11 +27,6 @@ extension ParameterValue: CustomDebugStringConvertible {
 }
 
 // TODO: #13 We really need to rethink type safety of ParameterValue. Make this a struct and keep internal enum - still need to worry about <T> though.
-// extension ParameterValue where T == () {
-//    static func texture(_ texture: MTLTexture) -> ParameterValue {
-//        .texture(texture) // Error. Ambiguous use of 'texture'.
-//    }
-// }
 
 internal extension MTLRenderCommandEncoder {
     func setValue<T>(_ value: ParameterValue<T>, index: Int, functionType: MTLFunctionType) {
@@ -74,8 +69,6 @@ internal extension MTLComputeCommandEncoder {
         }
     }
 }
-
-// MARK: -
 
 internal struct AnyParameterValue {
     var renderSetValue: (MTLRenderCommandEncoder, Int, MTLFunctionType) -> Void

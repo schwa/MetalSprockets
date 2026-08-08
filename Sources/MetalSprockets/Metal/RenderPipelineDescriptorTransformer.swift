@@ -9,11 +9,9 @@ public struct RenderPipelineDescriptorTransformer<Content>: Element, BodylessEle
         try visit(content)
     }
 
-    // Apply modifier during configureNode phase (runs every frame during update).
-    // This ensures the modified descriptor is inherited by children.
-    // We read from the PARENT's environment to get the fresh descriptor for this frame,
-    // since the node's own environment may have a stale cached value.
-    // Mirrors the pattern used by RenderPassDescriptorModifier. See #342.
+    // Runs in configureNode so the modified descriptor is inherited by children. The descriptor is
+    // read from the parent's environment because the node's own copy may be stale from last frame.
+    // Mirrors RenderPassDescriptorModifier. See #342.
     func configureNodeBodyless(_ node: Node) throws {
         guard let system = System.current else {
             fatalError("RenderPipelineDescriptorTransformer: No System is currently active.")

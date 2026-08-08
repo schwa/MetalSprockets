@@ -38,23 +38,18 @@ internal class Snapshotter {
 
         frameCounter += 1
 
-        // Create snapshot
         let snapshot = system.snapshot()
 
-        // Create record with frame info and snapshot
         let record = SnapshotRecord(
             frame: FrameInfo(number: frameCounter),
             snapshot: snapshot
         )
 
         do {
-            // Create directory if needed
             let directory = fileURL.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-            // Open file handle on first use
             if fileHandle == nil {
-                // Create file if it doesn't exist
                 if !FileManager.default.fileExists(atPath: fileURL.path) {
                     FileManager.default.createFile(atPath: fileURL.path, contents: nil)
                 }
@@ -64,14 +59,13 @@ internal class Snapshotter {
                 print("MS_DUMP_SNAPSHOTS: Dumping snapshots to \(fileURL.path)")
             }
 
-            // Encode record as single-line JSON and append newline
             let encoder = JSONEncoder()
-            encoder.outputFormatting = [] // No pretty printing for JSONL
+            // JSONL requires one record per line.
+            encoder.outputFormatting = []
             let data = try encoder.encode(record)
             fileHandle?.write(data)
             fileHandle?.write(Data("\n".utf8))
 
-            // Log progress
             if frameCounter == 1 || frameCounter.isMultiple(of: 100) {
                 print("MS_DUMP_SNAPSHOTS: Saved frame \(frameCounter)")
             }

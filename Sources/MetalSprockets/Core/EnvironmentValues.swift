@@ -132,8 +132,6 @@ public extension MSEnvironmentValues {
     }
 }
 
-// MARK: -
-
 /// A property wrapper that reads a value from the element's environment.
 ///
 /// `MSEnvironment` is analogous to SwiftUI's `@Environment`. Use it to access
@@ -187,8 +185,6 @@ public struct MSEnvironment <Value>: EnvironmentDependentProperty {
         self.keyPath = keyPath
     }
 }
-
-// MARK: -
 
 extension MSEnvironmentValues.Key {
     static func == (lhs: Self, rhs: Self) -> Bool {

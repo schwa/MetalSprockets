@@ -5716,3 +5716,31 @@ ParameterElementModifier.parameters was keyed by name only, so collapsing a chai
 Regression from #54 (collapse chained .parameter() modifiers into one node). Fixed by keying on (name, functionTypes); a repeated name in the SAME stage still resolves nearest-to-content.
 
 ---
+
+## 383: Support separate linked functions for vertex and fragment stages
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-08-08T22:39:01Z
++++
+
+`RenderPipeline` assigns `environment.linkedFunctions` to both `vertexLinkedFunctions` and `fragmentLinkedFunctions` (Sources/MetalSprockets/Metal/RenderPipeline.swift). There is no way to supply a different set per stage.
+
+Decide whether the environment key should become stage-keyed (like `Parameters`) or whether a second key is added.
+
+---
+
+## 384: MSBinding uses a UUID for identity
+
++++
+status: new
+priority: low
+kind: task
+created: 2026-08-08T22:39:02Z
++++
+
+`MSBinding` allocates a `UUID` per instance purely to give the binding an identity for `Equatable` (Sources/MetalSprockets/Core/Binding.swift). A cheaper monotonic counter or `ObjectIdentifier` on the backing storage would avoid the allocation and the entropy call on every binding construction.
+
+---

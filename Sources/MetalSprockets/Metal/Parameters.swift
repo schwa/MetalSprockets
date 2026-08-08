@@ -80,8 +80,6 @@ internal struct ParameterElementModifier<Content>: Element, WorkloadElement, Bod
     }
 }
 
-// MARK: -
-
 internal struct Parameter {
     var name: String
     /// The stages to bind to. Empty means "work it out from reflection".
@@ -135,8 +133,6 @@ internal struct Parameter {
         encoder.setValue(value, index: index)
     }
 }
-
-// MARK: -
 
 // MARK: - parameter Modifiers
 

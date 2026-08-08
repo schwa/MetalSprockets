@@ -87,16 +87,13 @@ public struct YCbCrBillboardRenderPass: Element {
         )
     }
 
-    // Vertex descriptor: attribute 0 in buffer 0, attribute 1 in buffer 1
     nonisolated(unsafe) private static let vertexDescriptor: MTLVertexDescriptor = {
         let desc = MTLVertexDescriptor()
-        // Position: float2 in buffer 0
         desc.attributes[0].format = .float2
         desc.attributes[0].offset = 0
         desc.attributes[0].bufferIndex = 0
         desc.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride
         desc.layouts[0].stepFunction = .perVertex
-        // Texture coordinate: float2 in buffer 1
         desc.attributes[1].format = .float2
         desc.attributes[1].offset = 0
         desc.attributes[1].bufferIndex = 1
@@ -117,25 +114,21 @@ public struct YCbCrBillboardRenderPass: Element {
 
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                 Draw { encoder in
-                    // Set vertex data
                     var positions = positions
                     encoder.setVertexBytes(&positions, length: MemoryLayout<SIMD2<Float>>.stride * positions.count, index: 0)
 
                     var texCoords = textureCoordinates
                     encoder.setVertexBytes(&texCoords, length: MemoryLayout<SIMD2<Float>>.stride * texCoords.count, index: 1)
 
-                    // Set textures
                     encoder.setFragmentTexture(textureY, index: 0)
                     encoder.setFragmentTexture(textureCbCr, index: 1)
 
-                    // Set sampler
                     let samplerDescriptor = MTLSamplerDescriptor()
                     samplerDescriptor.minFilter = .linear
                     samplerDescriptor.magFilter = .linear
                     let sampler = encoder.device.makeSamplerState(descriptor: samplerDescriptor)
                     encoder.setFragmentSamplerState(sampler, index: 0)
 
-                    // Draw quad as triangle strip
                     encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
                 }
             }

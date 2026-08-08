@@ -102,7 +102,6 @@ public struct RenderPass <Content>: Element, WorkloadElement, BodylessContentEle
         let renderCommandEncoder = try node.environmentValues.renderCommandEncoder.orThrow(.missingEnvironment(\.renderCommandEncoder))
 
         #if os(visionOS)
-        // Use immersive render context for proper CompositorServices integration
         if let renderContext = node.environmentValues.immersiveRenderContext {
             renderContext.endEncoding(commandEncoder: renderCommandEncoder)
         } else {
@@ -117,8 +116,8 @@ public struct RenderPass <Content>: Element, WorkloadElement, BodylessContentEle
     }
 
     nonisolated func requiresSetup(comparedTo old: RenderPass<Content>) -> Bool {
-        // RenderPass creates pipeline descriptor in setup but only creates encoders in workload
-        // The descriptor creation is lightweight and should happen on structure changes
+        // The only setup work is allocating a pipeline descriptor, which is cheap enough to redo
+        // on structure changes; encoders are created in the workload phase.
         false
     }
 }

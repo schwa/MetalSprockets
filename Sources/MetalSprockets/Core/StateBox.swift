@@ -31,10 +31,8 @@ internal final class StateBox<Wrapped> {
         get {
             let currentNode = resolveSystem()?.traversalContext.currentNode
             return lock.withLockUnchecked {
-                // Remove dependnecies whose values have been deallocated
                 dependencies = dependencies.filter { $0.wrappedValue != nil }
 
-                // Add current node accessoring the value to list of dependencies
                 if let currentNode, !dependencies.contains(where: { $0() === currentNode }) {
                     dependencies.append(WeakBox(currentNode))
                 }

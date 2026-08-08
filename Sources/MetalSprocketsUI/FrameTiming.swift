@@ -93,7 +93,6 @@ internal struct FrameTimingTracker: Sendable {
         lastTimestamp = timestamp
         frameCount += 1
 
-        // Write into ring buffer
         if deltas.count < Self.maxSamples {
             deltas.append(deltaTime)
         } else {
@@ -120,14 +119,13 @@ internal struct FrameTimingTracker: Sendable {
             )
         }
 
-        // Only consider samples within the last 1 second for FPS/averages
+        // FPS and averages cover only the last second of samples.
         var sum: TimeInterval = 0
         var minDelta: TimeInterval = .greatestFiniteMagnitude
         var maxDelta: TimeInterval = 0
         var windowCount = 0
         var accumulated: TimeInterval = 0
 
-        // Walk backwards from the most recently written sample
         for i in 0..<sampleCount {
             let index = (writeIndex - 1 - i + Self.maxSamples) % Self.maxSamples
             guard index < deltas.count else {
@@ -135,7 +133,6 @@ internal struct FrameTimingTracker: Sendable {
             }
             let delta = deltas[index]
             accumulated += delta
-            // Stop if we've exceeded 1 second of history
             if accumulated > 1.0, windowCount > 0 {
                 break
             }

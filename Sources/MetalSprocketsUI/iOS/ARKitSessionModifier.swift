@@ -72,7 +72,7 @@ public struct ARFrameData {
 
     /// Creates empty frame data.
     public init() {
-        // Intentionally empty
+        // This line intentionally left blank.
     }
 
     /// Returns `true` when both camera textures are available.
@@ -118,13 +118,11 @@ private struct ARKitFrameModifier: ViewModifier {
             return
         }
 
-        // Extract Y (luminance) texture from plane 0
         let widthY = CVPixelBufferGetWidthOfPlane(pixelBuffer, 0)
         let heightY = CVPixelBufferGetHeightOfPlane(pixelBuffer, 0)
         var newCvTextureY: CVMetalTexture?
         CVMetalTextureCacheCreateTextureFromImage(nil, textureCache, pixelBuffer, nil, .r8Unorm, widthY, heightY, 0, &newCvTextureY)
 
-        // Extract CbCr (chrominance) texture from plane 1
         let widthCbCr = CVPixelBufferGetWidthOfPlane(pixelBuffer, 1)
         let heightCbCr = CVPixelBufferGetHeightOfPlane(pixelBuffer, 1)
         var newCvTextureCbCr: CVMetalTexture?
@@ -161,7 +159,6 @@ private struct ARKitFrameModifier: ViewModifier {
         let viewportSize = UIScreen.main.bounds.size
         data.projectionMatrix = frame.camera.projectionMatrix(for: interfaceOrientation, viewportSize: viewportSize, zNear: 0.01, zFar: 100.0)
 
-        // Transform texture coordinates to match screen orientation
         let displayTransform = frame.displayTransform(for: interfaceOrientation, viewportSize: viewportSize).inverted()
         let baseTexCoords: [CGPoint] = [CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1), CGPoint.zero, CGPoint(x: 1, y: 0)]
         data.textureCoordinates = baseTexCoords.map { SIMD2<Float>(Float($0.applying(displayTransform).x), Float($0.applying(displayTransform).y)) }

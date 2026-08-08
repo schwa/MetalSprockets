@@ -1,10 +1,3 @@
-//
-//  EnvironmentReader.swift
-//  MetalSprockets
-//
-//  Created by Jonathan Wight on 9/12/25.
-//
-
 public struct EnvironmentReader<Value, Content: Element>: Element, BodylessElement {
     var keyPath: KeyPath<MSEnvironmentValues, Value>
     var content: (Value) throws -> Content

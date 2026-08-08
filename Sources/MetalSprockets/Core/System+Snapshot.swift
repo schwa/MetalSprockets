@@ -28,7 +28,6 @@ internal extension System {
         logger.debug("Dirty: \(snapshot.dirtyIdentifiers.count)")
         logger.debug("Stack Depth: \(snapshot.activeNodeStackDepth)")
 
-        // Log node hierarchy
         let rootNodes = snapshot.nodes.filter { $0.parentIdentifier == nil }
         for rootNode in rootNodes {
             logNode(rootNode, snapshot: snapshot, logger: logger, indent: 0)
@@ -42,14 +41,12 @@ internal extension System {
 
         logger.debug("\(indentStr)• \(node.elementType)\(dirtyMarker) (\(node.identifier))")
 
-        // Log state if present
         if !node.stateProperties.isEmpty {
             for prop in node.stateProperties {
                 logger.debug("\(indentStr)  State.\(prop.key) = \(prop.value)")
             }
         }
 
-        // Find and log children
         let children = snapshot.nodes.filter { $0.parentIdentifier == node.identifier }
         for child in children {
             logNode(child, snapshot: snapshot, logger: logger, indent: indent + 1)

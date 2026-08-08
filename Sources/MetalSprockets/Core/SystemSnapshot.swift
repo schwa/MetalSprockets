@@ -11,7 +11,7 @@ public struct SystemSnapshot: Codable, Sendable {
     package init(system: System) {
         self.timestamp = Date()
 
-        // Extract ordered identifiers from traversal events (only enter events to avoid duplicates)
+        // Only enter events; exit events would duplicate every identifier.
         var extractedIdentifiers: [StructuralIdentifier] = []
         for event in system.traversalEvents {
             if case .enter(let node) = event {
@@ -23,7 +23,6 @@ public struct SystemSnapshot: Codable, Sendable {
         self.dirtyIdentifiers = Set(system.dirtyIdentifiers.map(\.description))
         self.activeNodeStackDepth = system.traversalContext.depth
 
-        // Create node snapshots
         self.nodes = extractedIdentifiers.compactMap { identifier in
             guard let node = system.nodes[identifier] else {
                 return nil
@@ -48,11 +47,9 @@ public struct NodeSnapshot: Codable, Sendable {
         self.parentIdentifier = node.parentIdentifier?.description
         self.needsSetup = node.needsSetup
 
-        // Get element type information
         let element = node.element
         self.elementType = String(describing: type(of: element))
 
-        // Use Mirror to get element description
         let mirror = Mirror(reflecting: element)
         var elementInfo = [String: String]()
         for child in mirror.children {
@@ -62,12 +59,10 @@ public struct NodeSnapshot: Codable, Sendable {
         }
         self.elementDescription = elementInfo.isEmpty ? elementType : "\(elementType)(\(elementInfo.map { "\($0.key): \($0.value)" }.joined(separator: ", ")))"
 
-        // Extract state properties
         self.stateProperties = node.stateProperties.compactMap { key, value in
             StatePropertySnapshot(key: key, value: value)
         }
 
-        // Capture environment
         self.environmentValues = EnvironmentSnapshot(environmentValues: node.environmentValues)
     }
 }
@@ -82,18 +77,14 @@ public struct StatePropertySnapshot: Codable, Sendable {
     init(key: String, value: Any) {
         self.key = key
 
-        // Try to get the actual value from StateBox
         let mirror = Mirror(reflecting: value)
 
-        // Check if this is a StateBox by looking for its structure
         if String(describing: Swift.type(of: value)).contains("StateBox") {
             self.type = "StateBox"
 
-            // Try to access the wrapped value through the snapshotValue property
             if let valueProvider = value as? (any SnapshotValueProviding) {
                 self.value = "\(valueProvider.snapshotValue)"
             } else {
-                // Fallback to Mirror extraction
                 if let valueChild = mirror.children.first(where: { $0.label == "_value" }) {
                     self.value = "\(valueChild.value)"
                 } else {
@@ -101,13 +92,10 @@ public struct StatePropertySnapshot: Codable, Sendable {
                 }
             }
 
-            // Extract dependencies if available
             if let depsChild = mirror.children.first(where: { $0.label == "dependencies" }) {
-                // Dependencies are WeakBox<Node> array
                 let depsMirror = Mirror(reflecting: depsChild.value)
                 var deps = [String]()
                 for child in depsMirror.children {
-                    // Try to extract node identifier from WeakBox
                     let weakBoxMirror = Mirror(reflecting: child.value)
                     if let nodeChild = weakBoxMirror.children.first {
                         if let node = nodeChild.value as? Node {
@@ -120,7 +108,6 @@ public struct StatePropertySnapshot: Codable, Sendable {
                 self.dependencies = []
             }
         } else {
-            // Not a StateBox
             self.type = String(describing: Swift.type(of: value))
             self.value = "\(value)"
             self.dependencies = []
@@ -158,13 +145,11 @@ public extension SystemSnapshot {
         output.append("Active Stack Depth: \(activeNodeStackDepth)")
         output.append("")
 
-        // Build hierarchy
         var nodesByIdentifier = [String: NodeSnapshot]()
         for node in nodes {
             nodesByIdentifier[node.identifier] = node
         }
 
-        // Find root nodes (no parent)
         let rootNodes = nodes.filter { $0.parentIdentifier == nil }
 
         output.append("=== NODE HIERARCHY ===")
@@ -187,14 +172,12 @@ public extension SystemSnapshot {
         var output = [String]()
         let indentStr = String(repeating: "  ", count: indent)
 
-        // Node header
         let isDirty = dirtyIdentifiers.contains(node.identifier)
         let dirtyMarker = isDirty ? " [DIRTY]" : ""
         let setupMarker = node.needsSetup ? " [NEEDS SETUP]" : ""
         output.append("\(indentStr)• \(node.elementType)\(dirtyMarker)\(setupMarker)")
         output.append("\(indentStr)  ID: \(node.identifier)")
 
-        // State properties
         if !node.stateProperties.isEmpty {
             output.append("\(indentStr)  State:")
             for prop in node.stateProperties {
@@ -205,7 +188,6 @@ public extension SystemSnapshot {
             }
         }
 
-        // Environment (optional)
         if includeEnvironment, !node.environmentValues.values.isEmpty {
             output.append("\(indentStr)  Environment:")
             for (key, value) in node.environmentValues.values.sorted(by: { $0.key < $1.key }) {
@@ -213,7 +195,6 @@ public extension SystemSnapshot {
             }
         }
 
-        // Find children
         let children = nodes.filter { $0.parentIdentifier == node.identifier }
         for child in children {
             output.append(contentsOf: dumpNode(child, nodesByIdentifier: nodesByIdentifier, indent: indent + 1, includeEnvironment: includeEnvironment))

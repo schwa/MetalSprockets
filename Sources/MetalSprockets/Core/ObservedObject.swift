@@ -1,7 +1,5 @@
 import Combine
 
-// MARK: -
-
 @propertyWrapper
 public struct MSObservedObject<ObjectType: ObservableObject> {
     @ObservedObjectBox
@@ -33,8 +31,6 @@ extension MSObservedObject: MSDynamicProperty {
     }
 }
 
-// MARK: -
-
 @propertyWrapper
 private final class ObservedObjectBox<Wrapped: ObservableObject> {
     let wrappedValue: Wrapped
@@ -56,8 +52,6 @@ private final class ObservedObjectBox<Wrapped: ObservableObject> {
         }
     }
 }
-
-// MARK: -
 
 @dynamicMemberLookup
 public struct ProjectedValue <ObjectType: ObservableObject> {

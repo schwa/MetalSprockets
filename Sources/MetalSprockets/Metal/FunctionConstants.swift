@@ -55,7 +55,7 @@ public struct FunctionConstants: Equatable, Hashable, Sendable {
     private var values: [String: Value] = [:]
 
     public init() {
-        // Empty initializer
+        // This line intentionally left blank.
     }
 
     public var isEmpty: Bool {
@@ -87,7 +87,6 @@ public struct FunctionConstants: Equatable, Hashable, Sendable {
         let mtlConstants = MTLFunctionConstantValues()
 
         for (name, value) in values {
-            // If the constant name already has a namespace delimiter, use it as-is
             if name.contains("::") {
                 if let info = constantsDictionary[name] {
                     value.apply(to: mtlConstants, at: info.index)
@@ -95,12 +94,11 @@ public struct FunctionConstants: Equatable, Hashable, Sendable {
                     try _throw(MetalSprocketsError.configurationError("Constant '\(name)' not found in function '\(functionName)'. Available: \(constantsDictionary.keys.joined(separator: ", "))"))
                 }
             } else {
-                // No namespace in the constant name - search for it
-                // Try exact match first
+                // An unqualified name may still match a namespaced declaration, so fall back to a
+                // `::`-suffix search.
                 if let info = constantsDictionary[name] {
                     value.apply(to: mtlConstants, at: info.index)
                 } else {
-                    // Search for any constant ending with ::name
                     let matches = constantsDictionary.filter { $0.key.hasSuffix("::\(name)") }
                     if matches.count == 1, let info = matches.first?.value {
                         value.apply(to: mtlConstants, at: info.index)

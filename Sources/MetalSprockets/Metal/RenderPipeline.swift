@@ -120,7 +120,7 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
         renderPipelineDescriptor.fragmentFunction = fragmentShader.function
 
         if let linkedFunctions = environment.linkedFunctions {
-            // TODO: How do we handle separate linked functions for vertex and fragment? [FILE ME]
+            // TODO: #383 Support separate linked functions for vertex and fragment.
             renderPipelineDescriptor.vertexLinkedFunctions = linkedFunctions
             renderPipelineDescriptor.fragmentLinkedFunctions = linkedFunctions
         }
