@@ -5548,13 +5548,14 @@ Acceptance criteria:
 ## 375: Rebalance System tests toward the render(root:) boundary
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, subtask
 depends: 374
 created: 2026-08-08T20:39:47Z
-updated: 2026-08-08T20:40:17Z
+updated: 2026-08-08T21:14:25Z
+closed: 2026-08-08T21:14:25Z
 +++
 
 Part of #292. Depends on #374.

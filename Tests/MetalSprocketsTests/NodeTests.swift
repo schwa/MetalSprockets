@@ -5,11 +5,24 @@ import Testing
 @MainActor
 @Suite
 struct NodeTests {
+    /// Parent links are interior mechanics; what they are *for* is environment reaching descendants. Assert that
+    /// instead: a value written at the root shows up several levels down. See #375.
     @Test
-    func testParentIdentifierIsSet() throws {
-        struct Parent: Element {
+    func environmentReachesNestedDescendants() throws {
+        struct Reader: Element, SetupElement {
+            var body: Never { fatalError() }
+
+            func setupEnter(_ node: Node) throws {
+                TestMonitor.shared.logUpdate(node.environmentValues.exampleValue)
+            }
+
+            func setupExit(_ node: Node) throws {
+            }
+        }
+
+        struct GrandChild: Element {
             var body: some Element {
-                Child()
+                Reader()
             }
         }
 
@@ -19,32 +32,18 @@ struct NodeTests {
             }
         }
 
-        struct GrandChild: Element {
+        struct Parent: Element {
             var body: some Element {
-                EmptyElement()
+                Child()
+                    .environment(\.exampleValue, "from root")
             }
         }
 
+        TestMonitor.shared.reset()
         let system = System()
-        let root = Parent()
+        try system.render(root: Parent())
 
-        try system.update(root: root)
-
-        // Root should have no parent
-        let rootNode = system.nodes[system.orderedIdentifiers[0]]
-        #expect(rootNode?.parentIdentifier == nil)
-
-        // Child should have root as parent
-        let childNode = system.nodes[system.orderedIdentifiers[1]]
-        #expect(childNode?.parentIdentifier == system.orderedIdentifiers[0])
-
-        // GrandChild should have child as parent
-        let grandChildNode = system.nodes[system.orderedIdentifiers[2]]
-        #expect(grandChildNode?.parentIdentifier == system.orderedIdentifiers[1])
-
-        // EmptyElement should have grandchild as parent
-        let emptyNode = system.nodes[system.orderedIdentifiers[3]]
-        #expect(emptyNode?.parentIdentifier == system.orderedIdentifiers[2])
+        #expect(TestMonitor.shared.updates == ["from root"])
     }
 
     // MARK: - NodeElementCache (per-node typed cache)

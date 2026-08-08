@@ -3,6 +3,15 @@ import Testing
 
 @Suite
 struct SystemTests {
+    /// The identifier/node bookkeeping invariant every test used to repeat inline.
+    private static func expectConsistentIdentifiers(_ system: System, sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys), sourceLocation: sourceLocation)
+        #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count, sourceLocation: sourceLocation)
+        for id in system.orderedIdentifiers {
+            #expect(system.nodes[id]?.id == id, sourceLocation: sourceLocation)
+        }
+    }
+
     // Simple test element for testing
     struct TestElement: Element {
         var value: Int
@@ -36,30 +45,15 @@ struct SystemTests {
         let system = System()
         let element = TestElement(value: 1)
 
-        // Initial update should create a new node
-        try system.update(root: element)
+        // Initial render should create a new node
+        try system.render(root: element)
 
-        // Should have one identifier for the root
         #expect(system.orderedIdentifiers.count == 1)
-
-        // Should have one node
         #expect(system.nodes.count == 1)
+        Self.expectConsistentIdentifiers(system)
 
-        // Verify collections are equal and no duplicates
-        #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
-        #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
-
-        // Verify each node's id matches its key
-        for id in system.orderedIdentifiers {
-            #expect(system.nodes[id]?.id == id)
-        }
-
-        // The node should have the element
         let rootId = system.orderedIdentifiers[0]
-        let node = system.nodes[rootId]
-        #expect(node != nil)
-        #expect(node?.id == rootId) // Node's id should match its key
-        #expect((node?.element as? TestElement)?.value == 1)
+        #expect((system.nodes[rootId]?.element as? TestElement)?.value == 1)
     }
 
     @Test
@@ -68,23 +62,16 @@ struct SystemTests {
         let system = System()
         let element1 = TestElement(value: 1)
 
-        // First update
-        try system.update(root: element1)
+        try system.render(root: element1)
         let node1 = system.nodes.values.first
 
-        // Second update with same value
+        // Second frame with the same value
         let element2 = TestElement(value: 1)
-        try system.update(root: element2)
+        try system.render(root: element2)
 
         // Should still have one node
         #expect(system.nodes.count == 1)
-        #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
-        #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
-
-        // Verify each node's id matches its key
-        for id in system.orderedIdentifiers {
-            #expect(system.nodes[id]?.id == id)
-        }
+        Self.expectConsistentIdentifiers(system)
 
         // Node should be updated with new element
         let node2 = system.nodes.values.first
@@ -98,22 +85,15 @@ struct SystemTests {
         let system = System()
         let element1 = TestElement(value: 1)
 
-        // First update
-        try system.update(root: element1)
+        try system.render(root: element1)
 
-        // Second update with different value
+        // Second frame with a different value
         let element2 = TestElement(value: 2)
-        try system.update(root: element2)
+        try system.render(root: element2)
 
         // Should still have same structural ID
         #expect(system.orderedIdentifiers.count == 1)
-        #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
-        #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
-
-        // Verify each node's id matches its key
-        for id in system.orderedIdentifiers {
-            #expect(system.nodes[id]?.id == id)
-        }
+        Self.expectConsistentIdentifiers(system)
 
         // But element should be updated
         let node = system.nodes.values.first
@@ -126,19 +106,12 @@ struct SystemTests {
         let system = System()
         let container = ContainerElement(value: 1, childValue: 10)
 
-        // Initial update
-        try system.update(root: container)
+        try system.render(root: container)
 
         // Should have 2 identifiers: container and its child
         #expect(system.orderedIdentifiers.count == 2)
         #expect(system.nodes.count == 2)
-        #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
-        #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
-
-        // Verify each node's id matches its key
-        for id in system.orderedIdentifiers {
-            #expect(system.nodes[id]?.id == id)
-        }
+        Self.expectConsistentIdentifiers(system)
 
         // Check the container node
         let containerId = system.orderedIdentifiers[0]
@@ -162,23 +135,16 @@ struct SystemTests {
     func testSystemDetectsChildValueChange() throws {
         let system = System()
 
-        // First update
         let container1 = ContainerElement(value: 1, childValue: 10)
-        try system.update(root: container1)
+        try system.render(root: container1)
 
-        // Second update - only child value changes
+        // Second frame - only child value changes
         let container2 = ContainerElement(value: 1, childValue: 20)
-        try system.update(root: container2)
+        try system.render(root: container2)
 
         // Structure should be the same
         #expect(system.orderedIdentifiers.count == 2)
-        #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
-        #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
-
-        // Verify each node's id matches its key
-        for id in system.orderedIdentifiers {
-            #expect(system.nodes[id]?.id == id)
-        }
+        Self.expectConsistentIdentifiers(system)
 
         // Container should be updated but value unchanged
         let containerId = system.orderedIdentifiers[0]
@@ -196,34 +162,22 @@ struct SystemTests {
     func testSystemDetectsStructuralChanges() throws {
         let system = System()
 
-        // First update with 2 children
+        // First frame with 2 children
         let container1 = MultiChildContainer(children: [1, 2])
-        try system.update(root: container1)
+        try system.render(root: container1)
 
         // Should have: container + ForEach + 2 * (IdentifiedElement + TestElement) = 6 nodes.
         // ForEach wraps each child in an IdentifiedElement so identity follows the data (#209).
         #expect(system.orderedIdentifiers.count == 6)
-        #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
-        #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
+        Self.expectConsistentIdentifiers(system)
 
-        // Verify each node's id matches its key
-        for id in system.orderedIdentifiers {
-            #expect(system.nodes[id]?.id == id)
-        }
-
-        // Second update with 3 children
+        // Second frame with 3 children
         let container2 = MultiChildContainer(children: [1, 2, 3])
-        try system.update(root: container2)
+        try system.render(root: container2)
 
         // Should now have: container + ForEach + 3 * (IdentifiedElement + TestElement) = 8 nodes
         #expect(system.orderedIdentifiers.count == 8)
-        #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
-        #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
-
-        // Verify each node's id matches its key after update
-        for id in system.orderedIdentifiers {
-            #expect(system.nodes[id]?.id == id)
-        }
+        Self.expectConsistentIdentifiers(system)
 
         // The new child should be at the end
         let newChildId = system.orderedIdentifiers[7]

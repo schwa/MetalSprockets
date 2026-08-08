@@ -53,9 +53,7 @@ struct NeedsSetupTests {
         let system = System()
         let element = StateElement()
 
-        // First update and setup
-        try system.update(root: element)
-        try system.processSetup()
+        try system.render(root: element)
 
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
@@ -64,9 +62,8 @@ struct NeedsSetupTests {
             element.counter = 1
         }
 
-        // Update should create a new child element with different ID
-        try system.update(root: element)
-        try system.processSetup()
+        // Rendering again should create a new child element with a different ID
+        try system.render(root: element)
 
         // New element should get setup
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
@@ -81,22 +78,19 @@ struct NeedsSetupTests {
         // Create a simple element tree
         let element = SetupTrackingElement(id: 1)
 
-        // Initial setup
-        try system.update(root: element)
-        try system.processSetup()
+        try system.render(root: element)
 
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        // Update with equivalent element - should reuse node
-        try system.update(root: SetupTrackingElement(id: 1))
-        try system.processSetup()
+        // Render an equivalent element - should reuse the node
+        try system.render(root: SetupTrackingElement(id: 1))
 
         // Should still be 1 since element is equivalent
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
         // Mark all nodes as needing setup (simulates drawable size change)
         system.markAllNodesNeedingSetup()
-        try system.processSetup()
+        try system.render(root: SetupTrackingElement(id: 1))
 
         // Should now be 2
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
@@ -108,22 +102,18 @@ struct NeedsSetupTests {
         SetupTrackingElement.resetCounts()
         let system = System()
 
-        // First update
-        try system.update(root: SetupTrackingElement(id: 1))
-        try system.processSetup()
+        try system.render(root: SetupTrackingElement(id: 1))
 
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        // Second update with equivalent element (same id)
-        try system.update(root: SetupTrackingElement(id: 1))
-        try system.processSetup()
+        // Second frame with an equivalent element (same id)
+        try system.render(root: SetupTrackingElement(id: 1))
 
         // Should still be 1
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        // Third update with different element
-        try system.update(root: SetupTrackingElement(id: 2))
-        try system.processSetup()
+        // Third frame with a different element
+        try system.render(root: SetupTrackingElement(id: 2))
 
         // Should now be 2
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
@@ -138,9 +128,7 @@ struct NeedsSetupTests {
 
         // Simulate rendering 10 frames with the same element
         for _ in 0..<10 {
-            try system.update(root: SetupTrackingElement(id: 1))
-            try system.processSetup()
-            try system.processWorkload()
+            try system.render(root: SetupTrackingElement(id: 1))
         }
 
         // Setup should only have been called once (first frame)
@@ -171,8 +159,7 @@ struct NeedsSetupTests {
         let system = System()
 
         for _ in 0..<3 {
-            try system.update(root: SetupTrackingElement(id: 1).environment(\.drawableSize, CGSize(width: 100, height: 100)))
-            try system.processSetup()
+            try system.render(root: SetupTrackingElement(id: 1).environment(\.drawableSize, CGSize(width: 100, height: 100)))
         }
 
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)

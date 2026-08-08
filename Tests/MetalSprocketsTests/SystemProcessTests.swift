@@ -34,9 +34,7 @@ struct SystemProcessTests {
         let element = CallOrderTracker()
         let system = System()
 
-        try system.update(root: element)
-        try system.processSetup()
-        try system.processWorkload()
+        try system.render(root: element)
 
         #expect(TestMonitor.shared.updates == ["setupEnter", "setupExit", "workloadEnter", "workloadExit"])
     }
@@ -100,9 +98,7 @@ struct SystemProcessTests {
         let element = DeepHierarchy()
         let system = System()
 
-        try system.update(root: element)
-        try system.processSetup()
-        try system.processWorkload()
+        try system.render(root: element)
 
         // Expected order explanation:
         // The new processing model ensures siblings complete (enter+exit) before moving to the next sibling.
