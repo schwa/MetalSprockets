@@ -4911,3 +4911,68 @@ Each is a long switch or if-chain that would need splitting before the rule can 
 Wanted: split the three functions, then enable cyclomatic_complexity in .swiftlint.yml.
 
 ---
+
+## 354: .msaa(sampleCount:) never anti-aliases and drops rendering after the first frame
+
++++
+status: new
+priority: high
+kind: bug
+labels: bug, effort:m
+created: 2026-08-08T18:46:37Z
++++
+
+The .msaa(sampleCount:) element modifier does not anti-alias, and from the second frame onwards the caller's render target stops being updated.
+
+Repro (256x256 offscreen, diagonal-edged triangle, one OffscreenRenderer reused):
+
+1. Render a RenderPass wrapped in .msaa(sampleCount: 4). Capture the image.
+2. Render the same tree again with different geometry (a smaller triangle). Capture the image.
+
+Expected: frame 1 has a smoothed diagonal edge; frame 2 shows the smaller triangle, also smoothed.
+
+Actual: frame 1 is byte-identical to the same scene rendered with no .msaa() at all (hard aliased edge). Frame 2 is byte-identical to frame 1 — the smaller triangle never appears; the returned texture still holds frame 1's contents.
+
+Evidence: rendering the aliased scene and the sampleCount:4 scene through OffscreenRenderer produces PNGs that compare byte-identical (cmp). In the two-frame repro, the frame-2 image shows frame 1's geometry.
+
+Observed mechanics:
+- MSAAModifier.configureNodeBodyless returns early while its @MSState multisampleTexture / resolveTexture are nil, so on the first frame the pass descriptor is never modified. Those textures are created in setupEnter, which runs after configureNode in the same frame.
+- On later frames the textures exist, the pass descriptor is rewritten to target the modifier's own multisample texture with resolveTexture set to the modifier's own private resolve texture. Nothing copies that resolve texture back into the render target the caller supplied, so OffscreenRenderer keeps returning its untouched (stale) colorTexture.
+
+Existing coverage did not catch this: MSAATests and MSAAModifierTests only assert that rendering completes and that the returned texture has the expected width/height/sampleCount, all of which hold whether or not MSAA does anything.
+
+Env: macOS, Apple silicon, Xcode 27.0 beta 4, MetalSprockets @ 61a6c479.
+
+---
+
+## 355: Misplaced .msaa() is a silent no-op
+
++++
+status: new
+priority: medium
+kind: bug
+labels: bug,effort:s
+created: 2026-08-08T18:49:44Z
++++
+
+`.msaa(sampleCount:)` rewrites the render pass descriptor, so it only has an effect when it wraps a `RenderPass`. Applying it to a `RenderPipeline` (or anything else inside the pass) does nothing at all: no error, no log, no warning — just an un-antialiased image that looks like a correct render.
+
+Repro:
+
+    // No effect, no diagnostic.
+    try RenderPass {
+        try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+            Draw { ... }
+        }
+        .msaa(sampleCount: 4)
+    }
+
+Expected: either the modifier works wherever it is placed, or the misplacement is reported (thrown error or logged warning), the way a misplaced .parameter() reports 'must be placed inside a RenderPipeline or ComputePipeline content block'.
+
+Actual: silently ignored.
+
+Found while writing golden-image tests: the first version of the test applied the modifier to the pipeline and produced an image byte-identical to the no-MSAA render, with nothing to indicate why.
+
+Related: #354 (msaa does not anti-alias even when correctly placed), #11 (element graphs that compile but are meaningless).
+
+---
