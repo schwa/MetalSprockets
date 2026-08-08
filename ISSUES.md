@@ -2340,12 +2340,13 @@ At the very least we should improve the asserts.
 ## 240: Get rid of MetalSprocketsSupport
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: enhancement, needs-info, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:35Z
+updated: 2026-08-08T15:39:21Z
+closed: 2026-08-08T15:39:21Z
 +++
 
 Not really needed now that we broke out geometrylite3d.
@@ -2353,6 +2354,8 @@ Not really needed now that we broke out geometrylite3d.
 Can be turned into batteries included (#202)
 
 *Imported from #232*
+
+- `2026-08-08T15:39:21Z`: Closing as won't-do: the MetalSprocketsSupport split still earns its keep. Revisit under #202 if the batteries-included work needs a home.
 
 ---
 
