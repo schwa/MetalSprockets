@@ -5166,11 +5166,13 @@ The test is currently wrapped in `withKnownIssue`; unwrap it when this is fixed.
 ## 360: Make the command buffer descriptor configurable via the environment
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:s, subtask
 created: 2026-08-08T20:06:55Z
+updated: 2026-08-08T20:19:47Z
+closed: 2026-08-08T20:19:47Z
 +++
 
 `CommandBufferElement.workloadEnter` (Sources/MetalSprockets/Metal/CommandBufferElement.swift) constructs a bare `MTLCommandBufferDescriptor()` with no way for callers to influence it.
