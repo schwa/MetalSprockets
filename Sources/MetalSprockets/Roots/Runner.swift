@@ -89,8 +89,8 @@ public final class Runner {
         let wrapped = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
             content
         }
-        .environment(\.commandQueue, commandQueue)
-        .environment(\.device, device)
+        .commandQueue(commandQueue)
+        .device(device)
 
         try frameRenderer.renderFrame(root: wrapped)
     }

@@ -123,8 +123,8 @@ public extension OffscreenRenderer {
     /// - Throws: Any errors that occur during rendering.
     func render<Content>(_ content: Content) throws -> Rendering where Content: Element {
         let wrapped = content
-            .environment(\.renderPassDescriptor, renderPassDescriptor)
-            .environment(\.drawableSize, size)
+            .renderPassDescriptor(renderPassDescriptor)
+            .drawableSize(size)
         try runner.run(wrapped)
         return .init(texture: colorTexture)
     }

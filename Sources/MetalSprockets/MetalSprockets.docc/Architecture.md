@@ -276,9 +276,12 @@ Pass values down the tree:
 
 ```swift
 ContentView()
-    .environment(\.device, metalDevice)
-    .environment(\.commandQueue, commandQueue)
+    .device(metalDevice)
+    .commandQueue(commandQueue)
 ```
+
+The supplied resources (device, command queue, command buffer, render pass / pipeline descriptors, drawable and
+drawable size) each have a convenience modifier; `environment(_:_:)` remains for custom keys.
 
 ### Conditional Rendering
 

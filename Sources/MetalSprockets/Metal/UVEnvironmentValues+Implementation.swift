@@ -54,6 +54,49 @@ public extension Element {
     }
 }
 
+// MARK: - Resource Modifiers
+//
+// Convenience modifiers for the environment values a caller supplies (#280). The remaining keys — the command
+// encoders, reflection, and the pipeline/depth-stencil *state* objects — are outputs published by elements during
+// traversal, so they deliberately have no modifier: setting them by hand would lie to the elements downstream.
+
+public extension Element {
+    /// Sets the Metal device used by this element and its descendants.
+    func device(_ device: MTLDevice) -> some Element {
+        environment(\.device, device)
+    }
+
+    /// Sets the command queue work is submitted to.
+    func commandQueue(_ commandQueue: MTLCommandQueue) -> some Element {
+        environment(\.commandQueue, commandQueue)
+    }
+
+    /// Sets the command buffer commands are encoded into, instead of letting ``CommandBufferElement`` make one.
+    func commandBuffer(_ commandBuffer: MTLCommandBuffer) -> some Element {
+        environment(\.commandBuffer, commandBuffer)
+    }
+
+    /// Sets the render pass descriptor used by ``RenderPass``.
+    func renderPassDescriptor(_ renderPassDescriptor: MTLRenderPassDescriptor) -> some Element {
+        environment(\.renderPassDescriptor, renderPassDescriptor)
+    }
+
+    /// Sets the base render pipeline descriptor pipelines are built from.
+    func renderPipelineDescriptor(_ renderPipelineDescriptor: MTLRenderPipelineDescriptor) -> some Element {
+        environment(\.renderPipelineDescriptor, renderPipelineDescriptor)
+    }
+
+    /// Sets the drawable this frame presents to.
+    func currentDrawable(_ currentDrawable: CAMetalDrawable?) -> some Element {
+        environment(\.currentDrawable, currentDrawable)
+    }
+
+    /// Sets the size of the drawable, in pixels.
+    func drawableSize(_ drawableSize: CGSize) -> some Element {
+        environment(\.drawableSize, drawableSize)
+    }
+}
+
 public extension Element {
     func colorAttachment0(_ texture: MTLTexture, index: Int) -> some Element {
         environment(\.colorAttachment0, (texture, index))

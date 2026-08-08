@@ -113,10 +113,10 @@ internal final class ImmersiveRuntime<Content: Element> {
         let userContent = try contentBuilder(context)
 
         let root = userContent
-            .environment(\.device, device)
-            .environment(\.commandQueue, commandQueue)
-            .environment(\.commandBuffer, commandBuffer)
-            .environment(\.renderPassDescriptor, renderPassDescriptor)
+            .device(device)
+            .commandQueue(commandQueue)
+            .commandBuffer(commandBuffer)
+            .renderPassDescriptor(renderPassDescriptor)
             .immersiveRenderContext(renderContext)
 
         try frameRenderer.renderFrame(root: root)

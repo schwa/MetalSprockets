@@ -2655,15 +2655,18 @@ These settings are so important they should be parameters on RenderView instead 
 ## 280: Make sure all .environment values have helper functions (if appropriate)
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:25Z
+updated: 2026-08-08T16:27:52Z
+closed: 2026-08-08T16:27:52Z
 +++
 
 Audit environment values and add convenience modifiers where appropriate. For example, instead of `.environment(\.device, device)`, provide `.device(device)` where it makes sense.
+
+- `2026-08-08T16:27:52Z`: Audited MSEnvironmentValues: added device/commandQueue/commandBuffer/renderPassDescriptor/renderPipelineDescriptor/currentDrawable/drawableSize modifiers and switched the in-repo drivers to them. Encoders, reflection and the pipeline/depth-stencil state objects deliberately get no modifier — they are outputs published during traversal, and that is now written down in the source.
 
 ---
 

@@ -96,11 +96,11 @@ internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable
         target: captureConfiguration?.target ?? .device,
         destination: captureConfiguration?.destination ?? .developerTools
     )
-    .environment(\.device, device)
-    .environment(\.commandQueue, commandQueue)
-    .environment(\.renderPassDescriptor, renderPassDescriptor)
-    .environment(\.renderPipelineDescriptor, MTLRenderPipelineDescriptor())
-    .environment(\.currentDrawable, currentDrawable)
-    .environment(\.drawableSize, drawableSize)
-    .environment(\.shaderStore, shaderStore)
+    .device(device)
+    .commandQueue(commandQueue)
+    .renderPassDescriptor(renderPassDescriptor)
+    .renderPipelineDescriptor(MTLRenderPipelineDescriptor())
+    .currentDrawable(currentDrawable)
+    .drawableSize(drawableSize)
+    .shaderStore(shaderStore)
 }

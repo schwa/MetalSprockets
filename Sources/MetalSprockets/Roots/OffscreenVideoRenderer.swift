@@ -166,8 +166,8 @@ public final class OffscreenVideoRenderer {
 
     public func render<Content>(_ element: Content) async throws where Content: Element {
         let wrapped = element
-            .environment(\.renderPassDescriptor, renderPassDescriptor)
-            .environment(\.drawableSize, size)
+            .renderPassDescriptor(renderPassDescriptor)
+            .drawableSize(size)
 
         // TODO: #220 Setup should be smart enough to skip elements that are already configured - avoid redundant setup every frame
         try runner.run(wrapped)
