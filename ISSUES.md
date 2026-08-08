@@ -4983,7 +4983,7 @@ Related: #354 (msaa does not anti-alias even when correctly placed), #11 (elemen
 status: new
 priority: medium
 kind: bug
-labels: bug,effort:s
+labels: bug, effort:s
 created: 2026-08-08T18:52:50Z
 +++
 
@@ -5001,5 +5001,53 @@ Actual: `startCapture(with:)` throws, the error is swallowed by the modifier's d
 There is also no way for a caller to say where the trace should be written, so the destination is unusable even if the start succeeded.
 
 Applies to both `Element.capture(_:target:destination:)` and the `View.capture(_:target:destination:)` used by RenderView.
+
+---
+
+## 357: An error thrown during the workload phase aborts the process
+
++++
+status: new
+priority: high
+kind: bug
+labels: bug,effort:m
+created: 2026-08-08T19:03:49Z
++++
+
+Any error thrown while a render or compute pass is encoding takes the whole process down with SIGABRT instead of propagating to the caller. The encoder is created by the pass's workloadEnter and ended in its workloadExit; when a descendant throws, the traversal unwinds without running workloadExit, so the encoder is released un-ended and Metal asserts.
+
+Repro:
+
+    let pass = try RenderPass {
+        try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+            Draw { _ in throw MyError() }
+        }
+        .vertexDescriptor(vs.inferredVertexDescriptor())
+    }
+    let renderer = try OffscreenRenderer(size: CGSize(width: 32, height: 32))
+    _ = try renderer.render(pass)   // process aborts here
+
+Expected: `render` throws MyError and the process stays alive.
+
+Actual: Abort trap: 6.
+
+Crash trace:
+
+    __assert_rtn
+    MTLReportFailure.cold.1
+    MTLReportFailure
+    -[_MTLCommandEncoder dealloc]
+    -[AGXG17XFamilyRenderContext dealloc]
+    AutoreleasePoolPage::releaseUntil(objc_object**)
+
+This is not limited to user code throwing from a Draw closure. The framework's own errors go the same way, so the diagnostics it takes care to produce cannot actually be caught:
+
+- `.parameter()` applied outside a pipeline throws 'missingEnvironment(reflection)' with a hint explaining the correct placement — thrown mid-pass, so the process aborts instead of showing it.
+- An unknown parameter name throws `missingBinding`.
+- A parameter targeting a stage the encoder cannot serve throws `configurationError`.
+
+Consequence for tests: none of those error paths can be asserted through `OffscreenRenderer` or `Runner`, because reaching them kills the test process.
+
+Related: the same unwinding problem was fixed for `System.activeNodeStack` in the #296 commit, where the phase traversals now clear the stack on the way out. The encoders need equivalent treatment.
 
 ---
