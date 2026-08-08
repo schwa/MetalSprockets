@@ -1032,12 +1032,13 @@ Packed3 should work identically to SIMD3. We need to flesh it out with more oper
 ## 137: Add unit tests for `ElementBuilder.buildEither`.
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: source:todo, testing, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:17Z
+updated: 2026-08-08T20:03:57Z
+closed: 2026-08-08T20:03:57Z
 +++
 
 File: Sources/MetalSprockets/Core/ElementBuilder.swift

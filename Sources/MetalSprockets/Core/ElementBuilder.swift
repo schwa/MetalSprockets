@@ -55,7 +55,6 @@ public enum ElementBuilder {
         content
     }
 
-    // TODO: #137 Add unit tests for `ElementBuilder`.
     /// Produces content for a conditional statement in a multi-statement closure when the condition is true.
     public static func buildEither<TrueContent, FalseContent>(first: TrueContent) -> _ConditionalContent<TrueContent, FalseContent> where TrueContent: Element, FalseContent: Element {
         _ConditionalContent(first: first)
