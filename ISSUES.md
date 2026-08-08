@@ -5572,13 +5572,14 @@ Acceptance criteria:
 ## 377: Move FunctionConstants resolution onto the ShaderLoader port
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m, subtask
 depends: 376
 created: 2026-08-08T20:40:05Z
-updated: 2026-08-08T20:40:17Z
+updated: 2026-08-08T20:47:53Z
+closed: 2026-08-08T20:47:53Z
 +++
 
 Part of #295. Depends on #376.

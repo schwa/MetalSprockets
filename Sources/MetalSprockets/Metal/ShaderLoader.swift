@@ -19,6 +19,18 @@ public protocol ShaderLoader: Sendable {
     ///   - type: The expected function type; part of the cache key.
     ///   - constants: Function constants to specialize with.
     func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction
+
+    /// Returns the function constants declared by the function named `name`.
+    ///
+    /// - Throws: ``MetalSprocketsError/configurationError(_:)`` if no such function exists.
+    func declaredConstants(forFunctionNamed name: String) throws -> [String: FunctionConstantInfo]
+}
+
+public extension ShaderLoader {
+    /// Resolves `constants` against the function's declared constants, including namespace suffix matching.
+    func constantValues(forFunctionNamed name: String, constants: FunctionConstants) throws -> MTLFunctionConstantValues {
+        try constants.buildMTLConstants(declared: declaredConstants(forFunctionNamed: name), functionName: name)
+    }
 }
 
 // MARK: - MetalShaderLoader
@@ -49,11 +61,18 @@ public final class MetalShaderLoader: ShaderLoader, Sendable {
             }
             function = basicFunction
         } else {
-            // `buildMTLConstants` introspects the unspecialized function; `makeFunction` then applies the constants.
-            let mtlConstants = try constants.buildMTLConstants(for: library, functionName: name)
+            // Constant resolution introspects the unspecialized function; `makeFunction` then applies the constants.
+            let mtlConstants = try constantValues(forFunctionNamed: name, constants: constants)
             function = try library.makeFunction(name: name, constantValues: mtlConstants)
         }
         cache.set(scopedName: name, functionType: type, constants: constants, function: function)
         return function
+    }
+
+    public func declaredConstants(forFunctionNamed name: String) throws -> [String: FunctionConstantInfo] {
+        guard let baseFunction = library.makeFunction(name: name) else {
+            try _throw(MetalSprocketsError.configurationError("Function '\(name)' not found in library"))
+        }
+        return baseFunction.functionConstantInfos
     }
 }

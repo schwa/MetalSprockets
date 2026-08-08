@@ -1,6 +1,39 @@
 import Metal
 import MetalSprocketsSupport
 
+/// Describes one function constant declared by a shader function.
+///
+/// This mirrors the parts of `MTLFunctionConstant` that constant resolution needs, as a value type, so resolution can
+/// be driven without a live `MTLLibrary`.
+public struct FunctionConstantInfo: Hashable, Sendable {
+    /// The constant's name, as declared (including any C++ namespace).
+    public let name: String
+    /// The `[[function_constant(n)]]` index.
+    public let index: Int
+    /// The constant's Metal data type.
+    public let dataType: MTLDataType
+    /// Whether the function requires a value for this constant.
+    public let required: Bool
+
+    public init(name: String, index: Int, dataType: MTLDataType, required: Bool) {
+        self.name = name
+        self.index = index
+        self.dataType = dataType
+        self.required = required
+    }
+
+    public init(_ constant: MTLFunctionConstant) {
+        self.init(name: constant.name, index: constant.index, dataType: constant.type, required: constant.required)
+    }
+}
+
+public extension MTLFunction {
+    /// The function's constants, as value types.
+    var functionConstantInfos: [String: FunctionConstantInfo] {
+        functionConstantsDictionary.mapValues(FunctionConstantInfo.init)
+    }
+}
+
 /// Type-safe wrapper for Metal function constant values
 public struct FunctionConstants: Equatable, Hashable, Sendable {
     public enum Value: Equatable, Hashable, Sendable {
@@ -40,9 +73,18 @@ public struct FunctionConstants: Equatable, Hashable, Sendable {
         guard let baseFunction = library.makeFunction(name: functionName) else {
             try _throw(MetalSprocketsError.configurationError("Function '\(functionName)' not found in library"))
         }
+        return try buildMTLConstants(declared: baseFunction.functionConstantInfos, functionName: functionName)
+    }
 
+    /// Builds `MTLFunctionConstantValues` against an already-introspected set of declared constants.
+    ///
+    /// Names without a `::` are resolved against namespaced declarations by suffix match.
+    ///
+    /// - Parameters:
+    ///   - constantsDictionary: The constants the function declares, keyed by declared name.
+    ///   - functionName: The function name, used in diagnostics only.
+    public func buildMTLConstants(declared constantsDictionary: [String: FunctionConstantInfo], functionName: String) throws -> MTLFunctionConstantValues {
         let mtlConstants = MTLFunctionConstantValues()
-        let constantsDictionary = baseFunction.functionConstantsDictionary
 
         for (name, value) in values {
             // If the constant name already has a namespace delimiter, use it as-is
