@@ -205,132 +205,14 @@ package final class System: @unchecked Sendable {
                 activeNodeStack.removeAll()
             }
 
-            // Extract previous identifiers from traversal events for comparison
-            var previousIdentifiers: [StructuralIdentifier] = []
-            for event in traversalEvents {
-                if case .enter(let node) = event {
-                    previousIdentifiers.append(node.id)
-                }
-            }
-            var previousIterator = previousIdentifiers.makeIterator()
-
-            // New traversal events we're building
-            var newTraversalEvents: [TraversalEvent] = []
-
-            // New nodes dictionary we're building
-            var newNodes: [StructuralIdentifier: Node] = [:]
-
-            // Stack of atoms to build current path
-            var atomStack: [StructuralIdentifier.Atom] = []
-
-            // Sibling indices at each level (stack of dictionaries)
-            var siblingIndices: [[ElementTypeIdentifier: Int]] = [[:]  ]
-
-            // Helper to get next index for a type at current level
-            func nextIndex(for typeId: ElementTypeIdentifier) -> Int {
-                let currentLevel = siblingIndices.count - 1
-                let index = siblingIndices[currentLevel][typeId] ?? 0
-                siblingIndices[currentLevel][typeId] = index + 1
-                return index
-            }
-
-            // Splice a whole unchanged subtree from the previous traversal, reusing its nodes and events verbatim.
-            // Returns false if the subtree could not be located. See #370.
-            func spliceSubtree(_ id: StructuralIdentifier) -> Bool {
-                guard let range = Self.subtreeEventRange(for: id, in: traversalEvents) else {
-                    return false
-                }
-                var enteredCount = 0
-                for event in traversalEvents[range] {
-                    newTraversalEvents.append(event)
-                    if case .enter(let node) = event {
-                        enteredCount += 1
-                        newNodes[node.id] = node
-                    }
-                }
-                // The subtree's root identifier was already consumed by the caller; consume the descendants so the
-                // previous-identifier iterator stays aligned with the pre-order walk.
-                for _ in 1..<max(enteredCount, 1) {
-                    _ = previousIterator.next()
-                }
-                return true
-            }
-
-            // Process a single element.
-            //
-            // `environmentStable` says no ancestor changed the environment this update. Only then may a subtree be
-            // skipped: its elements read the environment while their bodies run, so a changed ancestor environment has
-            // to force re-evaluation even when the elements themselves compare equal.
-            func processElement(_ element: any Element, environmentStable: Bool = true) throws {
-                // Create atom for this element
-                let typeId = ElementTypeIdentifier(type(of: element))
-                let index = nextIndex(for: typeId)
-                // An explicit .id() replaces sibling position, so the element keeps its identity
-                // when it moves within its parent.
-                let explicitID = (element as? any ExplicitlyIdentifiedElement)?.explicitID
-                let atom = StructuralIdentifier.Atom(typeIdentifier: typeId, index: explicitID == nil ? index : 0, explicitID: explicitID)
-
-                // Push atom onto stack
-                atomStack.append(atom)
-                defer { atomStack.removeLast() }
-
-                // Build current identifier from stack
-                let currentId = StructuralIdentifier(atoms: atomStack)
-
-                // Get previous identifier
-                let previousId = previousIterator.next()
-
-                // Get or create the node for this element
-                let currentNode: Node
-
-                let previousNode = previousId == currentId ? nodes[currentId] : nil
-                // Class elements never compare equal (their mutable stored properties are invisible to `isEqual`), so
-                // they always re-evaluate; only their unchanged children get skipped.
-                let unchanged = previousNode.map { !isDirty(currentId) && isEqual($0.element, element) } ?? false
-
-                // A clean, unchanged subtree under an unchanged parent can be reused wholesale: no body evaluation, no
-                // child walk. Dirty marks propagate to ancestors (#367), so a clean root implies a clean subtree.
-                if unchanged, environmentStable, !isSubtreeDirty(currentId), spliceSubtree(currentId) {
-                    return
-                }
-
-                // Compare and update nodes
-                currentNode = processNode(currentId: currentId, previousId: previousId, element: element, newNodes: &newNodes)
-
-                // Add enter event for this node
-                newTraversalEvents.append(.enter(currentNode))
-
-                // Push current node onto active stack
-                activeNodeStack.append(currentNode)
-                defer {
-                    activeNodeStack.removeLast()
-                    // Add exit event when we're done with this node
-                    newTraversalEvents.append(.exit(currentNode))
-                }
-
-                // Configure the node (applies environment, state, etc.)
-                try element.configureNode(currentNode)
-
-                // Walk children
-                siblingIndices.append([:]) // Push new level for children
-                defer { siblingIndices.removeLast() } // Pop when done
-
-                let childEnvironmentStable = environmentStable && (unchanged || !(element is any EnvironmentModifyingElement))
-
-                try element.visitChildren { child in
-                    try processElement(child, environmentStable: childEnvironmentStable)
-                }
-            }
-
-            // Process root
-            try processElement(root)
+            let reconciliation = try TreeReconciler(system: self).reconcile(root: root)
 
             // Clear dirty identifiers after processing entire tree
             _ = takeDirtyIdentifiers()
 
             // Find removed nodes by diffing old vs new, and give their elements a
             // chance to tear down any external state before they're dropped.
-            let removedIds = Set(nodes.keys).subtracting(Set(newNodes.keys))
+            let removedIds = Set(nodes.keys).subtracting(Set(reconciliation.nodes.keys))
             for id in removedIds {
                 guard let removedNode = nodes[id] else { continue }
                 if let bodyless = removedNode.element as? any BodylessElement {
@@ -342,9 +224,8 @@ package final class System: @unchecked Sendable {
                 }
             }
 
-            // Replace old with new
-            self.nodes = newNodes
-            self.traversalEvents = newTraversalEvents
+            self.nodes = reconciliation.nodes
+            self.traversalEvents = reconciliation.events
 
             // Dump snapshot if environment variable is set
             snapshotter.dumpSnapshotIfNeeded(self)
@@ -352,9 +233,9 @@ package final class System: @unchecked Sendable {
     }
 }
 
-// MARK: - Private Node Processing
+// MARK: - Node Processing
 
-private extension System {
+internal extension System {
     /// Determine whether to reuse an existing node or create a new one
     func processNode(currentId: StructuralIdentifier, previousId: StructuralIdentifier?, element: any Element, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         if let previousId, previousId == currentId {

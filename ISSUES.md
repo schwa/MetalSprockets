@@ -5483,12 +5483,13 @@ Acceptance criteria:
 ## 372: Extract TreeReconciler from System.update
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, subtask
 created: 2026-08-08T20:39:47Z
-updated: 2026-08-08T20:40:17Z
+updated: 2026-08-08T21:08:52Z
+closed: 2026-08-08T21:08:52Z
 +++
 
 Part of #292.
