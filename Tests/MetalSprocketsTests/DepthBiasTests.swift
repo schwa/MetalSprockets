@@ -92,7 +92,7 @@ struct DepthBiasTests {
                     }
                     .depthBias(-0.1, slopeScale: -1.0, clamp: -0.01)
                 }
-                .vertexDescriptor(try vs.inferredVertexDescriptor())
+                .vertexDescriptor(vs.inferredVertexDescriptor())
             }
         }
 
