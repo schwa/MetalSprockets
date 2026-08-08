@@ -1212,15 +1212,18 @@ Expand DocC tutorials for MetalSprockets.
 ## 150: Screencast
 
 +++
-status: open
+status: closed
 priority: low
 kind: documentation
 labels: documentation, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:43Z
+updated: 2026-08-08T16:11:15Z
+closed: 2026-08-08T16:11:15Z
 +++
 
 *Imported from #142*
+
+- `2026-08-08T16:11:15Z`: Won't fix: a screencast is not a code change and isn't tracked usefully here.
 
 ---
 
@@ -2740,10 +2743,9 @@ if p1 is Observable { continue }
 
 ## Notes
 
-- Requires Swift 5.10+ and macOS 14+
-- Does not include `Bindable` property wrapper implementation (future enhancement)
-- See also: [Swift forums discussion on isEqual simplification](https://forums.swift.org/t/comparing-two-any-values-for-equality-is-this-the-simplest-implementation/73816)
-
+- `2026-02-19T00:00:00Z`: Requires Swift 5.10+ and macOS 14+
+- `2026-02-19T00:00:00Z`: Does not include `Bindable` property wrapper implementation (future enhancement)
+- `2026-02-19T00:00:00Z`: See also: [Swift forums discussion on isEqual simplification](https://forums.swift.org/t/comparing-two-any-values-for-equality-is-this-the-simplest-implementation/73816)
 - `2026-08-08T16:09:20Z`: Element bodies are now evaluated inside withObservationTracking; mutating an @Observable property the body read marks the node dirty, so the subtree rebuilds. Properties the body never read do not trigger rebuilds. The isEqual simplification listed in this issue already landed earlier; the remaining equality concern (elements holding an @Observable model compare unequal every frame) is filed as #352.
 
 ---
