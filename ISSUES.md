@@ -5298,11 +5298,13 @@ Part of #89.
 ## 364: StateBox has no synchronization but is written from GPU completion handlers
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: concurrency, effort:m
 created: 2026-08-08T20:31:19Z
+updated: 2026-08-08T21:07:42Z
+closed: 2026-08-08T21:07:42Z
 +++
 
 StateBox (Sources/MetalSprockets/Core/StateBox.swift) is a plain final class with no synchronization around its stored value or its dependency list.
