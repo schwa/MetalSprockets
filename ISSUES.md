@@ -471,6 +471,8 @@ This isn't a problem today, but could become one. Consider:
 - Having a single validated device instance
 - Being prepared for multi-GPU scenarios
 
+- `2026-08-08T06:55:17Z`: Punting: this needs a design decision rather than a mechanical change. Today all 11 call sites already funnel through MetalSupport._MTLCreateSystemDefaultDevice() (fatalErrors when nil), and the remaining sites (ShaderLibrary/Shaders compilation, MetalFX spatial/temporal, ComputeDispatch's apple4 capability check, OffscreenRenderer, RenderView fallback) are all places where no device is available from the caller or environment yet. Options: (a) require an explicit device on the public initializers of those types, (b) resolve the device from the element environment at setup time instead of construction time, or (c) leave as-is and document the single-default-device assumption. Which do you want?
+
 ---
 
 ## 59: Shader Graph
@@ -3264,6 +3266,8 @@ updated: 2026-04-21T02:48:18Z
 +++
 
 Option 2: Configure DocC to publish to root
+
+- `2026-08-08T06:54:18Z`: Punting: this is a DNS/hosting change for docs.metalsprockets.com (plus DocC base-path config), which needs access to the domain and Pages settings that I don't have. Unblocker: confirm where docs are hosted (GitHub Pages?) and whether you want DocC published at the site root with a redirect, then I can do the DocC/workflow side.
 
 ---
 
