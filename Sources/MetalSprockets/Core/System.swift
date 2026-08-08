@@ -1,5 +1,6 @@
 import Foundation
 import os
+import QuartzCore
 
 /// Represents a traversal event in the node tree
 internal enum TraversalEvent {
@@ -25,6 +26,17 @@ internal enum TraversalEvent {
 ///   synchronous single-threaded code). Instances must not be shared across
 ///   isolation domains.
 package final class System: @unchecked Sendable {
+    /// How long each phase of a frame took.
+    package struct PhaseTimings {
+        package var update: TimeInterval
+        package var setup: TimeInterval
+        package var workload: TimeInterval
+
+        package var total: TimeInterval {
+            update + setup + workload
+        }
+    }
+
     private(set) var traversalEvents: [TraversalEvent] = []
     private(set) var nodes: [StructuralIdentifier: Node] = [:]
     /// The node stack for the traversal currently in flight. Owned by the phase doing the traversal; empty outside
@@ -168,7 +180,25 @@ package final class System: @unchecked Sendable {
         }
     }
 
-    package func update(root: some Element) throws {
+    /// Renders one frame of `root`: update, setup, workload, in that order.
+    ///
+    /// This is the supported entry point. The individual phases are internal because they only mean anything in this
+    /// sequence. See #374.
+    @discardableResult
+    package func render(root: some Element) throws -> PhaseTimings {
+        let updateStart = CACurrentMediaTime()
+        try update(root: root)
+        let setupStart = CACurrentMediaTime()
+        return try withCurrentSystem {
+            try processSetup()
+            let workloadStart = CACurrentMediaTime()
+            try processWorkload()
+            let end = CACurrentMediaTime()
+            return PhaseTimings(update: setupStart - updateStart, setup: workloadStart - setupStart, workload: end - workloadStart)
+        }
+    }
+
+    internal func update(root: some Element) throws {
         assert(traversalContext.isEmpty)
         try withCurrentSystem {
             // Clean up after the update

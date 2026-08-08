@@ -166,10 +166,10 @@ Metal shader libraries:
 
 ### 1. Setup Phase
 
-The setup phase occurs once when the element tree is built:
+The setup phase occurs once when the element tree is built. Phases are not driven individually — `System.render(root:)` runs update, setup and workload in order:
 
 ```swift
-graph.processSetup()
+try system.render(root: root)
 ```
 
 - Creates Metal pipeline states
@@ -179,11 +179,7 @@ graph.processSetup()
 
 ### 2. Workload Phase
 
-The workload phase executes for each frame:
-
-```swift
-graph.processWorkload()
-```
+The workload phase executes for each frame, as the last phase of `render(root:)`:
 
 - Encodes rendering commands
 - Updates uniforms and buffers

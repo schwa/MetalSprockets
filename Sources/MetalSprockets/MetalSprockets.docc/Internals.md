@@ -50,7 +50,7 @@ Walks the element tree and updates the node graph via `System.update`:
 
 ### Setup Phase
 
-Runs setup operations for elements that need initialization via `System.processSetup`:
+Runs setup operations for elements that need initialization, as the second phase of `System.render(root:)`:
 
 - Called via `setupEnter` and `setupExit` on BodylessElements
 - Used for expensive operations like shader compilation

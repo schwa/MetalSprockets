@@ -12,15 +12,7 @@ import QuartzCore
 ///   ``lastGPUTime`` is safe to touch from elsewhere, because command-buffer completion handlers run off-thread.
 package final class FrameRenderer: @unchecked Sendable {
     /// How long each phase of a frame took.
-    package struct PhaseTimings {
-        package var update: TimeInterval
-        package var setup: TimeInterval
-        package var workload: TimeInterval
-
-        package var total: TimeInterval {
-            update + setup + workload
-        }
-    }
+    package typealias PhaseTimings = System.PhaseTimings
 
     /// The engine driven by this renderer. Nodes and state persist across frames.
     package let system: System
@@ -47,15 +39,6 @@ package final class FrameRenderer: @unchecked Sendable {
     /// Runs one frame for the given root element and reports how long each phase took.
     @discardableResult
     package func renderFrame(root: some Element) throws -> PhaseTimings {
-        let t0 = CACurrentMediaTime()
-        try system.update(root: root)
-        let t1 = CACurrentMediaTime()
-        return try system.withCurrentSystem {
-            try system.processSetup()
-            let t2 = CACurrentMediaTime()
-            try system.processWorkload()
-            let t3 = CACurrentMediaTime()
-            return PhaseTimings(update: t1 - t0, setup: t2 - t1, workload: t3 - t2)
-        }
+        try system.render(root: root)
     }
 }

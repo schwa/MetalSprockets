@@ -5528,13 +5528,14 @@ Acceptance criteria:
 ## 374: Add a single render(root:) entry point enforcing phase order
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:s, subtask
 depends: 373
 created: 2026-08-08T20:39:47Z
-updated: 2026-08-08T20:40:17Z
+updated: 2026-08-08T21:12:30Z
+closed: 2026-08-08T21:12:30Z
 +++
 
 Part of #292. Depends on #373.
