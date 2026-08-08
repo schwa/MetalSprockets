@@ -321,7 +321,7 @@ modules:
       members:
       - decl: 'public var cgImage: CGImage { get throws }'
       - decl: 'public var texture: any MTLTexture'
-    - decl: 'public init(size: CGSize) throws'
+    - decl: 'public init(size: CGSize, device: (any MTLDevice)? = nil) throws'
     - decl: 'public init(size: CGSize, colorTexture: any MTLTexture, depthTexture: any MTLTexture) throws'
     - decl: 'public var colorTexture: any MTLTexture'
     - decl: 'public var commandQueue: any MTLCommandQueue'
@@ -492,7 +492,7 @@ modules:
     symbols:
     - decl: extension MTLCommandBufferDescriptor
       members:
-      - decl: public func addMetalSprocketsLogging() throws
+      - decl: 'public func addMetalSprocketsLogging(device: any MTLDevice) throws'
   - extended_module: ObjectiveC
     symbols:
     - decl: extension NSObject

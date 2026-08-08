@@ -56,7 +56,7 @@ public struct CommandBufferElement <Content>: Element, BodylessContentElement wh
         let commandBufferDescriptor = MTLCommandBufferDescriptor()
         // TODO: #89 Users cannot modify the environment here. This is a problem.
         if ProcessInfo.processInfo.metalLoggingEnabled {
-            try commandBufferDescriptor.addMetalSprocketsLogging()
+            try commandBufferDescriptor.addMetalSprocketsLogging(device: commandQueue.device)
         }
         // TODO: #90 There isn't an opportunity to modify the descriptor here.
         let commandBuffer = try commandQueue._makeCommandBuffer(descriptor: commandBufferDescriptor)

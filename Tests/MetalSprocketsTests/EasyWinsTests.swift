@@ -99,7 +99,7 @@ struct CommandBufferLoggingTests {
     func testAddMetalSprocketsLogging() throws {
         let descriptor = MTLCommandBufferDescriptor()
         #expect(descriptor.logState == nil)
-        try descriptor.addMetalSprocketsLogging()
+        try descriptor.addMetalSprocketsLogging(device: MTLCreateSystemDefaultDevice()!)
         #expect(descriptor.logState != nil)
     }
 }

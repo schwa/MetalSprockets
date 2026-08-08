@@ -103,10 +103,8 @@ public struct ComputeDispatch: Element, BodylessElement {
     ///   - threadsPerThreadgroup: The number of threads per threadgroup. Pass `nil` (the default)
     ///     to derive it from the compute pipeline state at dispatch time.
     public init(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize? = nil) throws {
-        let device = _MTLCreateSystemDefaultDevice()
-        guard device.supportsFamily(.apple4) else {
-            try _throw(MetalSprocketsError.deviceCababilityFailure("Non-uniform threadgroup sizes require Apple GPU Family 4+ (A11 or later)"))
-        }
+        // The Apple-family check happens at dispatch time against the device actually in use,
+        // rather than the system default device at construction time. See #55.
         self.dimensions = .threadsPerGrid(threadsPerGrid)
         self.threadsPerThreadgroup = threadsPerThreadgroup
     }
@@ -141,6 +139,9 @@ public struct ComputeDispatch: Element, BodylessElement {
         case .threadgroupsPerGrid(let threadgroupCount):
             computeCommandEncoder.dispatchThreadgroups(threadgroupCount, threadsPerThreadgroup: threadsPerThreadgroup)
         case .threadsPerGrid(let threads):
+            guard computePipelineState.device.supportsFamily(.apple4) else {
+                throw MetalSprocketsError.deviceCababilityFailure("Non-uniform threadgroup sizes require Apple GPU Family 4+ (A11 or later); device '\(computePipelineState.device.name)' does not support them")
+            }
             computeCommandEncoder.dispatchThreads(threads, threadsPerThreadgroup: threadsPerThreadgroup)
         case let .indirect(buffer, offset):
             computeCommandEncoder.dispatchThreadgroups(indirectBuffer: buffer, indirectBufferOffset: offset, threadsPerThreadgroup: threadsPerThreadgroup)

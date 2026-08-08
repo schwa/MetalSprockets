@@ -51,7 +51,7 @@ public struct MetalFXTemporal: Element {
 
     public var body: some Element {
         AnyBodylessElement()
-            .onWorkloadEnter {
+            .onWorkloadEnter { (node: Node) in
                 // Lazily create or recreate the scaler only when needed.
                 // Setup runs every frame (AnyBodylessElement always
                 // reports requiresSetup = true), so scaler creation must
@@ -63,7 +63,7 @@ public struct MetalFXTemporal: Element {
                     || scaler?.outputHeight != outputTexture.height
                     || scaler?.inputWidth != inputTexture.width
                     || scaler?.inputHeight != inputTexture.height {
-                    scaler = try makeScaler()
+                    scaler = try makeScaler(device: try node.environmentValues.device.orThrow(.missingEnvironment(\.device)))
                 }
                 let s = try scaler.orThrow(.resourceCreationFailure("MetalFX temporal scaler not initialized"))
                 let commandBuffer = try commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
@@ -80,7 +80,7 @@ public struct MetalFXTemporal: Element {
             }
     }
 
-    func makeScaler() throws -> MTLFXTemporalScaler {
+    func makeScaler(device: MTLDevice) throws -> MTLFXTemporalScaler {
         let descriptor = MTLFXTemporalScalerDescriptor()
         descriptor.colorTextureFormat = inputTexture.pixelFormat
         descriptor.depthTextureFormat = depthTexture.pixelFormat
@@ -90,7 +90,6 @@ public struct MetalFXTemporal: Element {
         descriptor.inputHeight = inputTexture.height
         descriptor.outputWidth = outputTexture.width
         descriptor.outputHeight = outputTexture.height
-        let device = _MTLCreateSystemDefaultDevice()
         return try descriptor.makeTemporalScaler(device: device).orThrow(.resourceCreationFailure("Failed to create MetalFX temporal scaler"))
     }
 }

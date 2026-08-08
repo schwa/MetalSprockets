@@ -35,7 +35,7 @@ public struct MetalFXSpatial: Element, BodylessElement {
         if cache.key == key, cache.scaler != nil {
             return
         }
-        cache.scaler = try makeScaler()
+        cache.scaler = try makeScaler(device: try node.environmentValues.device.orThrow(.missingEnvironment(\.device)))
         cache.key = key
     }
 
@@ -56,7 +56,7 @@ public struct MetalFXSpatial: Element, BodylessElement {
         true
     }
 
-    func makeScaler() throws -> MTLFXSpatialScaler {
+    func makeScaler(device: MTLDevice) throws -> MTLFXSpatialScaler {
         let descriptor = MTLFXSpatialScalerDescriptor()
         descriptor.colorTextureFormat = inputTexture.pixelFormat
         descriptor.outputTextureFormat = outputTexture.pixelFormat
@@ -64,7 +64,6 @@ public struct MetalFXSpatial: Element, BodylessElement {
         descriptor.inputHeight = inputTexture.height
         descriptor.outputWidth = outputTexture.width
         descriptor.outputHeight = outputTexture.height
-        let device = _MTLCreateSystemDefaultDevice()
         return try descriptor.makeSpatialScaler(device: device).orThrow(.resourceCreationFailure("Failed to create MetalFX spatial scaler"))
     }
 }
