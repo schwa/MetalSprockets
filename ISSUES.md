@@ -1762,8 +1762,9 @@ status: open
 priority: medium
 kind: enhancement
 labels: enhancement, effort:l
+depends: 367, 369, 370, 371
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T15:47:46Z
+updated: 2026-08-08T20:40:04Z
 +++
 
 ## Problem
@@ -1924,6 +1925,7 @@ Unblocker: confirm you want subtree skipping in System.update, and whether dirty
 
 - `2026-08-08T15:47:46Z`: Decision: push-based dirty propagation. StateBox will mark the dependent node and its ancestor chain dirty, and System.update will skip any subtree containing no dirty node, splicing the previous nodes and traversal events instead of re-evaluating bodies.
 - `2026-08-08T20:29:04Z`: Folding #196 into this issue: both need the same feature (push-based dirty propagation + subtree skipping in System.update). #196's stated root cause (MSBinding UUID equality) was already stale — bindings to the same state compare equal. The unused-binding scenario is covered by unusedBindingDoesNotRebuildChild in Tests/MetalSprocketsTests/SelectiveRebuildTests.swift, alongside this issue's statelessChildDoesNotRebuild.
+- `2026-08-08T20:39:47Z`: Split into subtasks: #367 -> #369 -> #370 -> #371.
 
 ---
 
@@ -2567,9 +2569,9 @@ Create an OptionSet for Metal function types (vertex, fragment, compute, etc.) t
 status: open
 priority: low
 kind: feature
-labels: effort:xl, api
+labels: effort:xl, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T20:33:01Z
+updated: 2026-08-08T20:37:59Z
 +++
 
 Adopt Metal 4 APIs where beneficial:
@@ -3018,9 +3020,10 @@ Everything else checked out: System and FrameRenderer's @unchecked Sendable is b
 status: open
 priority: medium
 kind: enhancement
-labels: effort:xl
+labels: effort:xl, has-subtasks
+depends: 372, 373, 374, 375
 created: 2026-03-31T19:33:03Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T20:40:04Z
 +++
 
 ## Problem
@@ -3048,6 +3051,8 @@ The activeNodeStack should become private to PhaseRunner and never accessible to
 ## Test Impact
 
 Existing tests in SystemTests, NeedsSetupTests, SystemProcessTests, and NodeTests largely test interior mechanics (node identity, needsSetup flags, call order). A deepened module would replace most of these with boundary tests that assert observable rendering outcomes rather than internal node state.
+
+- `2026-08-08T20:40:04Z`: Split into subtasks: #372 -> #373 -> #374 -> #375.
 
 ---
 
@@ -3137,9 +3142,10 @@ Done: added MSEnvironmentValues.requireReflection(for:), a single documented acc
 status: open
 priority: low
 kind: enhancement
-labels: effort:xl
+labels: effort:xl, has-subtasks
+depends: 376, 377, 378, 379
 created: 2026-03-31T19:34:21Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T20:40:08Z
 +++
 
 ## Problem
@@ -3171,6 +3177,7 @@ The process-global singleton (LibraryRegistry.shared) should become an optional 
 FunctionConstantsTests currently creates a real MTLDevice and compiles real shader source. Cache hit/miss behavior, namespace resolution, and the error paths in function(type:named:) are entirely untested. A ShaderLoader port would allow unit tests for all of these without a GPU: verify cache hits return the same MTLFunction; verify ambiguous namespace constants throw the right error; verify missing constants produce the correct diagnostic.
 
 - `2026-04-21T02:48:26Z`: Related: #339 is a narrower task specifically about the LibraryRegistry leak (global singleton retains MTLLibrary forever). A fix there could be one concrete step toward this broader refactor.
+- `2026-08-08T20:40:08Z`: Split into subtasks: #376 -> #377 -> #378 -> #379.
 
 ---
 
@@ -4922,6 +4929,8 @@ Seen with:
 
 Wanted: identity-based comparison for class-typed (and @Observable) stored properties in the non-Equatable isEqual fallback, so an element holding the same model instance compares equal.
 
+- `2026-08-08T20:40:18Z`: Related: #367-#371 (subtree skipping) — @Observable-holding elements will still compare as changed; the equality question is separate from the traversal-skipping work.
+
 ---
 
 ## 353: Three functions exceed the cyclomatic_complexity limit
@@ -5302,6 +5311,8 @@ So a completion-handler write can race a main-thread traversal read, and two rea
 
 Not yet observed as a crash in tests; found by review. Whether off-isolation writes should be supported at all, or rejected with a precondition, is undecided — the docs currently promise both.
 
+- `2026-08-08T20:40:17Z`: Related: #367 (propagate dirty marks up the ancestor chain) touches the same StateBox write path.
+
 ---
 
 ## 365: ShaderLibrary.ID is @unchecked Sendable and carries a mutable MTLCompileOptions
@@ -5344,5 +5355,271 @@ In that path:
 Result: the observation outlives the await, stays registered on the input, and its block runs again on every subsequent readiness change for the lifetime of the input. No crash — the resumed flag prevents a second resume — but the observer and its captured continuation leak.
 
 Hit whenever the input is not ready at call time but becomes ready between the readiness check and the observe call, or whenever .initial delivers a ready value synchronously.
+
+---
+
+## 367: Propagate dirty marks up the ancestor chain
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:m, subtask
+created: 2026-08-08T20:39:19Z
+updated: 2026-08-08T20:40:16Z
++++
+
+Part of #197.
+
+StateBox currently marks only the owning node dirty. Subtree skipping needs the whole ancestor chain marked so an update can tell whether any node inside a subtree is dirty.
+
+Acceptance criteria:
+
+- `2026-08-08T20:39:19Z`: StateBox marking a node dirty also marks each ancestor via Node.parentIdentifier.
+- `2026-08-08T20:39:19Z`: System exposes a way to ask whether a subtree contains any dirty node.
+- `2026-08-08T20:39:19Z`: Tests cover nested state mutation marking root..leaf, and clearing after update.
+- `2026-08-08T20:40:17Z`: Related: #364 (StateBox has no synchronization) — ancestor-chain dirty marking touches the same write path; coordinate the two.
+
+---
+
+## 368: tmpprobe
+
++++
+status: closed
+priority: medium
+kind: none
+created: 2026-08-08T20:39:21Z
+updated: 2026-08-08T20:39:26Z
+closed: 2026-08-08T20:39:26Z
++++
+
+---
+
+## 369: Record subtree extents in traversal events
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:m, subtask
+depends: 367
+created: 2026-08-08T20:39:34Z
+updated: 2026-08-08T20:40:16Z
++++
+
+Part of #197. Depends on #367.
+
+To reuse an unchanged subtree, System.update must be able to splice the previous nodes and traversal events for that subtree as a unit.
+
+Acceptance criteria:
+- Traversal events (or a parallel index) let you locate the contiguous enter/exit range for a given node.
+- A helper returns the previous nodes and events for a subtree root.
+- Tests assert extents are correct for nested and sibling structures.
+
+---
+
+## 370: Skip re-evaluating clean subtrees in System.update
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:m, subtask
+depends: 369
+created: 2026-08-08T20:39:34Z
+updated: 2026-08-08T20:40:16Z
++++
+
+Part of #197. Depends on #369.
+
+Acceptance criteria:
+- update(root:) skips element.visitChildren/body evaluation for subtrees containing no dirty node, splicing previous nodes and traversal events instead.
+- previousIterator alignment, needsSetup, and teardown of removed nodes stay correct.
+- Existing System/NeedsSetup/SystemProcess tests still pass.
+
+---
+
+## 371: Enable SelectiveRebuildTests and cover skipping edge cases
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:s, subtask
+depends: 370
+created: 2026-08-08T20:39:35Z
+updated: 2026-08-08T20:40:16Z
++++
+
+Part of #197. Depends on #370.
+
+Acceptance criteria:
+- statelessChildDoesNotRebuild and unusedBindingDoesNotRebuildChild drop withKnownIssue and pass.
+- Added coverage for conditional branch switches, node removal, and elements moved by explicit .id() while skipping is active.
+
+---
+
+## 372: Extract TreeReconciler from System.update
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:m, subtask
+created: 2026-08-08T20:39:47Z
+updated: 2026-08-08T20:40:17Z
++++
+
+Part of #292.
+
+update(root:) is a 100+ line nest of local functions with shared mutable captures.
+
+Acceptance criteria:
+- A TreeReconciler type owns element-tree diffing and produces the ordered node dictionary plus traversal events.
+- System.update delegates to it; no behaviour change.
+- TreeReconciler is testable without driving setup/workload phases.
+
+---
+
+## 373: Make activeNodeStack private to the phase runner and pass environment explicitly
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:m, subtask
+depends: 372
+created: 2026-08-08T20:39:47Z
+updated: 2026-08-08T20:40:17Z
++++
+
+Part of #292. Depends on #372.
+
+Acceptance criteria:
+- activeNodeStack is no longer readable state on System; a phase/traversal context owns it.
+- @MSEnvironment and @MSState resolve values through an explicit context rather than reaching into System.current's stack.
+- Existing environment and state tests pass unchanged in behaviour.
+
+---
+
+## 374: Add a single render(root:) entry point enforcing phase order
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:s, subtask
+depends: 373
+created: 2026-08-08T20:39:47Z
+updated: 2026-08-08T20:40:17Z
++++
+
+Part of #292. Depends on #373.
+
+Acceptance criteria:
+- render(root:) runs update -> setup -> workload in order.
+- update/processSetup/processWorkload become internal (or otherwise not the supported call sequence).
+- Callers in the repo and samples use render(root:).
+
+---
+
+## 375: Rebalance System tests toward the render(root:) boundary
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:m, subtask
+depends: 374
+created: 2026-08-08T20:39:47Z
+updated: 2026-08-08T20:40:17Z
++++
+
+Part of #292. Depends on #374.
+
+Acceptance criteria:
+- SystemTests/NeedsSetupTests/SystemProcessTests/NodeTests no longer assert interior mechanics (needsSetup flags, node identity internals) where an observable outcome would do.
+- Replacement tests exercise render(root:) and assert observable rendering outcomes.
+- Coverage does not regress.
+
+---
+
+## 376: Define a ShaderLoader port for shader function lookup
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: effort:m, subtask
+created: 2026-08-08T20:40:04Z
+updated: 2026-08-08T20:40:17Z
++++
+
+Part of #295.
+
+Acceptance criteria:
+- A ShaderLoader protocol declares function(named:type:constants:) throws -> MTLFunction.
+- The real implementation wraps LibraryRegistry + ShaderCache + MTLLibrary.
+- ShaderLibrary.function(type:named:) routes through the port; behaviour unchanged.
+
+---
+
+## 377: Move FunctionConstants resolution onto the ShaderLoader port
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: effort:m, subtask
+depends: 376
+created: 2026-08-08T20:40:05Z
+updated: 2026-08-08T20:40:17Z
++++
+
+Part of #295. Depends on #376.
+
+Acceptance criteria:
+- buildMTLConstants and the namespace resolution (constants ending in ::name) are reachable through the port rather than requiring a live MTLLibrary at the call site.
+- A mock library supplying a fixed functionConstantsDictionary can drive constant resolution in tests.
+
+---
+
+## 378: Make ShaderLibrary a value type holding a ShaderLoader
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: effort:m, subtask
+depends: 377
+created: 2026-08-08T20:40:05Z
+updated: 2026-08-08T20:40:17Z
++++
+
+Part of #295. Depends on #377. Overlaps #339 (LibraryRegistry leak).
+
+Acceptance criteria:
+- ShaderLibrary holds a ShaderLoader instead of an interned ShaderLibrary.State.
+- LibraryRegistry becomes an internal detail of the real loader; LibraryRegistry.shared is a default that callers can replace with their own loader.
+- Tests and multi-device callers can get an isolated loader.
+
+---
+
+## 379: Add GPU-free tests for shader loading and constants
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: effort:s, subtask
+depends: 378
+created: 2026-08-08T20:40:05Z
+updated: 2026-08-08T20:40:17Z
++++
+
+Part of #295. Depends on #378.
+
+Acceptance criteria:
+- Tests without a real MTLDevice cover: cache hit returns the same MTLFunction, ambiguous namespace constants throw the expected error, missing constants produce the correct diagnostic, and error paths in function(type:named:).
 
 ---
