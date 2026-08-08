@@ -697,7 +697,7 @@ modules:
     members:
     - decl: '@MainActor public init()'
     - decl: |
-        @MainActor public func body(content: Content) -> some View
+        @MainActor public func body(content: OverlayBadgeModifier.Content) -> some View
   - decl: '@MainActor public struct RenderView<Content> where Content : Element'
     members:
     - decl: '@MainActor public init(colorPixelFormat: MTLPixelFormat? = nil, depthStencilPixelFormat: MTLPixelFormat? = nil, sampleCount: Int? = nil, @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content)'

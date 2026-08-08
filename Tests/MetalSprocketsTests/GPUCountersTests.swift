@@ -1,3 +1,4 @@
+import Foundation
 import Metal
 @testable import MetalSprockets
 import simd
@@ -9,7 +10,10 @@ private final class SampleBox: @unchecked Sendable {
 
 @Suite("GPU counters")
 struct GPUCountersTests {
-    @Test("GPUCounterSampler resolves a sample for a render pass")
+    @Test(
+        "GPUCounterSampler resolves a sample for a render pass",
+        .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Counter sampling unavailable on CI runners")
+    )
     @MainActor
     func gpuCountersModifierReportsSample() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
@@ -58,7 +62,10 @@ struct GPUCountersTests {
         #expect(sample.endTimestamp >= sample.startTimestamp)
     }
 
-    @Test("Sampler converts tick deltas to non-negative seconds")
+    @Test(
+        "Sampler converts tick deltas to non-negative seconds",
+        .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Counter sampling unavailable on CI runners")
+    )
     func secondsForTicks() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let sampler = try #require(GPUCounterSampler(device: device))
