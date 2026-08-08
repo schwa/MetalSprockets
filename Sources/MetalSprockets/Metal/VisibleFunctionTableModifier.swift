@@ -47,8 +47,8 @@ internal struct VisibleFunctionTableModifier<Content>: Element, SetupElement, Wo
         }
 
         guard let table = functionTable,
-            let index = resolvedIndex,
-            let resolvedType = resolvedFunctionType else {
+              let index = resolvedIndex,
+              let resolvedType = resolvedFunctionType else {
             return
         }
 

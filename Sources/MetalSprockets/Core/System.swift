@@ -291,8 +291,8 @@ internal extension System {
             // An already-set needsSetup (e.g. from markAllNodesNeedingSetup) is preserved.
             if !existingNode.needsSetup {
                 if let oldBodyless = oldElement as? any BodylessElement,
-                    let newBodyless = element as? any BodylessElement,
-                    type(of: oldBodyless) == type(of: newBodyless) {
+                   let newBodyless = element as? any BodylessElement,
+                   type(of: oldBodyless) == type(of: newBodyless) {
                     existingNode.needsSetup = requiresSetupErased(old: oldBodyless, new: newBodyless)
                 } else {
                     existingNode.needsSetup = true

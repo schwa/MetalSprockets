@@ -1,4 +1,3 @@
-
 import Metal
 @testable import MetalSprockets
 import Testing
@@ -209,7 +208,7 @@ struct CommandBufferCompletionTests {
     @Test
     func testCommandBufferElement_MultipleFrames() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
-            let commandQueue = device.makeCommandQueue() else {
+              let commandQueue = device.makeCommandQueue() else {
             Issue.record("Metal not available")
             return
         }
@@ -239,7 +238,7 @@ struct CommandBufferCompletionTests {
     @Test
     func testIssue290_RenderPassCompletionHandler() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
-            let commandQueue = device.makeCommandQueue() else {
+              let commandQueue = device.makeCommandQueue() else {
             Issue.record("Metal not available")
             return
         }
@@ -272,7 +271,7 @@ struct CommandBufferCompletionTests {
     @Test
     func testIssue290_MultipleFrames() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
-            let commandQueue = device.makeCommandQueue() else {
+              let commandQueue = device.makeCommandQueue() else {
             Issue.record("Metal not available")
             return
         }
@@ -312,7 +311,7 @@ struct CommandBufferCompletionTests {
     @Test
     func testIssue290_WithRealRenderPass() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
-            let commandQueue = device.makeCommandQueue() else {
+              let commandQueue = device.makeCommandQueue() else {
             Issue.record("Metal not available")
             return
         }
@@ -360,7 +359,7 @@ struct CommandBufferCompletionTests {
     @Test
     func testActualOnCommandBufferCompleted() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
-            let commandQueue = device.makeCommandQueue() else {
+              let commandQueue = device.makeCommandQueue() else {
             Issue.record("Metal not available")
             return
         }
@@ -388,7 +387,7 @@ struct CommandBufferCompletionTests {
     @Test
     func testHandlerRegistrationVerification() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
-            let commandQueue = device.makeCommandQueue() else {
+              let commandQueue = device.makeCommandQueue() else {
             Issue.record("Metal not available")
             return
         }

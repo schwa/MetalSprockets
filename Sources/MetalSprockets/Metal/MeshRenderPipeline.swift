@@ -121,8 +121,8 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadEleme
         }
 
         if cache.key == key,
-            let cachedPSO = cache.pipelineState,
-            let cachedReflection = cache.reflection {
+           let cachedPSO = cache.pipelineState,
+           let cachedReflection = cache.reflection {
             node.environmentValues.renderPipelineState = cachedPSO
             node.environmentValues.reflection = cachedReflection
             self.reflection = cachedReflection

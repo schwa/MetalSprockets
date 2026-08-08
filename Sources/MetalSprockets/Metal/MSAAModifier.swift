@@ -98,10 +98,10 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
 
     private func multisampleTexture(device: MTLDevice, matching targetTexture: MTLTexture) throws -> MTLTexture {
         if let existing = multisampleTexture,
-            existing.width == targetTexture.width,
-            existing.height == targetTexture.height,
-            existing.pixelFormat == targetTexture.pixelFormat,
-            existing.sampleCount == sampleCount {
+           existing.width == targetTexture.width,
+           existing.height == targetTexture.height,
+           existing.pixelFormat == targetTexture.pixelFormat,
+           existing.sampleCount == sampleCount {
             return existing
         }
         guard device.supportsTextureSampleCount(sampleCount) else {
@@ -126,10 +126,10 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
 
     private func multisampleDepthTexture(device: MTLDevice, matching depthTexture: MTLTexture) throws -> MTLTexture {
         if let existing = multisampleDepthTexture,
-            existing.width == depthTexture.width,
-            existing.height == depthTexture.height,
-            existing.pixelFormat == depthTexture.pixelFormat,
-            existing.sampleCount == sampleCount {
+           existing.width == depthTexture.width,
+           existing.height == depthTexture.height,
+           existing.pixelFormat == depthTexture.pixelFormat,
+           existing.sampleCount == sampleCount {
             return existing
         }
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(

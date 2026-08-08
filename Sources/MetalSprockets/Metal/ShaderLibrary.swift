@@ -349,7 +349,7 @@ public extension ShaderLibrary.ID {
         case .library(let library):
             hasher.combine("library")
             hasher.combine(ObjectIdentifier(library))
-        case .source(let source, let options):
+        case let .source(source, options):
             hasher.combine("source")
             hasher.combine(source)
             hasher.combine(options)

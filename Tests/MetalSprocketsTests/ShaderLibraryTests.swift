@@ -263,6 +263,8 @@ struct ShaderLibraryTests {
         let optionsB = MTLCompileOptions()
         optionsB.languageVersion = .version3_0
         let optionsC = MTLCompileOptions()
+        // `preprocessorMacros` is [String: NSObject], so a bridged type is the only option here.
+        // swiftlint:disable:next legacy_objc_type
         optionsC.preprocessorMacros = ["FOO": 1 as NSNumber]
 
         let idA = ShaderLibrary.ID.source("x", .init(optionsA))
