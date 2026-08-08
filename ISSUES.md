@@ -1709,6 +1709,9 @@ This is a performance optimization - the current behavior is functionally correc
 *Imported from #188*
 
 - `2026-04-03T17:33:51Z`: Related: #197 (elements without parameters rebuild unnecessarily)
+- `2026-08-08T07:02:45Z`: Root cause as written is stale: MSState.projectedValue returns the single MSBinding instance stored on StateBox, so bindings to the same state already compare equal across rebuilds (same UUID) — no sourceIdentifier change needed.
+
+The remaining symptom is the same one as #197: System's update traversal re-evaluates every body regardless of element equality, so the child rebuilds anyway. Fixing it means subtree skipping in System.update; see my comment on #197 for the blast radius and the question I need answered. Scenario added as a withKnownIssue test in Tests/MetalSprocketsTests/SelectiveRebuildTests.swift.
 
 ---
 
@@ -1869,6 +1872,15 @@ Performance optimization - the current behavior is functionally correct but caus
 *Imported from #189*
 
 - `2026-04-03T17:33:51Z`: Related: #196 (unused bindings cause unnecessary rebuilds)
+- `2026-08-08T07:02:45Z`: Partial progress + punt on the rest.
+
+Done: isEqual(Any, Any) now treats two non-Equatable *value* types of the same type with no stored properties as equal (proposal 2 in this issue). Reference types are excluded since distinct instances are meaningfully distinct.
+
+Why that isn't enough: element equality only gates node.element replacement and needsSetup in System.processNode. The update traversal itself (Element.visitChildren -> visit(body)) unconditionally evaluates every element's body every update, so ConstantChild's body still runs. Making this issue's test pass requires the traversal to skip re-evaluating an unchanged subtree — splicing the previous subtree's nodes and traversal events instead of rebuilding them, and propagating dirtiness from descendants upward. That's a change to the core update algorithm with a wide blast radius (interacts with structural identity alignment via previousIterator, dirty tracking, and setup/workload ordering), so I'm not attempting it blind.
+
+Added Tests/MetalSprocketsTests/SelectiveRebuildTests.swift with this issue's scenario as a withKnownIssue test, so it flips green automatically when subtree skipping lands.
+
+Unblocker: confirm you want subtree skipping in System.update, and whether dirty propagation should be push-based (StateBox marks ancestors) or pull-based (compare subtree during traversal).
 
 ---
 

@@ -6,11 +6,16 @@ internal func isEqual<LHS: Equatable, RHS: Equatable>(_ lhs: LHS, _ rhs: RHS) ->
 }
 
 internal func isEqual(_ lhs: Any, _ rhs: Any) -> Bool {
-    guard let lhs = lhs as? any Equatable else {
+    if let equatableLHS = lhs as? any Equatable, let equatableRHS = rhs as? any Equatable {
+        return isEqual(equatableLHS, equatableRHS)
+    }
+    // Non-Equatable fallback: two values of the same type that store nothing carry no
+    // information, so they cannot differ. Treating them as equal stops stateless elements
+    // from rebuilding whenever a parent's state changes. (#197)
+    // Reference types are excluded: distinct instances are meaningfully distinct even when
+    // they store nothing.
+    guard !(lhs is AnyObject), !(rhs is AnyObject), type(of: lhs) == type(of: rhs) else {
         return false
     }
-    guard let rhs = rhs as? any Equatable else {
-        return false
-    }
-    return isEqual(lhs, rhs)
+    return Mirror(reflecting: lhs).children.isEmpty && Mirror(reflecting: rhs).children.isEmpty
 }
