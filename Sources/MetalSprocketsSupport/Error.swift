@@ -46,7 +46,7 @@ public extension Optional {
         // swiftlint:disable:next self_binding
         guard let value = self else {
             let error = error()
-            if ProcessInfo.processInfo.fatalErrorOnThrow {
+            if SystemEnvironment.current.fatalErrorOnThrow {
                 fatalError("\(error)")
             }
             else {
@@ -74,7 +74,7 @@ public extension Optional {
 }
 
 public func _throw(_ error: some Error) throws -> Never {
-    if ProcessInfo.processInfo.fatalErrorOnThrow {
+    if SystemEnvironment.current.fatalErrorOnThrow {
         fatalError("\(error)")
     }
     else {

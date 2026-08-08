@@ -2541,11 +2541,11 @@ updated: 2026-04-03T17:33:18Z
 +++
 
 Adopt Metal 4 APIs where beneficial:
-- Evaluate new Metal 4 features
-- Update framework to use improved APIs
-- Take advantage of performance improvements
-- Consider requiring Metal 4 as minimum or providing fallbacks
 
+- `2026-02-19T00:00:00Z`: Evaluate new Metal 4 features
+- `2026-02-19T00:00:00Z`: Update framework to use improved APIs
+- `2026-02-19T00:00:00Z`: Take advantage of performance improvements
+- `2026-02-19T00:00:00Z`: Consider requiring Metal 4 as minimum or providing fallbacks
 - `2026-04-18T17:21:58Z`: Draft RFC: [RFCs/0002-metal-4.md](RFCs/0002-metal-4.md) — proposes a phased rollout (backend abstraction → Metal 4 backend → argument tables → pipeline caching → residency sets → ML dispatch element).
 
 ---
@@ -3901,12 +3901,13 @@ Investigate:
 ## 326: Introduce SystemEnvironment type for test-overridable process env
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: testing, architecture, effort:l
 created: 2026-04-19T18:36:16Z
-updated: 2026-04-21T02:48:19Z
+updated: 2026-08-08T15:58:30Z
+closed: 2026-08-08T15:58:30Z
 +++
 
 Several places in MetalSprockets read process environment variables directly via `ProcessInfo.processInfo.environment` (through `ProcessInfo+Extensions`):
@@ -3939,6 +3940,8 @@ Call sites (Snapshotter, logging, any future env-gated code) take an optional `S
 
 - Current Snapshotter already has a test-only injection (`init(shouldDumpSnapshots:fileURL:)`) added during the coverage push. This issue generalizes that pattern.
 - Not a `@MSEnvironment` style thing — this is about *process* environment, not element-tree environment. Pick a name that doesn't collide (e.g. `SystemEnvironment`, `ProcessEnvironment`, or `RuntimeFlags`).
+
+- `2026-08-08T15:58:30Z`: Added SystemEnvironment (MetalSprocketsSupport) with typed flag accessors and a task-local 'current' override. Per-call gates (fatalErrorOnThrow, Logger.verbose, metalLoggingEnabled, dumpSnapshotsEnabled, RenderViewDebugging) now read it. The lazily-initialised 'logger' globals still latch ProcessInfo at first use — overriding those would mean building a Logger per call.
 
 ---
 

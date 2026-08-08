@@ -1,4 +1,5 @@
 import Foundation
+import MetalSprocketsSupport
 
 internal class Snapshotter {
     private struct FrameInfo: Codable {
@@ -16,7 +17,7 @@ internal class Snapshotter {
     private let fileURL: URL
 
     init(shouldDumpSnapshots: Bool? = nil, fileURL: URL? = nil) {
-        self.shouldDumpSnapshots = shouldDumpSnapshots ?? ProcessInfo.processInfo.dumpSnapshotsEnabled
+        self.shouldDumpSnapshots = shouldDumpSnapshots ?? SystemEnvironment.current.dumpSnapshotsEnabled
         if let fileURL {
             self.fileURL = fileURL
         } else {

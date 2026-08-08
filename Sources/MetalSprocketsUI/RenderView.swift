@@ -531,11 +531,11 @@ internal final class RenderViewViewModelAllocationTracker: @unchecked Sendable {
 
 public struct RenderViewDebugging {
     public static var logFrame: Bool {
-        ProcessInfo.processInfo.renderViewLogFrameEnabled
+        SystemEnvironment.current.renderViewLogFrameEnabled
     }
 
     public static var fatalErrorOnCatch: Bool {
-        ProcessInfo.processInfo.fatalErrorOnThrow
+        SystemEnvironment.current.fatalErrorOnThrow
     }
 }
 

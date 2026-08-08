@@ -17,6 +17,6 @@ public func withIntervalSignpost<T>(_ signposter: OSSignposter?, name: StaticStr
 
 public extension Logger {
     var verbose: Logger? {
-        ProcessInfo.processInfo.verboseLoggingEnabled ? self : nil
+        SystemEnvironment.current.verboseLoggingEnabled ? self : nil
     }
 }
