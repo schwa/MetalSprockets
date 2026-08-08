@@ -29,34 +29,63 @@ internal extension System {
             assert(activeNodeStack.isEmpty)
             defer { clearActiveNodeStack() }
             var skipDepth = 0
-            for event in traversalEvents {
-                switch event {
-                case .enter(let node):
-                    pushActiveNode(node)
-                    inheritEnvironmentFromActiveParent(node)
-                    if skipDepth > 0 {
-                        skipDepth += 1
+            // Nodes whose workloadEnter has run but whose workloadExit has not. If a
+            // descendant throws we unwind these in reverse so encoders are always ended
+            // (an un-ended MTLCommandEncoder aborts the process when deallocated).
+            var enteredWorkloadNodes: [Node] = []
+            func unwindEnteredWorkloadNodes() {
+                for node in enteredWorkloadNodes.reversed() {
+                    guard let workloadElement = node.element as? any WorkloadElement else {
                         continue
                     }
-                    if let bodylessElement = node.element as? any BodylessElement {
-                        if bodylessElement.skipsWorkload(node) {
-                            skipDepth = 1
-                            continue
-                        }
-                        if let workloadElement = bodylessElement as? any WorkloadElement {
-                            try workloadElement.workloadEnter(node)
-                        }
-                    }
-                case .exit(let node):
-                    defer { popActiveNode() }
-                    if skipDepth > 0 {
-                        skipDepth -= 1
-                        continue
-                    }
-                    if let workloadElement = node.element as? any WorkloadElement {
+                    do {
                         try workloadElement.workloadExit(node)
+                    } catch {
+                        logger?.error("workloadExit failed while unwinding after an error: \(error)")
                     }
                 }
+                enteredWorkloadNodes.removeAll()
+            }
+            func traverse() throws {
+                for event in traversalEvents {
+                    switch event {
+                    case .enter(let node):
+                        pushActiveNode(node)
+                        inheritEnvironmentFromActiveParent(node)
+                        if skipDepth > 0 {
+                            skipDepth += 1
+                            continue
+                        }
+                        if let bodylessElement = node.element as? any BodylessElement {
+                            if bodylessElement.skipsWorkload(node) {
+                                skipDepth = 1
+                                continue
+                            }
+                            if let workloadElement = bodylessElement as? any WorkloadElement {
+                                try workloadElement.workloadEnter(node)
+                                enteredWorkloadNodes.append(node)
+                            }
+                        }
+                    case .exit(let node):
+                        defer { popActiveNode() }
+                        if skipDepth > 0 {
+                            skipDepth -= 1
+                            continue
+                        }
+                        if let workloadElement = node.element as? any WorkloadElement {
+                            if enteredWorkloadNodes.last === node {
+                                enteredWorkloadNodes.removeLast()
+                            }
+                            try workloadElement.workloadExit(node)
+                        }
+                    }
+                }
+            }
+            do {
+                try traverse()
+            } catch {
+                unwindEnteredWorkloadNodes()
+                throw error
             }
             assert(activeNodeStack.isEmpty)
             assert(skipDepth == 0, "skipDepth should be zero after workload traversal")

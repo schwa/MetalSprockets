@@ -5018,11 +5018,13 @@ Applies to both `Element.capture(_:target:destination:)` and the `View.capture(_
 ## 357: An error thrown during the workload phase aborts the process
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: bug, effort:m
 created: 2026-08-08T19:03:49Z
+updated: 2026-08-08T19:49:04Z
+closed: 2026-08-08T19:49:04Z
 +++
 
 Any error thrown while a render or compute pass is encoding takes the whole process down with SIGABRT instead of propagating to the caller. The encoder is created by the pass's workloadEnter and ended in its workloadExit; when a descendant throws, the traversal unwinds without running workloadExit, so the encoder is released un-ended and Metal asserts.
