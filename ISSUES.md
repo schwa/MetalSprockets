@@ -370,12 +370,13 @@ This would trigger a GPU capture of the next frame when the boolean becomes true
 ## 50: Provide a hook for GPU counters
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:09Z
+updated: 2026-08-08T20:48:52Z
+closed: 2026-08-08T20:48:52Z
 +++
 
 Expose Metal GPU counter APIs through the framework:
