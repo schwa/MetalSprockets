@@ -3369,6 +3369,8 @@ updated: 2026-04-21T02:48:18Z
 
 Running the demo app on iPad Pro 11-inch (M5) simulator (iOS 26.4), the UI is essentially blank/empty. Shows a white card with faint horizontal separator lines and a green '60' FPS counter in the top-right, but no actual rendered content is visible. The entire lower portion of the screen is just empty grey. Appears the Metal rendering surface isn't displaying anything.
 
+- `2026-08-08T06:41:29Z`: Punting for now: verification needs an iPad Simulator run, which I couldn't complete (xcb --destination sim failed to match the booted iPad mini, and the sim build was too slow to iterate on). Note that #311's drawable-size resync fix may also address this — the symptom (blank Metal surface until a resize) is the same. Please re-check on iPad Sim after #311.
+
 ---
 
 ## 309: Verify MSAA is actually working — demo cube still looks aliased
