@@ -153,6 +153,33 @@ struct RenderViewViewModelTests {
         #expect(viewModel.lastError is Failure)
     }
 
+    @Test func `an error thrown during setup is captured and the next frame recovers`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let view = makeView(device: device)
+        var shouldThrow = true
+        // The content closure succeeds; the failure happens later, while the element tree is being set up. That is a
+        // different catch from the content-closure one above, and it must not take the drawable presentation or the
+        // view model down with it.
+        let viewModel = try makeViewModel(device: device) { _, _ -> AnyElement in
+            let willThrow = shouldThrow
+            return try AnyElement(
+                try triangle().onSetupEnter { _ in
+                    if willThrow {
+                        throw Failure()
+                    }
+                }
+            )
+        }
+        view.delegate = viewModel
+
+        viewModel.draw(in: view)
+        #expect(viewModel.lastError is Failure)
+
+        shouldThrow = false
+        viewModel.draw(in: view)
+        #expect(viewModel.frame == 2)
+    }
+
     @Test func `an error thrown during the frame leaves the view model usable`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let view = makeView(device: device)
