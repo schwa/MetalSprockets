@@ -54,8 +54,7 @@ public struct CommandBufferElement <Content>: Element, WorkloadElement, Bodyless
     func workloadEnter(_ node: Node) throws {
         let commandQueue = try node.environmentValues.commandQueue.orThrow(.missingEnvironment(\.commandQueue))
         let commandBufferDescriptor = node.environmentValues.commandBufferDescriptor?.copyWithType(MTLCommandBufferDescriptor.self) ?? MTLCommandBufferDescriptor()
-        // TODO: #89 Users cannot modify the environment here. This is a problem.
-        if SystemEnvironment.current.metalLoggingEnabled {
+        if node.environmentValues.metalLoggingEnabled {
             try commandBufferDescriptor.addMetalSprocketsLogging(device: commandQueue.device)
         }
         let commandBuffer = try commandQueue._makeCommandBuffer(descriptor: commandBufferDescriptor)

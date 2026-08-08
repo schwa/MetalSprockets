@@ -31,6 +31,11 @@ public extension MSEnvironmentValues {
     @MSEntry var blitCommandEncoder: MTLBlitCommandEncoder?
     @MSEntry var linkedFunctions: MTLLinkedFunctions?
     @MSEntry var shaderStore: ShaderStore?
+
+    /// Whether ``CommandBufferElement`` attaches Metal shader logging to the command buffers it creates.
+    ///
+    /// Defaults to the process-wide `MS_METAL_LOGGING` setting.
+    @MSEntry var metalLoggingEnabled: Bool = SystemEnvironment.current.metalLoggingEnabled
 }
 
 public extension Element {
@@ -84,6 +89,13 @@ public extension Element {
     /// Sets the base render pipeline descriptor pipelines are built from.
     func renderPipelineDescriptor(_ renderPipelineDescriptor: MTLRenderPipelineDescriptor) -> some Element {
         environment(\.renderPipelineDescriptor, renderPipelineDescriptor)
+    }
+
+    /// Enables or disables Metal shader logging for command buffers created in this subtree.
+    ///
+    /// Overrides the process-wide `MS_METAL_LOGGING` setting.
+    func metalLoggingEnabled(_ enabled: Bool) -> some Element {
+        environment(\.metalLoggingEnabled, enabled)
     }
 
     /// Sets the drawable this frame presents to.

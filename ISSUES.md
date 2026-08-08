@@ -5192,11 +5192,13 @@ Part of #89.
 ## 361: Make Metal logging a per-subtree environment value
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:s, subtask
 created: 2026-08-08T20:06:59Z
+updated: 2026-08-08T20:20:53Z
+closed: 2026-08-08T20:20:53Z
 +++
 
 `CommandBufferElement.workloadEnter` reads the global `SystemEnvironment.current.metalLoggingEnabled` to decide whether to call `addMetalSprocketsLogging(device:)`. Callers cannot enable or disable Metal logging for a specific element subtree.
