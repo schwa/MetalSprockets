@@ -57,7 +57,7 @@ package final class System: @unchecked Sendable {
 
     /// Mark all nodes as needing setup (e.g., when drawable size changes)
     package func markAllNodesNeedingSetup() {
-        for node in nodes.values {
+        for node in nodes.values where node.element is any SetupElement {
             node.needsSetup = true
         }
     }
@@ -252,6 +252,8 @@ private extension System {
                     existingNode.needsSetup = true
                 }
             }
+            // Only elements that take part in the setup phase can need setup. (#235)
+            existingNode.needsSetup = existingNode.needsSetup && element is any SetupElement
         }
         // Whether changed or not, reuse the existing node
         newNodes[currentId] = existingNode
@@ -262,8 +264,8 @@ private extension System {
         let parentId = activeNodeStack.last?.id
         let currentNode = Node(system: self, id: currentId, parentIdentifier: parentId, element: element)
         newNodes[currentId] = currentNode
-        // New nodes always need setup
-        currentNode.needsSetup = true
+        // New nodes need setup, unless the element takes no part in the setup phase. (#235)
+        currentNode.needsSetup = element is any SetupElement
         return currentNode
     }
 

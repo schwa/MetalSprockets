@@ -24,18 +24,31 @@ Elements compose hierarchically to form a rendering tree. Each element can eithe
 
 ### 2. BodylessElement
 
-`BodylessElement` represents elements that perform actual Metal operations rather than composition:
+`BodylessElement` represents elements that perform actual Metal operations rather than composition. Which phases an
+element takes part in is expressed by conforming to `SetupElement`, `WorkloadElement`, or both:
 
 ```swift
-public protocol BodylessElement: Element {
+protocol BodylessElement {
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws
+    func configureNodeBodyless(_ node: Node) throws
+    func teardown(_ node: Node) throws
+    func skipsWorkload(_ node: Node) -> Bool
+    func requiresSetup(comparedTo old: Self) -> Bool
+}
+
+protocol SetupElement: BodylessElement {
     func setupEnter(_ node: Node) throws
     func setupExit(_ node: Node) throws
+}
+
+protocol WorkloadElement: BodylessElement {
     func workloadEnter(_ node: Node) throws
     func workloadExit(_ node: Node) throws
 }
 ```
 
-These elements interact directly with Metal command encoders and perform rendering operations.
+These elements interact directly with Metal command encoders and perform rendering operations. Only `SetupElement`
+nodes ever report `needsSetup`, so a workload-only element costs nothing in the setup phase.
 
 ### 3. Rendering Graph
 
@@ -354,7 +367,7 @@ struct MyCustomElement: Element {
 For direct Metal operations:
 
 ```swift
-struct MyMetalOperation: BodylessElement {
+struct MyMetalOperation: WorkloadElement {
     func workloadEnter(_ node: Node) throws {
         // Encode Metal commands
     }

@@ -60,7 +60,7 @@ import CompositorServices
 /// ### Related Elements
 /// - ``RenderPipeline``
 /// - ``Draw``
-public struct RenderPass <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+public struct RenderPass <Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     private let label: String?
     internal let content: Content
 

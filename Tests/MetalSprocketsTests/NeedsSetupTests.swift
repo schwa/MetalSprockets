@@ -5,7 +5,7 @@ import Testing
 @Suite(.serialized)
 struct NeedsSetupTests {
     // Track setup calls
-    final class SetupTrackingElement: Element, BodylessElement, Identifiable, Equatable {
+    final class SetupTrackingElement: Element, SetupElement, WorkloadElement, Identifiable, Equatable {
         typealias Body = Never
 
         nonisolated(unsafe) static var globalSetupEnterCount = 0

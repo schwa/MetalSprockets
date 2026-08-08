@@ -43,7 +43,7 @@ struct UberTest {
         }
     }
 
-    struct TrackedBodyless: Element, BodylessElement {
+    struct TrackedBodyless: Element, SetupElement, WorkloadElement {
         let name: String
         let counter: Int
         let envValue: String
@@ -167,7 +167,7 @@ struct UberTest {
             }
         }
 
-        struct TimingBodyless: Element, BodylessElement {
+        struct TimingBodyless: Element, SetupElement, WorkloadElement {
             let value: Int
             let onSetup: () -> Void
             let onWorkload: () -> Void
@@ -222,7 +222,7 @@ struct UberTest {
             }
         }
 
-        struct EnvBodyless: Element, BodylessElement {
+        struct EnvBodyless: Element, SetupElement {
             let name: String
             @MSEnvironment(\.exampleValue) var envValue
 
@@ -286,7 +286,7 @@ struct UberTest {
             }
         }
 
-        struct SimpleTracked: Element, BodylessElement {
+        struct SimpleTracked: Element, SetupElement {
             let name: String
 
             var body: Never {

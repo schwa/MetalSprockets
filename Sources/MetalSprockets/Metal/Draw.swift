@@ -55,7 +55,7 @@ import Metal
 /// - ``RenderPipeline``
 /// - ``RenderPass``
 // Note: Cannot use EnvironmentReader here because Draw needs to execute during the workload phase when the render command encoder is available, not during the tree expansion phase where EnvironmentReader operates.
-public struct Draw: Element, BodylessElement {
+public struct Draw: Element, WorkloadElement {
     public typealias Body = Never
 
     var encodeGeometry: (MTLRenderCommandEncoder) throws -> Void

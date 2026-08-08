@@ -4,7 +4,7 @@ import MetalSprocketsSupport
 // MARK: - VisibleFunctionTableModifier
 
 /// A modifier that binds a visible function table to a shader.
-internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+internal struct VisibleFunctionTableModifier<Content>: Element, SetupElement, WorkloadElement, BodylessContentElement where Content: Element {
     var name: String
     var functions: [MTLFunction]
     var functionType: MTLFunctionType?

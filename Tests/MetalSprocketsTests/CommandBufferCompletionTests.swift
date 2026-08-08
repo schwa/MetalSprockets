@@ -18,7 +18,7 @@ private extension MSEnvironmentValues {
 @MainActor
 @Suite
 struct CommandBufferCompletionTests {
-    struct ParentElement<Content: Element>: Element, BodylessElement, BodylessContentElement {
+    struct ParentElement<Content: Element>: Element, WorkloadElement, BodylessContentElement {
         var content: Content
 
         init(@ElementBuilder content: () throws -> Content) rethrows {

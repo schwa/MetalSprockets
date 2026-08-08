@@ -5,7 +5,7 @@ import Testing
 @MainActor
 @Suite
 struct ConditionalContentTests {
-    struct TrackedLeaf: Element, BodylessElement {
+    struct TrackedLeaf: Element, SetupElement {
         let name: String
 
         var body: Never { fatalError() }

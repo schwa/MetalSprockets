@@ -50,7 +50,7 @@ import MetalSprocketsSupport
 /// - ``MeshShader``
 /// - ``ObjectShader``
 /// - ``RenderPipeline``
-public struct MeshRenderPipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadElement, BodylessContentElement where Content: Element {
     public typealias Body = Never
     @MSEnvironment(\.device)
     var device

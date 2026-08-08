@@ -37,7 +37,7 @@ import MetalSupport
 /// - ``RenderPass``
 /// - ``ComputePass``
 /// - ``BlitPass``
-public struct CommandBufferElement <Content>: Element, BodylessContentElement where Content: Element {
+public struct CommandBufferElement <Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     var completion: MTLCommandQueueCompletion
     var content: Content
 

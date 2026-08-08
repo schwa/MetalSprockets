@@ -25,7 +25,7 @@ struct BindingTests {
         }
     }
 
-    struct ActionElement: Element, BodylessElement {
+    struct ActionElement: Element, WorkloadElement {
         let value: Int
         let action: () -> Void
 
@@ -196,7 +196,7 @@ struct BindingTests {
         }
     }
 
-    struct CombinedElement: Element, BodylessElement {
+    struct CombinedElement: Element, WorkloadElement {
         let sum: Int
         let action: () -> Void
 

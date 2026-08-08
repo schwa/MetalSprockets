@@ -10,7 +10,7 @@ struct WorkloadEnabledTests {
         var exits = 0
     }
 
-    struct Tracked: Element, BodylessElement {
+    struct Tracked: Element, WorkloadElement {
         typealias Body = Never
         let counter: Counter
         var body: Never { fatalError() }

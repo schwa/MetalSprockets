@@ -1,4 +1,4 @@
-internal struct SetupModifier <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+internal struct SetupModifier <Content>: Element, SetupElement, BodylessContentElement where Content: Element {
     var content: Content
     var _setupEnter: ((MSEnvironmentValues) throws -> Void)?
 

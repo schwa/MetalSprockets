@@ -1,7 +1,7 @@
 import os
 
 /// An element that logs messages at various stages during the MetalSprockets lifecycle.
-public struct LoggingElement: Element, BodylessElement {
+public struct LoggingElement: Element, SetupElement, WorkloadElement {
     /// Options describing which lifecycle phases to log.
     public struct Phases: OptionSet, Sendable {
         public let rawValue: Int

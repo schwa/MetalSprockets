@@ -25,7 +25,7 @@ struct ObservableObjectTests {
         }
     }
 
-    struct DisplayElement: Element, BodylessElement {
+    struct DisplayElement: Element, WorkloadElement {
         let value: Int
         let action: () -> Void
 
@@ -87,7 +87,7 @@ struct ObservableObjectTests {
         }
     }
 
-    struct TextElement: Element, BodylessElement {
+    struct TextElement: Element, WorkloadElement {
         let text: String
         let action: () -> Void
 
@@ -100,7 +100,7 @@ struct ObservableObjectTests {
         }
     }
 
-    struct FlagElement: Element, BodylessElement {
+    struct FlagElement: Element, WorkloadElement {
         let flag: Bool
         let action: () -> Void
 

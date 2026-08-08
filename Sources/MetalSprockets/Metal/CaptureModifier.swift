@@ -15,7 +15,7 @@ public enum CaptureTarget: Sendable {
 
 // MARK: - CaptureModifier
 
-internal struct CaptureModifier <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+internal struct CaptureModifier <Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     var content: Content
     var enabled: Bool
     var target: CaptureTarget

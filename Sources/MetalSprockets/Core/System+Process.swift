@@ -38,6 +38,7 @@ internal extension System {
                     }
                     if let bodylessElement = node.element as? any BodylessElement {
                         // Rebuild environment parent chain (mirrors `process`).
+                        // Runs for every bodyless element, not just workload ones, so children see a complete chain.
                         if activeNodeStack.count > 1 {
                             if node.environmentValues.storage.parent == nil {
                                 let parentNode = activeNodeStack[activeNodeStack.count - 2]
@@ -51,7 +52,9 @@ internal extension System {
                             skipDepth = 1
                             continue
                         }
-                        try bodylessElement.workloadEnter(node)
+                        if let workloadElement = bodylessElement as? any WorkloadElement {
+                            try workloadElement.workloadEnter(node)
+                        }
                     }
                 case .exit(let node):
                     defer { popActiveNode() }
@@ -59,8 +62,8 @@ internal extension System {
                         skipDepth -= 1
                         continue
                     }
-                    if let bodylessElement = node.element as? any BodylessElement {
-                        try bodylessElement.workloadExit(node)
+                    if let workloadElement = node.element as? any WorkloadElement {
+                        try workloadElement.workloadExit(node)
                     }
                 }
             }
@@ -71,14 +74,14 @@ internal extension System {
 }
 
 internal extension System {
-    func process(needsSetup: Bool = false, enter: (any BodylessElement, Node) throws -> Void, exit: (any BodylessElement, Node) throws -> Void) throws {
+    func process(needsSetup: Bool = false, enter: (any SetupElement, Node) throws -> Void, exit: (any SetupElement, Node) throws -> Void) throws {
         try withCurrentSystem {
             assert(activeNodeStack.isEmpty)
             for event in traversalEvents {
                 switch event {
                 case .enter(let node):
                     pushActiveNode(node)
-                    if let bodylessElement = node.element as? any BodylessElement, !needsSetup || node.needsSetup {
+                    if let bodylessElement = node.element as? any SetupElement, !needsSetup || node.needsSetup {
                         // Rebuild environment parent chain
                         // TODO: Investigate whether we need this still. Seems like patch for broken behavior.
                         if activeNodeStack.count > 1 {
@@ -93,7 +96,7 @@ internal extension System {
                         try enter(bodylessElement, node)
                     }
                 case .exit(let node):
-                    if let bodylessElement = node.element as? any BodylessElement, !needsSetup || node.needsSetup {
+                    if let bodylessElement = node.element as? any SetupElement, !needsSetup || node.needsSetup {
                         try exit(bodylessElement, node)
                     }
                     popActiveNode()

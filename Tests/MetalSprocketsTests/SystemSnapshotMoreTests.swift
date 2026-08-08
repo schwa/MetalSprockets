@@ -10,6 +10,16 @@ struct SystemSnapshotExtendedTests {
         var body: Never { fatalError() }
     }
 
+    struct SetupLeaf: Element, SetupElement {
+        var body: Never { fatalError() }
+    }
+
+    struct SetupParticipatingElement: Element {
+        var body: some Element {
+            SetupLeaf()
+        }
+    }
+
     struct StatefulElement: Element {
         @MSState var counter: Int = 5
         @MSState var name: String = "hello"
@@ -53,8 +63,8 @@ struct SystemSnapshotExtendedTests {
     @MainActor
     func testNeedsSetupMarkerInDump() throws {
         let system = System()
-        try system.update(root: StatefulElement())
-        // After update, before processSetup - nodes need setup.
+        try system.update(root: SetupParticipatingElement())
+        // After update, before processSetup - setup-phase nodes need setup.
         let dump = system.snapshot().textDump()
         #expect(dump.contains("NEEDS SETUP"))
     }

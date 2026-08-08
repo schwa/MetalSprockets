@@ -1,4 +1,4 @@
-internal struct WorkloadModifier <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+internal struct WorkloadModifier <Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     var content: Content
     var _workloadEnter: ((MSEnvironmentValues) throws -> Void)?
 

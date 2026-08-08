@@ -2185,12 +2185,13 @@ closed: 2026-04-21T04:28:53Z
 ## 235: Split BodylessElement into SetupElement and WorkloadElement protocols
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: enhancement, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:50Z
+updated: 2026-08-08T16:03:07Z
+closed: 2026-08-08T16:03:07Z
 +++
 
 Split BodylessElement into focused protocols:
@@ -2211,6 +2212,7 @@ Split into two protocols:
 - `2026-02-19T00:00:00Z`: AnyBodylessElement always triggers setup due to closure comparison limitations (was #237)
 - `2026-02-19T00:00:00Z`: This would allow automatic setup detection based on protocol conformance
 - `2026-04-03T17:33:50Z`: Related: #67 (formalize element I/O), #152 (onWorkloadExit), #214 (cleanup for removed nodes)
+- `2026-08-08T16:03:07Z`: BodylessElement split into SetupElement (setupEnter/setupExit) and WorkloadElement (workloadEnter/workloadExit). Each phase now dispatches only to elements that conform, and nodes whose element is not a SetupElement never report needsSetup.
 
 ---
 
@@ -3938,9 +3940,8 @@ Call sites (Snapshotter, logging, any future env-gated code) take an optional `S
 
 ## Notes
 
-- Current Snapshotter already has a test-only injection (`init(shouldDumpSnapshots:fileURL:)`) added during the coverage push. This issue generalizes that pattern.
-- Not a `@MSEnvironment` style thing — this is about *process* environment, not element-tree environment. Pick a name that doesn't collide (e.g. `SystemEnvironment`, `ProcessEnvironment`, or `RuntimeFlags`).
-
+- `2026-04-19T18:36:16Z`: Current Snapshotter already has a test-only injection (`init(shouldDumpSnapshots:fileURL:)`) added during the coverage push. This issue generalizes that pattern.
+- `2026-04-19T18:36:16Z`: Not a `@MSEnvironment` style thing — this is about *process* environment, not element-tree environment. Pick a name that doesn't collide (e.g. `SystemEnvironment`, `ProcessEnvironment`, or `RuntimeFlags`).
 - `2026-08-08T15:58:30Z`: Added SystemEnvironment (MetalSprocketsSupport) with typed flag accessors and a task-local 'current' override. Per-call gates (fatalErrorOnThrow, Logger.verbose, metalLoggingEnabled, dumpSnapshotsEnabled, RenderViewDebugging) now read it. The lazily-initialised 'logger' globals still latch ProcessInfo at first use — overriding those would mean building a Logger per call.
 
 ---

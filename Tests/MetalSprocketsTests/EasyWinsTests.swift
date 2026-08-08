@@ -11,7 +11,7 @@ import Testing
 @MainActor
 @Suite("AnyElement")
 struct AnyElementTests {
-    struct Leaf: Element, BodylessElement {
+    struct Leaf: Element, WorkloadElement {
         var value: Int
         var body: Never { fatalError() }
         func workloadEnter(_ node: Node) throws {

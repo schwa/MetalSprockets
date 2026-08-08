@@ -71,7 +71,7 @@ struct StateTests {
         }
     }
 
-    struct TrackedElement: Element, BodylessElement {
+    struct TrackedElement: Element, WorkloadElement {
         let name: String
         let value: Int
         let action: () -> Void
@@ -156,7 +156,7 @@ struct StateTests {
         }
     }
 
-    struct PropagationLeaf: Element, BodylessElement {
+    struct PropagationLeaf: Element, WorkloadElement {
         let combinedValue: Int
         let onIncrement: () -> Void
 

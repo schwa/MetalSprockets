@@ -4,7 +4,7 @@ import MetalFX
 import MetalSprocketsSupport
 import MetalSupport
 
-public struct MetalFXSpatial: Element, BodylessElement {
+public struct MetalFXSpatial: Element, SetupElement, WorkloadElement {
     public typealias Body = Never
 
     var inputTexture: MTLTexture

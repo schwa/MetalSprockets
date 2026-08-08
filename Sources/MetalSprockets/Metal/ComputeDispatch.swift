@@ -62,7 +62,7 @@ import MetalSupport
 ///     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1)
 /// )
 /// ```
-public struct ComputeDispatch: Element, BodylessElement {
+public struct ComputeDispatch: Element, WorkloadElement {
     private enum Dimensions {
         case threadgroupsPerGrid(MTLSize)
         case threadsPerGrid(MTLSize)

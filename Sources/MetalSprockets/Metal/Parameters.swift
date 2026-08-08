@@ -11,7 +11,7 @@ internal protocol ParameterCollecting {
     var parameterContent: any Element { get }
 }
 
-internal struct ParameterElementModifier<Content>: Element, BodylessElement, BodylessContentElement, ParameterCollecting where Content: Element {
+internal struct ParameterElementModifier<Content>: Element, WorkloadElement, BodylessContentElement, ParameterCollecting where Content: Element {
     var parameters: [String: Parameter]
     var content: Content
 

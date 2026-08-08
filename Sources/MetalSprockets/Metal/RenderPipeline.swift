@@ -70,7 +70,7 @@ import MetalSprocketsSupport
 /// - ``RenderPass``
 /// - ``Draw``
 /// - ``ShaderLibrary``
-public struct RenderPipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, BodylessContentElement where Content: Element {
     public typealias Body = Never
     @MSEnvironment(\.device)
     var device

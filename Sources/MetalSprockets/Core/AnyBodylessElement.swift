@@ -1,4 +1,4 @@
-internal struct AnyBodylessElement: Element, BodylessElement {
+internal struct AnyBodylessElement: Element, SetupElement, WorkloadElement {
     fileprivate var _setupEnter: ((Node) throws -> Void)?
     fileprivate var _setupExit: ((Node) throws -> Void)?
     fileprivate var _workloadEnter: ((Node) throws -> Void)?

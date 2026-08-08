@@ -28,7 +28,7 @@ import Metal
 /// - ``Blit``
 /// - ``RenderPass``
 /// - ``ComputePass``
-public struct BlitPass <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+public struct BlitPass <Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     internal let content: Content
 
     /// Creates a blit pass with the specified content.
@@ -73,7 +73,7 @@ public struct BlitPass <Content>: Element, BodylessElement, BodylessContentEleme
 ///     }
 /// }
 /// ```
-public struct Blit: Element, BodylessElement {
+public struct Blit: Element, WorkloadElement {
     var block: (MTLBlitCommandEncoder) throws -> Void
 
     /// Creates a blit element with the specified encoding closure.

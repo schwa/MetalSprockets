@@ -44,7 +44,7 @@ import MetalSprocketsSupport
 /// ### Related Elements
 /// - ``ComputePipeline``
 /// - ``RenderPass``
-public struct ComputePass <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+public struct ComputePass <Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     internal let label: String?
     internal let content: Content
 
@@ -101,7 +101,7 @@ public struct ComputePass <Content>: Element, BodylessElement, BodylessContentEl
 /// ### Related Elements
 /// - ``ComputePass``
 /// - ``ComputeKernel``
-public struct ComputePipeline <Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+public struct ComputePipeline <Content>: Element, SetupElement, BodylessContentElement where Content: Element {
     private let label: String?
     private let computeKernel: ComputeKernel
     internal let content: Content

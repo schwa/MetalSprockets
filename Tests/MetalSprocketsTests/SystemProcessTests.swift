@@ -5,7 +5,7 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct SystemProcessTests {
-    struct CallOrderTracker: Element, BodylessElement {
+    struct CallOrderTracker: Element, SetupElement, WorkloadElement {
         var body: Never {
             fatalError()
         }
@@ -41,7 +41,7 @@ struct SystemProcessTests {
         #expect(TestMonitor.shared.updates == ["setupEnter", "setupExit", "workloadEnter", "workloadExit"])
     }
 
-    struct TrackedBodyless: Element, BodylessElement {
+    struct TrackedBodyless: Element, SetupElement, WorkloadElement {
         let name: String
 
         var body: Never {
