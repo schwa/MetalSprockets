@@ -188,6 +188,8 @@ extension MTKView {
         }
         if let value = environment.metalDepthStencilStorageMode {
             self.depthStencilStorageMode = value
+        } else {
+            adoptMemorylessDepthStencilIfPossible()
         }
         if let value = environment.metalSampleCount {
             self.sampleCount = value
@@ -218,5 +220,23 @@ extension MTKView {
             self.colorspace = value
         }
         #endif
+    }
+
+    /// Makes MTKView's internal depth/stencil texture memoryless when it is a pure transient render target.
+    ///
+    /// MTKView defaults to `.private`, which needlessly reserves VRAM (and trips a Metal validation warning) for a
+    /// texture that is never read outside the pass that writes it. Memoryless is only valid on Apple-family GPUs and
+    /// only when nothing samples the texture, so both conditions are checked.
+    private func adoptMemorylessDepthStencilIfPossible() {
+        guard depthStencilPixelFormat != .invalid else {
+            return
+        }
+        guard depthStencilAttachmentTextureUsage == .renderTarget else {
+            return
+        }
+        guard let device, device.supportsFamily(.apple1) else {
+            return
+        }
+        depthStencilStorageMode = .memoryless
     }
 }

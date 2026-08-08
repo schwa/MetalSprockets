@@ -162,6 +162,35 @@ struct MTKViewEnvironmentTests {
         #expect(view.depthStencilStorageMode == .private)
     }
 
+    @Test("depth/stencil texture defaults to memoryless when it is a pure render target")
+    func testDepthStencilDefaultsToMemoryless() throws {
+        let view = makeView()
+        let device = try #require(view.device)
+        try #require(device.supportsFamily(.apple1), "memoryless requires an Apple-family GPU")
+        var env = EnvironmentValues()
+        env.metalDepthStencilPixelFormat = .depth32Float
+        view.configure(from: env)
+        #expect(view.depthStencilStorageMode == .memoryless)
+    }
+
+    @Test("depth/stencil texture stays resident when something samples it")
+    func testSampledDepthStencilIsNotMemoryless() {
+        let view = makeView()
+        var env = EnvironmentValues()
+        env.metalDepthStencilPixelFormat = .depth32Float
+        env.metalDepthStencilAttachmentTextureUsage = [.renderTarget, .shaderRead]
+        view.configure(from: env)
+        #expect(view.depthStencilStorageMode != .memoryless)
+    }
+
+    @Test("no depth/stencil format leaves the storage mode alone")
+    func testNoDepthFormatLeavesStorageModeAlone() {
+        let view = makeView()
+        let original = view.depthStencilStorageMode
+        view.configure(from: EnvironmentValues())
+        #expect(view.depthStencilStorageMode == original)
+    }
+
     #if os(macOS)
     @Test("metalColorspace is applied (macOS only)")
     func testColorspace() {

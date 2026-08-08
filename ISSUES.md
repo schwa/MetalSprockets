@@ -3220,15 +3220,18 @@ After fixing #298 (RenderViewHelper allocating a new RenderViewViewModel every f
 ## 300: Example app: MTKView depth texture uses Private storage mode instead of Memoryless
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: effort:xs
 created: 2026-04-01T22:03:32Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T15:51:41Z
+closed: 2026-08-08T15:51:41Z
 +++
 
 Metal validation warning: Texture 0xb6628b200 "MTKView Depth" has storage mode Private but was a transient render target accessed exclusively by the GPU. Should use .storageModeMemoryless for the depth attachment to avoid wasting VRAM on a texture that does not need to persist between render passes. Seen in the spinning cube demo.
+
+- `2026-08-08T15:51:41Z`: MTKView.configure(from:) now defaults depthStencilStorageMode to .memoryless when the depth attachment is a pure render target on an Apple-family GPU.
 
 ---
 
