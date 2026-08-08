@@ -3127,12 +3127,13 @@ FunctionConstantsTests currently creates a real MTLDevice and compiles real shad
 ## 296: Refactor: RenderViewViewModel duplicates frame-orchestration logic that OffscreenRenderer also contains
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l
 created: 2026-03-31T19:34:45Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T16:06:58Z
+closed: 2026-08-08T16:06:58Z
 +++
 
 ## Problem
@@ -3160,6 +3161,8 @@ The three-phase ordering contract ('you must call these in this sequence') becom
 ## Test Impact
 
 CommandBufferCompletionTests, MSAATests, and OffscreenVideoRendererTests all test end-to-end by going through OffscreenRenderer or the full render view stack. No tests verify the frame-orchestration logic in isolation: that MSAA changes trigger markAllNodesNeedingSetup, that a drawable-size change propagates to the system, or that a thrown error inside the frame does not corrupt system state for subsequent frames. A FrameRenderer with a clear interface would make all of these testable without MTKView or a display.
+
+- `2026-08-08T16:06:58Z`: Added FrameRenderer (owns the System, the update/setup/workload sequence, phase timings, and the GPU-time slot). Runner, RenderViewViewModel and ImmersiveRuntime now delegate to it; the nonisolated(unsafe) lastGPUTime vars are gone. Writing the isolation test exposed a real bug: a throw mid-phase left activeNodeStack dirty and tripped the empty-stack assertions on the next frame — the phase traversals now clear it on exit.
 
 ---
 

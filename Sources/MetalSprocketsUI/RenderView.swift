@@ -315,17 +315,17 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     /// Lazily created on first use. See #337 — keeping `init` cheap means
     /// SwiftUI's per-body churn of unused RenderViewViewModel instances
-    /// doesn't pay for a `System()` each time.
+    /// doesn't pay for a `FrameRenderer` (and its `System`) each time.
     @ObservationIgnored
-    private var _system: System?
+    private var _frameRenderer: FrameRenderer?
     @ObservationIgnored
-    var system: System {
-        if let s = _system {
-            return s
+    var frameRenderer: FrameRenderer {
+        if let renderer = _frameRenderer {
+            return renderer
         }
-        let s = System()
-        _system = s
-        return s
+        let renderer = FrameRenderer()
+        _frameRenderer = renderer
+        return renderer
     }
 
     @ObservationIgnored
@@ -374,11 +374,6 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     var frameTimingTracker = FrameTimingTracker()
 
-    /// GPU execution time from the most recently completed command buffer.
-    /// Written asynchronously from the command buffer completion handler.
-    @ObservationIgnored
-    nonisolated(unsafe) var lastGPUTime: TimeInterval?
-
     @ObservationIgnored
     var currentSampleCount: Int = 1
 
@@ -393,7 +388,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         drawableSizeChange?(size)
         // Mark all nodes as needing setup when drawable size changes
-        system.markAllNodesNeedingSetup()
+        frameRenderer.invalidateSetup()
         self.currentDrawableSize = size
     }
 
@@ -404,7 +399,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
         if currentDrawableSize != view.drawableSize {
             currentDrawableSize = view.drawableSize
             drawableSizeChange?(view.drawableSize)
-            system.markAllNodesNeedingSetup()
+            frameRenderer.invalidateSetup()
         }
 
         // Check if sample count changed (MSAA toggle) by examining the actual texture
@@ -412,7 +407,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
         if sampleCountChanged(current: currentSampleCount, observed: actualSampleCount) {
             currentSampleCount = actualSampleCount
             // Mark all nodes as needing setup when sample count changes (MSAA toggle)
-            system.markAllNodesNeedingSetup()
+            frameRenderer.invalidateSetup()
         }
 
         do {
@@ -436,7 +431,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     now: currentTime,
                     viewportSize: [UInt32(view.drawableSize.width), UInt32(view.drawableSize.height)]
                 )
-                frameTimingTracker.lastGPUTime = lastGPUTime
+                frameTimingTracker.lastGPUTime = frameRenderer.lastGPUTime
                 let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
                 let context = RenderViewContext(frameUniforms: frameUniforms, frameTimingStatistics: frameTimingStatistics)
                 frameTimingChange?(frameTimingStatistics)
@@ -453,28 +448,20 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     renderPassDescriptor: currentRenderPassDescriptor,
                     currentDrawable: currentDrawable,
                     drawableSize: view.drawableSize
-                ) { [weak self] commandBuffer in
-                    let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
-                    self?.lastGPUTime = gpuTime
+                ) { [frameRenderer] commandBuffer in
+                    frameRenderer.lastGPUTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
                 }
-                let t1 = CACurrentMediaTime()
+                let contentDuration = CACurrentMediaTime() - t0
 
                 do {
-                    try system.update(root: rootElement)
-                    let t2 = CACurrentMediaTime()
-                    // Process setup immediately after update
-                    // Only nodes that need setup will be processed
-                    try system.processSetup()
-                    let t3 = CACurrentMediaTime()
-                    try system.processWorkload()
-                    let t4 = CACurrentMediaTime()
+                    let timings = try frameRenderer.renderFrame(root: rootElement)
 
                     if RenderViewDebugging.logFrame {
-                        let contentMs = (t1 - t0) * 1_000
-                        let updateMs = (t2 - t1) * 1_000
-                        let setupMs = (t3 - t2) * 1_000
-                        let workloadMs = (t4 - t3) * 1_000
-                        let totalMs = (t4 - t0) * 1_000
+                        let contentMs = contentDuration * 1_000
+                        let updateMs = timings.update * 1_000
+                        let setupMs = timings.setup * 1_000
+                        let workloadMs = timings.workload * 1_000
+                        let totalMs = (contentDuration + timings.total) * 1_000
                         logger?.info("RenderView.draw: content=\(contentMs.formatted(.number.precision(.fractionLength(1))))ms update=\(updateMs.formatted(.number.precision(.fractionLength(1))))ms setup=\(setupMs.formatted(.number.precision(.fractionLength(1))))ms workload=\(workloadMs.formatted(.number.precision(.fractionLength(1))))ms total=\(totalMs.formatted(.number.precision(.fractionLength(1))))ms fps=\(frameTimingStatistics.currentFPS.formatted(.number.precision(.fractionLength(1))))")
                     }
                 } catch {

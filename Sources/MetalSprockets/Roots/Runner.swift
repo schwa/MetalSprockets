@@ -59,7 +59,7 @@ public final class Runner {
     /// The command queue used to submit work for each ``run(_:)`` call.
     public let commandQueue: MTLCommandQueue
 
-    private let system: System
+    private let frameRenderer: FrameRenderer
 
     /// Creates a new runner.
     ///
@@ -73,7 +73,7 @@ public final class Runner {
         let resolvedDevice = device ?? _MTLCreateSystemDefaultDevice()
         self.device = resolvedDevice
         self.commandQueue = try commandQueue ?? resolvedDevice._makeCommandQueue()
-        self.system = System()
+        self.frameRenderer = FrameRenderer()
     }
 
     /// Runs the given element tree once, reusing the internal engine.
@@ -92,10 +92,6 @@ public final class Runner {
         .environment(\.commandQueue, commandQueue)
         .environment(\.device, device)
 
-        try system.update(root: wrapped)
-        try system.withCurrentSystem {
-            try system.processSetup()
-            try system.processWorkload()
-        }
+        try frameRenderer.renderFrame(root: wrapped)
     }
 }

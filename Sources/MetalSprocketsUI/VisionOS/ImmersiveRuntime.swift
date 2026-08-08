@@ -14,7 +14,7 @@ internal final class ImmersiveRuntime<Content: Element> {
     let contentBuilder: @Sendable (ImmersiveContext) throws -> Content
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
-    let system: System
+    let frameRenderer: FrameRenderer
     let arSession: ARKitSession
     let worldTracking: WorldTrackingProvider
     let stencilValue: UInt8 = 200
@@ -22,7 +22,6 @@ internal final class ImmersiveRuntime<Content: Element> {
     var startTime: CFAbsoluteTime = 0
     var stencilTexture: MTLTexture?
     var frameTimingTracker = FrameTimingTracker()
-    nonisolated(unsafe) var lastGPUTime: TimeInterval?
     var frameTimingChange: (@Sendable (FrameTimingStatistics) -> Void)?
 
     init(layerRenderer: LayerRenderer, progressive: Bool, content: @Sendable @escaping (ImmersiveContext) throws -> Content) throws {
@@ -35,7 +34,7 @@ internal final class ImmersiveRuntime<Content: Element> {
             throw MetalSprocketsError.resourceCreationFailure("command queue")
         }
         self.commandQueue = commandQueue
-        self.system = System()
+        self.frameRenderer = FrameRenderer()
         self.arSession = ARKitSession()
         self.worldTracking = WorldTrackingProvider()
 
@@ -94,7 +93,7 @@ internal final class ImmersiveRuntime<Content: Element> {
         drawable.deviceAnchor = deviceAnchor
 
         let currentTime = CACurrentMediaTime()
-        frameTimingTracker.lastGPUTime = lastGPUTime
+        frameTimingTracker.lastGPUTime = frameRenderer.lastGPUTime
         let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
         frameTimingChange?(frameTimingStatistics)
 
@@ -120,14 +119,11 @@ internal final class ImmersiveRuntime<Content: Element> {
             .environment(\.renderPassDescriptor, renderPassDescriptor)
             .immersiveRenderContext(renderContext)
 
-        try system.update(root: root)
-        try system.processSetup()
-        try system.processWorkload()
+        try frameRenderer.renderFrame(root: root)
 
         drawable.encodePresent(commandBuffer: commandBuffer)
-        commandBuffer.addCompletedHandler { [weak self] commandBuffer in
-            let gpuTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
-            self?.lastGPUTime = gpuTime
+        commandBuffer.addCompletedHandler { [frameRenderer] commandBuffer in
+            frameRenderer.lastGPUTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
         }
         commandBuffer.commit()
     }

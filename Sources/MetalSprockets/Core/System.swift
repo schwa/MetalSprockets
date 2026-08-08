@@ -91,6 +91,12 @@ package final class System: @unchecked Sendable {
         activeNodeStack.removeLast()
     }
 
+    /// Abandon the active stack. Used to recover from a phase that threw part-way through a traversal, so the next
+    /// frame starts from a clean stack rather than tripping the empty-stack assertions. See #296.
+    internal func clearActiveNodeStack() {
+        activeNodeStack.removeAll()
+    }
+
     package func update(root: some Element) throws {
         assert(activeNodeStack.isEmpty)
         try withCurrentSystem {

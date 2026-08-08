@@ -27,6 +27,7 @@ internal extension System {
     func processWorkloadWithSkipping() throws {
         try withCurrentSystem {
             assert(activeNodeStack.isEmpty)
+            defer { clearActiveNodeStack() }
             var skipDepth = 0
             for event in traversalEvents {
                 switch event {
@@ -77,6 +78,7 @@ internal extension System {
     func process(needsSetup: Bool = false, enter: (any SetupElement, Node) throws -> Void, exit: (any SetupElement, Node) throws -> Void) throws {
         try withCurrentSystem {
             assert(activeNodeStack.isEmpty)
+            defer { clearActiveNodeStack() }
             for event in traversalEvents {
                 switch event {
                 case .enter(let node):
