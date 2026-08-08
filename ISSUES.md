@@ -3022,13 +3022,14 @@ Everything else checked out: System and FrameRenderer's @unchecked Sendable is b
 ## 292: Refactor: System is a god object with a split three-phase personality
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:xl, has-subtasks
 depends: 372, 373, 374, 375
 created: 2026-03-31T19:33:03Z
-updated: 2026-08-08T20:40:04Z
+updated: 2026-08-08T23:14:05Z
+closed: 2026-08-08T23:14:05Z
 +++
 
 ## Problem
@@ -3058,6 +3059,7 @@ The activeNodeStack should become private to PhaseRunner and never accessible to
 Existing tests in SystemTests, NeedsSetupTests, SystemProcessTests, and NodeTests largely test interior mechanics (node identity, needsSetup flags, call order). A deepened module would replace most of these with boundary tests that assert observable rendering outcomes rather than internal node state.
 
 - `2026-08-08T20:40:04Z`: Split into subtasks: #372 -> #373 -> #374 -> #375.
+- `2026-08-08T23:14:12Z`: Subtasks #372-#375 all landed: TreeReconciler extracted, TraversalContext encapsulates the active node stack, render(root:) enforces phase order, and tests moved to that boundary. Closed; the two parts not covered are now #389 (System.current global side-channel) and #390 (System still owns nodes, phases, dirty set and snapshotting).
 
 ---
 
@@ -3144,13 +3146,14 @@ Done: added MSEnvironmentValues.requireReflection(for:), a single documented acc
 ## 295: Refactor: ShaderLibrary / LibraryRegistry / ShaderCache are three interlocked process-global singletons
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:xl, has-subtasks
 depends: 376, 377, 378, 379
 created: 2026-03-31T19:34:21Z
-updated: 2026-08-08T20:40:08Z
+updated: 2026-08-08T23:14:06Z
+closed: 2026-08-08T23:14:06Z
 +++
 
 ## Problem
@@ -5826,5 +5829,45 @@ closed: 2026-08-08T23:03:57Z
 Sources/MetalSprockets/Metal/GPUCounters.swift:41, 94-97. `seconds(forTicks:)` takes an NSLock solely around `device.sampleTimestamps()`, then reads only immutable `let` state. There is no shared mutable state to protect, and sampleTimestamps() is itself thread-safe, so the lock is a no-op.
 
 It is also the only thing that makes the class look internally synchronized, which is the usual justification for @unchecked Sendable. The real reason is that MTLDevice/MTLCounterSet are not Sendable. Remove the lock and document the actual reason (or use nonisolated(unsafe) let for the Metal objects).
+
+---
+
+## 389: System.current is a global side-channel for traversal context
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:l, architecture
+created: 2026-08-08T23:14:01Z
++++
+
+Ten call sites reach traversal state through the `@TaskLocal System.current` rather than being handed the context they need: `MSEnvironment` (EnvironmentValues.swift:170), `EnvironmentReader`, `Element` body evaluation (Element.swift:82), `StateBox.resolveSystem()`, `Element+SystemExtensions`, and the modifiers in `RenderPipelineDescriptorTransformer`, `RenderPassDescriptorModifier`, `MSAAModifier`, `GPUCounters`, plus ambient `ShaderStore` lookup in `ShaderLibrary`.
+
+Consequences: any code can reach into the whole `System` (not just the node it is entitled to), the dependency is invisible in signatures, and anything that runs outside a traversal (a completion handler, a `Task`) silently sees `nil` and has to guess whether that means teardown or misuse.
+
+#292 called for the active node stack to be private to the phase runner, with environment access passed explicitly. #373 encapsulated the stack in `TraversalContext` but left the task-local reach-through in place.
+
+Wanted: pass the traversal context (or just the current node/environment) explicitly to the places that need it, and shrink or remove `System.current`.
+
+---
+
+## 390: System still owns the node dictionary, phases, dirty set and snapshotting
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: effort:l, architecture
+created: 2026-08-08T23:14:01Z
++++
+
+#292 proposed splitting `System` into a `TreeReconciler` (done, #372), a `PhaseRunner` that drives setup/workload over a frozen traversal event list, and a thin `System` facade composing the two.
+
+Only the reconciler was extracted. Setup and workload traversal still live on `System` (System+Process.swift) alongside the node dictionary, traversal events, dirty/pending-setup sets, and the snapshot/dump machinery.
+
+Wanted: move the phase traversal into its own type that owns the traversal context, leaving `System` as the facade that composes reconciliation and phase running.
+
+Note: mostly subsumes the remaining god-object part of #292; the side-channel half is tracked separately.
 
 ---
