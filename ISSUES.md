@@ -5089,11 +5089,13 @@ Related: the same unwinding problem was fixed for `System.activeNodeStack` in th
 ## 358: Depth-stencil state is frozen after the first frame
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: effort:m
 created: 2026-08-08T19:56:32Z
+updated: 2026-08-08T20:21:28Z
+closed: 2026-08-08T20:21:28Z
 +++
 
 ## What happens

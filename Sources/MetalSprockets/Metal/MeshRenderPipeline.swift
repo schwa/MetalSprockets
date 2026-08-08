@@ -112,13 +112,21 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadEleme
         )
 
         let cache = node.cache(MeshRenderPipelineCache.self) { MeshRenderPipelineCache() }
+
+        // A node's environment storage persists across frames (the parent environment is merged into it rather than
+        // replacing it), so a depth-stencil state this node wrote on an earlier frame is still visible here. Only a
+        // state inherited from an ancestor should win over the descriptor. See #358.
+        let inheritedDepthStencilState = environment.depthStencilState.flatMap { state in
+            state === cache.depthStencilState ? nil : state
+        }
+
         if cache.key == key,
             let cachedPSO = cache.pipelineState,
             let cachedReflection = cache.reflection {
             node.environmentValues.renderPipelineState = cachedPSO
             node.environmentValues.reflection = cachedReflection
             self.reflection = cachedReflection
-            if environment.depthStencilState == nil, let cachedDSS = cache.depthStencilState {
+            if inheritedDepthStencilState == nil, let cachedDSS = cache.depthStencilState {
                 node.environmentValues.depthStencilState = cachedDSS
             }
             return
@@ -156,8 +164,9 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadEleme
         self.reflection = reflection
 
         var builtDepthStencilState: MTLDepthStencilState?
-        if environment.depthStencilState == nil, let depthStencilDescriptor = environment.depthStencilDescriptor {
-            builtDepthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
+        if inheritedDepthStencilState == nil {
+            // Assign unconditionally, so that dropping the descriptor also drops the state we wrote last frame.
+            builtDepthStencilState = environment.depthStencilDescriptor.flatMap { device.makeDepthStencilState(descriptor: $0) }
             node.environmentValues.depthStencilState = builtDepthStencilState
         }
 

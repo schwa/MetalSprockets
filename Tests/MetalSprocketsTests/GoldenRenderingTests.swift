@@ -156,12 +156,8 @@ struct GoldenRenderingTests {
         let renderer = try OffscreenRenderer(size: CGSize(width: 256, height: 256))
         // `.less`: the green quad is coplanar with the red one, so it loses the overlap.
         try Golden.verify(try renderer.render(try scene(.less)).cgImage, named: "CoplanarNoBias")
-        // The same scene again with `.always` has to produce the same image as the fresh renderer did. It does not:
-        // the depth-stencil state built on the first frame is never replaced, so frame 2 still depth-tests with
-        // `.less`. See #358.
-        try withKnownIssue {
-            try Golden.verify(try renderer.render(try scene(.always)).cgImage, named: "CoplanarDepthAlways")
-        }
+        // The same scene again with `.always` has to produce the same image as the fresh renderer did.
+        try Golden.verify(try renderer.render(try scene(.always)).cgImage, named: "CoplanarDepthAlways")
     }
 
     @Test func `a parameter binds the fragment colour`() throws {
