@@ -791,18 +791,21 @@ File: Sources/MetalSprockets/Metal/RenderPipeline.swift
 ## 102: Also it could take a SwiftUI environment(). Also SRGB?
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m, source:todo
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-08-08T06:05:30Z
+closed: 2026-08-08T06:05:30Z
 +++
 
 Improve the `.parameter(_:color:)` modifier:
-- Consider reading colors from SwiftUI's environment (e.g., accent color, tint)
-- Handle SRGB color space correctly (currently uses deviceRGB)
-- File: Sources/MetalSprocketsUI/Parameter+SwiftUI.swift
+
+- `2026-02-19T00:00:00Z`: Consider reading colors from SwiftUI's environment (e.g., accent color, tint)
+- `2026-02-19T00:00:00Z`: Handle SRGB color space correctly (currently uses deviceRGB)
+- `2026-02-19T00:00:00Z`: File: Sources/MetalSprocketsUI/Parameter+SwiftUI.swift
+- `2026-08-08T06:05:30Z`: Closing: no longer valid — vague scraped TODO with no remaining actionable context.
 
 ---
 
@@ -827,12 +830,13 @@ Make `ViewAdaptor` internal instead of public. It's only used by RenderView inte
 ## 106: This is messy and needs organisation and possibly deprecation of unused elements.
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:m, source:todo
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-08-08T06:05:30Z
+closed: 2026-08-08T06:05:30Z
 +++
 
 Clean up UVEnvironmentValues+Implementation.swift (should probably be renamed to MSEnvironmentValues+Implementation.swift):
@@ -840,6 +844,8 @@ Clean up UVEnvironmentValues+Implementation.swift (should probably be renamed to
 - Remove/deprecate unused values
 - Group related values together
 - Rename file to match MS naming convention
+
+- `2026-08-08T06:05:30Z`: Closing: no longer valid — vague scraped TODO with no remaining actionable context.
 
 ---
 
@@ -3255,9 +3261,9 @@ Option 2: Configure DocC to publish to root
 status: new
 priority: medium
 kind: task
-labels: needs-info
+labels: needs-info, effort:m
 created: 2026-04-02T16:16:32Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T06:04:04Z
 +++
 
 Some of MetalSprokcetsAddsOns can come in - specifically the macros we have for textures etc
@@ -3368,15 +3374,18 @@ Running the demo app on iPad Pro 11-inch (M5) simulator (iOS 26.4), the UI is es
 ## 309: Verify MSAA is actually working — demo cube still looks aliased
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: effort:s
 created: 2026-04-09T19:09:14Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T06:05:23Z
+closed: 2026-08-08T06:05:23Z
 +++
 
 The demo app claims MSAA 4x is enabled (overlay says so) but the cube edges still look aliased. Need to verify the MSAA pipeline is actually functioning correctly.
+
+- `2026-08-08T06:05:24Z`: Closing as moot: no observed problem under the current SDK/CI. Reopen if it resurfaces.
 
 ---
 
@@ -3788,12 +3797,13 @@ Discovered while porting Phosphor (a shadertoy-style app) to MetalSprockets: the
 ## 325: Investigate Metal log state failure on CI runners
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: effort:m
 created: 2026-04-19T18:10:04Z
-updated: 2026-04-21T02:48:19Z
+updated: 2026-08-08T06:05:23Z
+closed: 2026-08-08T06:05:23Z
 +++
 
 The CommandBufferLoggingTests.testAddMetalSprocketsLogging test was failing on GitHub Actions with:
@@ -3803,10 +3813,12 @@ The CommandBufferLoggingTests.testAddMetalSprocketsLogging test was failing on G
 This indicates that on the CI macOS runner/GPU configuration, Metal cannot create an MTLLogState (or its underlying residency set). The test has been temporarily disabled when the CI environment variable is set (see Tests/MetalSprocketsTests/EasyWinsTests.swift).
 
 Investigate:
-- Why MTLLogState creation fails on CI (likely software/virtualized GPU lacks support)
-- Whether addMetalSprocketsLogging() should fail more gracefully or be feature-detected
-- Whether we can detect log-state availability at runtime and skip rather than gating on the CI env var
-- Re-enable the test once a proper fix or detection mechanism is in place
+
+- `2026-04-19T18:10:04Z`: Why MTLLogState creation fails on CI (likely software/virtualized GPU lacks support)
+- `2026-04-19T18:10:04Z`: Whether addMetalSprocketsLogging() should fail more gracefully or be feature-detected
+- `2026-04-19T18:10:04Z`: Whether we can detect log-state availability at runtime and skip rather than gating on the CI env var
+- `2026-04-19T18:10:04Z`: Re-enable the test once a proper fix or detection mechanism is in place
+- `2026-08-08T06:05:23Z`: Closing as moot: no observed problem under the current SDK/CI. Reopen if it resurfaces.
 
 ---
 
@@ -4405,10 +4417,12 @@ Same concern applies to the per-library ShaderCache of MTLFunctions, though thos
 ## 340: Add .debugGroup() element modifier for pushDebugGroup/popDebugGroup
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:s
 created: 2026-04-21T03:10:58Z
+updated: 2026-08-08T06:04:04Z
 +++
 
 Expose Metal's pushDebugGroup/popDebugGroup as an element modifier, e.g. .debugGroup("Scene") { ... }. Makes GPU captures and Instruments traces much easier to read. Follow-up from #48 — the label coverage for buffers/textures/pipelines/encoders is already in place; debug groups are the remaining piece.
@@ -4500,23 +4514,29 @@ Added regression test `testPSOCacheStableWithDescriptorModifier` that verifies P
 ## 343: Investigate conservative requiresSetup patterns that always return true due to closure comparison
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
+labels: effort:m
 created: 2026-05-05T21:12:22Z
+updated: 2026-08-08T06:04:04Z
 +++
 
 Find all code similar to:\n\n```swift\nnonisolated func requiresSetup(comparedTo old: RenderPipelineDescriptorModifier<Content>) -> Bool {\n    // Since we can't compare closures, be conservative\n    true\n}\n```\n\nThese always return `true` because closures can't be compared, causing unnecessary pipeline rebuilds. Investigate alternative approaches (e.g., identity tokens, dirty flags, or value-based descriptors) to avoid redundant setup work.
+
+- `2026-08-08T06:04:04Z`: Related: #346 is a concrete instance of this pattern (EnvironmentWritingModifier).
 
 ---
 
 ## 344: RenderView.body creates MTLCommandQueue during GPU work
 
 +++
-status: new
+status: open
 priority: high
 kind: bug
+labels: effort:s
 created: 2026-05-05T21:45:06Z
+updated: 2026-08-08T06:04:04Z
 +++
 
 RenderView.body evaluates `device.makeCommandQueue()` every time SwiftUI re-evaluates the body (when no commandQueue is provided via the environment). This can happen during an active draw callback, triggering the Metal warning:
@@ -4530,11 +4550,12 @@ The commandQueue should be created once and cached, similar to how RenderViewVie
 ## 345: Repeated .run() calls rebuild System and pay per-call overhead
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: performance
+labels: performance, effort:l
 created: 2026-05-14T04:06:44Z
+updated: 2026-08-08T06:04:04Z
 +++
 
 When driving MetalSprockets headlessly across many independent one-shot workloads (e.g. an offline bake that runs a fixed element tree per input sample, hundreds or thousands of times), `Element.run()` is the obvious entry point.
@@ -4558,12 +4579,13 @@ Not prescribing the shape of the fix — could be a new public "Runner" type, a 
 ## 346: EnvironmentWritingModifier.requiresSetup always returns true, defeating setup-phase amortization
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
-labels: performance
+labels: performance, effort:m
 depends: 345
 created: 2026-05-14T04:14:09Z
+updated: 2026-08-08T06:04:04Z
 +++
 
 [`EnvironmentWritingModifier.requiresSetup(comparedTo:)`](Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift) currently returns `true` unconditionally, with the comment "Since we can't compare closures, be conservative".
@@ -4590,15 +4612,19 @@ Approach 2 is probably the cleanest first step and covers the vast majority of r
 
 Easy to demonstrate with a `Runner` test: run the same element tree N times, count how many times `BodylessElement.setup` is invoked. Today it's invoked on every run; with this fixed it should drop to once (on the first run) for any subtree under a stable `.environment()` chain.
 
+- `2026-08-08T06:04:04Z`: Related: #343 tracks the general conservative-requiresSetup pattern.
+
 ---
 
 ## 347: Replace isPOD with BitwiseCopyable where possible
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: effort:m
 created: 2026-05-18T04:25:45Z
+updated: 2026-08-08T06:04:04Z
 +++
 
 Swift 6's `BitwiseCopyable` protocol covers most of what our `isPOD`/`_isPOD` helper checks (trivially copyable, no refs, no ARC), but as a compile-time constraint rather than a runtime check.
@@ -4619,10 +4645,12 @@ Decide: convert what we can to generic `BitwiseCopyable` constraints, keep `isPO
 ## 348: Investigate SwiftUI 27 @ContentBuilder
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
+labels: effort:m
 created: 2026-06-09T21:14:28Z
+updated: 2026-08-08T06:04:05Z
 +++
 
 Look at SwiftUI 27's @ContentBuilder result builder. Evaluate whether/how it could apply to MetalSprockets' DSL (e.g. replacing or complementing existing @PassBuilder/result builders, ambiguous overload behavior, etc.). See skill: swiftui-whats-new-27.
@@ -4632,23 +4660,30 @@ Look at SwiftUI 27's @ContentBuilder result builder. Evaluate whether/how it cou
 ## 349: Investigate SwiftUI 27 @State macro changes
 
 +++
-status: new
+status: closed
 priority: medium
 kind: task
+labels: effort:s
 created: 2026-06-09T21:14:43Z
+updated: 2026-08-08T06:05:23Z
+closed: 2026-08-08T06:05:23Z
 +++
 
 In SwiftUI 27, @State became a macro. This can cause compile errors like 'used before being initialized', 'invalid redeclaration of synthesized property', or 'extraneous argument label' after SDK update. Reordering init is the WRONG fix. Audit MetalSprockets for affected @State usage and apply correct migration. See skill: swiftui-whats-new-27.
+
+- `2026-08-08T06:05:23Z`: Closing as moot: no observed problem under the current SDK/CI. Reopen if it resurfaces.
 
 ---
 
 ## 350: Missing useComputeResources(_:usage:) array variant
 
 +++
-status: new
+status: open
 priority: low
-kind: none
+kind: enhancement
+labels: effort:xs
 created: 2026-06-18T17:32:16Z
+updated: 2026-08-08T06:04:05Z
 +++
 
 `Support.swift` defines:
