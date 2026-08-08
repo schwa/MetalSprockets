@@ -5744,3 +5744,73 @@ created: 2026-08-08T22:39:02Z
 `MSBinding` allocates a `UUID` per instance purely to give the binding an identity for `Equatable` (Sources/MetalSprockets/Core/Binding.swift). A cheaper monotonic counter or `ObjectIdentifier` on the backing storage would avoid the allocation and the entropy call on every binding construction.
 
 ---
+
+## 385: Data race: StateBox writes Node.needsSetup from off-isolation threads
+
++++
+status: new
+priority: high
+kind: bug
+labels: concurrency, effort:s
+created: 2026-08-08T22:47:30Z
++++
+
+StateBox.valueDidChange() can run from a GPU command-buffer completion handler (this is the documented reason System._dirtyIdentifiers is an OSAllocatedUnfairLock, see #330). It calls system.markDirtyIncludingAncestors(node), which takes that lock, and then writes node.needsSetup = true directly.
+
+Node is a plain `final class Node: Identifiable` with an unsynchronized `var needsSetup`. That write can race with System.update(root:)/setup traversal on the owning isolation, so the fix for #330 only closed half the race.
+
+Files: Sources/MetalSprockets/Core/StateBox.swift (valueDidChange, ~lines 100-103), Sources/MetalSprockets/Core/Node.swift:9.
+
+Suggested direction: record needs-setup identifiers under the same lock as the dirty set and apply them at the top of System.update(root:), instead of mutating Node from the completion-handler thread.
+
+---
+
+## 386: ImmersiveRuntime render loop blocks the executor and cannot be cancelled
+
++++
+status: new
+priority: high
+kind: bug
+labels: concurrency, visionOS, effort:m
+created: 2026-08-08T22:47:39Z
++++
+
+ImmersiveRuntime.renderLoop() (Sources/MetalSprocketsUI/VisionOS/ImmersiveRuntime.swift:44-58) runs `while true` with no Task.checkCancellation(), and its `.paused` branch calls the synchronous blocking `layerRenderer.waitUntilRunning()` from inside an async, @ImmersiveRendererActor-isolated function. That parks a cooperative-pool thread and blocks the global actor for the whole pause, so nothing else on that actor can run.
+
+The loop is started by a fire-and-forget `Task(priority: .high)` in ImmersiveRenderContent.body (Sources/MetalSprocketsUI/VisionOS/ImmersiveRenderContent.swift:89) whose handle is discarded, so teardown has no way to stop it; it only exits when layerRenderer.state becomes .invalidated. Its error path also uses `print` rather than `logger?.error`.
+
+Effects: a torn-down immersive space can leave a high-priority task alive, and a paused compositor starves the renderer actor.
+
+---
+
+## 387: GPUCountersModifier.Storage is @unchecked Sendable with unsynchronized mutable state
+
++++
+status: new
+priority: medium
+kind: bug
+labels: concurrency, effort:s
+created: 2026-08-08T22:47:39Z
++++
+
+Sources/MetalSprockets/Metal/GPUCounters.swift:114. `Storage` is marked @unchecked Sendable but has two plain `var`s (sampler, sampleBuffer) written during the configure phase and read from a command-buffer completed handler on another thread, with no synchronization. Ordering happens to work today because the writes precede submission, but the annotation asserts thread safety the type does not provide.
+
+Options: make the fields immutable (`let`, populated at init) or guard them with an OSAllocatedUnfairLock.
+
+---
+
+## 388: GPUCounterSampler's NSLock guards nothing and misstates why it is @unchecked Sendable
+
++++
+status: new
+priority: low
+kind: task
+labels: concurrency, effort:s
+created: 2026-08-08T22:47:45Z
++++
+
+Sources/MetalSprockets/Metal/GPUCounters.swift:41, 94-97. `seconds(forTicks:)` takes an NSLock solely around `device.sampleTimestamps()`, then reads only immutable `let` state. There is no shared mutable state to protect, and sampleTimestamps() is itself thread-safe, so the lock is a no-op.
+
+It is also the only thing that makes the class look internally synchronized, which is the usual justification for @unchecked Sendable. The real reason is that MTLDevice/MTLCounterSet are not Sendable. Remove the lock and document the actual reason (or use nonisolated(unsafe) let for the Metal objects).
+
+---
