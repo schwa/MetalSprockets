@@ -57,6 +57,20 @@ struct ObservationTests {
         #expect(system.dirtyIdentifiers.isEmpty)
     }
 
+    @Test func `visiting children outside a system still evaluates the body`() throws {
+        // No System is active, so observation tracking is skipped and the body is evaluated directly.
+        #expect(System.current == nil)
+
+        let recorder = ValueRecorder()
+        var visited: [String] = []
+        try ModelElement(model: Model(), recorder: recorder).visitChildren { child in
+            visited.append("\(type(of: child))")
+        }
+
+        #expect(visited.count == 1)
+        #expect(visited[0].contains("Leaf"))
+    }
+
     @Test func `the body sees the new value after an observed change`() throws {
         let model = Model()
         let recorder = ValueRecorder()
