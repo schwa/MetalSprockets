@@ -16,10 +16,10 @@ public extension EnvironmentValues {
     var commandQueue: MTLCommandQueue?
 
     @Entry
-    var drawableSizeChange: ((CGSize) -> Void)?
+    internal var drawableSizeChange: CallbackBox<CGSize>?
 
     @Entry
-    var frameTimingChange: ((FrameTimingStatistics) -> Void)?
+    internal var frameTimingChange: CallbackBox<FrameTimingStatistics>?
 
     @Entry
     var shaderStore: ShaderStore?
@@ -144,9 +144,46 @@ public extension View {
     }
 }
 
+// MARK: - Callback plumbing
+
+/// Identity-stable holder for a callback passed down the SwiftUI environment.
+///
+/// A closure stored directly in an `@Entry` cannot be compared, so SwiftUI treats the environment value as changed on
+/// every update and invalidates every reader. A box created once per modifier instance (`@State`) keeps the
+/// environment value's identity — and therefore its equality — stable while its contents are refreshed in place.
+/// See #380.
+@MainActor
+internal final class CallbackBox<Value>: Equatable {
+    var action: ((Value) -> Void)?
+
+    func callAsFunction(_ value: Value) {
+        action?(value)
+    }
+
+    nonisolated static func == (lhs: CallbackBox<Value>, rhs: CallbackBox<Value>) -> Bool {
+        lhs === rhs
+    }
+}
+
+/// Publishes `action` into the environment through an identity-stable ``CallbackBox``.
+internal struct CallbackModifier<Value>: ViewModifier {
+    var keyPath: WritableKeyPath<EnvironmentValues, CallbackBox<Value>?>
+    var action: (Value) -> Void
+
+    @State
+    private var box = CallbackBox<Value>()
+
+    func body(content: Content) -> some View {
+        // Refreshing the box in place is deliberate: the box is not observable, so this does not invalidate anything,
+        // and the environment value stays equal across updates.
+        box.action = action
+        return content.environment(keyPath, box)
+    }
+}
+
 public extension View {
     func onDrawableSizeChange(perform action: @escaping (CGSize) -> Void) -> some View {
-        environment(\.drawableSizeChange, action)
+        modifier(CallbackModifier(keyPath: \.drawableSizeChange, action: action))
     }
 
     /// Registers a callback that is called every frame with the latest frame timing statistics.
@@ -162,7 +199,7 @@ public extension View {
     /// .onFrameTimingChange { statistics = $0 }
     /// ```
     func onFrameTimingChange(perform action: @escaping (FrameTimingStatistics) -> Void) -> some View {
-        environment(\.frameTimingChange, action)
+        modifier(CallbackModifier(keyPath: \.frameTimingChange, action: action))
     }
 }
 
@@ -362,8 +399,8 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             viewModel.device = device
             viewModel.commandQueue = commandQueue
             viewModel.content = content
-            viewModel.drawableSizeChange = drawableSizeChange
-            viewModel.frameTimingChange = frameTimingChange
+            viewModel.drawableSizeChange = drawableSizeChange.map { box in { box($0) } }
+            viewModel.frameTimingChange = frameTimingChange.map { box in { box($0) } }
             if viewModel.captureConfiguration != captureConfiguration {
                 logger?.info("RenderView: capture configuration changed to \(String(describing: captureConfiguration))")
             }

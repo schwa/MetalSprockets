@@ -1,6 +1,10 @@
 import Foundation
+import Synchronization
 
 // MARK: - MSBinding
+
+/// Source of ``MSBinding`` identities. A monotonic counter is far cheaper than a `UUID` per binding. See #384.
+private let nextBindingIdentifier = Atomic<UInt64>(0)
 
 /// A two-way connection to a mutable value owned by another element.
 ///
@@ -51,8 +55,7 @@ import Foundation
 public struct MSBinding<Value>: Equatable {
     private let get: () -> Value
     private let set: (Value) -> Void
-    // TODO: #384 Use a less expensive unique identifier.
-    private let id = UUID()
+    private let id = nextBindingIdentifier.wrappingAdd(1, ordering: .relaxed).newValue
 
     /// Creates a binding with custom getter and setter closures.
     ///

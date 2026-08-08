@@ -103,6 +103,6 @@ public struct MSDynamicPropertyContext {
     /// Call this when the property's value changes outside the update pass.
     public func invalidate() {
         node.system?.markDirty(node.id)
-        node.needsSetup = true
+        node.system?.markNeedsSetup(node.id)
     }
 }

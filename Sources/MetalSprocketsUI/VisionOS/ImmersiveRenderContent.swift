@@ -86,6 +86,8 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
 
     public var body: some ImmersiveSpaceContent {
         CompositorLayer(configuration: ImmersiveLayerConfiguration(progressive: progressive)) { layerRenderer in
+            // Fire-and-forget: the loop exits when `layerRenderer.state` becomes `.invalidated`, and it also honours
+            // cancellation so a cancelled enclosing task can stop it. See #386.
             Task(priority: .high) { @ImmersiveRendererActor in
                 do {
                     let runtime = try ImmersiveRuntime(
@@ -95,8 +97,10 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
                     )
                     runtime.frameTimingChange = frameTimingChange
                     try await runtime.renderLoop()
+                } catch is CancellationError {
+                    logger?.info("ImmersiveRuntime render loop cancelled.")
                 } catch {
-                    print("ImmersiveRuntime failed: \(error)")
+                    logger?.error("ImmersiveRuntime failed: \(error)")
                 }
             }
         }

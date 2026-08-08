@@ -50,6 +50,13 @@ package final class System: @unchecked Sendable {
     /// owning isolation. See #330.
     private let _dirtyIdentifiers = OSAllocatedUnfairLock<Set<StructuralIdentifier>>(initialState: [])
 
+    /// Identifiers of nodes that must be set up again on the next update.
+    ///
+    /// Same rationale as `_dirtyIdentifiers`: invalidation can arrive from a non-owning isolation, and `Node` itself
+    /// is not thread-safe, so the request is recorded here and applied to the nodes on the owning isolation at the
+    /// start of `update(root:)`. See #385.
+    private let _pendingSetupIdentifiers = OSAllocatedUnfairLock<Set<StructuralIdentifier>>(initialState: [])
+
     /// Read-only snapshot of the current dirty identifiers. Takes the lock.
     var dirtyIdentifiers: Set<StructuralIdentifier> {
         _dirtyIdentifiers.withLock { $0 }
@@ -67,6 +74,25 @@ package final class System: @unchecked Sendable {
     package func markAllNodesNeedingSetup() {
         for node in nodes.values where node.element is any SetupElement {
             node.needsSetup = true
+        }
+    }
+
+    /// Requests that `node` be set up again on the next update.
+    ///
+    /// Safe to call from any isolation; the flag is written to the node during the next update.
+    internal func markNeedsSetup(_ id: StructuralIdentifier) {
+        _pendingSetupIdentifiers.withLock { _ = $0.insert(id) }
+    }
+
+    /// Applies and clears any setup requests recorded by ``markNeedsSetup(_:)``. Owning isolation only.
+    private func applyPendingSetupIdentifiers() {
+        let pending = _pendingSetupIdentifiers.withLock { pending -> Set<StructuralIdentifier> in
+            let taken = pending
+            pending.removeAll()
+            return taken
+        }
+        for id in pending {
+            nodes[id]?.needsSetup = true
         }
     }
 
@@ -200,6 +226,7 @@ package final class System: @unchecked Sendable {
 
     internal func update(root: some Element) throws {
         assert(traversalContext.isEmpty)
+        applyPendingSetupIdentifiers()
         try withCurrentSystem {
             defer {
                 assert(traversalContext.isEmpty, "traversal context should be empty after update")
@@ -227,6 +254,9 @@ package final class System: @unchecked Sendable {
 
             self.nodes = reconciliation.nodes
             self.traversalEvents = reconciliation.events
+            // Again, to pick up invalidation that happened during this update (e.g. a dynamic property calling
+            // `invalidate()` while its element was being evaluated), so setup still sees it this frame.
+            applyPendingSetupIdentifiers()
 
             snapshotter.dumpSnapshotIfNeeded(self)
         }

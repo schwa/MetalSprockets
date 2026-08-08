@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import os
 
 // MARK: - GPUCounterSample
 
@@ -35,10 +36,12 @@ public struct GPUCounterSample: Sendable, Equatable {
 /// Wraps a device's timestamp counter set and converts GPU ticks to seconds.
 ///
 /// Most users should use ``Element/gpuCounters(label:_:)`` instead of this type.
+/// - Note: `@unchecked Sendable` because `MTLDevice` and `MTLCounterSet` are not `Sendable`. The sampler itself has
+///   no mutable state — every stored property is a `let` — and Metal's device APIs used here are thread-safe, so no
+///   locking is needed. See #388.
 public final class GPUCounterSampler: @unchecked Sendable {
     private let device: MTLDevice
     private let counterSet: MTLCounterSet
-    private let lock = NSLock()
 
     /// CPU/GPU timestamp pair captured when the sampler was created; used as the
     /// baseline for tick-to-seconds conversion.
@@ -92,9 +95,7 @@ public final class GPUCounterSampler: @unchecked Sendable {
 
     /// Converts a GPU tick delta to seconds using a fresh CPU/GPU correlation pair.
     public func seconds(forTicks ticks: UInt64) -> TimeInterval? {
-        lock.lock()
         let timestamps = device.sampleTimestamps()
-        lock.unlock()
         let cpu = timestamps.cpu
         let gpu = timestamps.gpu
         guard gpu > baseGPUTimestamp, cpu > baseCPUTimestamp else {
@@ -110,10 +111,40 @@ public final class GPUCounterSampler: @unchecked Sendable {
 
 internal struct GPUCountersModifier <Content>: Element, BodylessElement, BodylessContentElement, WorkloadElement where Content: Element {
     // Shared between the configure phase (which creates the sample buffer) and
-    // the workload phase (which resolves it on command buffer completion).
+    // the workload phase (which resolves it on command buffer completion). The
+    // two phases can run on different threads, so the state is lock-protected
+    // rather than left as bare `var`s under `@unchecked Sendable`. See #387.
     final class Storage: @unchecked Sendable {
-        var sampler: GPUCounterSampler?
-        var sampleBuffer: MTLCounterSampleBuffer?
+        // `@unchecked` only because `MTLCounterSampleBuffer` is not `Sendable`; access is confined to the lock below.
+        private struct State: @unchecked Sendable {
+            var sampler: GPUCounterSampler?
+            var sampleBuffer: MTLCounterSampleBuffer?
+        }
+
+        // `withLockUnchecked` throughout: `MTLCounterSampleBuffer` is not `Sendable`.
+        private let state = OSAllocatedUnfairLock(initialState: State())
+
+        var sampler: GPUCounterSampler? {
+            state.withLockUnchecked { $0.sampler }
+        }
+
+        var sampleBuffer: MTLCounterSampleBuffer? {
+            state.withLockUnchecked { $0.sampleBuffer }
+        }
+
+        /// Returns the existing sampler, creating one for `device` if there isn't one yet.
+        func sampler(makingWith device: MTLDevice) -> GPUCounterSampler? {
+            state.withLockUnchecked { state in
+                if state.sampler == nil {
+                    state.sampler = GPUCounterSampler(device: device)
+                }
+                return state.sampler
+            }
+        }
+
+        func setSampleBuffer(_ sampleBuffer: MTLCounterSampleBuffer?) {
+            state.withLockUnchecked { $0.sampleBuffer = sampleBuffer }
+        }
     }
 
     var content: Content
@@ -137,14 +168,11 @@ internal struct GPUCountersModifier <Content>: Element, BodylessElement, Bodyles
         guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
             return
         }
-        if storage.sampler == nil {
-            storage.sampler = GPUCounterSampler(device: device)
-        }
-        guard let sampler = storage.sampler, let sampleBuffer = sampler.makeSampleBuffer() else {
+        guard let sampler = storage.sampler(makingWith: device), let sampleBuffer = sampler.makeSampleBuffer() else {
             logger?.warning("gpuCounters: GPU counter sampling unavailable on this device; counters disabled.")
             return
         }
-        storage.sampleBuffer = sampleBuffer
+        storage.setSampleBuffer(sampleBuffer)
 
         let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
         guard let attachment = copy.sampleBufferAttachments[0] else {

@@ -5656,11 +5656,13 @@ Acceptance criteria:
 ## 380: RenderView @Entry closure environment keys warn and may invalidate every update
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 labels: effort:s, swiftui
 created: 2026-08-08T22:16:59Z
+updated: 2026-08-08T23:03:57Z
+closed: 2026-08-08T23:03:57Z
 +++
 
 `Sources/MetalSprocketsUI/RenderView.swift:19` and `:22` store closures in `@Entry` environment values (`drawableSizeChange`, `frameTimingChange`), producing build warnings:
@@ -5735,10 +5737,12 @@ Decide whether the environment key should become stage-keyed (like `Parameters`)
 ## 384: MSBinding uses a UUID for identity
 
 +++
-status: new
+status: closed
 priority: low
 kind: task
 created: 2026-08-08T22:39:02Z
+updated: 2026-08-08T23:03:57Z
+closed: 2026-08-08T23:03:57Z
 +++
 
 `MSBinding` allocates a `UUID` per instance purely to give the binding an identity for `Equatable` (Sources/MetalSprockets/Core/Binding.swift). A cheaper monotonic counter or `ObjectIdentifier` on the backing storage would avoid the allocation and the entropy call on every binding construction.
@@ -5748,11 +5752,13 @@ created: 2026-08-08T22:39:02Z
 ## 385: Data race: StateBox writes Node.needsSetup from off-isolation threads
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: concurrency, effort:s
 created: 2026-08-08T22:47:30Z
+updated: 2026-08-08T23:03:57Z
+closed: 2026-08-08T23:03:57Z
 +++
 
 StateBox.valueDidChange() can run from a GPU command-buffer completion handler (this is the documented reason System._dirtyIdentifiers is an OSAllocatedUnfairLock, see #330). It calls system.markDirtyIncludingAncestors(node), which takes that lock, and then writes node.needsSetup = true directly.
@@ -5768,11 +5774,13 @@ Suggested direction: record needs-setup identifiers under the same lock as the d
 ## 386: ImmersiveRuntime render loop blocks the executor and cannot be cancelled
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: concurrency, visionOS, effort:m
 created: 2026-08-08T22:47:39Z
+updated: 2026-08-08T23:03:57Z
+closed: 2026-08-08T23:03:57Z
 +++
 
 ImmersiveRuntime.renderLoop() (Sources/MetalSprocketsUI/VisionOS/ImmersiveRuntime.swift:44-58) runs `while true` with no Task.checkCancellation(), and its `.paused` branch calls the synchronous blocking `layerRenderer.waitUntilRunning()` from inside an async, @ImmersiveRendererActor-isolated function. That parks a cooperative-pool thread and blocks the global actor for the whole pause, so nothing else on that actor can run.
@@ -5786,11 +5794,13 @@ Effects: a torn-down immersive space can leave a high-priority task alive, and a
 ## 387: GPUCountersModifier.Storage is @unchecked Sendable with unsynchronized mutable state
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 labels: concurrency, effort:s
 created: 2026-08-08T22:47:39Z
+updated: 2026-08-08T23:03:57Z
+closed: 2026-08-08T23:03:57Z
 +++
 
 Sources/MetalSprockets/Metal/GPUCounters.swift:114. `Storage` is marked @unchecked Sendable but has two plain `var`s (sampler, sampleBuffer) written during the configure phase and read from a command-buffer completed handler on another thread, with no synchronization. Ordering happens to work today because the writes precede submission, but the annotation asserts thread safety the type does not provide.
@@ -5802,11 +5812,13 @@ Options: make the fields immutable (`let`, populated at init) or guard them with
 ## 388: GPUCounterSampler's NSLock guards nothing and misstates why it is @unchecked Sendable
 
 +++
-status: new
+status: closed
 priority: low
 kind: task
 labels: concurrency, effort:s
 created: 2026-08-08T22:47:45Z
+updated: 2026-08-08T23:03:57Z
+closed: 2026-08-08T23:03:57Z
 +++
 
 Sources/MetalSprockets/Metal/GPUCounters.swift:41, 94-97. `seconds(forTicks:)` takes an NSLock solely around `device.sampleTimestamps()`, then reads only immutable `let` state. There is no shared mutable state to protect, and sampleTimestamps() is itself thread-safe, so the lock is a no-op.

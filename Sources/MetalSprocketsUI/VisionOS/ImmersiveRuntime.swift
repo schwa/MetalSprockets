@@ -43,19 +43,37 @@ internal final class ImmersiveRuntime<Content: Element> {
 
     func renderLoop() async throws {
         try await arSession.run([worldTracking])
+        // Covers both `.invalidated` and cancellation of the driving task.
+        defer {
+            arSession.stop()
+        }
         startTime = CACurrentMediaTime()
         while true {
+            try Task.checkCancellation()
             switch layerRenderer.state {
             case .invalidated:
-                arSession.stop()
                 return
             case .paused:
-                layerRenderer.waitUntilRunning()
+                await waitUntilRunning()
                 continue
             default:
                 try await renderFrame()
             }
         }
+    }
+
+    /// Waits for the compositor to leave the paused state.
+    ///
+    /// `LayerRenderer.waitUntilRunning()` blocks the calling thread, so it runs off the renderer actor: blocking here
+    /// would stall the actor (and a cooperative pool thread) for the whole pause. See #386.
+    private func waitUntilRunning() async {
+        nonisolated(unsafe) let layerRenderer = layerRenderer
+        await Self.waitUntilRunning(layerRenderer)
+    }
+
+    @concurrent
+    nonisolated private static func waitUntilRunning(_ layerRenderer: LayerRenderer) async {
+        layerRenderer.waitUntilRunning()
     }
 
     func renderFrame() async throws {

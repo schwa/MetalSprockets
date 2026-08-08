@@ -47,8 +47,9 @@ private final class ObservedObjectBox<Wrapped: ObservableObject> {
         }
         self.node = node
         cancellable = wrappedValue.objectWillChange.sink { _ in
+            // `objectWillChange` can fire from any thread; see #385.
             node.system?.markDirty(node.id)
-            node.needsSetup = true
+            node.system?.markNeedsSetup(node.id)
         }
     }
 }

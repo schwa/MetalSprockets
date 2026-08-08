@@ -125,21 +125,23 @@ struct ViewInspectorTests {
 
     // MARK: - RenderView-specific view modifiers
 
-    @Test("onDrawableSizeChange stores callback in environment")
+    // The callbacks travel in an identity-stable `CallbackBox` rather than directly in the environment (#380), so
+    // these check the modifier's stored action instead of an environment closure.
+    @Test("onDrawableSizeChange installs a forwarding callback")
     func testOnDrawableSizeChange() throws {
         var capturedSize: CGSize = .zero
         let v = renderView().onDrawableSizeChange { capturedSize = $0 }
-        let callback = try v.inspect().environment(\.drawableSizeChange)
-        callback?(CGSize(width: 640, height: 480))
+        let callback = try v.inspect().modifier(CallbackModifier<CGSize>.self).actualView().action
+        callback(CGSize(width: 640, height: 480))
         #expect(capturedSize == CGSize(width: 640, height: 480))
     }
 
-    @Test("onFrameTimingChange stores callback in environment")
+    @Test("onFrameTimingChange installs a forwarding callback")
     func testOnFrameTimingChange() throws {
         var fired = false
         let v = renderView().onFrameTimingChange { _ in fired = true }
-        let callback = try v.inspect().environment(\.frameTimingChange)
-        callback?(FrameTimingStatistics(
+        let callback = try v.inspect().modifier(CallbackModifier<FrameTimingStatistics>.self).actualView().action
+        callback(FrameTimingStatistics(
             currentFPS: 60,
             deltaTime: 1.0 / 60,
             averageDeltaTime: 1.0 / 60,

@@ -93,7 +93,9 @@ internal final class StateBox<Wrapped> {
         }
         for node in nodes {
             system.markDirtyIncludingAncestors(node)
-            node.needsSetup = true
+            // `Node` is not thread-safe and this can run off the owning isolation, so the setup request goes through
+            // `System`'s lock instead of writing `node.needsSetup` here. See #385.
+            system.markNeedsSetup(node.id)
         }
     }
 }
