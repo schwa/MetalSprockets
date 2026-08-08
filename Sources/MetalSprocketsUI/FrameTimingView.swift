@@ -98,28 +98,49 @@ public struct FrameTimingView: View {
     @ViewBuilder
     private var formContent: some View {
         if let statistics = savedStatistics {
-            if options.contains(.fps) {
+            ForEach(Self.rows(for: statistics, options: options, targetFramesPerSecond: targetFramesPerSecond)) { row in
                 LabeledContent {
-                    Text("\(Int(statistics.currentFPS.rounded()))")
-                        .foregroundStyle(Self.fpsColor(for: statistics.currentFPS, targetFramesPerSecond: targetFramesPerSecond))
+                    Text(row.value)
+                        .foregroundStyle(row.valueColor ?? .white)
                 } label: {
-                    Text("FPS")
+                    Text(row.label)
                 }
             }
-            if options.contains(.frameTime) {
-                LabeledContent("Frame", value: formattedMilliseconds(statistics.deltaTime))
-            }
-            if options.contains(.range) {
-                let rangeText = formattedMilliseconds(statistics.minDeltaTime) + "–" + formattedMilliseconds(statistics.maxDeltaTime)
-                LabeledContent("1s Range", value: rangeText)
-            }
-            if options.contains(.gpuTime), let gpuTime = statistics.gpuTime {
-                LabeledContent("GPU", value: formattedMilliseconds(gpuTime))
-            }
-            if options.contains(.frameCount) {
-                LabeledContent("Frame #", value: "\(statistics.frameCount)")
-            }
         }
+    }
+
+    /// One labelled line of the readout.
+    internal struct Row: Identifiable, Equatable {
+        var label: String
+        var value: String
+        var valueColor: Color?
+
+        var id: String {
+            label
+        }
+    }
+
+    /// The rows the given statistics and options produce, in display order.
+    internal static func rows(for statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions, targetFramesPerSecond: Double) -> [Row] {
+        var rows: [Row] = []
+        if options.contains(.fps) {
+            let color = fpsColor(for: statistics.currentFPS, targetFramesPerSecond: targetFramesPerSecond)
+            rows.append(Row(label: "FPS", value: "\(Int(statistics.currentFPS.rounded()))", valueColor: color))
+        }
+        if options.contains(.frameTime) {
+            rows.append(Row(label: "Frame", value: formattedMilliseconds(statistics.deltaTime)))
+        }
+        if options.contains(.range) {
+            let range = formattedMilliseconds(statistics.minDeltaTime) + "–" + formattedMilliseconds(statistics.maxDeltaTime)
+            rows.append(Row(label: "1s Range", value: range))
+        }
+        if options.contains(.gpuTime), let gpuTime = statistics.gpuTime {
+            rows.append(Row(label: "GPU", value: formattedMilliseconds(gpuTime)))
+        }
+        if options.contains(.frameCount) {
+            rows.append(Row(label: "Frame #", value: "\(statistics.frameCount)"))
+        }
+        return rows
     }
 
     private static let millisecondFormat: Measurement<UnitDuration>.FormatStyle = .measurement(
@@ -128,10 +149,10 @@ public struct FrameTimingView: View {
         numberFormatStyle: .number.precision(.fractionLength(1))
     )
 
-    private func formattedMilliseconds(_ seconds: TimeInterval) -> String {
+    internal static func formattedMilliseconds(_ seconds: TimeInterval) -> String {
         Measurement(value: seconds, unit: UnitDuration.seconds)
             .converted(to: .milliseconds)
-            .formatted(Self.millisecondFormat)
+            .formatted(millisecondFormat)
     }
 
     /// Green from 90% of the target frame rate, yellow from 50%, red below that.
