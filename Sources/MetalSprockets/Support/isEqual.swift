@@ -14,7 +14,7 @@ internal func isEqual(_ lhs: Any, _ rhs: Any) -> Bool {
     // from rebuilding whenever a parent's state changes. (#197)
     // Reference types are excluded: distinct instances are meaningfully distinct even when
     // they store nothing.
-    guard !(lhs is AnyObject), !(rhs is AnyObject), type(of: lhs) == type(of: rhs) else {
+    guard !(type(of: lhs) is AnyClass), !(type(of: rhs) is AnyClass), type(of: lhs) == type(of: rhs) else {
         return false
     }
     return Mirror(reflecting: lhs).children.isEmpty && Mirror(reflecting: rhs).children.isEmpty
