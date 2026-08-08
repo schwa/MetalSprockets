@@ -3407,15 +3407,18 @@ FrameTimingView.fpsColor(for:) uses hardcoded thresholds (55 = green, 30 = yello
 ## 311: RenderView renders blank when used with .toolbar on macOS
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: effort:m
 created: 2026-04-09T20:03:35Z
-updated: 2026-04-21T02:48:19Z
+updated: 2026-08-08T06:35:16Z
+closed: 2026-08-08T06:35:16Z
 +++
 
 MTKView-backed RenderView renders nothing when a .toolbar modifier is applied (with or without NavigationStack). Resizing the window triggers rendering. Likely the MTKView gets zero initial size from the toolbar layout pass and never redraws when it gets a real size. Overlay-based UI works fine as a workaround.
+
+- `2026-08-08T06:35:16Z`: Added a defensive drawable-size resync in RenderViewViewModel.draw(in:): MTKView only calls drawableSizeWillChange on change, so a view sized before the delegate was attached rendered at .zero until the next resize. Verified the macOS demo (which uses .toolbar) renders correctly on launch. Note: I could not confirm the original repro predated this change, so reopen if it recurs.
 
 ---
 

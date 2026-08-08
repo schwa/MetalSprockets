@@ -398,6 +398,15 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     }
 
     func draw(in view: MTKView) {
+        // MTKView only calls mtkView(_:drawableSizeWillChange:) when the size *changes*. If the
+        // view was already sized before the delegate was attached (e.g. under a .toolbar layout
+        // pass) we would keep rendering at .zero until the next resize. Re-sync defensively.
+        if currentDrawableSize != view.drawableSize {
+            currentDrawableSize = view.drawableSize
+            drawableSizeChange?(view.drawableSize)
+            system.markAllNodesNeedingSetup()
+        }
+
         // Check if sample count changed (MSAA toggle) by examining the actual texture
         let actualSampleCount = view.currentRenderPassDescriptor?.colorAttachments[0].texture?.sampleCount ?? 1
         if sampleCountChanged(current: currentSampleCount, observed: actualSampleCount) {
