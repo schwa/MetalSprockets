@@ -47,8 +47,10 @@ jobs:
             --source-service-base-url https://github.com/schwa/MetalSprockets/blob/main \
             --checkout-path . \
             --transform-for-static-hosting \
-            --hosting-base-path MetalSprockets \
             --output-path ./docs
+          # Served at the root of docs.metalsprockets.com, so no hosting base path.
+          # GitHub Pages needs the custom domain in a CNAME file inside the artifact.
+          echo 'docs.metalsprockets.com' > ./docs/CNAME
           cat > ./docs/index.html << 'EOF'
           <!DOCTYPE html>
           <html>

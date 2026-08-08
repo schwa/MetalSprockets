@@ -3283,17 +3283,28 @@ Closing here as a duplicate redirected to the right repo.
 ## 303: Redirect docs.metalsprockets.com
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: effort:s
 created: 2026-04-02T13:55:05Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T15:46:08Z
+closed: 2026-08-08T15:46:08Z
 +++
 
 Option 2: Configure DocC to publish to root
 
 - `2026-08-08T06:54:18Z`: Punting: this is a DNS/hosting change for docs.metalsprockets.com (plus DocC base-path config), which needs access to the domain and Pages settings that I don't have. Unblocker: confirm where docs are hosted (GitHub Pages?) and whether you want DocC published at the site root with a redirect, then I can do the DocC/workflow side.
+- `2026-08-08T15:46:08Z`: Code side done (Option 2 — DocC published at the site root):
+
+- .github/workflows/docc.yml: dropped --hosting-base-path MetalSprockets so generated links are root-relative, and the workflow now writes ./docs/CNAME containing docs.metalsprockets.com into the Pages artifact.
+- README.md: the six documentation links now point at https://docs.metalsprockets.com.
+
+Still needs you (ops, one time):
+1. DNS: CNAME docs.metalsprockets.com -> schwa.github.io.
+2. GitHub repo Settings > Pages > Custom domain: docs.metalsprockets.com, then enable Enforce HTTPS once the cert issues.
+
+Note: after this lands, https://schwa.github.io/MetalSprockets will no longer work correctly, since the assets are now root-relative. That is inherent to serving at a domain root.
 
 ---
 

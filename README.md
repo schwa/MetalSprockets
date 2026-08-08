@@ -4,12 +4,12 @@
 
 A declarative, composable layer for Metal in Swift.
 
-## [Documentation](https://schwa.github.io/MetalSprockets)
+## [Documentation](https://docs.metalsprockets.com)
 
-- [Getting Started](https://schwa.github.io/MetalSprockets/documentation/metalsprockets/gettingstarted)
-- [Tutorials](https://schwa.github.io/MetalSprockets/documentation/metalsprockets/tutorialoverview)
-- [Architecture](https://schwa.github.io/MetalSprockets/documentation/metalsprockets/architecture)
-- [FAQ](https://schwa.github.io/MetalSprockets/documentation/metalsprockets/faq)
+- [Getting Started](https://docs.metalsprockets.com/documentation/metalsprockets/gettingstarted)
+- [Tutorials](https://docs.metalsprockets.com/documentation/metalsprockets/tutorialoverview)
+- [Architecture](https://docs.metalsprockets.com/documentation/metalsprockets/architecture)
+- [FAQ](https://docs.metalsprockets.com/documentation/metalsprockets/faq)
 
 ---
 
@@ -168,7 +168,7 @@ struct ContentView: View {
 }
 ```
 
-See the [Tutorials](https://schwa.github.io/MetalSprockets/documentation/metalsprockets/tutorialoverview) for step-by-step guides.
+See the [Tutorials](https://docs.metalsprockets.com/documentation/metalsprockets/tutorialoverview) for step-by-step guides.
 
 ---
 
