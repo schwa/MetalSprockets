@@ -92,4 +92,24 @@ public extension Element {
             value: value
         )
     }
+
+    /// Transforms an environment value for this element and its descendants.
+    ///
+    /// Unlike ``environment(_:_:)``, the transform receives the inherited value and can
+    /// modify it in place:
+    ///
+    /// ```swift
+    /// element.transformEnvironment(\.someValue) { value in
+    ///     value += 1
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - keyPath: A writable key path to the environment value.
+    ///   - transform: A closure that modifies the inherited value in place.
+    func transformEnvironment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, transform: @escaping (inout Value) -> Void) -> some Element {
+        EnvironmentWritingModifier(content: self) { environmentValues in
+            transform(&environmentValues[keyPath: keyPath])
+        }
+    }
 }

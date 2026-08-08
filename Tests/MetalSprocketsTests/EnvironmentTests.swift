@@ -60,4 +60,35 @@ struct EnvironmentTests {
         let element = system.element(at: [0, 0, 0, 0], type: Example3.self)
         #expect(element!.value == "Hello world")
     }
+
+    @Test("transformEnvironment modifies the inherited value")
+    func testTransformEnvironment() throws {
+        struct Example1: Element {
+            var body: some Element {
+                Example2()
+                    .transformEnvironment(\.exampleValue) { value in
+                        value += " world"
+                    }
+                    .environment(\.exampleValue, "Hello")
+            }
+        }
+
+        struct Example2: Element {
+            @MSEnvironment(\.exampleValue)
+            var value
+            var body: some Element {
+                Example3(value: value)
+            }
+        }
+
+        struct Example3: Element, BodylessElement {
+            typealias Body = Never
+            var value: String
+        }
+
+        let system = System()
+        try system.update(root: Example1())
+        let element = system.element(at: [0, 0, 0, 0, 0], type: Example3.self)
+        #expect(element?.value == "Hello world")
+    }
 }

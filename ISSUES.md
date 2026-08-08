@@ -2620,12 +2620,13 @@ Audit environment values and add convenience modifiers where appropriate. For ex
 ## 282: Implement .transformEnvironment()
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:25Z
+updated: 2026-08-08T06:47:08Z
+closed: 2026-08-08T06:47:08Z
 +++
 
 Implement `.transformEnvironment()` modifier similar to SwiftUI's. This allows modifying an environment value based on its current value, rather than just replacing it:
@@ -2634,6 +2635,8 @@ Implement `.transformEnvironment()` modifier similar to SwiftUI's. This allows m
     value += 1
 }
 ```
+
+- `2026-08-08T06:47:08Z`: Implemented .transformEnvironment(_:transform:) on Element, built on EnvironmentWritingModifier. Test added in EnvironmentTests.
 
 ---
 
