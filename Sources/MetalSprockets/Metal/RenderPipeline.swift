@@ -116,42 +116,7 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
         // Configure the descriptor _before_ building the cache key. The key hashes the fully configured descriptor,
         // which is the only way changes made by a `renderPipelineDescriptorTransformer` (which are already baked into the
         // inherited descriptor) can be seen by the cache. See #359.
-        renderPipelineDescriptor.vertexFunction = vertexShader.function
-        renderPipelineDescriptor.fragmentFunction = fragmentShader.function
-
-        if let linkedFunctions = environment.linkedFunctions {
-            // TODO: #383 Support separate linked functions for vertex and fragment.
-            renderPipelineDescriptor.vertexLinkedFunctions = linkedFunctions
-            renderPipelineDescriptor.fragmentLinkedFunctions = linkedFunctions
-        }
-
-        if let vertexDescriptor = environment.vertexDescriptor {
-            renderPipelineDescriptor.vertexDescriptor = vertexDescriptor
-        }
-
-        // Formats come from the environment by value, not from the render pass descriptor's
-        // textures: texture identity churns per frame but formats are stable. See #327 / #333 / #363.
-        // Explicitly configured formats on the pipeline descriptor win over these defaults.
-        for (index, pixelFormat) in attachmentFormats.colorPixelFormats.enumerated() where pixelFormat != .invalid {
-            if renderPipelineDescriptor.colorAttachments[index].pixelFormat == .invalid {
-                renderPipelineDescriptor.colorAttachments[index].pixelFormat = pixelFormat
-            }
-        }
-
-        // rasterSampleCount is not a "format" the caller configures per-attachment; it has to match
-        // the render pass attachments for MSAA to work.
-        if attachmentFormats.colorPixelFormat(at: 0) != .invalid {
-            renderPipelineDescriptor.rasterSampleCount = attachmentFormats.rasterSampleCount
-        }
-        if renderPipelineDescriptor.depthAttachmentPixelFormat == .invalid {
-            renderPipelineDescriptor.depthAttachmentPixelFormat = attachmentFormats.depthPixelFormat
-        }
-        if renderPipelineDescriptor.stencilAttachmentPixelFormat == .invalid {
-            renderPipelineDescriptor.stencilAttachmentPixelFormat = attachmentFormats.stencilPixelFormat
-        }
-        if let label {
-            renderPipelineDescriptor.label = label
-        }
+        configure(renderPipelineDescriptor, environment: environment, attachmentFormats: attachmentFormats)
 
         let key = RenderPipelineCache.Key(
             vertexFunction: ObjectIdentifier(vertexShader.function),
@@ -204,6 +169,48 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
 
         node.environmentValues.renderPipelineState = renderPipelineState
         node.environmentValues.reflection = reflection
+    }
+
+    /// Fills in the parts of `descriptor` that come from this element and its environment.
+    ///
+    /// `descriptor` is a private copy owned by ``setupEnter(_:)``, never one shared through the environment.
+    private func configure(_ descriptor: MTLRenderPipelineDescriptor, environment: MSEnvironmentValues, attachmentFormats: RenderAttachmentFormats) {
+        descriptor.vertexFunction = vertexShader.function
+        descriptor.fragmentFunction = fragmentShader.function
+
+        if let linkedFunctions = environment.linkedFunctions {
+            // TODO: #383 Support separate linked functions for vertex and fragment.
+            descriptor.vertexLinkedFunctions = linkedFunctions
+            descriptor.fragmentLinkedFunctions = linkedFunctions
+        }
+
+        if let vertexDescriptor = environment.vertexDescriptor {
+            descriptor.vertexDescriptor = vertexDescriptor
+        }
+
+        // Formats come from the environment by value, not from the render pass descriptor's
+        // textures: texture identity churns per frame but formats are stable. See #327 / #333 / #363.
+        // Explicitly configured formats on the pipeline descriptor win over these defaults.
+        for (index, pixelFormat) in attachmentFormats.colorPixelFormats.enumerated() where pixelFormat != .invalid {
+            if descriptor.colorAttachments[index].pixelFormat == .invalid {
+                descriptor.colorAttachments[index].pixelFormat = pixelFormat
+            }
+        }
+
+        // rasterSampleCount is not a "format" the caller configures per-attachment; it has to match
+        // the render pass attachments for MSAA to work.
+        if attachmentFormats.colorPixelFormat(at: 0) != .invalid {
+            descriptor.rasterSampleCount = attachmentFormats.rasterSampleCount
+        }
+        if descriptor.depthAttachmentPixelFormat == .invalid {
+            descriptor.depthAttachmentPixelFormat = attachmentFormats.depthPixelFormat
+        }
+        if descriptor.stencilAttachmentPixelFormat == .invalid {
+            descriptor.stencilAttachmentPixelFormat = attachmentFormats.stencilPixelFormat
+        }
+        if let label {
+            descriptor.label = label
+        }
     }
 
     func workloadEnter(_ node: Node) throws {

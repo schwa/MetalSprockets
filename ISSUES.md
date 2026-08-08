@@ -4943,11 +4943,13 @@ Wanted: identity-based comparison for class-typed (and @Observable) stored prope
 ## 353: Three functions exceed the cyclomatic_complexity limit
 
 +++
-status: new
+status: closed
 priority: low
 kind: task
 labels: effort:m
 created: 2026-08-08T16:32:00Z
+updated: 2026-08-08T23:08:03Z
+closed: 2026-08-08T23:08:03Z
 +++
 
 The swiftlint cyclomatic_complexity rule is commented out of only_rules in .swiftlint.yml because three functions violate it:

@@ -4,6 +4,10 @@ excluded:
   - "**/Package.swift"
   - "temp"
   - "Documentation"
+cyclomatic_complexity:
+  # A flat switch over an enum's cases (e.g. FunctionConstants.Value.apply(to:at:)) is not complex in any way that
+  # matters; splitting one up makes the code worse. See #353.
+  ignores_case_statements: true
 force_cast: warning
 force_try: warning
 shorthand_operator: warning
@@ -49,7 +53,7 @@ only_rules:
   - control_statement
   - convenience_type
   - custom_rules
-#  - cyclomatic_complexity # 3 violations, see #353
+  - cyclomatic_complexity
   - deployment_target
   - direct_return
   - discarded_notification_center_observer

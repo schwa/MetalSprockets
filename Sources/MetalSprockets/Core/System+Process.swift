@@ -19,6 +19,16 @@ package extension System {
     }
 }
 
+/// Mutable bookkeeping for a single workload traversal.
+internal struct WorkloadTraversalState {
+    /// Depth of the subtree currently being skipped, or 0 when not skipping.
+    var skipDepth = 0
+
+    /// Nodes whose `workloadEnter` has run but whose `workloadExit` has not. If a descendant throws these are unwound
+    /// in reverse so encoders are always ended (an un-ended `MTLCommandEncoder` aborts the process when deallocated).
+    var enteredNodes: [Node] = []
+}
+
 internal extension System {
     /// Workload traversal with subtree-skipping support for `skipsWorkload`.
     /// When a BodylessElement returns true from `skipsWorkload(_:)`, neither its
@@ -28,68 +38,73 @@ internal extension System {
         try withCurrentSystem {
             assert(traversalContext.isEmpty)
             defer { traversalContext.clear() }
-            var skipDepth = 0
-            // Nodes whose workloadEnter has run but whose workloadExit has not. If a
-            // descendant throws we unwind these in reverse so encoders are always ended
-            // (an un-ended MTLCommandEncoder aborts the process when deallocated).
-            var enteredWorkloadNodes: [Node] = []
-            func unwindEnteredWorkloadNodes() {
-                for node in enteredWorkloadNodes.reversed() {
-                    guard let workloadElement = node.element as? any WorkloadElement else {
-                        continue
-                    }
-                    do {
-                        try workloadElement.workloadExit(node)
-                    } catch {
-                        logger?.error("workloadExit failed while unwinding after an error: \(error)")
-                    }
-                }
-                enteredWorkloadNodes.removeAll()
-            }
-            func traverse() throws {
+            var state = WorkloadTraversalState()
+            do {
                 for event in traversalEvents {
                     switch event {
                     case .enter(let node):
-                        traversalContext.push(node)
-                        inheritEnvironmentFromActiveParent(node)
-                        if skipDepth > 0 {
-                            skipDepth += 1
-                            continue
-                        }
-                        if let bodylessElement = node.element as? any BodylessElement {
-                            if bodylessElement.skipsWorkload(node) {
-                                skipDepth = 1
-                                continue
-                            }
-                            if let workloadElement = bodylessElement as? any WorkloadElement {
-                                try workloadElement.workloadEnter(node)
-                                enteredWorkloadNodes.append(node)
-                            }
-                        }
+                        try enterWorkload(node, state: &state)
                     case .exit(let node):
-                        defer { traversalContext.pop() }
-                        if skipDepth > 0 {
-                            skipDepth -= 1
-                            continue
-                        }
-                        if let workloadElement = node.element as? any WorkloadElement {
-                            if enteredWorkloadNodes.last === node {
-                                enteredWorkloadNodes.removeLast()
-                            }
-                            try workloadElement.workloadExit(node)
-                        }
+                        try exitWorkload(node, state: &state)
                     }
                 }
-            }
-            do {
-                try traverse()
             } catch {
-                unwindEnteredWorkloadNodes()
+                unwindWorkload(&state)
                 throw error
             }
             assert(traversalContext.isEmpty)
-            assert(skipDepth == 0, "skipDepth should be zero after workload traversal")
+            assert(state.skipDepth == 0, "skipDepth should be zero after workload traversal")
         }
+    }
+
+    private func enterWorkload(_ node: Node, state: inout WorkloadTraversalState) throws {
+        traversalContext.push(node)
+        inheritEnvironmentFromActiveParent(node)
+        if state.skipDepth > 0 {
+            state.skipDepth += 1
+            return
+        }
+        guard let bodylessElement = node.element as? any BodylessElement else {
+            return
+        }
+        if bodylessElement.skipsWorkload(node) {
+            state.skipDepth = 1
+            return
+        }
+        if let workloadElement = bodylessElement as? any WorkloadElement {
+            try workloadElement.workloadEnter(node)
+            state.enteredNodes.append(node)
+        }
+    }
+
+    private func exitWorkload(_ node: Node, state: inout WorkloadTraversalState) throws {
+        defer { traversalContext.pop() }
+        if state.skipDepth > 0 {
+            state.skipDepth -= 1
+            return
+        }
+        guard let workloadElement = node.element as? any WorkloadElement else {
+            return
+        }
+        if state.enteredNodes.last === node {
+            state.enteredNodes.removeLast()
+        }
+        try workloadElement.workloadExit(node)
+    }
+
+    /// Runs `workloadExit` for every still-entered node, innermost first.
+    private func unwindWorkload(_ state: inout WorkloadTraversalState) {
+        for node in state.enteredNodes.reversed() {
+            guard let workloadElement = node.element as? any WorkloadElement else {
+                continue
+            }
+            do {
+                try workloadElement.workloadExit(node)
+            } catch {
+                logger?.error("workloadExit failed while unwinding after an error: \(error)")
+            }
+        }
+        state.enteredNodes.removeAll()
     }
 }
 
