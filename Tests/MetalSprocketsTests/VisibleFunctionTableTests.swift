@@ -63,6 +63,37 @@ struct VisibleFunctionTableTests {
     }
     """
 
+    // A shader whose visible_function_table name is bound in *both* stages, so auto-detection has two matches
+    // and has to ask for an explicit function type.
+    static let ambiguousTableSource = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    struct VertexIn { float2 position [[attribute(0)]]; };
+    struct VertexOut { float4 position [[position]]; float4 color; };
+
+    using ColorFn = float4();
+
+    [[visible]] float4 white_visible() { return float4(1.0, 1.0, 1.0, 1.0); }
+
+    [[vertex]] VertexOut vertex_main(
+        const VertexIn in [[stage_in]],
+        visible_function_table<ColorFn> colorTable [[buffer(1)]]
+    ) {
+        VertexOut out;
+        out.position = float4(in.position, 0.0, 1.0);
+        out.color = colorTable[0]();
+        return out;
+    }
+
+    [[fragment]] float4 fragment_main(
+        VertexOut in [[stage_in]],
+        visible_function_table<ColorFn> colorTable [[buffer(0)]]
+    ) {
+        return in.color * colorTable[0]();
+    }
+    """
+
     @Test("Fragment visible function table renders")
     func testFragmentVisibleFunctionTable() throws {
         let device = MTLCreateSystemDefaultDevice()!
@@ -88,8 +119,9 @@ struct VisibleFunctionTableTests {
             .vertexDescriptor(vs.inferredVertexDescriptor())
             .linkedFunctions([redVisible])
         }
-        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
-        _ = try renderer.render(element)
+        // The table's only entry returns red, so the triangle has to come out red — not merely render without
+        // throwing.
+        try Golden.verify(element, named: "VisibleFunctionTableRed")
     }
 
     @Test("Explicit .fragment functionType resolves")
@@ -116,8 +148,8 @@ struct VisibleFunctionTableTests {
             .vertexDescriptor(vs.inferredVertexDescriptor())
             .linkedFunctions([redVisible, greenVisible])
         }
-        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
-        _ = try renderer.render(element)
+        // Two functions are in the table but the shader calls index 0, so red wins and green is not drawn.
+        try Golden.verify(element, named: "VisibleFunctionTableRed")
     }
 
     @Test("Vertex visible function table renders")
@@ -143,8 +175,9 @@ struct VisibleFunctionTableTests {
             .vertexDescriptor(vs.inferredVertexDescriptor())
             .linkedFunctions([blueVisible])
         }
-        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
-        _ = try renderer.render(element)
+        // The colour is produced in the *vertex* stage and interpolated, so a blue triangle proves the table was
+        // bound with setVertexVisibleFunctionTable and not silently ignored.
+        try Golden.verify(element, named: "VisibleFunctionTableBlue")
     }
 
     // A compute kernel with a visible_function_table<uint(uint)> in buffer(1).
@@ -293,6 +326,108 @@ struct VisibleFunctionTableTests {
         #expect(throws: MetalSprocketsError.self) {
             _ = try renderer.render(pass)
         }
+    }
+
+    /// Renders `pass` and returns the error it threw during setup, failing the test if it did not throw.
+    private func setupError(_ pass: some Element, sourceLocation: SourceLocation = #_sourceLocation) throws -> String {
+        let renderer = try OffscreenRenderer(size: CGSize(width: 32, height: 32))
+        var caught: MetalSprocketsError?
+        #expect(throws: MetalSprocketsError.self, sourceLocation: sourceLocation) {
+            do {
+                _ = try renderer.render(pass)
+            }
+            catch let error as MetalSprocketsError {
+                caught = error
+                throw error
+            }
+        }
+        return caught.map { "\($0)" } ?? ""
+    }
+
+    @Test("A table name that is in no binding is rejected during setup")
+    func testUnknownTableNameIsRejected() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7), device.supportsFunctionPointers else { return }
+
+        let library = try device.makeLibrary(source: Self.fragmentTableSource, options: nil)
+        let red = try #require(library.makeFunction(name: "red_visible"))
+
+        // "noSuchTable" appears in neither the vertex nor the fragment bindings, so auto-detection finds nothing.
+        let pass = try RenderPass {
+            let vs = VertexShader(try #require(library.makeFunction(name: "vertex_main")))
+            let fs = FragmentShader(try #require(library.makeFunction(name: "fragment_main")))
+            try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                Draw { encoder in
+                    let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
+                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+                .visibleFunctionTable("noSuchTable", function: red)
+            }
+            .vertexDescriptor(vs.inferredVertexDescriptor())
+            .linkedFunctions([red])
+        }
+
+        let message = try setupError(pass)
+        #expect(message.contains("noSuchTable"), "Unexpected error: \(message)")
+    }
+
+    @Test("An explicit function type must match the stage the table is bound in")
+    func testExplicitFunctionTypeForWrongStageIsRejected() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7), device.supportsFunctionPointers else { return }
+
+        let library = try device.makeLibrary(source: Self.fragmentTableSource, options: nil)
+        let red = try #require(library.makeFunction(name: "red_visible"))
+
+        // `colorTable` exists, but only in the fragment stage. Asking for .vertex must not silently fall back to
+        // the fragment binding.
+        let pass = try RenderPass {
+            let vs = VertexShader(try #require(library.makeFunction(name: "vertex_main")))
+            let fs = FragmentShader(try #require(library.makeFunction(name: "fragment_main")))
+            try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                Draw { encoder in
+                    let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
+                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+                .visibleFunctionTable("colorTable", functionType: .vertex, functions: [red])
+            }
+            .vertexDescriptor(vs.inferredVertexDescriptor())
+            .linkedFunctions([red])
+        }
+
+        let message = try setupError(pass)
+        #expect(message.contains("bindings"), "Unexpected error: \(message)")
+    }
+
+    @Test("A table name bound in both stages needs an explicit function type")
+    func testAmbiguousTableNameIsRejected() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7), device.supportsFunctionPointers else { return }
+
+        let library = try device.makeLibrary(source: Self.ambiguousTableSource, options: nil)
+        let white = try #require(library.makeFunction(name: "white_visible"))
+
+        // `colorTable` is bound in both the vertex and the fragment stage. Picking one arbitrarily would bind the
+        // table to the wrong stage, so this has to be an error the caller resolves.
+        let pass = try RenderPass {
+            let vs = VertexShader(try #require(library.makeFunction(name: "vertex_main")))
+            let fs = FragmentShader(try #require(library.makeFunction(name: "fragment_main")))
+            try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                Draw { encoder in
+                    let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
+                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+                .visibleFunctionTable("colorTable", function: white)
+            }
+            .vertexDescriptor(vs.inferredVertexDescriptor())
+            .linkedFunctions([white])
+        }
+
+        let message = try setupError(pass)
+        #expect(message.contains("multiple function types"), "Unexpected error: \(message)")
     }
 
     @Test("requiresSetup tracks name + functions")
