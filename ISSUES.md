@@ -2522,15 +2522,18 @@ Found in `DebugRenderPipeline` where changing the body return type from `any Ele
 ## 255: Make a FunctionTypes OptionSet
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:18Z
+updated: 2026-08-08T16:21:33Z
+closed: 2026-08-08T16:21:33Z
 +++
 
 Create an OptionSet for Metal function types (vertex, fragment, compute, etc.) to replace individual `MTLFunctionType` parameters. Would allow targeting multiple function types at once, e.g., `.parameter("value", functionTypes: [.vertex, .fragment], ...)`.
+
+- `2026-08-08T16:21:33Z`: Added FunctionTypes OptionSet (with .render / .meshRender conveniences) and .parameter(_:functionTypes:...) overloads; Parameter now stores a FunctionTypes set where empty means infer from reflection. The single functionType: overloads remain as conveniences.
 
 ---
 

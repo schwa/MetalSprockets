@@ -37,7 +37,7 @@ struct ParameterCollapseTests {
 
         let modifier = try #require(element as? ParameterElementModifier<ParameterElementModifier<EmptyElement>>)
         #expect(modifier.collapsed.parameters.count == 1)
-        #expect(modifier.collapsed.parameters["color"]?.functionType == .fragment)
+        #expect(modifier.collapsed.parameters["color"]?.functionTypes == .fragment)
     }
 
     @Test func `an intervening modifier stops the collapse`() throws {

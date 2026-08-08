@@ -15,8 +15,8 @@ internal struct ParameterElementModifier<Content>: Element, WorkloadElement, Bod
     var parameters: [String: Parameter]
     var content: Content
 
-    internal init<T>(functionType: MTLFunctionType? = nil, name: String, value: ParameterValue<T>, content: Content) {
-        self.parameters = [name: .init(name: name, functionType: functionType, value: value)]
+    internal init<T>(functionTypes: FunctionTypes = [], name: String, value: ParameterValue<T>, content: Content) {
+        self.parameters = [name: .init(name: name, functionTypes: functionTypes, value: value)]
         self.content = content
     }
 
@@ -72,60 +72,52 @@ internal struct ParameterElementModifier<Content>: Element, WorkloadElement, Bod
 
 internal struct Parameter {
     var name: String
-    var functionType: MTLFunctionType?
+    /// The stages to bind to. Empty means "work it out from reflection".
+    var functionTypes: FunctionTypes
     var value: AnyParameterValue
 
-    init<T>(name: String, functionType: MTLFunctionType? = nil, value: ParameterValue<T>) {
+    init<T>(name: String, functionTypes: FunctionTypes = [], value: ParameterValue<T>) {
         self.name = name
-        self.functionType = functionType
+        self.functionTypes = functionTypes
         self.value = AnyParameterValue(value)
     }
 
+    /// The render stages a parameter can be bound to, in the order reflection is searched.
+    private static let renderStages: FunctionTypes = [.object, .mesh, .vertex, .fragment]
+
     func set(on encoder: MTLRenderCommandEncoder, reflection: Reflection) throws {
         try encoder.withDebugGroup("MTLRenderCommandEncoder(\(encoder.label.quoted)): \(name.quoted) = \(value)") {
-            switch functionType {
-            case .vertex:
-                if let index = reflection.binding(forType: .vertex, name: name) {
-                    encoder.setValue(value, index: index, functionType: .vertex)
+            guard functionTypes.isEmpty else {
+                let invalid = functionTypes.subtracting(Self.renderStages)
+                guard invalid.isEmpty else {
+                    try _throw(MetalSprocketsError.configurationError("Invalid function types \(invalid) for a render command encoder."))
                 }
-            case .fragment:
-                if let index = reflection.binding(forType: .fragment, name: name) {
-                    encoder.setValue(value, index: index, functionType: .fragment)
+                for functionType in functionTypes.functionTypes {
+                    if let index = reflection.binding(forType: functionType, name: name) {
+                        encoder.setValue(value, index: index, functionType: functionType)
+                    }
                 }
-            case .object:
-                if let index = reflection.binding(forType: .object, name: name) {
-                    encoder.setValue(value, index: index, functionType: .object)
-                }
-            case .mesh:
-                if let index = reflection.binding(forType: .mesh, name: name) {
-                    encoder.setValue(value, index: index, functionType: .mesh)
-                }
-            case nil:
-                let vertexIndex = reflection.binding(forType: .vertex, name: name)
-                let fragmentIndex = reflection.binding(forType: .fragment, name: name)
-                let objectIndex = reflection.binding(forType: .object, name: name)
-                let meshIndex = reflection.binding(forType: .mesh, name: name)
-                let indices = [(vertexIndex, "vertex", MTLFunctionType.vertex), (fragmentIndex, "fragment", MTLFunctionType.fragment), (objectIndex, "object", MTLFunctionType.object), (meshIndex, "mesh", MTLFunctionType.mesh)].compactMap { index, name, type in index.map { ($0, name, type) } }
-                switch indices.count {
-                case 0:
-                    logger?.info("Parameter \(name) not found in reflection \(reflection.debugDescription).")
-                    try _throw(MetalSprocketsError.missingBinding(name))
-                case 1:
-                    let (index, _, type) = indices[0]
-                    encoder.setValue(value, index: index, functionType: type)
-                default:
-                    let descriptions = indices.map { "\($0.1) (index: #\($0.0))" }.joined(separator: ", ")
-                    preconditionFailure("Ambiguous parameter, found parameter named \(name) in multiple shaders: \(descriptions).")
-                }
+                return
+            }
+            let indices = Self.renderStages.functionTypes.compactMap { functionType in
+                reflection.binding(forType: functionType, name: name).map { (index: $0, functionType: functionType) }
+            }
+            switch indices.count {
+            case 0:
+                logger?.info("Parameter \(name) not found in reflection \(reflection.debugDescription).")
+                try _throw(MetalSprocketsError.missingBinding(name))
+            case 1:
+                encoder.setValue(value, index: indices[0].index, functionType: indices[0].functionType)
             default:
-                fatalError("Invalid shader type \(functionType.debugDescription).")
+                let descriptions = indices.map { "\($0.functionType) (index: #\($0.index))" }.joined(separator: ", ")
+                preconditionFailure("Ambiguous parameter, found parameter named \(name) in multiple shaders: \(descriptions).")
             }
         }
     }
 
     func set(on encoder: MTLComputeCommandEncoder, reflection: Reflection) throws {
-        guard functionType == .kernel || functionType == nil else {
-            try _throw(MetalSprocketsError.configurationError("Invalid function type \(functionType.debugDescription)."))
+        guard functionTypes.isEmpty || functionTypes == .kernel else {
+            try _throw(MetalSprocketsError.configurationError("Invalid function types \(functionTypes) for a compute command encoder."))
         }
         let index = try reflection.binding(forType: .kernel, name: name).orThrow(.missingBinding(name))
         encoder.setValue(value, index: index)
@@ -180,41 +172,42 @@ internal struct Parameter {
 /// ## Targeting Specific Stages
 ///
 /// By default, parameters bind to whichever shader stage declares them.
-/// Use `functionType` to explicitly target a stage:
+/// Use `functionType` to explicitly target a stage, or `functionTypes` to target several at once:
 ///
 /// ```swift
 /// .parameter("time", functionType: .fragment, value: elapsedTime)
+/// .parameter("uniforms", functionTypes: [.vertex, .fragment], value: uniforms)
 /// ```
 public extension Element {
     /// Binds a SIMD4<Float> value to a shader parameter.
-    func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: SIMD4<Float>) -> some Element {
-        ParameterElementModifier(functionType: functionType, name: name, value: .value(value), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: SIMD4<Float>) -> some Element {
+        ParameterElementModifier(functionTypes: functionTypes, name: name, value: .value(value), content: self)
     }
 
     /// Binds a 4x4 matrix to a shader parameter.
-    func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: simd_float4x4) -> some Element {
-        ParameterElementModifier(functionType: functionType, name: name, value: .value(value), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: simd_float4x4) -> some Element {
+        ParameterElementModifier(functionTypes: functionTypes, name: name, value: .value(value), content: self)
     }
 
     /// Binds a texture to a shader parameter.
-    func parameter(_ name: String, functionType: MTLFunctionType? = nil, texture: MTLTexture?) -> some Element {
-        ParameterElementModifier(functionType: functionType, name: name, value: ParameterValue<()>.texture(texture), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], texture: MTLTexture?) -> some Element {
+        ParameterElementModifier(functionTypes: functionTypes, name: name, value: ParameterValue<()>.texture(texture), content: self)
     }
 
     /// Binds a sampler state to a shader parameter.
-    func parameter(_ name: String, functionType: MTLFunctionType? = nil, samplerState: MTLSamplerState) -> some Element {
-        ParameterElementModifier(functionType: functionType, name: name, value: ParameterValue<()>.samplerState(samplerState), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], samplerState: MTLSamplerState) -> some Element {
+        ParameterElementModifier(functionTypes: functionTypes, name: name, value: ParameterValue<()>.samplerState(samplerState), content: self)
     }
 
     /// Binds a buffer to a shader parameter.
-    func parameter(_ name: String, functionType: MTLFunctionType? = nil, buffer: MTLBuffer, offset: Int = 0) -> some Element {
-        ParameterElementModifier(functionType: functionType, name: name, value: ParameterValue<()>.buffer(buffer, offset), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], buffer: MTLBuffer, offset: Int = 0) -> some Element {
+        ParameterElementModifier(functionTypes: functionTypes, name: name, value: ParameterValue<()>.buffer(buffer, offset), content: self)
     }
 
     /// Binds an array of values to a shader parameter.
-    func parameter(_ name: String, functionType: MTLFunctionType? = nil, values: [some Any]) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], values: [some Any]) -> some Element {
         assert(isPODArray(values), "Parameter values must be a POD type.")
-        return ParameterElementModifier(functionType: functionType, name: name, value: .array(values), content: self)
+        return ParameterElementModifier(functionTypes: functionTypes, name: name, value: .array(values), content: self)
     }
 
     /// Binds a value to a shader parameter.
@@ -225,10 +218,49 @@ public extension Element {
     ///
     /// > Important: The Swift type's memory layout must match the corresponding Metal type.
     /// Use `MemoryLayout<T>.stride` to verify sizes match your shader expectations.
-    func parameter(_ name: String, functionType: MTLFunctionType? = nil, value: some Any) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: some Any) -> some Element {
         assert(!isArray(value), "Use 'values:' parameter for arrays, not 'value:'.")
         assert(isPOD(value), "Parameter value must be a POD type.")
-        return ParameterElementModifier(functionType: functionType, name: name, value: .value(value), content: self)
+        return ParameterElementModifier(functionTypes: functionTypes, name: name, value: .value(value), content: self)
+    }
+}
+
+// MARK: - Single-stage conveniences
+
+public extension Element {
+    /// Binds a SIMD4<Float> value to a shader parameter in one stage.
+    func parameter(_ name: String, functionType: MTLFunctionType?, value: SIMD4<Float>) -> some Element {
+        parameter(name, functionTypes: .init(functionType), value: value)
+    }
+
+    /// Binds a 4x4 matrix to a shader parameter in one stage.
+    func parameter(_ name: String, functionType: MTLFunctionType?, value: simd_float4x4) -> some Element {
+        parameter(name, functionTypes: .init(functionType), value: value)
+    }
+
+    /// Binds a texture to a shader parameter in one stage.
+    func parameter(_ name: String, functionType: MTLFunctionType?, texture: MTLTexture?) -> some Element {
+        parameter(name, functionTypes: .init(functionType), texture: texture)
+    }
+
+    /// Binds a sampler state to a shader parameter in one stage.
+    func parameter(_ name: String, functionType: MTLFunctionType?, samplerState: MTLSamplerState) -> some Element {
+        parameter(name, functionTypes: .init(functionType), samplerState: samplerState)
+    }
+
+    /// Binds a buffer to a shader parameter in one stage.
+    func parameter(_ name: String, functionType: MTLFunctionType?, buffer: MTLBuffer, offset: Int = 0) -> some Element {
+        parameter(name, functionTypes: .init(functionType), buffer: buffer, offset: offset)
+    }
+
+    /// Binds an array of values to a shader parameter in one stage.
+    func parameter(_ name: String, functionType: MTLFunctionType?, values: [some Any]) -> some Element {
+        parameter(name, functionTypes: .init(functionType), values: values)
+    }
+
+    /// Binds a value to a shader parameter in one stage.
+    func parameter(_ name: String, functionType: MTLFunctionType?, value: some Any) -> some Element {
+        parameter(name, functionTypes: .init(functionType), value: value)
     }
 }
 

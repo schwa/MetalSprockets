@@ -27,13 +27,13 @@ struct ParametersTests {
 
     @Test
     func testParameterInitialization() {
-        let param = Parameter(name: "testParam", functionType: .vertex, value: ParameterValue<Float>.value(3.14))
+        let param = Parameter(name: "testParam", functionTypes: .vertex, value: ParameterValue<Float>.value(3.14))
         #expect(param.name == "testParam")
-        #expect(param.functionType == .vertex)
+        #expect(param.functionTypes == .vertex)
 
         let param2 = Parameter(name: "testParam2", value: ParameterValue<Int>.value(42))
         #expect(param2.name == "testParam2")
-        #expect(param2.functionType == nil)
+        #expect(param2.functionTypes.isEmpty)
     }
 
     @Test
@@ -58,7 +58,7 @@ struct ParametersTests {
 
         let element = TestElement()
         let modifier = ParameterElementModifier(
-            functionType: .fragment,
+            functionTypes: .fragment,
             name: "color",
             value: ParameterValue<SIMD4<Float>>.value(SIMD4<Float>(1, 0, 0, 1)),
             content: element
@@ -67,7 +67,7 @@ struct ParametersTests {
         #expect(modifier.parameters.count == 1)
         #expect(modifier.parameters["color"] != nil)
         #expect(modifier.parameters["color"]?.name == "color")
-        #expect(modifier.parameters["color"]?.functionType == .fragment)
+        #expect(modifier.parameters["color"]?.functionTypes == .fragment)
     }
 
     @Test
@@ -153,7 +153,7 @@ struct ParametersTests {
             #expect(modifier.parameters.count == 1)
             if let param = modifier.parameters["testParam"] {
                 #expect(param.name == "testParam")
-                #expect(param.functionType == MTLFunctionType.vertex)
+                #expect(param.functionTypes == .vertex)
             }
         }
     }

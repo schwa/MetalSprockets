@@ -124,6 +124,6 @@ struct ParameterSwiftUITests {
             Issue.record("Expected ParameterElementModifier")
             return
         }
-        #expect(modifier.parameters["tint"]?.functionType == .fragment)
+        #expect(modifier.parameters["tint"]?.functionTypes == .fragment)
     }
 }
