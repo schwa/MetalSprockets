@@ -97,7 +97,8 @@ internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable
     .capture(
         captureConfiguration?.enabled ?? false,
         target: captureConfiguration?.target ?? .device,
-        destination: captureConfiguration?.destination ?? .developerTools
+        destination: captureConfiguration?.destination ?? .developerTools,
+        outputURL: captureConfiguration?.outputURL
     )
     .device(device)
     .commandQueue(commandQueue)

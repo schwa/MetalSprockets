@@ -60,6 +60,7 @@ internal struct RenderViewCaptureConfiguration: Equatable {
     var enabled: Bool
     var target: CaptureTarget
     var destination: MTLCaptureDestination
+    var outputURL: URL?
 }
 
 public extension View {
@@ -82,12 +83,15 @@ public extension View {
     ///   - target: Whether to capture all work on the device or only on the
     ///     current command queue. Defaults to ``MetalSprockets/CaptureTarget/device``.
     ///   - destination: The capture destination. Defaults to `.developerTools`.
+    ///   - outputURL: Where to write the `.gputrace` file. Required for
+    ///     `.gpuTraceDocument`, ignored otherwise.
     func capture(
         _ enabled: Bool = true,
         target: CaptureTarget = .device,
-        destination: MTLCaptureDestination = .developerTools
+        destination: MTLCaptureDestination = .developerTools,
+        outputURL: URL? = nil
     ) -> some View {
-        environment(\.renderViewCapture, RenderViewCaptureConfiguration(enabled: enabled, target: target, destination: destination))
+        environment(\.renderViewCapture, RenderViewCaptureConfiguration(enabled: enabled, target: target, destination: destination, outputURL: outputURL))
     }
 }
 

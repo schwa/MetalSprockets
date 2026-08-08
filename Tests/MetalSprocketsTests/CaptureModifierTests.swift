@@ -1,5 +1,6 @@
 import Metal
 @testable import MetalSprockets
+import MetalSprocketsSupport
 import Testing
 
 @MainActor
@@ -73,7 +74,7 @@ struct CaptureModifierTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("A capture scope runs when captures are enabled")
+    @Test("A capture scope writes a .gputrace when given an output URL")
     func testCaptureEnabledPath() throws {
         let manager = MTLCaptureManager.shared()
         // Only reachable when the host was launched with MTL_CAPTURE_ENABLED=1.
@@ -81,13 +82,30 @@ struct CaptureModifierTests {
             return
         }
 
-        let pass = try makeTriangleRenderPass().capture(true, target: .device, destination: .gpuTraceDocument)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("CaptureModifierTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let outputURL = directory.appendingPathComponent("trace.gputrace")
+
+        let pass = try makeTriangleRenderPass().capture(true, target: .device, destination: .gpuTraceDocument, outputURL: outputURL)
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
         _ = try renderer.render(pass)
 
-        // The modifier never sets an outputURL, so starting the capture fails and is logged rather than thrown.
-        // See #356.
         #expect(manager.isCapturing == false)
+        #expect(FileManager.default.fileExists(atPath: outputURL.path))
+    }
+
+    @Test("A .gpuTraceDocument capture without an output URL is reported")
+    func testCaptureGPUTraceDocumentWithoutOutputURL() throws {
+        let manager = MTLCaptureManager.shared()
+        guard manager.supportsDestination(.gpuTraceDocument) else {
+            return
+        }
+        let pass = try makeTriangleRenderPass().capture(true, target: .device, destination: .gpuTraceDocument)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
+        #expect(throws: MetalSprocketsError.self) {
+            _ = try renderer.render(pass)
+        }
     }
 
     @Test("A nested capture scope is skipped")
@@ -128,8 +146,8 @@ struct CaptureModifierTests {
     @Test("CaptureModifier.requiresSetup is false")
     func testCaptureRequiresSetupIsFalse() throws {
         struct Leaf: Element, BodylessElement { var body: Never { fatalError() } }
-        let a = CaptureModifier(content: Leaf(), enabled: true, target: .device, destination: .developerTools)
-        let b = CaptureModifier(content: Leaf(), enabled: false, target: .device, destination: .developerTools)
+        let a = CaptureModifier(content: Leaf(), enabled: true, target: .device, destination: .developerTools, outputURL: nil)
+        let b = CaptureModifier(content: Leaf(), enabled: false, target: .device, destination: .developerTools, outputURL: nil)
         #expect(a.requiresSetup(comparedTo: b) == false)
     }
 }

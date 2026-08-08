@@ -1,3 +1,4 @@
+import Foundation
 import Metal
 import MetalSprocketsSupport
 
@@ -20,6 +21,12 @@ internal struct CaptureModifier <Content>: Element, WorkloadElement, BodylessCon
     var enabled: Bool
     var target: CaptureTarget
     var destination: MTLCaptureDestination
+    var outputURL: URL?
+
+    /// Only the scope that started the capture may stop it, so a nested scope leaves the outer
+    /// capture running.
+    @MSState
+    private var didStartCapture = false
 
     func workloadEnter(_ node: Node) throws {
         guard enabled else {
@@ -44,6 +51,15 @@ internal struct CaptureModifier <Content>: Element, WorkloadElement, BodylessCon
         let descriptor = MTLCaptureDescriptor()
         descriptor.destination = destination
 
+        // Metal requires an output URL for .gpuTraceDocument; without one startCapture always
+        // fails (see #356).
+        if destination == .gpuTraceDocument {
+            guard let outputURL else {
+                throw MetalSprocketsError.configurationError("`.capture(destination: .gpuTraceDocument)` requires an `outputURL` to write the .gputrace file to.")
+            }
+            descriptor.outputURL = outputURL
+        }
+
         switch target {
         case .device:
             let device = try node.environmentValues.device.orThrow(.missingEnvironment(\.device))
@@ -56,18 +72,20 @@ internal struct CaptureModifier <Content>: Element, WorkloadElement, BodylessCon
             logger?.verbose?.info("capture: target is commandQueue.")
         }
 
-        do {
-            try manager.startCapture(with: descriptor)
-            logger?.info("capture: capture started successfully.")
-        } catch {
-            logger?.warning("capture: Failed to start capture: \(error)")
-        }
+        try manager.startCapture(with: descriptor)
+        didStartCapture = true
+        logger?.info("capture: capture started successfully.")
     }
 
     func workloadExit(_ node: Node) throws {
         guard enabled else {
             return
         }
+        guard didStartCapture else {
+            logger?.verbose?.info("capture: workloadExit called but this scope did not start the capture.")
+            return
+        }
+        didStartCapture = false
         let manager = MTLCaptureManager.shared()
         if manager.isCapturing {
             manager.stopCapture()
@@ -114,12 +132,15 @@ public extension Element {
     ///   - target: Whether to capture all work on the device or only on the
     ///     current command queue. Defaults to ``CaptureTarget/device``.
     ///   - destination: The capture destination. Defaults to `.developerTools`.
+    ///   - outputURL: Where to write the `.gputrace` file. Required for
+    ///     `.gpuTraceDocument`, ignored otherwise.
     /// - Returns: An element that performs a GPU frame capture around its content.
     func capture(
         _ enabled: Bool = true,
         target: CaptureTarget = .device,
-        destination: MTLCaptureDestination = .developerTools
+        destination: MTLCaptureDestination = .developerTools,
+        outputURL: URL? = nil
     ) -> some Element {
-        CaptureModifier(content: self, enabled: enabled, target: target, destination: destination)
+        CaptureModifier(content: self, enabled: enabled, target: target, destination: destination, outputURL: outputURL)
     }
 }

@@ -4995,11 +4995,13 @@ Related: #354 (msaa does not anti-alias even when correctly placed), #11 (elemen
 ## 356: Capture modifier cannot produce a .gpuTraceDocument
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 labels: bug, effort:s
 created: 2026-08-08T18:52:50Z
+updated: 2026-08-08T19:55:28Z
+closed: 2026-08-08T19:55:28Z
 +++
 
 `.capture(_:target:destination:)` accepts any `MTLCaptureDestination`, but `.gpuTraceDocument` can never succeed: the modifier builds an `MTLCaptureDescriptor` with a destination and a capture object and never sets `outputURL`, which Metal requires for that destination.
