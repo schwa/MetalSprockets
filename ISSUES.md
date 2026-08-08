@@ -3600,12 +3600,13 @@ Not related to #314 after all; that was a framework-level identity-vs-contents b
 ## 316: Add .depthBias() Element modifier
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:s
 created: 2026-04-15T23:43:17Z
-updated: 2026-04-21T02:48:19Z
+updated: 2026-08-08T16:16:39Z
+closed: 2026-08-08T16:16:39Z
 +++
 
 Expose Metal's setDepthBias(_:slopeScale:clamp:) as a declarative Element modifier, similar to .depthCompare(). Usage:
@@ -3616,6 +3617,8 @@ FlatShader(...) { ... }
 ```
 
 Currently consumers have to call encoder.setDepthBias() inside a Draw closure, which bypasses the declarative pipeline and can conflict with other state.
+
+- `2026-08-08T16:16:39Z`: Added .depthBias(_:slopeScale:clamp:) as a WorkloadElement modifier; it sets the encoder bias on enter and clears it on exit so it does not leak to siblings.
 
 ---
 
