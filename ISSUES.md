@@ -426,12 +426,13 @@ Add a `.disabled(_ isDisabled: Bool)` modifier that skips an element's rendering
 ## 54: Put parameters into one RenderPass object instead of having a bunch of nested ParameterRenderPasss
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:50Z
+updated: 2026-08-08T15:55:16Z
+closed: 2026-08-08T15:55:16Z
 +++
 
 Optimization: consolidate multiple `.parameter()` modifiers into a single node.
@@ -455,6 +456,7 @@ CombinedParameters (color, transform, texture)
 This would reduce tree depth and improve traversal performance.
 
 - `2026-04-03T17:33:50Z`: Related: #13 (improve ParameterValues)
+- `2026-08-08T15:55:16Z`: Consecutive .parameter() modifiers now collapse into a single ParameterElementModifier node (parameters merged, nearest-to-content binding wins).
 
 ---
 

@@ -4,14 +4,41 @@ import MetalSprocketsSupport
 import MetalSupport
 import simd
 
-// TODO: #54 instead of being typed <T> we need an "AnyParameter" and this needs to take a dictionary of AnyParameters
-internal struct ParameterElementModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+/// Collapses a chain of `.parameter()` modifiers into a single element, so binding N parameters costs one node
+/// instead of N nested ones. See #54.
+internal protocol ParameterCollecting {
+    var parameters: [String: Parameter] { get }
+    var parameterContent: any Element { get }
+}
+
+internal struct ParameterElementModifier<Content>: Element, BodylessElement, BodylessContentElement, ParameterCollecting where Content: Element {
     var parameters: [String: Parameter]
     var content: Content
 
     internal init<T>(functionType: MTLFunctionType? = nil, name: String, value: ParameterValue<T>, content: Content) {
         self.parameters = [name: .init(name: name, functionType: functionType, value: value)]
         self.content = content
+    }
+
+    var parameterContent: any Element {
+        content
+    }
+
+    /// The parameters of this modifier plus every directly-nested one, and the first content element that isn't a
+    /// parameter modifier. A binding closer to the content wins, matching the order nested modifiers would have
+    /// encoded in.
+    internal var collapsed: (parameters: [String: Parameter], content: any Element) {
+        var merged = parameters
+        var innermost: any Element = content
+        while let next = innermost as? any ParameterCollecting {
+            merged.merge(next.parameters) { _, nested in nested }
+            innermost = next.parameterContent
+        }
+        return (merged, innermost)
+    }
+
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        try visit(collapsed.content)
     }
 
     func workloadEnter(_ node: Node) throws {
@@ -21,7 +48,7 @@ internal struct ParameterElementModifier<Content>: Element, BodylessElement, Bod
         }
         let renderCommandEncoder = node.environmentValues.renderCommandEncoder
         let computeCommandEncoder = node.environmentValues.computeCommandEncoder
-        for parameter in parameters.values {
+        for parameter in collapsed.parameters.values {
             switch (renderCommandEncoder, computeCommandEncoder) {
             case (.some(let renderCommandEncoder), nil):
                 try parameter.set(on: renderCommandEncoder, reflection: reflection)
