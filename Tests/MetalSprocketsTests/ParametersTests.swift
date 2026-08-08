@@ -65,9 +65,9 @@ struct ParametersTests {
         )
 
         #expect(modifier.parameters.count == 1)
-        #expect(modifier.parameters["color"] != nil)
-        #expect(modifier.parameters["color"]?.name == "color")
-        #expect(modifier.parameters["color"]?.functionTypes == .fragment)
+        #expect(modifier.parameters[name: "color"] != nil)
+        #expect(modifier.parameters[name: "color"]?.name == "color")
+        #expect(modifier.parameters[name: "color"]?.functionTypes == .fragment)
     }
 
     @Test
@@ -151,7 +151,7 @@ struct ParametersTests {
         // Verify the parameter was created with correct values
         if let modifier = modifiedElement as? ParameterElementModifier<EmptyElement> {
             #expect(modifier.parameters.count == 1)
-            if let param = modifier.parameters["testParam"] {
+            if let param = modifier.parameters[name: "testParam"] {
                 #expect(param.name == "testParam")
                 #expect(param.functionTypes == .vertex)
             }

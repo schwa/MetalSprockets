@@ -82,12 +82,12 @@ struct MultiStageParameterTests {
     @Test func `the modifier records the requested stages`() throws {
         let element = EmptyElement().parameter("tint", functionTypes: .render, value: SIMD4<Float>(1, 0, 0, 1))
         let modifier = try #require(element as? ParameterElementModifier<EmptyElement>)
-        #expect(modifier.parameters["tint"]?.functionTypes == .render)
+        #expect(modifier.parameters[name: "tint"]?.functionTypes == .render)
     }
 
     @Test func `the single-stage overload still targets one stage`() throws {
         let element = EmptyElement().parameter("tint", functionType: .fragment, value: SIMD4<Float>(1, 0, 0, 1))
         let modifier = try #require(element as? ParameterElementModifier<EmptyElement>)
-        #expect(modifier.parameters["tint"]?.functionTypes == .fragment)
+        #expect(modifier.parameters[name: "tint"]?.functionTypes == .fragment)
     }
 }

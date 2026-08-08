@@ -5696,3 +5696,23 @@ Regression from splitting BodylessElement into SetupElement/WorkloadElement: the
 Fixed by giving Optional explicit no-op SetupElement/WorkloadElement conformances plus regression tests in OptionalWorkloadTests. General trap worth auditing: any 'as? any SomeProtocol' on node.element can unwrap an Optional node.
 
 ---
+
+## 382: Collapsing .parameter() modifiers drops per-stage bindings of the same name
+
++++
+status: closed
+priority: high
+kind: bug
+labels: effort:s, regression
+created: 2026-08-08T22:27:27Z
+updated: 2026-08-08T22:27:31Z
+closed: 2026-08-08T22:27:31Z
++++
+
+ParameterElementModifier.parameters was keyed by name only, so collapsing a chain merged bindings that differ only by stage. SkyboxRenderPipeline binds inverseViewProjectionMatrix for .vertex and .fragment; the fragment binding was dropped:
+
+    Fragment Function(SkyboxShader::fragment_main): missing Buffer binding at index 0 for inverseViewProjectionMatrix[0].
+
+Regression from #54 (collapse chained .parameter() modifiers into one node). Fixed by keying on (name, functionTypes); a repeated name in the SAME stage still resolves nearest-to-content.
+
+---

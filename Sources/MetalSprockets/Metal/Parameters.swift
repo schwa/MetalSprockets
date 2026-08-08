@@ -7,16 +7,31 @@ import simd
 /// Collapses a chain of `.parameter()` modifiers into a single element, so binding N parameters costs one node
 /// instead of N nested ones. See #54.
 internal protocol ParameterCollecting {
-    var parameters: [String: Parameter] { get }
+    var parameters: [ParameterKey: Parameter] { get }
     var parameterContent: any Element { get }
 }
 
+/// Identity of a binding. The stages are part of the key: the same name can be bound separately per stage
+/// (e.g. once for `.vertex` and once for `.fragment`), and those must not collapse into one another. See #382.
+internal struct ParameterKey: Hashable {
+    var name: String
+    var functionTypes: FunctionTypes
+}
+
+internal extension [ParameterKey: Parameter] {
+    /// Any binding for `name`, regardless of stage. Ambiguous when a name is bound per stage; use the full
+    /// key when the stage matters.
+    subscript(name name: String) -> Parameter? {
+        first { $0.key.name == name }?.value
+    }
+}
+
 internal struct ParameterElementModifier<Content>: Element, WorkloadElement, BodylessContentElement, ParameterCollecting where Content: Element {
-    var parameters: [String: Parameter]
+    var parameters: [ParameterKey: Parameter]
     var content: Content
 
     internal init<T>(functionTypes: FunctionTypes = [], name: String, value: ParameterValue<T>, content: Content) {
-        self.parameters = [name: .init(name: name, functionTypes: functionTypes, value: value)]
+        self.parameters = [ParameterKey(name: name, functionTypes: functionTypes): .init(name: name, functionTypes: functionTypes, value: value)]
         self.content = content
     }
 
@@ -27,7 +42,7 @@ internal struct ParameterElementModifier<Content>: Element, WorkloadElement, Bod
     /// The parameters of this modifier plus every directly-nested one, and the first content element that isn't a
     /// parameter modifier. A binding closer to the content wins, matching the order nested modifiers would have
     /// encoded in.
-    internal var collapsed: (parameters: [String: Parameter], content: any Element) {
+    internal var collapsed: (parameters: [ParameterKey: Parameter], content: any Element) {
         var merged = parameters
         var innermost: any Element = content
         while let next = innermost as? any ParameterCollecting {
