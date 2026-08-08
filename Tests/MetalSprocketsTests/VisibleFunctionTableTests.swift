@@ -247,6 +247,54 @@ struct VisibleFunctionTableTests {
         }
     }
 
+    @Test("Setup before any pipeline has published reflection is a no-op")
+    func testSetupWithoutReflection() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7) else { return }
+
+        let library = try device.makeLibrary(source: Self.fragmentTableSource, options: nil)
+        let red = try #require(library.makeFunction(name: "red_visible"))
+
+        struct Leaf: Element, BodylessElement { var body: Never { fatalError() } }
+
+        // No enclosing pipeline, so there is no reflection yet. Setup has to leave the table for later rather than
+        // failing. Only the setup phase runs here: no encoder is ever created.
+        let system = System()
+        try system.update(root: VisibleFunctionTableModifier(name: "table", functions: [red], functionType: nil, content: Leaf()))
+        try system.processSetup()
+    }
+
+    @Test("A function type the pipeline cannot serve is rejected during setup")
+    func testInvalidFunctionTypeForPipeline() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7), device.supportsFunctionPointers else { return }
+
+        let library = try device.makeLibrary(source: Self.fragmentTableSource, options: nil)
+        let red = try #require(library.makeFunction(name: "red_visible"))
+
+        // A render pipeline cannot serve a `.kernel` table. The failure happens in the setup phase, before any
+        // encoder exists, so it surfaces as a thrown error rather than taking the process down (see #357).
+        let pass = try RenderPass {
+            let vs = VertexShader(try #require(library.makeFunction(name: "vertex_main")))
+            let fs = FragmentShader(try #require(library.makeFunction(name: "fragment_main")))
+            try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                Draw { encoder in
+                    let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
+                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+                .visibleFunctionTable("colorTable", functionType: .kernel, functions: [red])
+            }
+            .vertexDescriptor(vs.inferredVertexDescriptor())
+            .linkedFunctions([red])
+        }
+
+        let renderer = try OffscreenRenderer(size: CGSize(width: 32, height: 32))
+        #expect(throws: MetalSprocketsError.self) {
+            _ = try renderer.render(pass)
+        }
+    }
+
     @Test("requiresSetup tracks name + functions")
     func testRequiresSetup() throws {
         let device = MTLCreateSystemDefaultDevice()!
