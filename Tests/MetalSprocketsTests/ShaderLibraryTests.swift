@@ -256,6 +256,28 @@ struct ShaderLibraryTests {
         #expect(storeB.adopt(state2) === state2)
     }
 
+    @Test("Source IDs compare compile options by value, not object identity")
+    func testSourceIDComparesCompileOptionsByValue() throws {
+        let optionsA = MTLCompileOptions()
+        optionsA.languageVersion = .version3_0
+        let optionsB = MTLCompileOptions()
+        optionsB.languageVersion = .version3_0
+        let optionsC = MTLCompileOptions()
+        optionsC.preprocessorMacros = ["FOO": 1 as NSNumber]
+
+        let idA = ShaderLibrary.ID.source("x", .init(optionsA))
+        let idB = ShaderLibrary.ID.source("x", .init(optionsB))
+        let idC = ShaderLibrary.ID.source("x", .init(optionsC))
+
+        // Structurally identical options must produce the same ID, or store lookups miss.
+        #expect(idA == idB)
+        #expect(Set([idA, idB]).count == 1)
+
+        // Different options are different libraries.
+        #expect(idA != idC)
+        #expect(idA != .source("x", nil))
+    }
+
     @Test
     func testBundleAndSourceIDsNotEqual() throws {
         let src = ShaderLibrary.ID.source("x", nil)

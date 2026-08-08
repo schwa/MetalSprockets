@@ -5327,11 +5327,13 @@ Not yet observed as a crash in tests; found by review. Whether off-isolation wri
 ## 365: ShaderLibrary.ID is @unchecked Sendable and carries a mutable MTLCompileOptions
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 labels: concurrency, effort:s
 created: 2026-08-08T20:31:31Z
+updated: 2026-08-08T21:08:57Z
+closed: 2026-08-08T21:08:57Z
 +++
 
 ShaderLibrary.ID (Sources/MetalSprockets/Metal/ShaderLibrary.swift:81) is declared `public enum ID: Hashable, @unchecked Sendable`, and one of its cases is `source(String, MTLCompileOptions?)`.

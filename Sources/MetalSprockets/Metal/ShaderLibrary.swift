@@ -78,10 +78,32 @@ import os
 /// - ``ObjectShader``
 @dynamicMemberLookup
 public struct ShaderLibrary: Identifiable {
+    /// A value snapshot of the parts of `MTLCompileOptions` that affect the compiled result.
+    ///
+    /// `MTLCompileOptions` is a mutable reference type, so it can't be part of a `Sendable`, value-comparable
+    /// identifier. Libraries are identified by this snapshot instead. See #365.
+    public struct CompileOptionsSignature: Hashable, Sendable {
+        public var languageVersion: UInt
+        public var libraryType: Int
+        public var optimizationLevel: Int
+        public var installName: String?
+        public var preprocessorMacros: [String: String]
+
+        public init(_ options: MTLCompileOptions) {
+            self.languageVersion = options.languageVersion.rawValue
+            self.libraryType = options.libraryType.rawValue
+            self.optimizationLevel = options.optimizationLevel.rawValue
+            self.installName = options.installName
+            self.preprocessorMacros = (options.preprocessorMacros ?? [:]).mapValues { "\($0)" }
+        }
+    }
+
+    /// `@unchecked` only because of the `MTLLibrary` payload, which Metal does not declare `Sendable` but which is
+    /// immutable once created. All other payloads are value types or immutable snapshots.
     public enum ID: Hashable, @unchecked Sendable {
         case bundle(Bundle)
         case library(MTLLibrary)
-        case source(String, MTLCompileOptions?)
+        case source(String, CompileOptionsSignature?)
     }
 
     final class State: Sendable {
@@ -226,7 +248,7 @@ public extension ShaderLibrary {
     ///     when the renderer uses that device too (see #55).
     /// - Throws: An error if compilation fails.
     init(source: String, options: MTLCompileOptions? = nil, device: MTLDevice? = nil) throws {
-        let id = ID.source(source, options)
+        let id = ID.source(source, options.map(CompileOptionsSignature.init))
         let device = device ?? _MTLCreateSystemDefaultDevice()
         let library = try device.makeLibrary(source: source, options: options)
         self.init(state: State(library: library, id: id))
@@ -327,9 +349,10 @@ public extension ShaderLibrary.ID {
         case .library(let library):
             hasher.combine("library")
             hasher.combine(ObjectIdentifier(library))
-        case .source(let source, _):
+        case .source(let source, let options):
             hasher.combine("source")
             hasher.combine(source)
+            hasher.combine(options)
         }
     }
 
@@ -339,8 +362,8 @@ public extension ShaderLibrary.ID {
             return lBundle.bundleURL == rBundle.bundleURL
         case let (.library(lLibrary), .library(rLibrary)):
             return lLibrary === rLibrary
-        case let (.source(lSource, _), .source(rSource, _)):
-            return lSource == rSource
+        case let (.source(lSource, lOptions), .source(rSource, rOptions)):
+            return lSource == rSource && lOptions == rOptions
         default:
             return false
         }
