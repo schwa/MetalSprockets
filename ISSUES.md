@@ -5652,3 +5652,47 @@ Acceptance criteria:
 - Tests without a real MTLDevice cover: cache hit returns the same MTLFunction, ambiguous namespace constants throw the expected error, missing constants produce the correct diagnostic, and error paths in function(type:named:).
 
 ---
+
+## 380: RenderView @Entry closure environment keys warn and may invalidate every update
+
++++
+status: new
+priority: medium
+kind: bug
+labels: effort:s, swiftui
+created: 2026-08-08T22:16:59Z
++++
+
+`Sources/MetalSprocketsUI/RenderView.swift:19` and `:22` store closures in `@Entry` environment values (`drawableSizeChange`, `frameTimingChange`), producing build warnings:
+
+    Storing a closure in '@Entry var drawableSizeChange' may invalidate dependents on every update because closures may not be comparable. (from macro 'Entry')
+
+Beyond the noise, any view reading those keys can be invalidated on every SwiftUI update. Plausible contributor to the repeated 'RenderViewViewModel has been allocated N times' churn seen alongside #298/#299/#337.
+
+Note: wrapping the closure in an Equatable struct is NOT the fix (see swiftui-specialist guidance); needs a real design change, e.g. an identity-carrying box or moving the callbacks off the environment.
+
+---
+
+## 381: Optional element node double-runs its wrapped element's workload/setup phase
+
++++
+status: closed
+priority: high
+kind: bug
+labels: effort:s, regression
+created: 2026-08-08T22:22:52Z
+updated: 2026-08-08T22:22:57Z
+closed: 2026-08-08T22:22:57Z
++++
+
+An 'if let' in an ElementBuilder produces an Optional node above the wrapped element. The phase traversals cast with 'node.element as? any WorkloadElement'; Optional did not conform to WorkloadElement/SetupElement, so the dynamic cast fell back to unwrapping and matched the WRAPPED element. Both the Optional node and the real node then ran enter/exit.
+
+For 'if let buffer { RenderPass { ... } }' (PointCloudDemo) this opens two MTLRenderCommandEncoders on one command buffer:
+
+    -[MTLDebugCommandBuffer renderCommandEncoderWithDescriptor:]:672: failed assertion 'RenderCommandEncoder Validation encoding in progress'
+
+Regression from splitting BodylessElement into SetupElement/WorkloadElement: the old cast targeted BodylessElement, which Optional conforms to directly, so the no-op default won.
+
+Fixed by giving Optional explicit no-op SetupElement/WorkloadElement conformances plus regression tests in OptionalWorkloadTests. General trap worth auditing: any 'as? any SomeProtocol' on node.element can unwrap an Optional node.
+
+---
