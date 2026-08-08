@@ -205,23 +205,20 @@ public extension Element {
     }
 
     /// Binds an array of values to a shader parameter.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], values: [some Any]) -> some Element {
-        assert(isPODArray(values), "Parameter values must be a POD type.")
-        return ParameterElementModifier(functionTypes: functionTypes, name: name, value: .array(values), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], values: [some BitwiseCopyable]) -> some Element {
+        ParameterElementModifier(functionTypes: functionTypes, name: name, value: .array(values), content: self)
     }
 
     /// Binds a value to a shader parameter.
     ///
-    /// The value must be a plain-old-data (POD) type that is compatible with Metal.
-    /// This includes: `Float`, `Int`, SIMD types (`SIMD2<Float>`, `SIMD4<Float>`, etc.),
-    /// matrices (`simd_float4x4`), and structs composed entirely of these types.
+    /// The value must be `BitwiseCopyable`, i.e. a plain-old-data type Metal can memcpy: `Float`, `Int`, SIMD types
+    /// (`SIMD2<Float>`, `SIMD4<Float>`, etc.), matrices (`simd_float4x4`), and structs composed entirely of these.
+    /// Arrays are not `BitwiseCopyable` — use `values:` for those.
     ///
     /// > Important: The Swift type's memory layout must match the corresponding Metal type.
     /// Use `MemoryLayout<T>.stride` to verify sizes match your shader expectations.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: some Any) -> some Element {
-        assert(!isArray(value), "Use 'values:' parameter for arrays, not 'value:'.")
-        assert(isPOD(value), "Parameter value must be a POD type.")
-        return ParameterElementModifier(functionTypes: functionTypes, name: name, value: .value(value), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: some BitwiseCopyable) -> some Element {
+        ParameterElementModifier(functionTypes: functionTypes, name: name, value: .value(value), content: self)
     }
 }
 
@@ -254,12 +251,12 @@ public extension Element {
     }
 
     /// Binds an array of values to a shader parameter in one stage.
-    func parameter(_ name: String, functionType: MTLFunctionType?, values: [some Any]) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, values: [some BitwiseCopyable]) -> some Element {
         parameter(name, functionTypes: .init(functionType), values: values)
     }
 
     /// Binds a value to a shader parameter in one stage.
-    func parameter(_ name: String, functionType: MTLFunctionType?, value: some Any) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, value: some BitwiseCopyable) -> some Element {
         parameter(name, functionTypes: .init(functionType), value: value)
     }
 }

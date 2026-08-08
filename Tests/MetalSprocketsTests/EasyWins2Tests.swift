@@ -43,18 +43,6 @@ struct EasyWins2Tests {
         #expect(fs.function.functionType == .fragment)
     }
 
-    // MARK: BaseSupport.isPOD
-
-    @Test("isPOD returns true for primitive types and false for classes")
-    func isPODValues() {
-        #expect(isPOD(Int.self))
-        #expect(isPOD(Float.self))
-        #expect(isPOD(SIMD4<Float>.self))
-
-        final class Box {}
-        #expect(isPOD(Box.self) == false)
-    }
-
     // MARK: ComputePipeline.requiresSetup
 
     // ComputePipeline.requiresSetup now always returns true; rebuild decisions

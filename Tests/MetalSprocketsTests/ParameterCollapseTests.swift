@@ -40,6 +40,17 @@ struct ParameterCollapseTests {
         #expect(modifier.collapsed.parameters["color"]?.functionTypes == .fragment)
     }
 
+    @Test func `bitwise-copyable structs bind as single values`() throws {
+        struct Uniforms: BitwiseCopyable {
+            var transform: simd_float4x4
+            var tint: SIMD4<Float>
+        }
+
+        let element = EmptyElement().parameter("uniforms", value: Uniforms(transform: .identity, tint: [1, 0, 0, 1]))
+        let modifier = try #require(element as? ParameterElementModifier<EmptyElement>)
+        #expect(modifier.parameters["uniforms"] != nil)
+    }
+
     @Test func `an intervening modifier stops the collapse`() throws {
         let element = EmptyElement()
             .parameter("a", value: SIMD4<Float>(1, 0, 0, 1))
