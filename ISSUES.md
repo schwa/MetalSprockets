@@ -734,9 +734,10 @@ Clean up shader function lookup logic in ShaderLibrary.swift:
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l, source:todo
+labels: effort:l, source:todo, has-subtasks
+depends: 358, 359, 360, 361
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-08-08T20:07:28Z
 +++
 
 Consolidate issues about environment and descriptor access:
@@ -746,6 +747,15 @@ Consolidate issues about environment and descriptor access:
 - RenderPipeline copies from render pass descriptor instead of getting from environment (was #95)
 
 The goal is a consistent pattern for environment-based configuration throughout the Metal element stack.
+
+- `2026-08-08T20:07:28Z`: Split into subtasks:
+
+- #358 — Make the command buffer descriptor configurable via the environment (effort:s)
+- #359 — Make Metal logging a per-subtree environment value (effort:s)
+- #360 — Publish render attachment formats into the environment (effort:m)
+- #361 — Make RenderPipeline read attachment formats from the environment (effort:m, depends on #360)
+
+#358 and #359 are independent; #360 must land before #361.
 
 ---
 
@@ -5147,5 +5157,103 @@ Rendering the blending-on frame into a fresh renderer produces `WithAlphaBlend` 
 Fixing this means the cache key has to reflect the modified descriptor. Hashing the `MTLRenderPipelineDescriptor` after the modifier has run (the way `NSObjectValueKey` already does for `MTLVertexDescriptor`) would work, at the cost of running the modifier on every frame before the cache lookup.
 
 The test is currently wrapped in `withKnownIssue`; unwrap it when this is fixed.
+
+---
+
+## 360: Make the command buffer descriptor configurable via the environment
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:s, subtask
+created: 2026-08-08T20:06:55Z
++++
+
+`CommandBufferElement.workloadEnter` (Sources/MetalSprockets/Metal/CommandBufferElement.swift) constructs a bare `MTLCommandBufferDescriptor()` with no way for callers to influence it.
+
+Add an environment entry for the command buffer descriptor and a modifier to set/mutate it, following the existing `RenderPassDescriptorModifier` pattern (copy-on-write into the child environment so a shared descriptor is never mutated in place).
+
+Acceptance criteria:
+- `UVEnvironmentValues` has a `commandBufferDescriptor` entry.
+- A public modifier lets an element supply or mutate the descriptor for its subtree.
+- `CommandBufferElement` uses a copy of the environment descriptor when present, and a fresh `MTLCommandBufferDescriptor()` otherwise.
+- Test covers a descriptor property (e.g. `retainedReferences` or `errorOptions`) set via the modifier reaching the created command buffer.
+
+Part of #89.
+
+---
+
+## 361: Make Metal logging a per-subtree environment value
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:s, subtask
+created: 2026-08-08T20:06:59Z
++++
+
+`CommandBufferElement.workloadEnter` reads the global `SystemEnvironment.current.metalLoggingEnabled` to decide whether to call `addMetalSprocketsLogging(device:)`. Callers cannot enable or disable Metal logging for a specific element subtree.
+
+Acceptance criteria:
+- `UVEnvironmentValues` has a `metalLoggingEnabled` entry that defaults to the current `SystemEnvironment` value.
+- A public modifier sets it for a subtree.
+- `CommandBufferElement` consults the environment value instead of the global.
+- Existing behaviour is unchanged when no modifier is applied.
+
+Part of #89.
+
+---
+
+## 362: Publish render attachment formats into the environment
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:m, subtask
+created: 2026-08-08T20:07:06Z
++++
+
+`RenderPipeline` currently derives attachment pixel formats and sample count by reaching into the render pass descriptor's textures. Before it can stop doing that, the elements that produce render pass descriptors must publish the formats themselves.
+
+Scope: every place that sets `environmentValues.renderPassDescriptor` — RenderView / root runners, offscreen render setups, `MSAAModifier`, `MetalFXSpatial`, `MetalFXTemporal`, and `RenderPassDescriptorModifier` — also publishes the corresponding attachment formats.
+
+Acceptance criteria:
+- Environment entries exist for colour attachment pixel format(s), depth pixel format, stencil pixel format, and raster sample count.
+- Every descriptor producer sets them consistently with the attachments it configures.
+- `RenderPassDescriptorModifier` recomputes them after the caller mutates the descriptor.
+- Tests assert the published values match the descriptor's attachment textures for the MSAA and MetalFX paths.
+
+No behaviour change yet: `RenderPipeline` still reads the descriptor (see the follow-up subtask).
+
+Part of #89.
+
+---
+
+## 363: Make RenderPipeline read attachment formats from the environment
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:m, subtask
+depends: MetalSprockets-mature-robin#362
+created: 2026-08-08T20:07:15Z
++++
+
+`RenderPipeline.setupEnter` (Sources/MetalSprockets/Metal/RenderPipeline.swift) copies the render pass descriptor and pulls `colorAttachments[0].texture`, `depthAttachment.texture` and `stencilAttachment.texture` to fill in pipeline descriptor formats, `rasterSampleCount`, and the `RenderPipelineCache.Key`. The pipeline should not need the render pass descriptor at all.
+
+Depends on the attachment format environment values being published.
+
+Acceptance criteria:
+- `setupEnter` no longer reads `environment.renderPassDescriptor`.
+- Pixel formats, `rasterSampleCount`, and the cache key come from the environment format values.
+- Explicitly configured formats on the pipeline descriptor still win over the environment defaults, as today.
+- PSO caching behaviour from #327 / #333 / #334 is preserved: no per-frame cache misses when only texture identity changes.
+- MSAA and MetalFX example/test scenes still render correctly.
+
+Part of #89.
 
 ---
