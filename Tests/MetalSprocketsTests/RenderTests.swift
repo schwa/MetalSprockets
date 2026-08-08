@@ -6,7 +6,7 @@ import simd
 import SwiftUI
 import Testing
 
-@Test(.disabled("Rendering very broken!"))
+@Test
 @MainActor
 func testRendering() throws {
     let source = """
@@ -55,8 +55,5 @@ func testRendering() throws {
     let texture = try offscreenRenderer.render(renderPass)
     let image = try texture.cgImage
 
-    let goldenImagesDir = try #require(Bundle.module.resourceURL?.appendingPathComponent("Golden Images"))
-    let comparison = GoldenImageComparison(imageDirectory: goldenImagesDir, options: .none)
-    let isMatch = try comparison.image(image: image, matchesGoldenImageNamed: "RedTriangle")
-    #expect(isMatch)
+    try Golden.verify(image, named: "RedTriangle")
 }
