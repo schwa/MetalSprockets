@@ -3475,15 +3475,18 @@ The demo app claims MSAA 4x is enabled (overlay says so) but the cube edges stil
 ## 310: fpsColor should be based on target framerate, not hardcoded thresholds
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:xs
 created: 2026-04-09T19:09:28Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T16:13:31Z
+closed: 2026-08-08T16:13:31Z
 +++
 
 FrameTimingView.fpsColor(for:) uses hardcoded thresholds (55 = green, 30 = yellow, else red). These should be relative to the target framerate (e.g. 120Hz displays would show yellow at 55fps which is wrong).
+
+- `2026-08-08T16:13:31Z`: FrameTimingView now colour-codes FPS against a target frame rate (defaults to the display's maximum refresh rate): green from 90%, yellow from 50%, red below.
 
 ---
 

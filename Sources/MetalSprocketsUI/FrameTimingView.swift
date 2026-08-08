@@ -55,14 +55,18 @@ public struct FrameTimingDisplayOptions: OptionSet, Sendable {
 public struct FrameTimingView: View {
     var statistics: FrameTimingStatistics
     var options: FrameTimingDisplayOptions
+    var targetFramesPerSecond: Double
     let minimumUpdateInterval: TimeInterval = 1.0 / 15.0
 
     @State
     private var savedStatistics: FrameTimingStatistics?
 
-    public init(statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions = .default) {
+    /// - Parameter targetFramesPerSecond: The frame rate the FPS readout is colour-coded against. Defaults to the
+    ///   display's maximum refresh rate, so a 120 Hz display isn't marked green at 60 FPS.
+    public init(statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions = .default, targetFramesPerSecond: Double? = nil) {
         self.statistics = statistics
         self.options = options
+        self.targetFramesPerSecond = targetFramesPerSecond ?? Self.displayMaximumFramesPerSecond
     }
 
     public var body: some View {
@@ -97,7 +101,7 @@ public struct FrameTimingView: View {
             if options.contains(.fps) {
                 LabeledContent {
                     Text("\(Int(statistics.currentFPS.rounded()))")
-                        .foregroundStyle(fpsColor(for: statistics.currentFPS))
+                        .foregroundStyle(Self.fpsColor(for: statistics.currentFPS, targetFramesPerSecond: targetFramesPerSecond))
                 } label: {
                     Text("FPS")
                 }
@@ -130,14 +134,36 @@ public struct FrameTimingView: View {
             .formatted(Self.millisecondFormat)
     }
 
-    private func fpsColor(for fps: Double) -> Color {
-        if fps >= 55 {
+    /// Green from 90% of the target frame rate, yellow from 50%, red below that.
+    internal static func fpsColor(for fps: Double, targetFramesPerSecond: Double) -> Color {
+        let target = targetFramesPerSecond > 0 ? targetFramesPerSecond : fallbackFramesPerSecond
+        if fps >= target * 0.9 {
             return .green
         }
-        if fps >= 30 {
+        if fps >= target * 0.5 {
             return .yellow
         }
         return .red
+    }
+
+    private static let fallbackFramesPerSecond: Double = 60
+
+    internal static var displayMaximumFramesPerSecond: Double {
+        #if os(macOS)
+        guard let screen = NSScreen.main, screen.maximumFramesPerSecond > 0 else {
+            return fallbackFramesPerSecond
+        }
+        return Double(screen.maximumFramesPerSecond)
+        #elseif os(iOS) || os(tvOS)
+        let screen = UIScreen.main
+        guard screen.maximumFramesPerSecond > 0 else {
+            return fallbackFramesPerSecond
+        }
+        return Double(screen.maximumFramesPerSecond)
+        #else
+        // visionOS and friends have no single screen to query.
+        return fallbackFramesPerSecond
+        #endif
     }
 }
 
