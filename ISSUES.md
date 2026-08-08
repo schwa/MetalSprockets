@@ -1382,15 +1382,18 @@ This issue is to track the architectural question of whether the parent chain is
 ## 177: Stop using generic errors
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: enhancement, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:30Z
+updated: 2026-08-08T06:46:12Z
+closed: 2026-08-08T06:46:12Z
 +++
 
 Replace generic error types with specific, descriptive error types. This improves debugging and error handling by making it clear what went wrong.
+
+- `2026-08-08T06:46:12Z`: Replaced all seven MetalSprocketsError.generic throw sites (all in OffscreenVideoRenderer) with specific cases — configurationError for asset-writer setup, resourceCreationFailure for pixel buffer allocation, validationError for append/finish failures — each now carrying frame/URL/underlying-error context. The .generic case itself remains for external callers.
 
 ---
 

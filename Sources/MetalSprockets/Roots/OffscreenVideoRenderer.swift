@@ -109,12 +109,12 @@ public final class OffscreenVideoRenderer {
         )
 
         guard assetWriter.canAdd(assetWriterInput) else {
-            throw MetalSprocketsError.generic("Cannot add input to asset writer")
+            throw MetalSprocketsError.configurationError("Asset writer cannot accept the video input for \(outputURL.lastPathComponent)")
         }
         assetWriter.add(assetWriterInput)
 
         guard assetWriter.startWriting() else {
-            throw MetalSprocketsError.generic("Failed to start writing")
+            throw MetalSprocketsError.configurationError("Asset writer failed to start writing to \(outputURL.lastPathComponent): \(assetWriter.error?.localizedDescription ?? "no error reported")")
         }
         assetWriter.startSession(atSourceTime: .zero)
 
@@ -178,13 +178,13 @@ public final class OffscreenVideoRenderer {
 
     func appendFrame() async throws {
         guard let pixelBufferPool = pixelBufferAdaptor.pixelBufferPool else {
-            throw MetalSprocketsError.generic("No pixel buffer pool available")
+            throw MetalSprocketsError.resourceCreationFailure("Pixel buffer adaptor has no pixel buffer pool (frame \(frameNumber))")
         }
 
         var pixelBuffer: CVPixelBuffer?
         let status = CVPixelBufferPoolCreatePixelBuffer(nil, pixelBufferPool, &pixelBuffer)
         guard status == kCVReturnSuccess, let pixelBuffer else {
-            throw MetalSprocketsError.generic("Failed to create pixel buffer")
+            throw MetalSprocketsError.resourceCreationFailure("Failed to create pixel buffer from pool (frame \(frameNumber), CVReturn \(status))")
         }
 
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
@@ -194,7 +194,7 @@ public final class OffscreenVideoRenderer {
         let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer)
 
         guard let baseAddress else {
-            throw MetalSprocketsError.generic("Failed to get pixel buffer base address")
+            throw MetalSprocketsError.resourceCreationFailure("Pixel buffer has no base address (frame \(frameNumber))")
         }
 
         let region = MTLRegionMake2D(0, 0, Int(size.width), Int(size.height))
@@ -210,7 +210,7 @@ public final class OffscreenVideoRenderer {
         await waitUntilReady()
 
         guard pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: presentationTime) else {
-            throw MetalSprocketsError.generic("Failed to append pixel buffer")
+            throw MetalSprocketsError.validationError("Failed to append pixel buffer for frame \(frameNumber) at \(presentationTime.seconds)s: \(assetWriter.error?.localizedDescription ?? "no error reported")")
         }
 
         frameNumber += 1
@@ -226,7 +226,7 @@ public final class OffscreenVideoRenderer {
         }
 
         if assetWriter.status == .failed {
-            throw assetWriter.error ?? MetalSprocketsError.generic("Asset writer failed")
+            throw assetWriter.error ?? MetalSprocketsError.validationError("Asset writer finished in a failed state for \(outputURL.lastPathComponent)")
         }
     }
 }
