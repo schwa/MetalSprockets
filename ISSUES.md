@@ -4407,12 +4407,13 @@ Revisit: either finish it (wire up a proper node browser using a SystemSnapshot 
 ## 339: Replace global LibraryRegistry with a non-leaking cache
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: effort:m
 created: 2026-04-21T02:36:22Z
-updated: 2026-04-21T02:48:19Z
+updated: 2026-08-08T06:51:13Z
+closed: 2026-08-08T06:51:13Z
 +++
 
 LibraryRegistry.shared holds MTLLibrary instances via strong references for the lifetime of the process. Every compiled shader library (from bundle, source, or wrapped MTLLibrary) stays resident forever even after no ShaderLibrary value still references it.
@@ -4428,6 +4429,7 @@ Same concern applies to the per-library ShaderCache of MTLFunctions, though thos
 
 - `2026-04-21T02:36:47Z`: Design idea: a .shaderScope() element modifier that establishes a scoped ShaderLibrary cache via the element environment. Libraries/functions compiled inside the scope live in the scope's cache and die with it. No global singleton. Apps get explicit lifetime control — e.g. per-RenderView, per-scene, or per-experimental-area. Default behavior (no explicit scope) could still use a process-wide cache for convenience, but it would be opt-in or overridable.
 - `2026-04-21T02:48:26Z`: Related: #295 is a broader refactor of the whole ShaderLibrary/LibraryRegistry/ShaderCache stack. This issue is the narrower leak subset.
+- `2026-08-08T06:51:13Z`: Already resolved: there is no LibraryRegistry singleton any more. ShaderLibrary.State is now owned by a per-scope ShaderStore (adopted lazily via the element environment, with a private fallback store per RenderView), so libraries die with their store rather than living for the process lifetime.
 
 ---
 
