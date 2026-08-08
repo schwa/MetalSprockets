@@ -4,6 +4,7 @@ import MetalKit
 @testable import MetalSprockets
 import MetalSprocketsSupport
 @testable import MetalSprocketsUI
+import SwiftUI
 import Testing
 
 @MainActor
@@ -237,11 +238,34 @@ struct RenderViewViewModelTests {
 
         try SystemEnvironment.$current.withValue(SystemEnvironment(enabled: ["MS_RENDERVIEW_LOG_FRAME"])) {
             #expect(RenderViewDebugging.logFrame)
+            viewModel.diagnostics = RenderViewDiagnostics(environment: EnvironmentValues())
+            #expect(viewModel.diagnostics.logFrame)
             viewModel.draw(in: view)
         }
 
         #expect(viewModel.frame == 1)
         #expect(viewModel.lastError == nil)
+    }
+
+    @Test func `SwiftUI environment values override the process environment for diagnostics (#269)`() {
+        let processEnvironment = SystemEnvironment(enabled: ["MS_RENDERVIEW_LOG_FRAME", "MS_FATALERROR_ON_THROW"])
+
+        let inherited = RenderViewDiagnostics(environment: EnvironmentValues(), systemEnvironment: processEnvironment)
+        #expect(inherited.logFrame)
+        #expect(inherited.fatalErrorOnError)
+
+        var environment = EnvironmentValues()
+        environment.renderViewLogFrame = false
+        environment.renderViewFatalErrorOnError = false
+        let overridden = RenderViewDiagnostics(environment: environment, systemEnvironment: processEnvironment)
+        #expect(!overridden.logFrame)
+        #expect(!overridden.fatalErrorOnError)
+
+        var opted = EnvironmentValues()
+        opted.renderViewLogFrame = true
+        let optedIn = RenderViewDiagnostics(environment: opted, systemEnvironment: SystemEnvironment(variables: [:]))
+        #expect(optedIn.logFrame)
+        #expect(!optedIn.fatalErrorOnError)
     }
 
     @Test func `the signpost id is made once and reused`() throws {

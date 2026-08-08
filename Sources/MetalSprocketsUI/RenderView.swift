@@ -26,6 +26,55 @@ public extension EnvironmentValues {
 
     @Entry
     internal var renderViewCapture: RenderViewCaptureConfiguration?
+
+    // Three-state on purpose: nil means "not specified", so the process environment decides. See #269.
+    // swiftlint:disable discouraged_optional_boolean
+    @Entry
+    internal var renderViewLogFrame: Bool?
+
+    @Entry
+    internal var renderViewFatalErrorOnError: Bool?
+    // swiftlint:enable discouraged_optional_boolean
+}
+
+// MARK: - RenderViewDiagnostics
+
+/// Resolved per-frame diagnostics settings for a ``RenderView``.
+///
+/// There used to be two independent sources of truth here: SwiftUI environment values for the `MTKView`
+/// settings, and direct `SystemEnvironment` (i.e. `ProcessInfo`) reads for the debugging flags. Both now
+/// flow through the SwiftUI environment, with the process environment supplying the defaults, so a view
+/// can turn frame logging on for one `RenderView` without setting a variable for the whole process. See #269.
+internal struct RenderViewDiagnostics: Equatable {
+    var logFrame: Bool
+    var fatalErrorOnError: Bool
+
+    init(logFrame: Bool, fatalErrorOnError: Bool) {
+        self.logFrame = logFrame
+        self.fatalErrorOnError = fatalErrorOnError
+    }
+
+    /// Resolves the settings, preferring explicit SwiftUI environment values over the process environment.
+    init(environment: EnvironmentValues, systemEnvironment: SystemEnvironment = .current) {
+        self.logFrame = environment.renderViewLogFrame ?? systemEnvironment.renderViewLogFrameEnabled
+        self.fatalErrorOnError = environment.renderViewFatalErrorOnError ?? systemEnvironment.fatalErrorOnThrow
+    }
+}
+
+public extension View {
+    /// Logs a per-frame timing breakdown for descendant ``RenderView``s.
+    ///
+    /// Defaults to whatever the `MS_RENDERVIEW_LOG_FRAME` environment variable says; this modifier overrides it.
+    func renderViewLogFrame(_ enabled: Bool = true) -> some View {
+        environment(\.renderViewLogFrame, enabled)
+    }
+
+    /// Turns errors thrown while drawing into a `fatalError` for descendant ``RenderView``s.
+    ///
+    /// Defaults to whatever the `MS_FATALERROR_ON_THROW` environment variable says; this modifier overrides it.
+    func renderViewFatalErrorOnError(_ enabled: Bool = true) -> some View {
+        environment(\.renderViewFatalErrorOnError, enabled)
+    }
 }
 
 public extension View {
@@ -320,6 +369,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             }
             viewModel.captureConfiguration = captureConfiguration
             viewModel.shaderStore = shaderStore
+            viewModel.diagnostics = RenderViewDiagnostics(environment: environment)
         }
         dismantle: { view in
             // Stop the display link and drop the delegate before SwiftUI releases the representable, so no draw
@@ -443,6 +493,10 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     var currentSampleCount: Int = 1
 
+    /// Diagnostics settings resolved from the SwiftUI environment and the process environment (#269).
+    @ObservationIgnored
+    var diagnostics = RenderViewDiagnostics(environment: EnvironmentValues())
+
     init(device: MTLDevice, commandQueue: MTLCommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
@@ -522,7 +576,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 do {
                     let timings = try frameRenderer.renderFrame(root: rootElement)
 
-                    if RenderViewDebugging.logFrame {
+                    if diagnostics.logFrame {
                         let contentMs = contentDuration * 1_000
                         let updateMs = timings.update * 1_000
                         let setupMs = timings.setup * 1_000
@@ -542,7 +596,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @MainActor
     func handle(error: Error) {
         logger?.error("Error when drawing frame #\(self.timingState.frame): \(error)")
-        if RenderViewDebugging.fatalErrorOnCatch {
+        if diagnostics.fatalErrorOnError {
             fatalError("Error when drawing #\(self.timingState.frame): \(error)")
         }
         lastError = error
@@ -582,6 +636,10 @@ internal final class RenderViewViewModelAllocationTracker: @unchecked Sendable {
     }
 }
 
+/// Process-wide defaults for ``RenderView`` diagnostics.
+///
+/// These are the fallbacks used when a view has not set the equivalent environment value with
+/// ``SwiftUI/View/renderViewLogFrame(_:)`` or ``SwiftUI/View/renderViewFatalErrorOnError(_:)``.
 public enum RenderViewDebugging {
     public static var logFrame: Bool {
         SystemEnvironment.current.renderViewLogFrameEnabled

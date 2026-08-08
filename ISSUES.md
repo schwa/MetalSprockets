@@ -2635,12 +2635,13 @@ Check `device.supportsFunctionPointers` before using function pointers / visible
 ## 269: Merge RenderView with environment (ProcessInfo) logic
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:24Z
+updated: 2026-08-08T20:20:36Z
+closed: 2026-08-08T20:20:36Z
 +++
 
 File: Sources/MetalSprocketsUI/RenderView.swift
