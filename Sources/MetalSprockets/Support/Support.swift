@@ -54,6 +54,27 @@ public extension Element {
             self
         }
     }
+
+    /// Mark multiple resources as in use for argument buffer access from a compute kernel
+    func useComputeResources(_ resources: [any MTLResource], usage: MTLResourceUsage) -> some Element {
+        onWorkloadEnter { environmentValues in
+            let computeCommandEncoder = environmentValues.computeCommandEncoder.orFatalError("Missing compute command encoder")
+            for resource in resources {
+                computeCommandEncoder.useResource(resource, usage: usage)
+            }
+        }
+    }
+
+    @ElementBuilder
+    // swiftlint:disable:next discouraged_optional_collection
+    func useComputeResources(_ resources: [any MTLResource]?, usage: MTLResourceUsage) -> some Element {
+        if let resources {
+            self.useComputeResources(resources, usage: usage)
+        }
+        else {
+            self
+        }
+    }
 }
 
 internal func abbreviatedTypeName<T>(of t: T) -> String {

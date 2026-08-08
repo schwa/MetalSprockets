@@ -4788,12 +4788,13 @@ In SwiftUI 27, @State became a macro. This can cause compile errors like 'used b
 ## 350: Missing useComputeResources(_:usage:) array variant
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:xs
 created: 2026-06-18T17:32:16Z
-updated: 2026-08-08T06:04:05Z
+updated: 2026-08-08T16:12:02Z
+closed: 2026-08-08T16:12:02Z
 +++
 
 `Support.swift` defines:
@@ -4815,6 +4816,8 @@ func useComputeResources(_ resources: [any MTLResource], usage: MTLResourceUsage
 ```
 
 (Also probably worth adding an optional-array variant for symmetry.)
+
+- `2026-08-08T16:12:02Z`: Added useComputeResources(_:usage:) plus an optional-array variant, mirroring the render-side useResources.
 
 ---
 
