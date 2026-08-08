@@ -39,7 +39,7 @@ import MetalSprocketsSupport
 ///
 /// ### Related Modifiers
 /// - ``View/metalSampleCount(_:)`` - For MTKView-based MSAA (simpler, preferred for on-screen rendering)
-internal struct MSAAModifier<Content>: Element, SetupElement, BodylessContentElement where Content: Element {
+internal struct MSAAModifier<Content>: Element, BodylessContentElement where Content: Element {
     var content: Content
     var sampleCount: Int
 
@@ -47,85 +47,14 @@ internal struct MSAAModifier<Content>: Element, SetupElement, BodylessContentEle
     private var multisampleTexture: MTLTexture?
 
     @MSState
-    private var resolveTexture: MTLTexture?
-
-    @MSState
-    private var lastSize: CGSize?
-
-    @MSState
-    private var lastPixelFormat: MTLPixelFormat?
+    private var multisampleDepthTexture: MTLTexture?
 
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         try visit(content)
     }
 
-    func setupEnter(_ node: Node) throws {
-        guard sampleCount > 1 else {
-            return
-        }
-
-        let device = try node.environmentValues.device.orThrow(.missingEnvironment(\.device))
-        guard let renderPassDescriptor = node.environmentValues.renderPassDescriptor else {
-            return
-        }
-
-        // Get the current size and pixel format from the existing render pass
-        guard let existingTexture = renderPassDescriptor.colorAttachments[0].texture else {
-            return
-        }
-
-        let size = CGSize(width: existingTexture.width, height: existingTexture.height)
-        let pixelFormat = existingTexture.pixelFormat
-
-        // Check if we need to recreate textures
-        let needsRecreate = multisampleTexture == nil
-            || resolveTexture == nil
-            || lastSize != size
-            || lastPixelFormat != pixelFormat
-
-        if needsRecreate {
-            // Validate sample count is supported by device
-            guard device.supportsTextureSampleCount(sampleCount) else {
-                throw MetalSprocketsError.configurationError("Device does not support MSAA sample count \(sampleCount). Supported counts: \([2, 4, 8].filter { device.supportsTextureSampleCount($0) })")
-            }
-
-            // Create multisample texture
-            let msDesc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: pixelFormat,
-                width: Int(size.width),
-                height: Int(size.height),
-                mipmapped: false
-            )
-            msDesc.textureType = .type2DMultisample
-            msDesc.sampleCount = sampleCount
-            msDesc.usage = [.renderTarget]
-            msDesc.storageMode = .private
-
-            multisampleTexture = try device.makeTexture(descriptor: msDesc)
-                .orThrow(.resourceCreationFailure("Failed to create multisample texture"))
-            multisampleTexture?.label = "MSAA Multisample Texture (\(sampleCount)x)"
-
-            // Create resolve texture
-            let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: pixelFormat,
-                width: Int(size.width),
-                height: Int(size.height),
-                mipmapped: false
-            )
-            resolveDesc.usage = [.renderTarget, .shaderRead]
-            resolveDesc.storageMode = .private
-
-            resolveTexture = try device.makeTexture(descriptor: resolveDesc)
-                .orThrow(.resourceCreationFailure("Failed to create resolve texture"))
-            resolveTexture?.label = "MSAA Resolve Texture"
-
-            lastSize = size
-            lastPixelFormat = pixelFormat
-        }
-    }
-
     func configureNodeBodyless(_ node: Node) throws {
-        guard sampleCount > 1, let multisampleTexture, let resolveTexture else {
+        guard sampleCount > 1 else {
             return
         }
 
@@ -133,20 +62,91 @@ internal struct MSAAModifier<Content>: Element, SetupElement, BodylessContentEle
             fatalError("MSAAModifier: No System is currently active.")
         }
 
+        // The modifier rewrites the render pass descriptor, so it only means anything when it
+        // wraps a whole pass. Placed inside one it used to be a silent no-op (see #355).
+        if system.activeNodeStack.dropLast().contains(where: { $0.element is any RenderPassElement }) {
+            throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` must be placed on a RenderPass (or an element containing one), not on content inside a render pass.")
+        }
+
         // Get parent's renderPassDescriptor
         let parent = system.activeNodeStack.count >= 2 ? system.activeNodeStack[system.activeNodeStack.count - 2] : nil
         guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
-            return
+            throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` must be placed on an element that renders into a render pass; no render pass descriptor was found in the environment.")
+        }
+        guard let targetTexture = renderPassDescriptor.colorAttachments[0].texture else {
+            throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` requires a color attachment texture on the render pass descriptor.")
         }
 
-        let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
+        let device = try node.environmentValues.device.orThrow(.missingEnvironment(\.device))
+        let multisampleTexture = try multisampleTexture(device: device, matching: targetTexture)
 
-        // Configure for MSAA
+        let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
+        // Render into the multisample texture and let the GPU resolve straight back into
+        // the texture the caller supplied, so no copy-back step is needed (see #354).
         copy.colorAttachments[0].texture = multisampleTexture
-        copy.colorAttachments[0].resolveTexture = resolveTexture
+        copy.colorAttachments[0].resolveTexture = targetTexture
         copy.colorAttachments[0].storeAction = .multisampleResolve
 
+        // Depth has to match the colour attachment's sample count or the pass is invalid.
+        if let depthTexture = renderPassDescriptor.depthAttachment?.texture {
+            copy.depthAttachment.texture = try multisampleDepthTexture(device: device, matching: depthTexture)
+            copy.depthAttachment.storeAction = .dontCare
+        }
+
         node.environmentValues.renderPassDescriptor = copy
+    }
+
+    private func multisampleTexture(device: MTLDevice, matching targetTexture: MTLTexture) throws -> MTLTexture {
+        if let existing = multisampleTexture,
+            existing.width == targetTexture.width,
+            existing.height == targetTexture.height,
+            existing.pixelFormat == targetTexture.pixelFormat,
+            existing.sampleCount == sampleCount {
+            return existing
+        }
+        guard device.supportsTextureSampleCount(sampleCount) else {
+            throw MetalSprocketsError.configurationError("Device does not support MSAA sample count \(sampleCount). Supported counts: \([2, 4, 8].filter { device.supportsTextureSampleCount($0) })")
+        }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: targetTexture.pixelFormat,
+            width: targetTexture.width,
+            height: targetTexture.height,
+            mipmapped: false
+        )
+        descriptor.textureType = .type2DMultisample
+        descriptor.sampleCount = sampleCount
+        descriptor.usage = [.renderTarget]
+        descriptor.storageMode = .private
+        let texture = try device.makeTexture(descriptor: descriptor)
+            .orThrow(.resourceCreationFailure("Failed to create multisample texture"))
+        texture.label = "MSAA Multisample Texture (\(sampleCount)x)"
+        multisampleTexture = texture
+        return texture
+    }
+
+    private func multisampleDepthTexture(device: MTLDevice, matching depthTexture: MTLTexture) throws -> MTLTexture {
+        if let existing = multisampleDepthTexture,
+            existing.width == depthTexture.width,
+            existing.height == depthTexture.height,
+            existing.pixelFormat == depthTexture.pixelFormat,
+            existing.sampleCount == sampleCount {
+            return existing
+        }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: depthTexture.pixelFormat,
+            width: depthTexture.width,
+            height: depthTexture.height,
+            mipmapped: false
+        )
+        descriptor.textureType = .type2DMultisample
+        descriptor.sampleCount = sampleCount
+        descriptor.usage = [.renderTarget]
+        descriptor.storageMode = .private
+        let texture = try device.makeTexture(descriptor: descriptor)
+            .orThrow(.resourceCreationFailure("Failed to create multisample depth texture"))
+        texture.label = "MSAA Multisample Depth Texture (\(sampleCount)x)"
+        multisampleDepthTexture = texture
+        return texture
     }
 
     nonisolated func requiresSetup(comparedTo old: MSAAModifier<Content>) -> Bool {

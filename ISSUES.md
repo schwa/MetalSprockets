@@ -4926,11 +4926,13 @@ Wanted: split the three functions, then enable cyclomatic_complexity in .swiftli
 ## 354: .msaa(sampleCount:) never anti-aliases and drops rendering after the first frame
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: bug, effort:m
 created: 2026-08-08T18:46:37Z
+updated: 2026-08-08T19:53:13Z
+closed: 2026-08-08T19:53:13Z
 +++
 
 The .msaa(sampleCount:) element modifier does not anti-alias, and from the second frame onwards the caller's render target stops being updated.
@@ -4959,11 +4961,13 @@ Env: macOS, Apple silicon, Xcode 27.0 beta 4, MetalSprockets @ 61a6c479.
 ## 355: Misplaced .msaa() is a silent no-op
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 labels: bug, effort:s
 created: 2026-08-08T18:49:44Z
+updated: 2026-08-08T19:53:13Z
+closed: 2026-08-08T19:53:13Z
 +++
 
 `.msaa(sampleCount:)` rewrites the render pass descriptor, so it only has an effect when it wraps a `RenderPass`. Applying it to a `RenderPipeline` (or anything else inside the pass) does nothing at all: no error, no log, no warning — just an un-antialiased image that looks like a correct render.

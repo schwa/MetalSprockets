@@ -1,6 +1,7 @@
 import CoreGraphics
 import Metal
 @testable import MetalSprockets
+import MetalSprocketsSupport
 import Testing
 
 @MainActor
@@ -12,31 +13,30 @@ struct MSAAModifierEdgeTests {
         }
     }
 
-    @Test func `a sample count of one skips setup entirely`() throws {
+    @Test func `a sample count of one does nothing`() throws {
         // sampleCount <= 1 returns before any device or descriptor is needed, so this works with no environment
         // at all.
         let system = System()
         try system.update(root: Leaf().msaa(sampleCount: 1))
         try system.processSetup()
-
-        let modifierNodes = system.nodes.values.filter { $0.element is any SetupElement }
-        #expect(modifierNodes.isEmpty == false)
     }
 
-    @Test func `no render pass descriptor means nothing to multisample`() throws {
+    @Test func `no render pass descriptor is reported`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         // sampleCount > 1 and a device, but no render pass descriptor in the environment.
         let system = System()
-        try system.update(root: Leaf().msaa(sampleCount: 4).device(device))
-        try system.processSetup()
+        #expect(throws: MetalSprocketsError.self) {
+            try system.update(root: Leaf().msaa(sampleCount: 4).device(device))
+        }
     }
 
-    @Test func `a colourless render pass descriptor means nothing to multisample`() throws {
+    @Test func `a colourless render pass descriptor is reported`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let descriptor = MTLRenderPassDescriptor()
         // Deliberately no colorAttachments[0].texture.
         let system = System()
-        try system.update(root: Leaf().msaa(sampleCount: 4).renderPassDescriptor(descriptor).device(device))
-        try system.processSetup()
+        #expect(throws: MetalSprocketsError.self) {
+            try system.update(root: Leaf().msaa(sampleCount: 4).renderPassDescriptor(descriptor).device(device))
+        }
     }
 }
