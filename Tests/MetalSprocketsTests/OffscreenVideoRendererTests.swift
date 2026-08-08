@@ -151,6 +151,28 @@ func testVideoRendererSequentialRuns() async throws {
     #expect(infoB.naturalSize == CGSize(width: 320, height: 240))
 }
 
+@Test("An existing file at the output URL is replaced")
+func testVideoRendererReplacesExistingFile() async throws {
+    let url = makeTempOutputURL(suffix: "replaced")
+    defer { try? FileManager.default.removeItem(at: url) }
+
+    // Something unrelated is sitting at the output URL. AVAssetWriter refuses to write over it, so the renderer
+    // has to clear it out first.
+    let placeholder = Data(repeating: 0xAB, count: 1_024)
+    try placeholder.write(to: url)
+    #expect(try Data(contentsOf: url) == placeholder)
+
+    let renderer = try OffscreenVideoRenderer(size: CGSize(width: 320, height: 240), outputURL: url)
+    for frame in 0..<5 {
+        try await renderer.render(try makeTriangle(color: [Float(frame) / 5, 0, 0, 1]))
+    }
+    try await renderer.finalize()
+
+    let info = try await inspect(url: url)
+    #expect(info.videoTrackCount == 1)
+    #expect(info.naturalSize == CGSize(width: 320, height: 240))
+}
+
 // MARK: - Back-pressure seam (#321 / #336)
 
 /// Verifies that the injected `waitUntilReady` strategy is actually awaited
