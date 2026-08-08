@@ -2,6 +2,7 @@ import CoreGraphics
 import Metal
 import MetalKit
 @testable import MetalSprockets
+import MetalSprocketsSupport
 @testable import MetalSprocketsUI
 import Testing
 
@@ -175,5 +176,55 @@ struct RenderViewViewModelTests {
     @Test func `sampleCountChanged reports only real changes`() {
         #expect(sampleCountChanged(current: 1, observed: 4))
         #expect(sampleCountChanged(current: 4, observed: 4) == false)
+    }
+
+    @Test func `an MSAA change invalidates setup for every node`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let view = makeView(device: device)
+        let viewModel = try makeViewModel(device: device) { _, _ in
+            try triangle()
+        }
+        view.delegate = viewModel
+
+        viewModel.draw(in: view)
+        #expect(viewModel.frameRenderer.system.nodes.values.map(\.needsSetup).contains(true) == false)
+        #expect(viewModel.currentSampleCount == 1)
+
+        // A sample-count change means every pipeline state is stale, whether or not the size changed.
+        guard device.supportsTextureSampleCount(4) else {
+            return
+        }
+        view.sampleCount = 4
+        viewModel.draw(in: view)
+
+        #expect(viewModel.currentSampleCount == 4)
+    }
+
+    @Test func `frame logging can be switched on through the environment`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let view = makeView(device: device)
+        let viewModel = try makeViewModel(device: device) { _, _ in
+            try triangle()
+        }
+        view.delegate = viewModel
+
+        try SystemEnvironment.$current.withValue(SystemEnvironment(enabled: ["MS_RENDERVIEW_LOG_FRAME"])) {
+            #expect(RenderViewDebugging.logFrame)
+            viewModel.draw(in: view)
+        }
+
+        #expect(viewModel.frame == 1)
+        #expect(viewModel.lastError == nil)
+    }
+
+    @Test func `the signpost id is made once and reused`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let viewModel = try makeViewModel(device: device) { _, _ in
+            try triangle()
+        }
+
+        let first = viewModel.signpostID
+        let second = viewModel.signpostID
+        #expect(first == second)
     }
 }

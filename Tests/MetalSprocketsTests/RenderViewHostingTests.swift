@@ -51,4 +51,38 @@ struct RenderViewHostingTests {
         // Hosting instantiates the representable, which is what makes and configures the MTKView.
         #expect(RenderViewViewModelAllocationTracker.shared.allocationCount > 0)
     }
+
+    @Test func `an attached shader store is visible in the environment`() throws {
+        let store = ShaderStore()
+        let view = try triangleView().shaderStore(store)
+        #expect(try view.inspect().environment(\.shaderStore) === store)
+    }
+
+    @Test func `a supplied device and command queue are used instead of the defaults`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let commandQueue = try #require(device.makeCommandQueue())
+
+        // Supplying both means the lazy fallbacks are never consulted.
+        let box = ViewModelBox<EmptyElement>()
+        #expect(box.device(preferring: device) === device)
+        #expect(box.commandQueue(preferring: commandQueue, device: device) === commandQueue)
+    }
+
+    @Test func `the lazily made device and command queue are cached`() throws {
+        let box = ViewModelBox<EmptyElement>()
+
+        let device = box.device(preferring: nil)
+        #expect(box.device(preferring: nil) === device)
+
+        let commandQueue = box.commandQueue(preferring: nil, device: device)
+        #expect(box.commandQueue(preferring: nil, device: device) === commandQueue)
+    }
+
+    @Test func `changing the capture configuration is reported`() throws {
+        let view = try triangleView().capture(true, target: .commandQueue, destination: .developerTools)
+        ViewHosting.host(view: view, size: CGSize(width: 64, height: 64))
+        defer { ViewHosting.expel() }
+
+        #expect(try view.inspect().environment(\.renderViewCapture)?.enabled == true)
+    }
 }

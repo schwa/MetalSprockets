@@ -275,7 +275,9 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
 }
 
 /// Cheap holder class for lazy viewModel, device and command queue creation in `RenderViewHelper`.
-private final class ViewModelBox<Content: Element> {
+///
+/// Internal rather than private so the caching behaviour that #337 depends on can be tested directly.
+internal final class ViewModelBox<Content: Element> {
     var value: RenderViewViewModel<Content>?
     private var cachedDevice: MTLDevice?
     private var cachedCommandQueue: MTLCommandQueue?

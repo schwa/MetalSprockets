@@ -28,6 +28,20 @@ extension MSEnvironmentValues {
         #expect(storage3[.init(TestEnvironmentKey.self)] as? String == "value2")
     }
 
+    @Test func `merging the same parent twice is a no-op`() {
+        var parent = MSEnvironmentValues()
+        parent[TestEnvironmentKey.self] = "from parent"
+
+        var child = MSEnvironmentValues()
+        child.merge(parent)
+        #expect(child[TestEnvironmentKey.self] == "from parent")
+
+        // Merging the same parent again keeps the chain intact rather than re-linking it.
+        child.merge(parent)
+        #expect(child[TestEnvironmentKey.self] == "from parent")
+        #expect(child.storage.parent === parent.storage)
+    }
+
     @Test(.disabled("Would trigger assertion - demonstrates self-cycle protection"))
     func testDirectSelfCycle() {
         let storage = MSEnvironmentValues.Storage()
