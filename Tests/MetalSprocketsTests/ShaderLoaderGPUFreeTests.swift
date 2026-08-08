@@ -30,6 +30,10 @@ private final class MockFunction: NSObject, MTLFunction {
         fatalError("unavailable")
     }
 
+    // MTLFunction still requires this overload, and its signature names the deprecated MTLAutoreleasedArgument.
+    // Marking the implementation deprecated too is what keeps the reference from tripping -warnings-as-errors in CI.
+    @available(macOS, deprecated: 13.0)
+    @available(iOS, deprecated: 16.0)
     func makeArgumentEncoder(bufferIndex: Int, reflection: AutoreleasingUnsafeMutablePointer<MTLAutoreleasedArgument?>?) -> any MTLArgumentEncoder {
         fatalError("unavailable")
     }

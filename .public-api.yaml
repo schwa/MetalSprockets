@@ -43,6 +43,8 @@ modules:
         public func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element
     - decl: public func eraseToAnyElement() -> AnyElement
     - decl: |
+        public func gpuCounters(label: String? = nil, _ handler: @escaping @Sendable (GPUCounterSample) -> Void) -> some Element
+    - decl: |
         public func id<ID>(_ id: ID) -> some Element where ID : Hashable
     - decl: |
         public func linkedFunctions(_ functions: [any MTLFunction]) -> some Element
@@ -73,11 +75,11 @@ modules:
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, value: simd_float4x4) -> some Element
     - decl: |
-        public func parameter(_ name: String, functionType: MTLFunctionType?, value: some BitwiseCopyable) -> some Element
+        public func parameter(_ name: String, functionType: MTLFunctionType?, value: some Any) -> some Element
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, value: SIMD4<Float>) -> some Element
     - decl: |
-        public func parameter(_ name: String, functionType: MTLFunctionType?, values: [some BitwiseCopyable]) -> some Element
+        public func parameter(_ name: String, functionType: MTLFunctionType?, values: [some Any]) -> some Element
     - decl: |
         public func parameter(_ name: String, functionTypes: FunctionTypes = [], buffer: any MTLBuffer, offset: Int = 0) -> some Element
     - decl: |
@@ -87,12 +89,14 @@ modules:
     - decl: |
         public func parameter(_ name: String, functionTypes: FunctionTypes = [], value: simd_float4x4) -> some Element
     - decl: |
-        public func parameter(_ name: String, functionTypes: FunctionTypes = [], value: some BitwiseCopyable) -> some Element
+        public func parameter(_ name: String, functionTypes: FunctionTypes = [], value: some Any) -> some Element
     - decl: |
         public func parameter(_ name: String, functionTypes: FunctionTypes = [], value: SIMD4<Float>) -> some Element
     - decl: |
-        public func parameter(_ name: String, functionTypes: FunctionTypes = [], values: [some BitwiseCopyable]) -> some Element
+        public func parameter(_ name: String, functionTypes: FunctionTypes = [], values: [some Any]) -> some Element
     - decl: public func printDump() throws
+    - decl: |
+        public func renderAttachmentFormats(_ formats: RenderAttachmentFormats) -> some Element
     - decl: |
         public func renderPassDescriptor(_ renderPassDescriptor: MTLRenderPassDescriptor) -> some Element
     - decl: |
@@ -101,6 +105,8 @@ modules:
         public func renderPipelineDescriptor(_ renderPipelineDescriptor: MTLRenderPipelineDescriptor) -> some Element
     - decl: |
         public func renderPipelineDescriptorModifier(_ modify: @escaping (MTLRenderPipelineDescriptor) -> Void) -> some Element
+    - decl: |
+        public func renderPipelineDescriptorTransformer(_ modify: @escaping (MTLRenderPipelineDescriptor) -> Void) -> some Element
     - decl: public func run() throws
     - decl: |
         public func shaderStore(_ store: ShaderStore) -> some Element
@@ -134,10 +140,27 @@ modules:
         public func workloadEnabled(_ enabled: Bool = true) -> some Element
   - decl: public protocol MSDynamicProperty
   - decl: public protocol MSEnvironmentKey
+  - decl: 'public protocol ShaderLoader : Sendable'
+    members:
+    - decl: 'public func constantValues(forFunctionNamed name: String, constants: FunctionConstants) throws -> MTLFunctionConstantValues'
   - decl: 'public protocol ShaderProtocol : Equatable'
     members:
     - decl: 'public init(library: (any MTLLibrary)? = nil, name: String, device: (any MTLDevice)? = nil) throws'
     - decl: 'public init(source: String, logging: Bool = false, device: (any MTLDevice)? = nil) throws'
+  - decl: public final class GPUCounterSampler
+    members:
+    - decl: 'public init?(device: any MTLDevice)'
+    - decl: 'public func makeSampleBuffer(capacity: Int = 2) -> (any MTLCounterSampleBuffer)?'
+    - decl: 'public func resolve(_ sampleBuffer: any MTLCounterSampleBuffer, label: String? = nil) -> GPUCounterSample?'
+    - decl: 'public func seconds(forTicks ticks: UInt64) -> TimeInterval?'
+  - decl: public final class MetalShaderLoader
+    members:
+    - decl: 'public init(library: any MTLLibrary, id: ShaderLibrary.ID)'
+    - decl: 'public let cache: ShaderCache'
+    - decl: 'public let library: any MTLLibrary'
+    - decl: 'public let libraryID: ShaderLibrary.ID'
+    - decl: 'public func declaredConstants(forFunctionNamed name: String) throws -> [String : FunctionConstantInfo]'
+    - decl: 'public func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> any MTLFunction'
   - decl: public final class OffscreenVideoRenderer
     members:
     - decl: 'public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264) throws'
@@ -224,6 +247,14 @@ modules:
     - decl: 'public var function: any MTLFunction'
     - decl: 'public static let functionType: MTLFunctionType'
     - decl: 'public static func == (lhs: FragmentShader, rhs: FragmentShader) -> Bool'
+  - decl: public struct FunctionConstantInfo
+    members:
+    - decl: 'public init(_ constant: MTLFunctionConstant)'
+    - decl: 'public init(name: String, index: Int, dataType: MTLDataType, required: Bool)'
+    - decl: 'public let dataType: MTLDataType'
+    - decl: 'public let index: Int'
+    - decl: 'public let name: String'
+    - decl: 'public let required: Bool'
   - decl: public struct FunctionConstants
     members:
     - decl: public enum Value
@@ -244,6 +275,7 @@ modules:
     - decl: public init()
     - decl: 'public var isEmpty: Bool { get }'
     - decl: 'public subscript(name: String) -> FunctionConstants.Value? { get set }'
+    - decl: 'public func buildMTLConstants(declared constantsDictionary: [String : FunctionConstantInfo], functionName: String) throws -> MTLFunctionConstantValues'
     - decl: 'public func buildMTLConstants(for library: any MTLLibrary, functionName: String) throws -> MTLFunctionConstantValues'
   - decl: public struct FunctionTypes
     members:
@@ -261,6 +293,13 @@ modules:
     - decl: 'public static let render: FunctionTypes'
     - decl: 'public static let vertex: FunctionTypes'
     - decl: 'public static let visible: FunctionTypes'
+  - decl: public struct GPUCounterSample
+    members:
+    - decl: 'public init(label: String? = nil, startTimestamp: MTLTimestamp, endTimestamp: MTLTimestamp, duration: TimeInterval? = nil)'
+    - decl: 'public var duration: TimeInterval?'
+    - decl: 'public var endTimestamp: MTLTimestamp'
+    - decl: 'public var label: String?'
+    - decl: 'public var startTimestamp: MTLTimestamp'
   - decl: 'public struct Group<Content> where Content : Element'
     members:
     - decl: public typealias Body = Never
@@ -318,6 +357,7 @@ modules:
     - decl: 'public var linkedFunctions: MTLLinkedFunctions? { get set }'
     - decl: 'public var metalLoggingEnabled: Bool { get set }'
     - decl: 'public var reflection: Reflection? { get set }'
+    - decl: 'public var renderAttachmentFormats: RenderAttachmentFormats? { get set }'
     - decl: 'public var renderCommandEncoder: (any MTLRenderCommandEncoder)? { get set }'
     - decl: 'public var renderPassDescriptor: MTLRenderPassDescriptor? { get set }'
     - decl: 'public var renderPipelineDescriptor: MTLRenderPipelineDescriptor? { get set }'
@@ -401,6 +441,15 @@ modules:
       - decl: 'public var name: String'
     - decl: 'public var debugDescription: String { get }'
     - decl: 'public func binding(forType functionType: MTLFunctionType, name: String) -> Int?'
+  - decl: public struct RenderAttachmentFormats
+    members:
+    - decl: 'public init(_ descriptor: MTLRenderPassDescriptor)'
+    - decl: 'public init(colorPixelFormats: [MTLPixelFormat] = [], depthPixelFormat: MTLPixelFormat = .invalid, stencilPixelFormat: MTLPixelFormat = .invalid, rasterSampleCount: Int = 1)'
+    - decl: 'public var colorPixelFormats: [MTLPixelFormat]'
+    - decl: 'public var depthPixelFormat: MTLPixelFormat'
+    - decl: 'public var rasterSampleCount: Int'
+    - decl: 'public var stencilPixelFormat: MTLPixelFormat'
+    - decl: 'public func colorPixelFormat(at index: Int) -> MTLPixelFormat'
   - decl: 'public struct RenderPass<Content> where Content : Element'
     members:
     - decl: 'public init(label: String? = nil, @ElementBuilder content: () throws -> Content) throws'
@@ -408,18 +457,27 @@ modules:
     members:
     - decl: public typealias Body = Never
     - decl: 'public init(label: String? = nil, vertexShader: VertexShader, fragmentShader: FragmentShader, @ElementBuilder content: () throws -> Content) throws'
-  - decl: 'public struct RenderPipelineDescriptorModifier<Content> where Content : Element'
+  - decl: 'public struct RenderPipelineDescriptorTransformer<Content> where Content : Element'
   - decl: '@dynamicMemberLookup public struct ShaderLibrary'
     members:
+    - decl: public struct CompileOptionsSignature
+      members:
+      - decl: 'public init(_ options: MTLCompileOptions)'
+      - decl: 'public var installName: String?'
+      - decl: 'public var languageVersion: UInt'
+      - decl: 'public var libraryType: Int'
+      - decl: 'public var optimizationLevel: Int'
+      - decl: 'public var preprocessorMacros: [String : String]'
     - decl: public enum ID
       members:
       - decl: public case bundle(Bundle)
       - decl: public case library(any MTLLibrary)
-      - decl: public case source(String, MTLCompileOptions?)
+      - decl: public case source(String, ShaderLibrary.CompileOptionsSignature?)
       - decl: 'public func hash(into hasher: inout Hasher)'
       - decl: 'public static func == (lhs: ShaderLibrary.ID, rhs: ShaderLibrary.ID) -> Bool'
     - decl: 'public init(bundle: Bundle, device: (any MTLDevice)? = nil) throws'
     - decl: 'public init(library: any MTLLibrary)'
+    - decl: 'public init(loader: any ShaderLoader)'
     - decl: 'public init(source: String, options: MTLCompileOptions? = nil, device: (any MTLDevice)? = nil) throws'
     - decl: 'public var id: ShaderLibrary.ID { get }'
     - decl: 'public subscript(dynamicMember name: String) -> VertexShader { get throws }'
@@ -504,6 +562,7 @@ modules:
   - decl: 'public init(_ function: any MTLFunction)'
   - decl: '@ElementBuilder public var body: Self.Body { get throws }'
   - decl: 'public var body: Never { get } where Self.Body == Never'
+  - decl: 'public var libraryID: ShaderLibrary.ID { get }'
   - decl: 'public var function: any MTLFunction { get }'
   - decl: 'public static var defaultValue: Self.Value { get }'
   - decl: 'public static var functionType: MTLFunctionType { get }'
@@ -511,9 +570,14 @@ modules:
   - decl: 'public func persist(in context: MSDynamicPropertyContext) throws'
   - decl: 'public func update(in context: MSDynamicPropertyContext) throws'
   - decl: 'public func update(in context: MSDynamicPropertyContext) throws'
+  - decl: 'public func declaredConstants(forFunctionNamed name: String) throws -> [String : FunctionConstantInfo]'
+  - decl: 'public func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> any MTLFunction'
   extensions:
   - extended_module: Metal
     symbols:
+    - decl: extension MTLFunction
+      members:
+      - decl: 'public var functionConstantInfos: [String : FunctionConstantInfo] { get }'
     - decl: extension MTLFunctionType
       members:
       - decl: 'public var debugDescription: String { get }'
@@ -629,6 +693,11 @@ modules:
     - decl: 'public var index: UInt32'
     - decl: 'public var time: Float'
     - decl: 'public var viewportSize: SIMD2<UInt32>'
+  - decl: '@MainActor public struct OverlayBadgeModifier'
+    members:
+    - decl: '@MainActor public init()'
+    - decl: |
+        @MainActor public func body(content: Content) -> some View
   - decl: '@MainActor public struct RenderView<Content> where Content : Element'
     members:
     - decl: '@MainActor public init(colorPixelFormat: MTLPixelFormat? = nil, depthStencilPixelFormat: MTLPixelFormat? = nil, sampleCount: Int? = nil, @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content)'
@@ -659,8 +728,6 @@ modules:
       members:
       - decl: 'public var commandQueue: (any MTLCommandQueue)? { get set }'
       - decl: 'public var device: (any MTLDevice)? { get set }'
-      - decl: 'public var drawableSizeChange: ((CGSize) -> Void)? { get set }'
-      - decl: 'public var frameTimingChange: ((FrameTimingStatistics) -> Void)? { get set }'
       - decl: 'public var shaderStore: ShaderStore? { get set }'
     - decl: extension View
       members:
