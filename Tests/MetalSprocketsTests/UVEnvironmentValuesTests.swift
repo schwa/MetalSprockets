@@ -13,83 +13,114 @@ extension MSEnvironmentValues {
     }
 }
 
-@Suite struct MSEnvironmentValuesStorageTests {
-    @Test func testNormalParentChain() {
-        let storage1 = MSEnvironmentValues.Storage()
-        storage1.values[.init(TestEnvironmentKey.self)] = "value1"
-
-        let storage2 = MSEnvironmentValues.Storage()
-        storage2.parent = storage1
-        storage2.values[.init(TestEnvironmentKey.self)] = "value2"
-
-        let storage3 = MSEnvironmentValues.Storage()
-        storage3.parent = storage2
-
-        #expect(storage3[.init(TestEnvironmentKey.self)] as? String == "value2")
+@Suite struct MSEnvironmentValuesInheritanceTests {
+    @Test func `unset values fall back to the key default`() {
+        let environment = MSEnvironmentValues()
+        #expect(environment[TestEnvironmentKey.self] == "default")
     }
 
-    @Test func `merging the same parent twice is a no-op`() {
+    @Test func `inherited values are visible to children`() {
         var parent = MSEnvironmentValues()
         parent[TestEnvironmentKey.self] = "from parent"
 
         var child = MSEnvironmentValues()
-        child.merge(parent)
+        child.inherit(from: parent)
+
         #expect(child[TestEnvironmentKey.self] == "from parent")
+        #expect(child.values.isEmpty)
+    }
 
-        // Merging the same parent again keeps the chain intact rather than re-linking it.
-        child.merge(parent)
+    @Test func `own values shadow inherited values`() {
+        var parent = MSEnvironmentValues()
+        parent[TestEnvironmentKey.self] = "from parent"
+
+        var child = MSEnvironmentValues()
+        child[TestEnvironmentKey.self] = "from child"
+        child.inherit(from: parent)
+
+        #expect(child[TestEnvironmentKey.self] == "from child")
+    }
+
+    @Test func `inheriting is idempotent`() {
+        var parent = MSEnvironmentValues()
+        parent[TestEnvironmentKey.self] = "from parent"
+
+        var child = MSEnvironmentValues()
+        child.inherit(from: parent)
+        child.inherit(from: parent)
+
         #expect(child[TestEnvironmentKey.self] == "from parent")
-        #expect(child.storage.parent === parent.storage)
     }
 
-    @Test(.disabled("Would trigger assertion - demonstrates self-cycle protection"))
-    func testDirectSelfCycle() {
-        let storage = MSEnvironmentValues.Storage()
-        storage.values[.init(TestEnvironmentKey.self)] = "value"
+    @Test func `re-inheriting picks up later writes to the parent`() {
+        var parent = MSEnvironmentValues()
+        parent[TestEnvironmentKey.self] = "first"
 
-        // This would trigger assertion: "Cannot set Storage parent to itself"
-        // storage.parent = storage
+        var child = MSEnvironmentValues()
+        child.inherit(from: parent)
+        #expect(child[TestEnvironmentKey.self] == "first")
+
+        parent[TestEnvironmentKey.self] = "second"
+        child.inherit(from: parent)
+        #expect(child[TestEnvironmentKey.self] == "second")
     }
 
-    @Test func testTwoNodeCyclePrevention() {
-        let storage1 = MSEnvironmentValues.Storage()
-        storage1.values[.init(TestEnvironmentKey.self)] = "value1"
-
-        let storage2 = MSEnvironmentValues.Storage()
-        storage2.parent = storage1
-
-        // This should trigger assertion in debug builds - cannot create cycle
-        // In release builds, the assertion won't fire but we still prevent the cycle
-        #if DEBUG
-        // We can't directly test assertions, but document the expected behavior
-        // storage1.parent = storage2 // Would assert: "Cannot set parent - would create a cycle"
-        #endif
-    }
-
-    @Test func testParentChainDepth() {
-        // Test that we can have reasonable depth without issues
-        var storages: [MSEnvironmentValues.Storage] = []
-        for i in 0..<10 {
-            let storage = MSEnvironmentValues.Storage()
-            storage.values[.init(TestEnvironmentKey.self)] = "value\(i)"
-            if i > 0 {
-                storage.parent = storages[i - 1]
+    @Test func `values flow down a deep chain`() {
+        var environments = [MSEnvironmentValues]()
+        for index in 0..<10 {
+            var environment = MSEnvironmentValues()
+            if index > 0 {
+                environment.inherit(from: environments[index - 1])
             }
-            storages.append(storage)
+            if index == 0 {
+                environment[TestEnvironmentKey.self] = "from the root"
+            }
+            environments.append(environment)
         }
 
-        // Should find value from parent chain
-        let lastStorage = storages.last!
-        #expect(lastStorage[.init(TestEnvironmentKey.self)] as? String == "value9")
+        #expect(environments.last?[TestEnvironmentKey.self] == "from the root")
     }
 
-    @Test func testMergeCreatingCycle() {
-        var env1 = MSEnvironmentValues()
-        let env2 = MSEnvironmentValues()
+    @Test func `the nearest write in the chain wins`() {
+        var grandparent = MSEnvironmentValues()
+        grandparent[TestEnvironmentKey.self] = "grandparent"
 
-        env1.merge(env2)
+        var parent = MSEnvironmentValues()
+        parent.inherit(from: grandparent)
+        parent[TestEnvironmentKey.self] = "parent"
 
-        // If we incorrectly merge env1 into env2, it could create a cycle
-        // env2.merge(env1) // This would be problematic if allowed
+        var child = MSEnvironmentValues()
+        child.inherit(from: parent)
+
+        #expect(child[TestEnvironmentKey.self] == "parent")
     }
+
+    @Test func `removing inherited values keeps values written directly`() {
+        var parent = MSEnvironmentValues()
+        parent[TestEnvironmentKey.self] = "from parent"
+
+        var child = MSEnvironmentValues()
+        child.inherit(from: parent)
+        child[OtherTestEnvironmentKey.self] = 42
+
+        child.removeInheritedValues()
+
+        #expect(child[TestEnvironmentKey.self] == "default")
+        #expect(child[OtherTestEnvironmentKey.self] == 42)
+    }
+
+    @Test func `copies do not share writes with their source`() {
+        var parent = MSEnvironmentValues()
+        parent[TestEnvironmentKey.self] = "from parent"
+
+        var copy = parent
+        copy[TestEnvironmentKey.self] = "from copy"
+
+        #expect(parent[TestEnvironmentKey.self] == "from parent")
+        #expect(copy[TestEnvironmentKey.self] == "from copy")
+    }
+}
+
+private struct OtherTestEnvironmentKey: MSEnvironmentKey {
+    static let defaultValue = 0
 }

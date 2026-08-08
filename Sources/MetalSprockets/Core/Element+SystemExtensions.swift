@@ -19,20 +19,10 @@ internal extension Element {
     }
 
     private func applyInheritedEnvironment(from parent: Node?, to node: Node) {
-        // Always create a fresh environment for the node to avoid cycles
-        // This ensures each node has its own storage that can safely inherit from parent
-        if let parentEnvironmentValues = parent?.environmentValues {
-            // Create a fresh environment that inherits from parent
-            var freshEnvironment = MSEnvironmentValues()
-            freshEnvironment.merge(parentEnvironmentValues)
-
-            // Preserve any existing values from the node's current environment
-            if !node.environmentValues.storage.values.isEmpty {
-                freshEnvironment.storage.values.merge(node.environmentValues.storage.values) { _, new in new }
-            }
-
-            node.environmentValues = freshEnvironment
+        guard let parent else {
+            return
         }
+        node.environmentValues.inherit(from: parent.environmentValues)
     }
 
     /// Runs the pre-body phase of every ``MSDynamicProperty`` on this element.

@@ -241,10 +241,7 @@ private extension System {
             existingNode.element = element
             // When element changes, preserve setup-phase values while clearing others
             // This ensures values like renderPipelineState set during setup are retained
-            let preservedValues = existingNode.environmentValues.storage.values
-            existingNode.environmentValues = MSEnvironmentValues()
-            // Restore preserved values after resetting
-            existingNode.environmentValues.storage.values = preservedValues
+            existingNode.environmentValues.removeInheritedValues()
 
             // Only mark as needing setup if the element type requires it
             // Preserve existing needsSetup=true (e.g., from markAllNodesNeedingSetup)

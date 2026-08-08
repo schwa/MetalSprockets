@@ -57,49 +57,37 @@ public struct MSEnvironmentValues {
         var value: Any.Type
     }
 
-    class Storage {
-        weak var parent: Storage? {
-            didSet {
-                // Check for cycles when setting parent
-                if let parent {
-                    var visited = Set<ObjectIdentifier>()
-                    visited.insert(ObjectIdentifier(self))
+    /// Values written directly on this environment.
+    private(set) var values: [Key: Any] = [:]
 
-                    var path: [ObjectIdentifier] = [ObjectIdentifier(self)]
-                    var current: Storage? = parent
-                    while let node = current {
-                        let id = ObjectIdentifier(node)
-                        if visited.contains(id) {
-                            // Build a string showing the cycle
-                            path.append(id)
-                            let cycleDescription = path.map { "\($0)" }.joined(separator: " -> ")
-                            assertionFailure("Cannot set parent - would create a cycle in Storage chain: \(cycleDescription)")
-                            // Clear the parent to prevent the cycle
-                            self.parent = nil
-                            return
-                        }
-                        visited.insert(id)
-                        path.append(id)
-                        current = node.parent
-                    }
-                }
-            }
-        }
-        var values: [Key: Any] = [:]
+    /// The parent environment's effective values, captured when ``inherit(from:)`` was last called.
+    private(set) var inheritedValues: [Key: Any] = [:]
+
+    /// ``values`` layered over ``inheritedValues``, maintained eagerly so lookups stay O(1).
+    private(set) var effectiveValues: [Key: Any] = [:]
+
+    /// Re-reads the parent's effective values, leaving this environment's own values in place.
+    ///
+    /// Called on every node as the tree is traversed, so values written by ancestors during the
+    /// setup and workload phases become visible to descendants entered afterwards.
+    internal mutating func inherit(from parent: Self) {
+        inheritedValues = parent.effectiveValues
+        recomputeEffectiveValues()
     }
 
-    var storage = Storage()
+    /// Drops inherited values, keeping the values written directly on this environment.
+    internal mutating func removeInheritedValues() {
+        inheritedValues = [:]
+        recomputeEffectiveValues()
+    }
 
-    internal mutating func merge(_ parent: Self) {
-        precondition(parent.storage !== self.storage, "Cannot merge storage with itself")
+    internal mutating func setValue(_ value: Any?, forKey key: Key) {
+        values[key] = value
+        recomputeEffectiveValues()
+    }
 
-        // Debug: Check if we're about to create a problematic parent relationship
-        if storage.parent === parent.storage {
-            print("Warning: Attempting to merge with the same parent again (no-op)")
-            return
-        }
-
-        storage.parent = parent.storage
+    private mutating func recomputeEffectiveValues() {
+        effectiveValues = values.isEmpty ? inheritedValues : inheritedValues.merging(values) { _, own in own }
     }
 }
 
@@ -133,19 +121,13 @@ public protocol MSEnvironmentKey {
 public extension MSEnvironmentValues {
     subscript<Key: MSEnvironmentKey>(key: Key.Type) -> Key.Value {
         get {
-            if let value = storage[.init(key)] as? Key.Value {
+            if let value = effectiveValues[.init(key)] as? Key.Value {
                 return value
             }
             return Key.defaultValue
         }
         set {
-            if !isKnownUniquelyReferenced(&storage) {
-                let newStorage = Storage()
-                newStorage.parent = storage.parent
-                newStorage.values = storage.values
-                storage = newStorage
-            }
-            storage.values[.init(key)] = newValue
+            setValue(newValue, forKey: .init(key))
         }
     }
 }
@@ -223,28 +205,10 @@ extension MSEnvironmentValues.Key {
     }
 }
 
-extension MSEnvironmentValues.Storage {
-    subscript(key: MSEnvironmentValues.Key) -> Any? {
-        if let value = values[key] {
-            return value
-        }
-        // TODO: #68 Parent chain should never have cycles due to didSet check
-        if let parent, let value = parent[key] {
-            return value
-        }
-        return nil
-    }
-}
-
-extension MSEnvironmentValues.Storage: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        let keys = values.map { "\($0.key)".trimmingPrefix("__Key_") }.sorted()
-        return "([\(keys.joined(separator: ", "))], parent: \(parent != nil)))"
-    }
-}
-
 extension MSEnvironmentValues: CustomDebugStringConvertible {
     public var debugDescription: String {
-        "(storage: \(storage.debugDescription))"
+        let keys = values.map { "\($0.key)".trimmingPrefix("__Key_") }.sorted()
+        let inheritedKeys = inheritedValues.map { "\($0.key)".trimmingPrefix("__Key_") }.sorted()
+        return "(values: [\(keys.joined(separator: ", "))], inherited: [\(inheritedKeys.joined(separator: ", "))])"
     }
 }

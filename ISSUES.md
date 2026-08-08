@@ -1362,12 +1362,13 @@ closed: 2026-03-31T18:16:49Z
 ## 174: Parent chain in MSEnvironmentValues.Storage may be unnecessary
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: enhancement, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:30Z
+updated: 2026-08-08T20:07:10Z
+closed: 2026-08-08T20:07:10Z
 +++
 
 ## Current State
@@ -3029,12 +3030,13 @@ Existing tests in SystemTests, NeedsSetupTests, SystemProcessTests, and NodeTest
 ## 293: Refactor: MSEnvironmentValues storage parent-chain is an invisible runtime contract
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:xl
 created: 2026-03-31T19:33:38Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T20:07:10Z
+closed: 2026-08-08T20:07:10Z
 +++
 
 ## Problem

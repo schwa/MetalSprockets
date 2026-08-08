@@ -7,24 +7,26 @@ struct EnvironmentValuesDebugTests {
         static var defaultValue: Int { 0 }
     }
 
-    @Test("Empty storage has a debug description")
-    func emptyStorageDebugDescription() {
+    @Test("Empty environment has a debug description")
+    func emptyEnvironmentDebugDescription() {
         let env = MSEnvironmentValues()
-        // `debugDescription` on MSEnvironmentValues forwards to its storage,
-        // which includes the (possibly empty) sorted key list and parent flag.
         let description = String(reflecting: env)
-        #expect(description.contains("storage:"))
-        #expect(description.contains("parent: false"))
+        #expect(description.contains("values: []"))
+        #expect(description.contains("inherited: []"))
     }
 
-    @Test("Populated storage lists keys in debug description")
-    func populatedStorageDebugDescription() {
+    @Test("Populated environment lists keys in debug description")
+    func populatedEnvironmentDebugDescription() {
+        var parent = MSEnvironmentValues()
+        parent[MyKey.self] = 1
+
         var env = MSEnvironmentValues()
         env[MyKey.self] = 42
+        env.inherit(from: parent)
+
         let description = String(reflecting: env)
-        #expect(description.contains("storage:"))
-        // The storage description also contains "parent: false" when there's no chained parent.
-        #expect(description.contains("parent: false"))
+        #expect(description.contains("values: [MyKey]"))
+        #expect(description.contains("inherited: [MyKey]"))
     }
 
     @Test("Key.debugDescription stringifies the underlying type")

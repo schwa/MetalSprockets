@@ -33,22 +33,12 @@ internal extension System {
                 switch event {
                 case .enter(let node):
                     pushActiveNode(node)
+                    inheritEnvironmentFromActiveParent(node)
                     if skipDepth > 0 {
                         skipDepth += 1
                         continue
                     }
                     if let bodylessElement = node.element as? any BodylessElement {
-                        // Rebuild environment parent chain (mirrors `process`).
-                        // Runs for every bodyless element, not just workload ones, so children see a complete chain.
-                        if activeNodeStack.count > 1 {
-                            if node.environmentValues.storage.parent == nil {
-                                let parentNode = activeNodeStack[activeNodeStack.count - 2]
-                                var freshEnvironment = MSEnvironmentValues()
-                                freshEnvironment.merge(parentNode.environmentValues)
-                                freshEnvironment.storage.values.merge(node.environmentValues.storage.values) { _, new in new }
-                                node.environmentValues = freshEnvironment
-                            }
-                        }
                         if bodylessElement.skipsWorkload(node) {
                             skipDepth = 1
                             continue
@@ -75,6 +65,18 @@ internal extension System {
 }
 
 internal extension System {
+    /// Refreshes a node's inherited environment from the node above it on the active stack.
+    ///
+    /// Runs on every node entered during a traversal, including nodes that take no part in the
+    /// current phase, so values written by an ancestor propagate through intermediate nodes.
+    func inheritEnvironmentFromActiveParent(_ node: Node) {
+        guard activeNodeStack.count > 1 else {
+            return
+        }
+        let parentNode = activeNodeStack[activeNodeStack.count - 2]
+        node.environmentValues.inherit(from: parentNode.environmentValues)
+    }
+
     func process(needsSetup: Bool = false, enter: (any SetupElement, Node) throws -> Void, exit: (any SetupElement, Node) throws -> Void) throws {
         try withCurrentSystem {
             assert(activeNodeStack.isEmpty)
@@ -83,18 +85,8 @@ internal extension System {
                 switch event {
                 case .enter(let node):
                     pushActiveNode(node)
+                    inheritEnvironmentFromActiveParent(node)
                     if let bodylessElement = node.element as? any SetupElement, !needsSetup || node.needsSetup {
-                        // Rebuild environment parent chain
-                        // TODO: Investigate whether we need this still. Seems like patch for broken behavior.
-                        if activeNodeStack.count > 1 {
-                            if node.environmentValues.storage.parent == nil {
-                                let parentNode = activeNodeStack[activeNodeStack.count - 2]
-                                var freshEnvironment = MSEnvironmentValues()
-                                freshEnvironment.merge(parentNode.environmentValues)
-                                freshEnvironment.storage.values.merge(node.environmentValues.storage.values) { _, new in new }
-                                node.environmentValues = freshEnvironment
-                            }
-                        }
                         try enter(bodylessElement, node)
                     }
                 case .exit(let node):

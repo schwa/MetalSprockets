@@ -134,42 +134,13 @@ public struct EnvironmentSnapshot: Codable, Sendable {
     public let hasParent: Bool
 
     init(environmentValues: MSEnvironmentValues) {
-        // Use Mirror to extract storage
-        let mirror = Mirror(reflecting: environmentValues)
-
-        if let storageChild = mirror.children.first(where: { $0.label == "storage" }),
-            let storage = storageChild.value as? MSEnvironmentValues.Storage {
-            // Extract values from storage
-            let storageMirror = Mirror(reflecting: storage)
-
-            // Find the values dictionary
-            if let valuesChild = storageMirror.children.first(where: { $0.label == "values" }) {
-                var extractedValues = [String: String]()
-
-                // The values dictionary is [Key: Any]
-                let valuesMirror = Mirror(reflecting: valuesChild.value)
-                for child in valuesMirror.children {
-                    // Each child is a key-value pair
-                    if let pair = child.value as? (key: MSEnvironmentValues.Key, value: Any) {
-                        let keyDescription = "\(pair.key.value)".components(separatedBy: ".").last ?? "\(pair.key.value)"
-                        extractedValues[keyDescription] = "\(pair.value)"
-                    }
-                }
-                self.values = extractedValues
-            } else {
-                self.values = [:]
-            }
-
-            // Check for parent
-            if let parentChild = storageMirror.children.first(where: { $0.label == "parent" }) {
-                self.hasParent = !(parentChild.value is NSNull)
-            } else {
-                self.hasParent = false
-            }
-        } else {
-            self.values = [:]
-            self.hasParent = false
+        var extractedValues = [String: String]()
+        for (key, value) in environmentValues.values {
+            let keyDescription = "\(key.value)".components(separatedBy: ".").last ?? "\(key.value)"
+            extractedValues[keyDescription] = "\(value)"
         }
+        self.values = extractedValues
+        self.hasParent = !environmentValues.inheritedValues.isEmpty
     }
 }
 
