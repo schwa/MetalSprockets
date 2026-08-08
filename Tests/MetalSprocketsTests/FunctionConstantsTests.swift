@@ -39,25 +39,20 @@ struct FunctionConstantsTests {
     func setValues() throws {
         var constants = FunctionConstants()
 
-        // Test subscript setter
         constants["myInt"] = .int32(42)
         constants["myFloat"] = .float(3.14)
         constants["myBool"] = .bool(true)
 
-        // Test multiple assignments
         constants["anotherInt"] = .int32(100)
         constants["anotherFloat"] = .float(2.71)
         constants["vector"] = .float3([1, 2, 3])
 
-        // Test updating existing value
         constants["myInt"] = .int32(99)
 
-        // Test subscript getter
         #expect(constants["myInt"] == .int32(99))
         #expect(constants["myFloat"] == .float(3.14))
         #expect(constants["nonExistent"] == nil)
 
-        // Verify equality
         var constants2 = FunctionConstants()
         constants2["myInt"] = .int32(99)
         constants2["myFloat"] = .float(3.14)
@@ -73,7 +68,6 @@ struct FunctionConstantsTests {
     func applyToMTLConstants() throws {
         let mtlConstants = MTLFunctionConstantValues()
 
-        // Test each value type
         FunctionConstants.Value.bool(true).apply(to: mtlConstants, at: 0)
         FunctionConstants.Value.int8(127).apply(to: mtlConstants, at: 1)
         FunctionConstants.Value.uint8(255).apply(to: mtlConstants, at: 2)
@@ -88,9 +82,8 @@ struct FunctionConstantsTests {
         FunctionConstants.Value.float3([1.0, 2.0, 3.0]).apply(to: mtlConstants, at: 11)
         FunctionConstants.Value.float4([1.0, 2.0, 3.0, 4.0]).apply(to: mtlConstants, at: 12)
 
-        // MTLFunctionConstantValues doesn't provide a way to read back values,
-        // but we verified that apply() was called for each type without throwing
-        // The test passing means no crashes occurred during the apply operations
+        // MTLFunctionConstantValues has no read-back API, so this only asserts that apply()
+        // does not throw for each type.
     }
 
     @Test("Build MTL constants requires library")
@@ -100,12 +93,9 @@ struct FunctionConstantsTests {
         constants["myFloat"] = .float(3.14)
         constants["myBool"] = .bool(true)
 
-        // buildMTLConstants now requires a library and function name to introspect
-        // the actual function's constants dictionary. Without a real Metal library
-        // with a function that has these constants, we can't test this directly.
-        // The functionality is tested through integration tests with actual shaders.
+        // buildMTLConstants needs a real library to introspect; that path is covered by
+        // FunctionConstantsBuildTests.
 
-        // Test that we can still create and manipulate FunctionConstants
         #expect(constants["myInt"] == .int32(42))
         #expect(constants["myFloat"] == .float(3.14))
         #expect(constants["myBool"] == .bool(true))
@@ -115,11 +105,9 @@ struct FunctionConstantsTests {
     func emptyConstants() throws {
         let constants = FunctionConstants()
 
-        // Test that empty constants are properly initialized
         #expect(constants.isEmpty == true)
         #expect(constants["anyKey"] == nil)
 
-        // Test that we can add values to empty constants
         var mutableConstants = constants
         mutableConstants["test"] = .int32(1)
         #expect(mutableConstants.isEmpty == false)

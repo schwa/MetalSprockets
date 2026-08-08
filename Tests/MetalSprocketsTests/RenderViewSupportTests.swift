@@ -145,7 +145,8 @@ struct RenderViewSupportTests {
         // content directly through OffscreenRenderer (which sets its own env keys).
         let renderer = try OffscreenRenderer(size: CGSize(width: 128, height: 128))
         _ = try renderer.render(content)
-        _ = completedCalled // presence check only; firing depends on commit path
+        // Presence check only: whether the handler fires depends on the commit path.
+        _ = completedCalled
     }
 
     @Test("Root element honors capture configuration when enabled==false")

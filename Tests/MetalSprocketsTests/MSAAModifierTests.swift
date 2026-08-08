@@ -62,9 +62,8 @@ struct MSAAModifierTests {
     @Test("MSAA recreates textures when size changes")
     @MainActor
     func testMSAATextureRecreationOnSizeChange() throws {
-        // Render once, then render again at a different size using the same element graph.
-        // Each OffscreenRenderer creates a new System, so we need to share state across renders.
-        // Instead, render the same element with two different renderers to verify both succeed.
+        // Two renderers rather than one: each OffscreenRenderer builds its own System, so this checks
+        // that both sizes succeed independently.
         let pass = try makeTriangle().msaa(sampleCount: 4)
 
         let r1 = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
@@ -89,11 +88,8 @@ struct MSAAModifierTests {
     @Test("MSAA reuses textures on second render with same size")
     @MainActor
     func testMSAATextureReuseSameSize() throws {
-        // Two sequential renders via the same element graph at the same size.
-        // Since OffscreenRenderer builds its own System each time, the MSAAModifier
-        // re-runs setupEnter against fresh @MSState both times, so each render creates textures fresh.
-        // This still exercises the needsRecreate==true branch twice (coverage parity),
-        // but also validates no state bleed across renderers.
+        // Two renderers at the same size: MSAAModifier re-runs setupEnter against fresh @MSState each
+        // time, so textures are created twice and no state bleeds across renderers.
         let pass = try makeTriangle().msaa(sampleCount: 2)
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
         _ = try renderer.render(pass)

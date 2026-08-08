@@ -136,11 +136,9 @@ struct StateTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // Initial values
         #expect(TestMonitor.shared.values["parent"] as? Int == 0)
         #expect(TestMonitor.shared.values["child"] as? Int == 0)
 
-        // Get elements and trigger child action
         let childElement = system.element(at: [0, 0, 1, 0], type: TrackedElement.self)!
         system.withCurrentSystem {
             childElement.action()
@@ -152,11 +150,9 @@ struct StateTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // Parent unchanged, child incremented
         #expect(TestMonitor.shared.values["parent"] as? Int == 0)
         #expect(TestMonitor.shared.values["child"] as? Int == 1)
 
-        // Now trigger parent action
         let parentElement = system.element(at: [0, 0, 0], type: TrackedElement.self)!
         system.withCurrentSystem {
             parentElement.action()
@@ -165,7 +161,6 @@ struct StateTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // Parent incremented, child unchanged
         #expect(TestMonitor.shared.values["parent"] as? Int == 1)
         #expect(TestMonitor.shared.values["child"] as? Int == 1)
     }
@@ -220,10 +215,8 @@ struct StateTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // Initial: parent=0, middle=100, combined=100
         #expect(TestMonitor.shared.values["combined"] as? Int == 100)
 
-        // Trigger action
         let leaf = system.element(at: [0, 0, 0], type: PropagationLeaf.self)!
         system.withCurrentSystem {
             leaf.onIncrement()
@@ -232,7 +225,6 @@ struct StateTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // After: parent=10, middle=101, combined=111
         #expect(TestMonitor.shared.values["combined"] as? Int == 111)
     }
 }

@@ -68,9 +68,7 @@ final class TestMonitor: @unchecked Sendable {
     }
 }
 
-// Test helper methods for accessing elements by indices
 extension System {
-    // Computed property to extract ordered identifiers from traversal events
     var orderedIdentifiers: [StructuralIdentifier] {
         var identifiers: [StructuralIdentifier] = []
         for event in traversalEvents {
@@ -84,10 +82,8 @@ extension System {
     func identifier(at indices: [Int]) -> StructuralIdentifier? {
         guard !indices.isEmpty else { return nil }
 
-        // Simple approach: group identifiers by depth, then filter by parent
         var identifiersByDepth: [[StructuralIdentifier]] = []
 
-        // First pass: group all identifiers by their depth
         for id in orderedIdentifiers {
             let depth = id.atoms.count - 1
             while identifiersByDepth.count <= depth {
@@ -96,22 +92,18 @@ extension System {
             identifiersByDepth[depth].append(id)
         }
 
-        // Now walk the indices to find the target
         var targetPath: [StructuralIdentifier.Atom] = []
 
         for (depth, index) in indices.enumerated() {
             guard depth < identifiersByDepth.count else { return nil }
 
-            // Filter identifiers at this depth to only those that match our path so far
             let candidates = identifiersByDepth[depth].filter { id in
-                // Check if this identifier matches our path so far
                 guard id.atoms.count == depth + 1 else { return false }
                 return targetPath.enumerated().allSatisfy { $0.element == id.atoms[$0.offset] }
             }
 
             guard index < candidates.count else { return nil }
 
-            // Add this atom to our path
             targetPath.append(candidates[index].atoms[depth])
         }
 

@@ -81,19 +81,15 @@ struct ParametersTests {
 
         let element = TestElement()
 
-        // Test SIMD4 parameter
         let withSimd = element.parameter("position", value: SIMD4<Float>(1, 2, 3, 4))
         #expect(withSimd is ParameterElementModifier<TestElement>)
 
-        // Test matrix parameter
         let withMatrix = element.parameter("transform", value: simd_float4x4.identity)
         #expect(withMatrix is ParameterElementModifier<TestElement>)
 
-        // Test texture parameter
         let withTexture = element.parameter("diffuseTexture", texture: nil)
         #expect(withTexture is ParameterElementModifier<TestElement>)
 
-        // Test buffer parameter (we can't create a real MTLBuffer without a device, but we can test the API)
         let device = MTLCreateSystemDefaultDevice()
         if let device {
             let buffer = device.makeBuffer(length: 256)
@@ -103,11 +99,9 @@ struct ParametersTests {
             }
         }
 
-        // Test array parameter
         let withArray = element.parameter("weights", values: [1.0, 2.0, 3.0, 4.0])
         #expect(withArray is ParameterElementModifier<TestElement>)
 
-        // Test generic value parameter
         let withValue = element.parameter("scale", value: Float(2.0))
         #expect(withValue is ParameterElementModifier<TestElement>)
     }
@@ -137,18 +131,13 @@ struct ParametersTests {
         let element = TestElement()
         let system = System()
 
-        // Update the system with our element
         try system.update(root: element)
 
-        // Process setup - parameters should be collected
         try system.processSetup()
 
-        // The parameter modifier should be in the element tree
-        // We can verify that the parameter was properly created
         let modifiedElement = element.body
         #expect(modifiedElement is ParameterElementModifier<EmptyElement>)
 
-        // Verify the parameter was created with correct values
         if let modifier = modifiedElement as? ParameterElementModifier<EmptyElement> {
             #expect(modifier.parameters.count == 1)
             if let param = modifier.parameters[name: "testParam"] {
@@ -171,7 +160,6 @@ struct ParametersTests {
         }
 
         _ = TestElement()
-        // Element body is always non-nil, so no need to test
     }
 
     @Test
@@ -185,29 +173,23 @@ struct ParametersTests {
 
         let element = TestElement()
 
-        // Test vertex function type
         let vertexParam = element.parameter("vertexPos", functionType: .vertex, value: SIMD4<Float>(0, 0, 0, 1))
         #expect(vertexParam is ParameterElementModifier<TestElement>)
 
-        // Test fragment function type
         let fragmentParam = element.parameter("fragmentColor", functionType: .fragment, value: SIMD4<Float>(1, 1, 1, 1))
         #expect(fragmentParam is ParameterElementModifier<TestElement>)
 
-        // Test kernel function type
         let kernelParam = element.parameter("kernelSize", functionType: .kernel, value: Int32(256))
         #expect(kernelParam is ParameterElementModifier<TestElement>)
 
-        // Test nil function type (auto-detect)
         let autoParam = element.parameter("autoDetect", functionType: nil, value: Float(1.0))
         #expect(autoParam is ParameterElementModifier<TestElement>)
     }
 
     @Test
     func testParameterValueVariants() {
-        // Create various ParameterValue instances to test all cases
         let device = MTLCreateSystemDefaultDevice()
 
-        // Texture variant
         if let device {
             let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: .rgba8Unorm,
@@ -220,7 +202,6 @@ struct ParametersTests {
             #expect(textureParam.debugDescription == "Texture()")
         }
 
-        // SamplerState variant
         if let device {
             let samplerDescriptor = MTLSamplerDescriptor()
             samplerDescriptor.minFilter = .linear
@@ -230,7 +211,6 @@ struct ParametersTests {
             #expect(samplerParam.debugDescription == "SamplerState()")
         }
 
-        // Buffer variant
         if let device {
             let buffer = device.makeBuffer(length: 1_024)
             buffer?.label = "TestBuffer"
@@ -239,11 +219,9 @@ struct ParametersTests {
             #expect(bufferParam.debugDescription.contains("128"))
         }
 
-        // Array variant
         let arrayParam = ParameterValue<Float>.array([1.0, 2.0, 3.0, 4.0, 5.0])
         #expect(arrayParam.debugDescription == "Array")
 
-        // Value variant with various types
         let floatParam = ParameterValue<Float>.value(3.14159)
         #expect(floatParam.debugDescription == "3.14159")
 

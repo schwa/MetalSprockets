@@ -96,11 +96,9 @@ struct FrameTimingTrackerTests {
     func gpuTimeSurfaced() {
         var tracker = FrameTimingTracker()
         tracker.recordFrame(timestamp: 0.0)
-        // Before any completion, gpuTime is nil.
         let before = tracker.recordFrame(timestamp: 0.016)
         #expect(before.gpuTime == nil)
 
-        // Simulate a command-buffer completion updating the GPU time.
         tracker.lastGPUTime = 0.0042
         let after = tracker.recordFrame(timestamp: 0.032)
         #expect(after.gpuTime == 0.0042)

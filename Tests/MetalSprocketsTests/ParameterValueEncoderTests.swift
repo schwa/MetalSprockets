@@ -27,20 +27,14 @@ struct ParameterValueEncoderTests {
         passDesc.colorAttachments[0].storeAction = .store
         let encoder = try #require(commandBuffer.makeRenderCommandEncoder(descriptor: passDesc))
 
-        // .value
         encoder.setValue(ParameterValue<Float>.value(1.0), index: 0, functionType: .fragment)
-        // .array
         encoder.setValue(ParameterValue<Float>.array([1, 2, 3, 4]), index: 1, functionType: .fragment)
-        // .buffer
         let buffer = try #require(device.makeBuffer(length: 16))
         encoder.setValue(ParameterValue<Float>.buffer(buffer, 0), index: 2, functionType: .fragment)
-        // .texture
         encoder.setValue(ParameterValue<Float>.texture(texture), index: 0, functionType: .fragment)
-        // .samplerState
         let sampler = try #require(device.makeSamplerState(descriptor: MTLSamplerDescriptor()))
         encoder.setValue(ParameterValue<Float>.samplerState(sampler), index: 0, functionType: .fragment)
 
-        // AnyParameterValue route
         let any = AnyParameterValue(ParameterValue<Float>.value(2.0))
         encoder.setValue(any, index: 3, functionType: .fragment)
 
@@ -56,24 +50,18 @@ struct ParameterValueEncoderTests {
         let commandBuffer = try #require(queue.makeCommandBuffer())
         let encoder = try #require(commandBuffer.makeComputeCommandEncoder())
 
-        // .value
         encoder.setValue(ParameterValue<Float>.value(1.0), index: 0)
-        // .array
         encoder.setValue(ParameterValue<Float>.array([1, 2, 3, 4]), index: 1)
-        // .buffer
         let buffer = try #require(device.makeBuffer(length: 16))
         encoder.setValue(ParameterValue<Float>.buffer(buffer, 0), index: 2)
-        // .texture
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm, width: 16, height: 16, mipmapped: false
         )
         let texture = try #require(device.makeTexture(descriptor: descriptor))
         encoder.setValue(ParameterValue<Float>.texture(texture), index: 0)
-        // .samplerState
         let sampler = try #require(device.makeSamplerState(descriptor: MTLSamplerDescriptor()))
         encoder.setValue(ParameterValue<Float>.samplerState(sampler), index: 0)
 
-        // AnyParameterValue route
         let any = AnyParameterValue(ParameterValue<Float>.value(2.0))
         encoder.setValue(any, index: 3)
 

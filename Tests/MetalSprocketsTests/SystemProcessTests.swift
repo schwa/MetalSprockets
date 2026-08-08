@@ -100,10 +100,8 @@ struct SystemProcessTests {
 
         try system.render(root: element)
 
-        // Expected order explanation:
-        // The new processing model ensures siblings complete (enter+exit) before moving to the next sibling.
+        // Siblings complete (enter+exit) before the next sibling starts, in both phases:
         //
-        // Actual element structure (siblings at each level):
         //   DeepHierarchy
         //   ├── parent (TrackedBodyless)
         //   └── Child1
@@ -113,11 +111,6 @@ struct SystemProcessTests {
         //           ├── child2-b (TrackedBodyless)
         //           └── Child3
         //               └── child3 (TrackedBodyless)
-        //
-        // Since all TrackedBodyless elements are siblings at their respective levels,
-        // each completes (enter+exit) before the next sibling starts.
-        //
-        // Same pattern for both setup and workload phases
         let expectedSetupOrder = [
             "parent-setupEnter",
             "parent-setupExit",

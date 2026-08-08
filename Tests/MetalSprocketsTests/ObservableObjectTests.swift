@@ -53,7 +53,6 @@ struct ObservableObjectTests {
 
         TestMonitor.shared.clearUpdates()
 
-        // Trigger change through Published property
         let display = system.element(at: [0, 0], type: DisplayElement.self)!
         system.withCurrentSystem {
             display.action()
@@ -141,7 +140,6 @@ struct ObservableObjectTests {
 
         TestMonitor.shared.clearUpdates()
 
-        // Change text
         let textElement = system.element(at: [0, 0, 0, 1], type: TextElement.self)!
         system.withCurrentSystem {
             textElement.action()
@@ -153,7 +151,6 @@ struct ObservableObjectTests {
         #expect(TestMonitor.shared.updates == ["body"])
         #expect(TestMonitor.shared.values["text"] as? String == "World")
 
-        // Change flag
         TestMonitor.shared.clearUpdates()
         let flagElement = system.element(at: [0, 0, 0, 2], type: FlagElement.self)!
         system.withCurrentSystem {
@@ -209,7 +206,6 @@ struct ObservableObjectTests {
 
         TestMonitor.shared.clearUpdates()
 
-        // Change from child - should rebuild both
         let childDisplay = system.element(at: [0, 0, 0, 1, 0], type: DisplayElement.self)!
         system.withCurrentSystem {
             childDisplay.action()
@@ -329,7 +325,6 @@ struct ObservableObjectTests {
 
         TestMonitor.shared.clearUpdates()
 
-        // Change observed object
         if let display = system.element(at: [0, 0, 0], type: DisplayElement.self) {
             system.withCurrentSystem {
                 display.action()
@@ -346,7 +341,6 @@ struct ObservableObjectTests {
 
         TestMonitor.shared.clearUpdates()
 
-        // Change independent child's state
         if let independentDisplay = system.element(at: [0, 0, 3, 0], type: DisplayElement.self) {
             system.withCurrentSystem {
                 independentDisplay.action()

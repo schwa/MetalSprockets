@@ -105,11 +105,8 @@ struct OnDisappearTests {
         try system.update(root: root)
         try system.processSetup()
 
-        // Structural identity IS index-based within type, so reordering may or may
-        // not re-identify; what we actually want to assert is that teardown isn't
-        // called spuriously when the same total set of Leaf+OnDisappearModifier
-        // nodes remain. Exact count depends on matching; both 0 and a bounded
-        // value are acceptable, but it must not fire more than once.
+        // Structural identity is index-based within a type, so reordering may re-identify nodes.
+        // Whatever the matching decides, teardown must not fire more than once.
         #expect(disappearCount <= 1)
     }
 

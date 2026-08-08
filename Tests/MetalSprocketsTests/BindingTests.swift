@@ -48,10 +48,8 @@ struct BindingTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // Initial value
         #expect(TestMonitor.shared.values["value"] as? Int == 0)
 
-        // Modify through binding
         let actionElement = system.element(at: [0, 0, 0], type: ActionElement.self)!
         system.withCurrentSystem {
             actionElement.action()
@@ -60,7 +58,6 @@ struct BindingTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // Value should be updated in parent
         #expect(root.value == 1)
         #expect(TestMonitor.shared.values["value"] as? Int == 1)
     }
@@ -97,7 +94,6 @@ struct BindingTests {
 
         try system.update(root: root)
 
-        // Modify from parent
         let parentAction = system.element(at: [0, 0, 0], type: ActionElement.self)!
         system.withCurrentSystem {
             parentAction.action()
@@ -106,7 +102,6 @@ struct BindingTests {
         try system.update(root: root)
         #expect(root.counter == 15)
 
-        // Modify from child (through binding)
         let childAction = system.element(at: [0, 0, 1, 0], type: ActionElement.self)!
         system.withCurrentSystem {
             childAction.action()
@@ -156,7 +151,6 @@ struct BindingTests {
 
         #expect(TestMonitor.shared.values["value"] as? Int == 100)
 
-        // Modify at leaf level
         let leaf = system.element(at: [0, 0, 0, 0], type: ActionElement.self)!
         system.withCurrentSystem {
             leaf.action()
@@ -165,7 +159,6 @@ struct BindingTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // Change should propagate all the way to root
         #expect(root.value == 90)
         #expect(TestMonitor.shared.values["value"] as? Int == 90)
     }
@@ -219,10 +212,8 @@ struct BindingTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // Initial sum: 1 + 2 + 3 = 6
         #expect(TestMonitor.shared.values["sum"] as? Int == 6)
 
-        // Trigger combined action
         let combined = system.element(at: [0, 0, 0], type: CombinedElement.self)!
         system.withCurrentSystem {
             combined.action()
@@ -231,7 +222,6 @@ struct BindingTests {
         try system.update(root: root)
         try system.processWorkload()
 
-        // After: x=2, y=6, z=12, sum=20
         #expect(root.x == 2)
         #expect(root.y == 6)
         #expect(root.z == 12)

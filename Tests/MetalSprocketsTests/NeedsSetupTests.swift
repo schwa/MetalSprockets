@@ -4,7 +4,6 @@ import Testing
 
 @Suite(.serialized)
 struct NeedsSetupTests {
-    // Track setup calls
     final class SetupTrackingElement: Element, SetupElement, WorkloadElement, Identifiable, Equatable {
         typealias Body = Never
 
@@ -57,15 +56,12 @@ struct NeedsSetupTests {
 
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        // Change state - this should trigger needsSetup
         system.withCurrentSystem {
             element.counter = 1
         }
 
-        // Rendering again should create a new child element with a different ID
         try system.render(root: element)
 
-        // New element should get setup
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
     }
 
@@ -75,24 +71,19 @@ struct NeedsSetupTests {
         SetupTrackingElement.resetCounts()
         let system = System()
 
-        // Create a simple element tree
         let element = SetupTrackingElement(id: 1)
 
         try system.render(root: element)
 
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        // Render an equivalent element - should reuse the node
         try system.render(root: SetupTrackingElement(id: 1))
 
-        // Should still be 1 since element is equivalent
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        // Mark all nodes as needing setup (simulates drawable size change)
         system.markAllNodesNeedingSetup()
         try system.render(root: SetupTrackingElement(id: 1))
 
-        // Should now be 2
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
     }
 
@@ -106,16 +97,12 @@ struct NeedsSetupTests {
 
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        // Second frame with an equivalent element (same id)
         try system.render(root: SetupTrackingElement(id: 1))
 
-        // Should still be 1
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        // Third frame with a different element
         try system.render(root: SetupTrackingElement(id: 2))
 
-        // Should now be 2
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
     }
 
@@ -126,12 +113,10 @@ struct NeedsSetupTests {
         SetupTrackingElement.resetCounts()
         let system = System()
 
-        // Simulate rendering 10 frames with the same element
         for _ in 0..<10 {
             try system.render(root: SetupTrackingElement(id: 1))
         }
 
-        // Setup should only have been called once (first frame)
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
     }
 

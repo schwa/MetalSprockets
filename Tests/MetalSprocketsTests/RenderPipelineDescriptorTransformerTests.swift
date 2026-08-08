@@ -47,7 +47,6 @@ func testRenderPipelineDescriptorTransformerWithoutAlphaBlending() throws {
 
     let renderPass = try RenderPass {
         try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
-            // First triangle (red, pointing up)
             Draw { encoder in
                 let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
                 encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
@@ -55,7 +54,6 @@ func testRenderPipelineDescriptorTransformerWithoutAlphaBlending() throws {
             }
             .parameter("color", value: redColor)
 
-            // Second triangle (blue, pointing down, overlapping the red triangle)
             Draw { encoder in
                 let vertices: [SIMD2<Float>] = [[0, -0.5], [-0.5, 0.5], [0.5, 0.5]]
                 encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
@@ -64,7 +62,6 @@ func testRenderPipelineDescriptorTransformerWithoutAlphaBlending() throws {
             .parameter("color", value: blueColor)
         }
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())
-        // NO alpha blending modifier here
     }
 
     let offscreenRenderer = try OffscreenRenderer(size: CGSize(width: 512, height: 512))
@@ -117,7 +114,6 @@ func testRenderPipelineDescriptorTransformerWithAlphaBlending() throws {
 
     let renderPass = try RenderPass {
         try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
-            // First triangle (red, pointing up)
             Draw { encoder in
                 let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
                 encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
@@ -125,7 +121,6 @@ func testRenderPipelineDescriptorTransformerWithAlphaBlending() throws {
             }
             .parameter("color", value: redColor)
 
-            // Second triangle (blue, pointing down, overlapping the red triangle)
             Draw { encoder in
                 let vertices: [SIMD2<Float>] = [[0, -0.5], [-0.5, 0.5], [0.5, 0.5]]
                 encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
@@ -202,8 +197,6 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())
     }
     .renderPassDescriptorModifier { descriptor in
-        // Modify the render pass descriptor
-        // This should work without crashing and should modify a copy, not the original
         descriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1.0)
     }
 

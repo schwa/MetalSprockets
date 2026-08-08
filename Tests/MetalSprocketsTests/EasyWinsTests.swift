@@ -83,9 +83,8 @@ struct ProcessInfoExtensionsTests {
         _ = info.renderViewLogFrameEnabled
     }
 
-    // isTruthy is a private extension; covered indirectly above.
-    // The parser accepts ["yes","true","y","1","on"] regardless of case/whitespace.
-    // We can only exercise it via public APIs, which we've just done.
+    // isTruthy is private. It accepts ["yes", "true", "y", "1", "on"] regardless of case or
+    // whitespace, and is exercised through the public API above.
 }
 
 // MARK: - CommandBufferLogging

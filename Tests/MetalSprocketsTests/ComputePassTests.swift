@@ -166,7 +166,7 @@ struct ComputePassTests {
             EmptyElement()
         }
         // Ensure execution path runs without throwing when content is empty.
-        // Note: still requires a device/queue/commandBuffer provided by Element.run().
+        // Requires the device/queue/commandBuffer that Element.run() supplies.
         try element.run()
     }
 }

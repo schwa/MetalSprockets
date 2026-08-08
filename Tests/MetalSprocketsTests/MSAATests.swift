@@ -37,7 +37,6 @@ struct MSAATests {
         let vertexShader = try VertexShader(source: source)
         let fragmentShader = try FragmentShader(source: source)
 
-        // With sampleCount 1, should render normally without MSAA textures
         let renderPass = try RenderPass {
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                 Draw { encoder in
@@ -53,7 +52,6 @@ struct MSAATests {
         let offscreenRenderer = try OffscreenRenderer(size: CGSize(width: 256, height: 256))
         let rendering = try offscreenRenderer.render(renderPass)
 
-        // Should complete without errors and produce a valid texture
         #expect(rendering.texture.width == 256)
         #expect(rendering.texture.height == 256)
         #expect(rendering.texture.sampleCount == 1)
@@ -62,9 +60,8 @@ struct MSAATests {
     @Test("Render pipeline infers sample count from texture")
     @MainActor
     func testPipelineSampleCountFromTexture() throws {
-        // This test verifies that RenderPipeline correctly reads the sample count
-        // from the render pass descriptor's texture. Since we can't easily create
-        // a multisample texture in the test environment, we verify the default case.
+        // A multisample texture is impractical to build here, so this only covers the
+        // sampleCount == 1 path.
 
         let source = """
         #include <metal_stdlib>
@@ -110,7 +107,6 @@ struct MSAATests {
         let offscreenRenderer = try OffscreenRenderer(size: CGSize(width: 256, height: 256))
         let rendering = try offscreenRenderer.render(renderPass)
 
-        // Verify normal rendering works with sample count 1
         #expect(rendering.texture.sampleCount == 1)
     }
 }

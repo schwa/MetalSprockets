@@ -69,7 +69,6 @@ struct VertexDescriptorTests {
 
     @Test
     func testNormalizingOffsets() {
-        // Create a descriptor with incorrect offsets
         let attributes = [
             VertexDescriptor.Attribute(label: "position", semantic: .position, format: .float3, offset: 100, bufferIndex: 0),
             VertexDescriptor.Attribute(label: "normal", semantic: .normal, format: .float3, offset: 200, bufferIndex: 0),
@@ -94,7 +93,6 @@ struct VertexDescriptorTests {
 
     @Test
     func testNormalizingOffsetsMultipleBuffers() {
-        // Test with attributes in different buffers
         let attributes = [
             VertexDescriptor.Attribute(label: "position", semantic: .position, format: .float3, offset: 100, bufferIndex: 0),
             VertexDescriptor.Attribute(label: "normal", semantic: .normal, format: .float3, offset: 200, bufferIndex: 0),
@@ -110,17 +108,14 @@ struct VertexDescriptorTests {
         let descriptor = VertexDescriptor(attributes: attributes, layouts: layouts)
         let normalized = descriptor.normalizingOffsets()
 
-        // Each buffer should have offsets starting from 0
         let positionAttr = normalized.attributes.first { $0.semantic == .position }
         let normalAttr = normalized.attributes.first { $0.semantic == .normal }
         let texcoordAttr = normalized.attributes.first { $0.semantic == .texcoord }
         let colorAttr = normalized.attributes.first { $0.semantic == .color }
 
-        // Buffer 0 attributes
         #expect(positionAttr?.offset == 0)
         #expect(normalAttr?.offset == 12) // position (float3) = 12 bytes
 
-        // Buffer 1 attributes
         #expect(texcoordAttr?.offset == 0)
         #expect(colorAttr?.offset == 8) // texcoord (float2) = 8 bytes
     }
@@ -184,17 +179,14 @@ struct VertexDescriptorTests {
         let descriptor = VertexDescriptor(attributes: attributes, layouts: layouts)
         let mtlDescriptor = descriptor.mtlVertexDescriptor
 
-        // Check attribute 0 (position)
         #expect(mtlDescriptor.attributes[0].format == .float3)
         #expect(mtlDescriptor.attributes[0].offset == 0)
         #expect(mtlDescriptor.attributes[0].bufferIndex == 0)
 
-        // Check attribute 1 (normal)
         #expect(mtlDescriptor.attributes[1].format == .float3)
         #expect(mtlDescriptor.attributes[1].offset == 12)
         #expect(mtlDescriptor.attributes[1].bufferIndex == 0)
 
-        // Check layout
         #expect(mtlDescriptor.layouts[0].stride == 24)
         #expect(mtlDescriptor.layouts[0].stepFunction == .perVertex)
         #expect(mtlDescriptor.layouts[0].stepRate == 1)
@@ -214,17 +206,14 @@ struct VertexDescriptorTests {
         let descriptor = VertexDescriptor(attributes: attributes, layouts: layouts)
         let mtlDescriptor = MTLVertexDescriptor(descriptor)
 
-        // Check attribute 0 (position)
         #expect(mtlDescriptor.attributes[0].format == .float3)
         #expect(mtlDescriptor.attributes[0].offset == 0)
         #expect(mtlDescriptor.attributes[0].bufferIndex == 0)
 
-        // Check attribute 1 (texcoord)
         #expect(mtlDescriptor.attributes[1].format == .float2)
         #expect(mtlDescriptor.attributes[1].offset == 12)
         #expect(mtlDescriptor.attributes[1].bufferIndex == 0)
 
-        // Check layout
         #expect(mtlDescriptor.layouts[0].stride == 20)
         #expect(mtlDescriptor.layouts[0].stepFunction == .perInstance)
         #expect(mtlDescriptor.layouts[0].stepRate == 2)
@@ -232,7 +221,6 @@ struct VertexDescriptorTests {
 
     @Test
     func testVertexFormatSizes() {
-        // Test various vertex format sizes
         #expect(MTLVertexFormat.float.size == 4)
         #expect(MTLVertexFormat.float2.size == 8)
         #expect(MTLVertexFormat.float3.size == 12)
@@ -273,7 +261,6 @@ struct VertexDescriptorTests {
         #expect(MTLVertexFormat.uchar3.size == 3)
         #expect(MTLVertexFormat.uchar4.size == 4)
 
-        // Normalized formats should have the same size
         #expect(MTLVertexFormat.charNormalized.size == 1)
         #expect(MTLVertexFormat.char2Normalized.size == 2)
         #expect(MTLVertexFormat.char3Normalized.size == 3)
@@ -294,7 +281,6 @@ struct VertexDescriptorTests {
         #expect(MTLVertexFormat.ushort3Normalized.size == 6)
         #expect(MTLVertexFormat.ushort4Normalized.size == 8)
 
-        // Special formats
         #expect(MTLVertexFormat.int1010102Normalized.size == 4)
         #expect(MTLVertexFormat.uint1010102Normalized.size == 4)
         #expect(MTLVertexFormat.uchar4Normalized_bgra.size == 4)
@@ -315,7 +301,6 @@ struct VertexDescriptorTests {
             .userDefined
         ]
 
-        // Just test that all semantics can be used
         for semantic in semantics {
             let attribute = VertexDescriptor.Attribute(
                 label: nil,
@@ -354,10 +339,8 @@ struct VertexDescriptorTests {
 
     @Test
     func testInitFromMTLVertexDescriptor() {
-        // Create an MTLVertexDescriptor
         let mtlDescriptor = MTLVertexDescriptor()
 
-        // Set up some attributes
         mtlDescriptor.attributes[0].format = .float3
         mtlDescriptor.attributes[0].offset = 0
         mtlDescriptor.attributes[0].bufferIndex = 0
@@ -370,7 +353,6 @@ struct VertexDescriptorTests {
         mtlDescriptor.attributes[2].offset = 0
         mtlDescriptor.attributes[2].bufferIndex = 1
 
-        // Set up layouts
         mtlDescriptor.layouts[0].stride = 20
         mtlDescriptor.layouts[0].stepFunction = .perVertex
         mtlDescriptor.layouts[0].stepRate = 1
@@ -379,10 +361,8 @@ struct VertexDescriptorTests {
         mtlDescriptor.layouts[1].stepFunction = .perInstance
         mtlDescriptor.layouts[1].stepRate = 2
 
-        // Convert to VertexDescriptor
         let vertexDescriptor = VertexDescriptor(mtlDescriptor)
 
-        // Check that attributes were converted correctly
         #expect(vertexDescriptor.attributes.count == 3)
 
         // Since we can't infer semantic, all should be .userDefined
@@ -390,7 +370,6 @@ struct VertexDescriptorTests {
             #expect(attribute.semantic == .userDefined)
         }
 
-        // Check specific attribute properties
         let attr0 = vertexDescriptor.attributes[0]
         #expect(attr0.format == .float3)
         #expect(attr0.offset == 0)
@@ -406,7 +385,6 @@ struct VertexDescriptorTests {
         #expect(attr2.offset == 0)
         #expect(attr2.bufferIndex == 1)
 
-        // Check layouts
         #expect(vertexDescriptor.layouts[0]?.stride == 20)
         #expect(vertexDescriptor.layouts[0]?.stepFunction == .perVertex)
         #expect(vertexDescriptor.layouts[0]?.stepRate == 1)
@@ -418,7 +396,6 @@ struct VertexDescriptorTests {
 
     @Test
     func testRoundTripConversion() {
-        // Create a VertexDescriptor
         let originalAttributes = [
             VertexDescriptor.Attribute(label: "position", semantic: .position, format: .float3, offset: 0, bufferIndex: 0),
             VertexDescriptor.Attribute(label: "texcoord", semantic: .texcoord, format: .float2, offset: 12, bufferIndex: 0)
@@ -430,15 +407,13 @@ struct VertexDescriptorTests {
 
         let original = VertexDescriptor(attributes: originalAttributes, layouts: originalLayouts)
 
-        // Convert to MTLVertexDescriptor and back
         let mtlDescriptor = original.mtlVertexDescriptor
         let roundTrip = VertexDescriptor(mtlDescriptor)
 
-        // Check that the basic properties survived the round trip
         #expect(roundTrip.attributes.count == 2)
         #expect(roundTrip.layouts.count == 1)
 
-        // Note: We lose semantic information in the round trip since MTLVertexDescriptor doesn't store it
+        // MTLVertexDescriptor does not store semantics, so they do not survive the round trip.
         #expect(roundTrip.attributes[0].format == .float3)
         #expect(roundTrip.attributes[0].offset == 0)
         #expect(roundTrip.attributes[0].bufferIndex == 0)
@@ -454,7 +429,6 @@ struct VertexDescriptorTests {
 
     @Test
     func testComplexNormalization() {
-        // Test a complex scenario with multiple buffers and attributes
         let attributes = [
             VertexDescriptor.Attribute(label: "position", semantic: .position, format: .float3, offset: 100, bufferIndex: 0),
             VertexDescriptor.Attribute(label: "normal", semantic: .normal, format: .float3, offset: 200, bufferIndex: 0),
@@ -470,7 +444,6 @@ struct VertexDescriptorTests {
 
         let descriptor = VertexDescriptor(attributes: attributes, layouts: layouts)
 
-        // Normalize offsets first
         let normalizedOffsets = descriptor.normalizingOffsets()
         let posAttr = normalizedOffsets.attributes.first { $0.semantic == .position }
         let normAttr = normalizedOffsets.attributes.first { $0.semantic == .normal }
@@ -478,27 +451,21 @@ struct VertexDescriptorTests {
         let texAttr = normalizedOffsets.attributes.first { $0.semantic == .texcoord }
         let colAttr = normalizedOffsets.attributes.first { $0.semantic == .color }
 
-        // Buffer 0: position, normal, tangent should be sequential
         #expect(posAttr?.offset == 0)
         #expect(normAttr?.offset == 12) // position (float3) = 12
         #expect(tanAttr?.offset == 24) // + normal (float3) = 24
 
-        // Buffer 1: texcoord, color should be sequential
         #expect(texAttr?.offset == 0)
         #expect(colAttr?.offset == 8) // texcoord (float2) = 8
 
-        // Then normalize strides on the already offset-normalized descriptor
         let fullyNormalized = normalizedOffsets.normalizingStrides()
 
-        // Buffer 0 should have stride = last offset + size
         // tangent at offset 24 + size 12 = 36
         #expect(fullyNormalized.layouts[0]?.stride == 36)
 
-        // Buffer 1 should have stride = last offset + size
         // color at offset 8 + size 4 = 12
         #expect(fullyNormalized.layouts[1]?.stride == 12)
 
-        // Step functions and rates should be preserved
         #expect(fullyNormalized.layouts[0]?.stepFunction == .perVertex)
         #expect(fullyNormalized.layouts[0]?.stepRate == 1)
         #expect(fullyNormalized.layouts[1]?.stepFunction == .perInstance)

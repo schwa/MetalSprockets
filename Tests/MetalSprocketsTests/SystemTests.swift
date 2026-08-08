@@ -12,13 +12,11 @@ struct SystemTests {
         }
     }
 
-    // Simple test element for testing
     struct TestElement: Element {
         var value: Int
         var body: Never { fatalError() }
     }
 
-    // Container element that has children
     struct ContainerElement: Element {
         var value: Int
         var childValue: Int
@@ -28,7 +26,6 @@ struct SystemTests {
         }
     }
 
-    // Container with multiple children
     struct MultiChildContainer: Element {
         var children: [Int]
 
@@ -45,7 +42,6 @@ struct SystemTests {
         let system = System()
         let element = TestElement(value: 1)
 
-        // Initial render should create a new node
         try system.render(root: element)
 
         #expect(system.orderedIdentifiers.count == 1)
@@ -65,15 +61,12 @@ struct SystemTests {
         try system.render(root: element1)
         let node1 = system.nodes.values.first
 
-        // Second frame with the same value
         let element2 = TestElement(value: 1)
         try system.render(root: element2)
 
-        // Should still have one node
         #expect(system.nodes.count == 1)
         Self.expectConsistentIdentifiers(system)
 
-        // Node should be updated with new element
         let node2 = system.nodes.values.first
         #expect(node2?.id == node1?.id)
         #expect((node2?.element as? TestElement)?.value == 1)
@@ -87,15 +80,12 @@ struct SystemTests {
 
         try system.render(root: element1)
 
-        // Second frame with a different value
         let element2 = TestElement(value: 2)
         try system.render(root: element2)
 
-        // Should still have same structural ID
         #expect(system.orderedIdentifiers.count == 1)
         Self.expectConsistentIdentifiers(system)
 
-        // But element should be updated
         let node = system.nodes.values.first
         #expect((node?.element as? TestElement)?.value == 2)
     }
@@ -108,25 +98,19 @@ struct SystemTests {
 
         try system.render(root: container)
 
-        // Should have 2 identifiers: container and its child
         #expect(system.orderedIdentifiers.count == 2)
         #expect(system.nodes.count == 2)
         Self.expectConsistentIdentifiers(system)
 
-        // Check the container node
         let containerId = system.orderedIdentifiers[0]
         let containerNode = system.nodes[containerId]
         #expect((containerNode?.element as? ContainerElement)?.value == 1)
 
-        // Check the child node
         let childId = system.orderedIdentifiers[1]
         let childNode = system.nodes[childId]
         #expect((childNode?.element as? TestElement)?.value == 10)
 
-        // Verify the structural path is correct
-        // Container should have 1 atom (root)
         #expect(containerId.atoms.count == 1)
-        // Child should have 2 atoms (container -> child)
         #expect(childId.atoms.count == 2)
     }
 
@@ -138,20 +122,16 @@ struct SystemTests {
         let container1 = ContainerElement(value: 1, childValue: 10)
         try system.render(root: container1)
 
-        // Second frame - only child value changes
         let container2 = ContainerElement(value: 1, childValue: 20)
         try system.render(root: container2)
 
-        // Structure should be the same
         #expect(system.orderedIdentifiers.count == 2)
         Self.expectConsistentIdentifiers(system)
 
-        // Container should be updated but value unchanged
         let containerId = system.orderedIdentifiers[0]
         let containerNode = system.nodes[containerId]
         #expect((containerNode?.element as? ContainerElement)?.value == 1)
 
-        // Child should show the value change
         let childId = system.orderedIdentifiers[1]
         let childNode = system.nodes[childId]
         #expect((childNode?.element as? TestElement)?.value == 20)
@@ -162,7 +142,6 @@ struct SystemTests {
     func testSystemDetectsStructuralChanges() throws {
         let system = System()
 
-        // First frame with 2 children
         let container1 = MultiChildContainer(children: [1, 2])
         try system.render(root: container1)
 
@@ -171,7 +150,6 @@ struct SystemTests {
         #expect(system.orderedIdentifiers.count == 6)
         Self.expectConsistentIdentifiers(system)
 
-        // Second frame with 3 children
         let container2 = MultiChildContainer(children: [1, 2, 3])
         try system.render(root: container2)
 
@@ -179,7 +157,6 @@ struct SystemTests {
         #expect(system.orderedIdentifiers.count == 8)
         Self.expectConsistentIdentifiers(system)
 
-        // The new child should be at the end
         let newChildId = system.orderedIdentifiers[7]
         let newChildNode = system.nodes[newChildId]
         #expect((newChildNode?.element as? TestElement)?.value == 3)

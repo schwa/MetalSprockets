@@ -78,24 +78,20 @@ struct UberTest {
         let element = RootElement()
         let system = System()
 
-        // Initial setup with counter=0
         try system.update(root: element)
         try system.processSetup()
         try system.processWorkload()
 
         let monitor = TestMonitor.shared
 
-        // Verify process order: siblings complete before moving to next
         let calls = monitor.observations.map { "\($0.element)-\($0.phase)" }
         let expectedOrder = [
-            // Setup: siblings complete before next
             "root-setupEnter",
             "root-setupExit",
             "child-setupEnter",
             "child-setupExit",
             "grandchild-setupEnter",
             "grandchild-setupExit",
-            // Workload: siblings complete before next
             "root-workloadEnter",
             "root-workloadExit",
             "child-workloadEnter",
@@ -105,7 +101,6 @@ struct UberTest {
         ]
         #expect(calls == expectedOrder)
 
-        // Verify state values
         let rootSetup = monitor.observations.first { $0.phase == "setupEnter" && $0.element == "root" }!
         #expect(rootSetup.counter == 0)
         #expect(rootSetup.env == "<default>")
@@ -118,10 +113,8 @@ struct UberTest {
         #expect(grandchildSetup.counter == 200) // (0 + 100) * 2
         #expect(grandchildSetup.env == "child-env")
 
-        // Clear and test with state change
         monitor.reset()
 
-        // Change state to add conditional element
         system.withCurrentSystem {
             element.counter = 1
         }
@@ -131,7 +124,6 @@ struct UberTest {
         try system.update(root: element)
         try system.processSetup()
 
-        // Verify conditional element appears with correct values
         let conditionalSetup = monitor.observations.first { $0.phase == "setupEnter" && $0.element == "conditional" }!
         #expect(conditionalSetup.counter == 10) // 1 * 10
         #expect(conditionalSetup.env == "<default>")
@@ -245,11 +237,9 @@ struct UberTest {
 
         let monitor = TestMonitor.shared
 
-        // Initial environment values
         #expect(monitor.updates[0] == "parent: A")
         #expect(monitor.updates[1] == "child: A-nested")
 
-        // Change state and verify environment updates
         monitor.reset()
         system.withCurrentSystem {
             element.modifier = "B"
@@ -313,7 +303,6 @@ struct UberTest {
         let monitor = TestMonitor.shared
         let calls = monitor.observations.map { "\($0.element)-\($0.phase)" }
 
-        // Should process siblings completely before moving to next sibling
         let expectedOrder = [
             "root-setupEnter",
             "root-setupExit",
