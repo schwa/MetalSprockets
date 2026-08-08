@@ -4519,15 +4519,18 @@ Same concern applies to the per-library ShaderCache of MTLFunctions, though thos
 ## 340: Add .debugGroup() element modifier for pushDebugGroup/popDebugGroup
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:s
 created: 2026-04-21T03:10:58Z
-updated: 2026-08-08T06:04:04Z
+updated: 2026-08-08T16:17:59Z
+closed: 2026-08-08T16:17:59Z
 +++
 
 Expose Metal's pushDebugGroup/popDebugGroup as an element modifier, e.g. .debugGroup("Scene") { ... }. Makes GPU captures and Instruments traces much easier to read. Follow-up from #48 — the label coverage for buffers/textures/pipelines/encoders is already in place; debug groups are the remaining piece.
+
+- `2026-08-08T16:17:59Z`: Added .debugGroup(_:), which pushes on the innermost active encoder (render/compute/blit) or the command buffer when wrapping whole passes, and pops on workload exit.
 
 ---
 
