@@ -5093,3 +5093,40 @@ Two knock-on effects:
 The test is currently wrapped in `withKnownIssue`; unwrap it when this is fixed.
 
 ---
+
+## 359: renderPipelineDescriptorModifier changes are ignored after the first frame
+
++++
+status: new
+priority: high
+kind: bug
+labels: effort:m
+created: 2026-08-08T20:02:36Z
++++
+
+## What happens
+
+A `renderPipelineDescriptorModifier` that changes what it does between frames has no effect from frame 2 onwards. The pipeline state built on the first frame keeps being used.
+
+## Why
+
+`RenderPipelineCache.Key` is built from shader identities, linked functions, the vertex descriptor, attachment pixel formats and sample count, the depth-stencil descriptor, and the label. Nothing a `renderPipelineDescriptorModifier` does is part of the key, so a frame that only changes the descriptor is a cache *hit* and `setupEnter` returns early with the stale `MTLRenderPipelineState`.
+
+This is the same failure mode as #358 but a different mechanism: #358 is a stale depth-stencil state, this is a stale pipeline state.
+
+## Reproduction
+
+`testBlendStateChangeBetweenFramesTakesEffect` in `RenderPipelineDescriptorModifierTests`. Two overlapping half-alpha triangles, one `OffscreenRenderer`, a descriptor modifier that is always present and only toggles `isBlendingEnabled`:
+
+- Frame 1, blending off: matches the `NoAlphaBlend` golden.
+- Frame 2, blending on: still matches `NoAlphaBlend`, not `WithAlphaBlend`.
+
+Rendering the blending-on frame into a fresh renderer produces `WithAlphaBlend` correctly (`testRenderPipelineDescriptorModifierWithAlphaBlending`), which rules out the golden being wrong.
+
+## Notes
+
+Fixing this means the cache key has to reflect the modified descriptor. Hashing the `MTLRenderPipelineDescriptor` after the modifier has run (the way `NSObjectValueKey` already does for `MTLVertexDescriptor`) would work, at the cost of running the modifier on every frame before the cache lookup.
+
+The test is currently wrapped in `withKnownIssue`; unwrap it when this is fixed.
+
+---

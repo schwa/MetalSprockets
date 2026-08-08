@@ -212,6 +212,76 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
     _ = try rendering.cgImage
 }
 
+/// The pipeline cache key is built from shader identities, attachment formats, the vertex descriptor and the
+/// depth-stencil descriptor — but not from anything a `renderPipelineDescriptorModifier` does. Turning blending on
+/// between frames therefore has to be observable, or the second frame silently reuses the first frame's PSO.
+@Test
+@MainActor
+func testBlendStateChangeBetweenFramesTakesEffect() throws {
+    let source = """
+    #include <metal_stdlib>
+    using namespace metal;
+    struct VertexIn { float2 position [[attribute(0)]]; };
+    struct VertexOut { float4 position [[position]]; };
+    [[vertex]] VertexOut vertex_main(const VertexIn in [[stage_in]]) {
+        VertexOut out; out.position = float4(in.position, 0.0, 1.0); return out;
+    }
+    [[fragment]] float4 fragment_main(VertexOut in [[stage_in]], constant float4 &color [[buffer(0)]]) {
+        return color;
+    }
+    """
+
+    // Built once: the cache keys on MTLFunction identity, so fresh shaders would miss every frame and hide the
+    // question being asked here.
+    let library = try ShaderLibrary(source: source)
+    let vertexShader = try library.function(type: VertexShader.self, named: "vertex_main")
+    let fragmentShader = try library.function(type: FragmentShader.self, named: "fragment_main")
+
+    let redColor: SIMD4<Float> = [1, 0, 0, 0.5]
+    let blueColor: SIMD4<Float> = [0, 0, 1, 0.5]
+
+    // The tree shape is identical either way — the modifier is always present, only what it does changes.
+    func scene(blending: Bool) throws -> some Element {
+        try RenderPass {
+            try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
+                Draw { encoder in
+                    let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
+                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+                .parameter("color", value: redColor)
+
+                Draw { encoder in
+                    let vertices: [SIMD2<Float>] = [[0, -0.5], [-0.5, 0.5], [0.5, 0.5]]
+                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+                .parameter("color", value: blueColor)
+            }
+            .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+            .renderPipelineDescriptorModifier { descriptor in
+                descriptor.colorAttachments[0].isBlendingEnabled = blending
+                descriptor.colorAttachments[0].rgbBlendOperation = .add
+                descriptor.colorAttachments[0].alphaBlendOperation = .add
+                descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                descriptor.colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha
+                descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+                descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            }
+        }
+    }
+
+    let size = CGSize(width: 512, height: 512)
+    let renderer = try OffscreenRenderer(size: size)
+
+    try Golden.verify(try renderer.render(try scene(blending: false)).cgImage, named: "NoAlphaBlend")
+    // Frame 2 still renders unblended: the descriptor modifier's output is not part of the pipeline cache key, so
+    // the first frame's pipeline state is reused. See #359.
+    try withKnownIssue {
+        try Golden.verify(try renderer.render(try scene(blending: true)).cgImage, named: "WithAlphaBlend")
+    }
+}
+
 /// Regression test for #342: verifies PSO cache hits on frames 2+ when
 /// a renderPipelineDescriptorModifier is present.
 @Test
