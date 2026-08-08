@@ -5051,3 +5051,45 @@ Consequence for tests: none of those error paths can be asserted through `Offscr
 Related: the same unwinding problem was fixed for `System.activeNodeStack` in the #296 commit, where the phase traversals now clear the stack on the way out. The encoders need equivalent treatment.
 
 ---
+
+## 358: Depth-stencil state is frozen after the first frame
+
++++
+status: new
+priority: high
+kind: bug
+labels: effort:m
+created: 2026-08-08T19:56:32Z
++++
+
+## What happens
+
+Once a `RenderPipeline` (or `MeshRenderPipeline`) node has run setup once, changing the depth-stencil descriptor on a later frame has no effect. The pipeline keeps using the depth-stencil state built on the very first frame.
+
+## Why
+
+`RenderPipeline.setupEnter` only builds a depth-stencil state when the node's environment does not already have one:
+
+    var builtDepthStencilState: MTLDepthStencilState?
+    if environment.depthStencilState == nil, let depthStencilDescriptor = environment.depthStencilDescriptor {
+        builtDepthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
+        node.environmentValues.depthStencilState = builtDepthStencilState
+    }
+
+`node.environmentValues` persists across frames (`System+Process` merges the parent environment into the node's existing storage rather than replacing it), so from frame 2 onwards `environment.depthStencilState` is never nil and the descriptor is ignored. `MeshRenderPipeline` has the same shape.
+
+Two knock-on effects:
+
+- The cache-hit branch `if environment.depthStencilState == nil, let cachedDSS = cache.depthStencilState` is unreachable for the same reason — dead code in both files.
+- The `depthStencil:` component of the pipeline cache key correctly registers a miss when the descriptor changes, so a *new* pipeline state is built, but it is paired with the *old* depth-stencil state.
+
+## Reproduction
+
+`GoldenRenderingTests.'changing the depth compare function between frames takes effect'`. Two coplanar quads, red then green:
+
+- Fresh renderer, `.always`: green covers the overlap (golden `CoplanarDepthAlways`).
+- Same renderer, frame 1 `.less` then frame 2 `.always`: frame 2 still renders as if `.less` were in force (red keeps the overlap).
+
+The test is currently wrapped in `withKnownIssue`; unwrap it when this is fixed.
+
+---
