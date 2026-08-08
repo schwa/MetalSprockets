@@ -3,6 +3,13 @@ internal struct EnvironmentWritingModifier<Content: Element>: Element, BodylessE
     var content: Content
     var modify: (inout MSEnvironmentValues) -> Void
 
+    /// Key path written by `modify`, when the modifier was created from the key-path form.
+    /// Together with `value` and `valuesAreEqual` this lets `requiresSetup(comparedTo:)`
+    /// compare what the closure *does* instead of comparing the (uncomparable) closure.
+    var keyPath: AnyKeyPath?
+    var value: Any?
+    var valuesAreEqual: ((Any?, Any?) -> Bool)?
+
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         try visit(content)
     }
@@ -12,9 +19,12 @@ internal struct EnvironmentWritingModifier<Content: Element>: Element, BodylessE
     }
 
     nonisolated func requiresSetup(comparedTo old: EnvironmentWritingModifier<Content>) -> Bool {
-        // Environment changes might affect setup if they change pipeline-relevant values
-        // Since we can't compare closures, be conservative
-        true
+        // Environment changes might affect setup if they change pipeline-relevant values.
+        guard let keyPath, let valuesAreEqual, keyPath == old.keyPath else {
+            // Opaque closure form (or a different key path): stay conservative.
+            return true
+        }
+        return !valuesAreEqual(value, old.value)
     }
 }
 
@@ -54,5 +64,30 @@ public extension Element {
         EnvironmentWritingModifier(content: self) { environmentValues in
             environmentValues[keyPath: keyPath] = value
         }
+    }
+
+    /// Sets an equatable environment value for this element and its descendants.
+    ///
+    /// This overload records the key path and value so repeated updates with an unchanged
+    /// value can skip the setup phase (see #346).
+    ///
+    /// - Parameters:
+    ///   - keyPath: A writable key path to the environment value.
+    ///   - value: The value to set.
+    func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element where Value: Equatable {
+        EnvironmentWritingModifier(
+            content: self,
+            modify: { environmentValues in
+                environmentValues[keyPath: keyPath] = value
+            },
+            keyPath: keyPath,
+            value: value,
+            valuesAreEqual: { lhs, rhs in
+                guard let lhs = lhs as? Value, let rhs = rhs as? Value else {
+                    return false
+                }
+                return lhs == rhs
+            }
+        )
     }
 }

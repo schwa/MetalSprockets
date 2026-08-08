@@ -1,3 +1,4 @@
+import CoreGraphics
 @testable import MetalSprockets
 import Testing
 
@@ -143,6 +144,37 @@ struct NeedsSetupTests {
         }
 
         // Setup should only have been called once (first frame)
+        #expect(SetupTrackingElement.globalSetupEnterCount == 1)
+    }
+
+    // See #346: the key-path form of .environment() records key path + value so an unchanged
+    // value no longer forces the setup phase to re-run.
+    @Test("Equatable .environment() value drives requiresSetup")
+    @MainActor
+    func testEnvironmentModifierRequiresSetup() throws {
+        let small = SetupTrackingElement(id: 1).environment(\.drawableSize, CGSize(width: 100, height: 100))
+        let sameSmall = SetupTrackingElement(id: 1).environment(\.drawableSize, CGSize(width: 100, height: 100))
+        let large = SetupTrackingElement(id: 1).environment(\.drawableSize, CGSize(width: 200, height: 200))
+
+        let modifier = try #require(small as? EnvironmentWritingModifier<SetupTrackingElement>)
+        let sameModifier = try #require(sameSmall as? EnvironmentWritingModifier<SetupTrackingElement>)
+        let largeModifier = try #require(large as? EnvironmentWritingModifier<SetupTrackingElement>)
+
+        #expect(sameModifier.requiresSetup(comparedTo: modifier) == false)
+        #expect(largeModifier.requiresSetup(comparedTo: modifier))
+    }
+
+    @Test("Unchanged .environment() value does not re-run setup across frames")
+    @MainActor
+    func testEnvironmentModifierStableAcrossFrames() throws {
+        SetupTrackingElement.resetCounts()
+        let system = System()
+
+        for _ in 0..<3 {
+            try system.update(root: SetupTrackingElement(id: 1).environment(\.drawableSize, CGSize(width: 100, height: 100)))
+            try system.processSetup()
+        }
+
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
     }
 }

@@ -4587,13 +4587,14 @@ Not prescribing the shape of the fix — could be a new public "Runner" type, a 
 ## 346: EnvironmentWritingModifier.requiresSetup always returns true, defeating setup-phase amortization
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: performance, effort:m
 depends: 345
 created: 2026-05-14T04:14:09Z
-updated: 2026-08-08T06:04:04Z
+updated: 2026-08-08T06:44:01Z
+closed: 2026-08-08T06:44:01Z
 +++
 
 [`EnvironmentWritingModifier.requiresSetup(comparedTo:)`](Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift) currently returns `true` unconditionally, with the comment "Since we can't compare closures, be conservative".
@@ -4621,6 +4622,7 @@ Approach 2 is probably the cleanest first step and covers the vast majority of r
 Easy to demonstrate with a `Runner` test: run the same element tree N times, count how many times `BodylessElement.setup` is invoked. Today it's invoked on every run; with this fixed it should drop to once (on the first run) for any subtree under a stable `.environment()` chain.
 
 - `2026-08-08T06:04:04Z`: Related: #343 tracks the general conservative-requiresSetup pattern.
+- `2026-08-08T06:44:01Z`: Fixed via approach 2: added an Equatable-constrained .environment(_:_:) overload that records key path + value on EnvironmentWritingModifier, so requiresSetup(comparedTo:) compares values instead of closures. The opaque closure path stays conservative.
 
 ---
 
