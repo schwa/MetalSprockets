@@ -103,7 +103,7 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
     func setupEnter(_ node: Node) throws {
         let environment = node.environmentValues
 
-        let renderPassDescriptor = try environment.renderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor)).copyWithType(MTLRenderPassDescriptor.self)
+        let attachmentFormats = try environment.renderAttachmentFormats.orThrow(.missingEnvironment(\.renderAttachmentFormats))
         // Copy so we never mutate a descriptor shared via the environment (see #334).
         let renderPipelineDescriptor = try environment.renderPipelineDescriptor.orThrow(.missingEnvironment(\.renderPipelineDescriptor)).copyWithType(MTLRenderPipelineDescriptor.self)
         let device = try device.orThrow(.missingEnvironment(\.device))
@@ -112,13 +112,6 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
             device: device,
             label: label
         )
-
-        // Collect the values that actually affect the PSO. Pixel formats come
-        // from the render-pass textures by value (texture identity churns per
-        // frame but formats are stable). See #327 / #333.
-        let color0Texture = renderPassDescriptor.colorAttachments[0].texture
-        let depthTexture = renderPassDescriptor.depthAttachment?.texture
-        let stencilTexture = renderPassDescriptor.stencilAttachment?.texture
 
         // Configure the descriptor _before_ building the cache key. The key hashes the fully configured descriptor,
         // which is the only way changes made by a `renderPipelineDescriptorTransformer` (which are already baked into the
@@ -136,24 +129,25 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
             renderPipelineDescriptor.vertexDescriptor = vertexDescriptor
         }
 
-        // Only set pixel formats if they haven't been explicitly configured
-        // TODO: #95 This is copying everything from the render pass descriptor. But really we should be getting this entirely from the environment.
-        if renderPipelineDescriptor.colorAttachments[0].pixelFormat == .invalid,
-            let color0Texture {
-            renderPipelineDescriptor.colorAttachments[0].pixelFormat = color0Texture.pixelFormat
+        // Formats come from the environment by value, not from the render pass descriptor's
+        // textures: texture identity churns per frame but formats are stable. See #327 / #333 / #363.
+        // Explicitly configured formats on the pipeline descriptor win over these defaults.
+        for (index, pixelFormat) in attachmentFormats.colorPixelFormats.enumerated() where pixelFormat != .invalid {
+            if renderPipelineDescriptor.colorAttachments[index].pixelFormat == .invalid {
+                renderPipelineDescriptor.colorAttachments[index].pixelFormat = pixelFormat
+            }
         }
 
-        // Set rasterSampleCount from the render pass texture for MSAA support
-        if let color0Texture {
-            renderPipelineDescriptor.rasterSampleCount = color0Texture.sampleCount
+        // rasterSampleCount is not a "format" the caller configures per-attachment; it has to match
+        // the render pass attachments for MSAA to work.
+        if attachmentFormats.colorPixelFormat(at: 0) != .invalid {
+            renderPipelineDescriptor.rasterSampleCount = attachmentFormats.rasterSampleCount
         }
-        if renderPipelineDescriptor.depthAttachmentPixelFormat == .invalid,
-            let depthTexture {
-            renderPipelineDescriptor.depthAttachmentPixelFormat = depthTexture.pixelFormat
+        if renderPipelineDescriptor.depthAttachmentPixelFormat == .invalid {
+            renderPipelineDescriptor.depthAttachmentPixelFormat = attachmentFormats.depthPixelFormat
         }
-        if renderPipelineDescriptor.stencilAttachmentPixelFormat == .invalid,
-            let stencilTexture {
-            renderPipelineDescriptor.stencilAttachmentPixelFormat = stencilTexture.pixelFormat
+        if renderPipelineDescriptor.stencilAttachmentPixelFormat == .invalid {
+            renderPipelineDescriptor.stencilAttachmentPixelFormat = attachmentFormats.stencilPixelFormat
         }
         if let label {
             renderPipelineDescriptor.label = label

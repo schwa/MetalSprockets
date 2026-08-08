@@ -338,7 +338,7 @@ func testPSOCacheStableWithDescriptorModifier() throws {
         }
         .environment(\.device, device)
         .environment(\.commandQueue, commandQueue)
-        .environment(\.renderPassDescriptor, rpd)
+        .renderPassDescriptor(rpd)
         .environment(\.drawableSize, CGSize(width: 64, height: 64))
 
         try system.update(root: root)

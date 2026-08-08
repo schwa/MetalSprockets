@@ -5274,12 +5274,14 @@ Part of #89.
 ## 363: Make RenderPipeline read attachment formats from the environment
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, subtask
 depends: MetalSprockets-mature-robin#362
 created: 2026-08-08T20:07:15Z
+updated: 2026-08-08T21:10:18Z
+closed: 2026-08-08T21:10:18Z
 +++
 
 `RenderPipeline.setupEnter` (Sources/MetalSprockets/Metal/RenderPipeline.swift) copies the render pass descriptor and pulls `colorAttachments[0].texture`, `depthAttachment.texture` and `stencilAttachment.texture` to fill in pipeline descriptor formats, `rasterSampleCount`, and the `RenderPipelineCache.Key`. The pipeline should not need the render pass descriptor at all.
