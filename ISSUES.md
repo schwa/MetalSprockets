@@ -1619,7 +1619,7 @@ priority: medium
 kind: enhancement
 labels: enhancement, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:50Z
+updated: 2026-08-08T15:47:46Z
 +++
 
 ## Problem
@@ -1724,6 +1724,8 @@ This is a performance optimization - the current behavior is functionally correc
 
 The remaining symptom is the same one as #197: System's update traversal re-evaluates every body regardless of element equality, so the child rebuilds anyway. Fixing it means subtree skipping in System.update; see my comment on #197 for the blast radius and the question I need answered. Scenario added as a withKnownIssue test in Tests/MetalSprocketsTests/SelectiveRebuildTests.swift.
 
+- `2026-08-08T15:47:46Z`: Decision: push-based dirty propagation. StateBox will mark the dependent node and its ancestor chain dirty, and System.update will skip any subtree containing no dirty node, splicing the previous nodes and traversal events instead of re-evaluating bodies.
+
 ---
 
 ## 197: Optimize: Elements without parameters rebuild unnecessarily
@@ -1734,7 +1736,7 @@ priority: medium
 kind: enhancement
 labels: enhancement, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:51Z
+updated: 2026-08-08T15:47:46Z
 +++
 
 ## Problem
@@ -1892,6 +1894,8 @@ Why that isn't enough: element equality only gates node.element replacement and 
 Added Tests/MetalSprocketsTests/SelectiveRebuildTests.swift with this issue's scenario as a withKnownIssue test, so it flips green automatically when subtree skipping lands.
 
 Unblocker: confirm you want subtree skipping in System.update, and whether dirty propagation should be push-based (StateBox marks ancestors) or pull-based (compare subtree during traversal).
+
+- `2026-08-08T15:47:46Z`: Decision: push-based dirty propagation. StateBox will mark the dependent node and its ancestor chain dirty, and System.update will skip any subtree containing no dirty node, splicing the previous nodes and traversal events instead of re-evaluating bodies.
 
 ---
 
@@ -3414,17 +3418,19 @@ Root cause identified in #329: data race on System.dirtyIdentifiers from off-mai
 ## 308: Demo app looks broken on iPad Simulator
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: effort:m
 created: 2026-04-09T18:33:18Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T15:47:46Z
+closed: 2026-08-08T15:47:46Z
 +++
 
 Running the demo app on iPad Pro 11-inch (M5) simulator (iOS 26.4), the UI is essentially blank/empty. Shows a white card with faint horizontal separator lines and a green '60' FPS counter in the top-right, but no actual rendered content is visible. The entire lower portion of the screen is just empty grey. Appears the Metal rendering surface isn't displaying anything.
 
 - `2026-08-08T06:41:29Z`: Punting for now: verification needs an iPad Simulator run, which I couldn't complete (xcb --destination sim failed to match the booted iPad mini, and the sim build was too slow to iterate on). Note that #311's drawable-size resync fix may also address this — the symptom (blank Metal surface until a resize) is the same. Please re-check on iPad Sim after #311.
+- `2026-08-08T15:47:46Z`: Confirmed fixed by the user: the demo app renders correctly on the iPad Simulator now. Cause was almost certainly the same zero-size drawable bug fixed in #311 (MTKView only reports drawableSizeWillChange on change, so a view sized before the delegate was attached rendered at .zero).
 
 ---
 
