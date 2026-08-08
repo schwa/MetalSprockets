@@ -1974,12 +1974,13 @@ Flat shaders. Basic PBR. MetalFX. Etc etc.
 ## 209: Use IDs in System StructuralIdentifier for ForEach
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: enhancement, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:31Z
+updated: 2026-08-08T21:15:10Z
+closed: 2026-08-08T21:15:10Z
 +++
 
 In ForEach.swift:24, there's a TODO noting that we're not using IDs in the System StructuralIdentifier yet. This should be implemented to properly track ForEach elements.

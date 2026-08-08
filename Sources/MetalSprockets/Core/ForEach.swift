@@ -39,11 +39,8 @@
 /// ForEach(vertices, id: \.index) { vertex in ... }
 /// ```
 public struct ForEach <Data, ID, Content>: Element where Data: RandomAccessCollection, ID: Hashable, Content: Element {
-    // TODO: #99 Compare ids to see if they've changed in expandNode
-    //    @MSState
-    //    var ids: [ID]
-
     var data: Data
+    var id: (Data.Element) -> ID
     var content: (Data.Element) throws -> Content
 }
 
@@ -54,8 +51,8 @@ public extension ForEach {
     ///   - data: The collection of identifiable elements.
     ///   - content: A closure that creates an element for each data item.
     init(_ data: Data, @ElementBuilder content: @escaping (Data.Element) throws -> Content) where Data: Collection, Data.Element: Identifiable, Data.Element.ID == ID {
-        //        self.ids = data.map(\.id)
         self.data = data
+        self.id = \.id
         self.content = content
     }
 
@@ -66,18 +63,19 @@ public extension ForEach {
     ///   - id: A key path to a hashable property for identification.
     ///   - content: A closure that creates an element for each data item.
     init(_ data: Data, id: KeyPath<Data.Element, ID>, @ElementBuilder content: @escaping (Data.Element) throws -> Content) where Data: Collection {
-        //        self.ids = data.map { $0[keyPath: id] }
         self.data = data
+        self.id = { $0[keyPath: id] }
         self.content = content
     }
 }
 
-// TODO: #209 We're not using ids in the System StructuralIdentifier yet - need to implement proper ID tracking for ForEach elements
 extension ForEach: BodylessElement {
     internal func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        // Each child carries its data's id as explicit identity, so a child keeps its node (and its
+        // state and setup) when the collection is reordered or items are inserted. (#209)
         for datum in data {
             let child = try content(datum)
-            try visit(child)
+            try visit(IdentifiedElement(content: child, id: id(datum)))
         }
     }
 }

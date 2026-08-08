@@ -200,8 +200,9 @@ struct SystemTests {
         let container1 = MultiChildContainer(children: [1, 2])
         try system.update(root: container1)
 
-        // Should have: container + ForEach + 2 TestElements = 4 nodes
-        #expect(system.orderedIdentifiers.count == 4)
+        // Should have: container + ForEach + 2 * (IdentifiedElement + TestElement) = 6 nodes.
+        // ForEach wraps each child in an IdentifiedElement so identity follows the data (#209).
+        #expect(system.orderedIdentifiers.count == 6)
         #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
         #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
 
@@ -214,8 +215,8 @@ struct SystemTests {
         let container2 = MultiChildContainer(children: [1, 2, 3])
         try system.update(root: container2)
 
-        // Should now have: container + ForEach + 3 TestElements = 5 nodes
-        #expect(system.orderedIdentifiers.count == 5)
+        // Should now have: container + ForEach + 3 * (IdentifiedElement + TestElement) = 8 nodes
+        #expect(system.orderedIdentifiers.count == 8)
         #expect(Set(system.orderedIdentifiers) == Set(system.nodes.keys))
         #expect(system.orderedIdentifiers.count == Set(system.orderedIdentifiers).count) // No duplicates
 
@@ -225,7 +226,7 @@ struct SystemTests {
         }
 
         // The new child should be at the end
-        let newChildId = system.orderedIdentifiers[4]
+        let newChildId = system.orderedIdentifiers[7]
         let newChildNode = system.nodes[newChildId]
         #expect((newChildNode?.element as? TestElement)?.value == 3)
     }

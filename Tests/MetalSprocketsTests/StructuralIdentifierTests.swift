@@ -175,6 +175,36 @@ struct StructuralIdentifierTests {
         #expect(identifiersBefore == identifiersAfter)
     }
 
+    @MainActor
+    @Test("ForEach identity follows the data when the collection is reordered")
+    func forEachIdentitySurvivesReordering() throws {
+        struct Item: Identifiable {
+            var id: String
+        }
+        struct Container: Element {
+            var items: [Item]
+            var body: some Element {
+                ForEach(items) { _ in
+                    Leaf()
+                }
+            }
+        }
+
+        let items = [Item(id: "a"), Item(id: "b"), Item(id: "c")]
+        let system = System()
+        try system.update(root: Container(items: items))
+        let identifiersBefore = Set(system.nodes.keys.map(\.description))
+
+        try system.update(root: Container(items: items.reversed()))
+        #expect(Set(system.nodes.keys.map(\.description)) == identifiersBefore)
+
+        // Removing an item drops only that item's identifiers.
+        try system.update(root: Container(items: [items[0], items[2]]))
+        let identifiersAfterRemoval = Set(system.nodes.keys.map(\.description))
+        #expect(identifiersAfterRemoval.isSubset(of: identifiersBefore))
+        #expect(identifiersAfterRemoval.count < identifiersBefore.count)
+    }
+
     @Test("Atom(element:index:) derives type identifier from value")
     func atomFromElementWithIndex() {
         let atom = StructuralIdentifier.Atom(element: Leaf(), index: 7)
