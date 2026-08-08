@@ -4484,17 +4484,20 @@ Keeps both #298 (no expensive per-frame work) and #306 (environment available on
 ## 338: Revisit RenderViewDebugViewModifier: finish or delete
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:s
 created: 2026-04-21T02:34:25Z
-updated: 2026-04-21T02:48:19Z
+updated: 2026-08-08T18:30:54Z
+closed: 2026-08-08T18:30:54Z
 +++
 
 RenderViewDebugViewModifier is currently dead code: it's not applied anywhere (the .modifier call in RenderViewHelper.body is commented out), and its inspector panel body is entirely commented out too. It was a scaffold for a SwiftUI inspector that would browse the render graph (node tree + node details) via @Environment(RenderViewViewModel<Root>.self).
 
 Revisit: either finish it (wire up a proper node browser using a SystemSnapshot API) or delete it. Related: now that RenderViewHelper no longer does .environment(viewModel), this modifier wouldn't even work as-is — it would need viewModel re-plumbed back into the SwiftUI environment if we keep it.
+
+- `2026-08-08T18:30:54Z`: Deleted. The modifier was never applied, its inspector body was fully commented out, and it read a view model that RenderViewHelper no longer publishes. Rebuilding it would mean re-plumbing the view model into the SwiftUI environment (undoing #298/#299/#337) and writing the browser against SystemSnapshot — a fresh feature, not a revival of this scaffold.
 
 ---
 

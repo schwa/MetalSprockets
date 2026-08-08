@@ -271,7 +271,6 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
         .onDisappear {
             viewModelBox.value = nil
         }
-        //        .modifier(RenderViewDebugViewModifier<Content>())
     }
 }
 
