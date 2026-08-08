@@ -1,9 +1,5 @@
 import Combine
 
-internal protocol AnyObservedObject {
-    func addDependency(_ node: Node)
-}
-
 // MARK: -
 
 @propertyWrapper
@@ -30,9 +26,10 @@ extension MSObservedObject: Equatable {
     }
 }
 
-extension MSObservedObject: AnyObservedObject {
-    internal func addDependency(_ node: Node) {
-        _object.addDependency(node)
+extension MSObservedObject: MSDynamicProperty {
+    /// Subscribes the node to the observed object's change publisher for this update.
+    public nonmutating func update(in context: MSDynamicPropertyContext) {
+        _object.addDependency(context.node)
     }
 }
 

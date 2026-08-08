@@ -90,6 +90,7 @@ modules:
         public func visibleFunctionTable(_ name: String, functionType: MTLFunctionType? = nil, functions: [any MTLFunction]) -> some Element
     - decl: |
         public func workloadEnabled(_ enabled: Bool = true) -> some Element
+  - decl: public protocol MSDynamicProperty
   - decl: public protocol MSEnvironmentKey
   - decl: 'public protocol ShaderProtocol : Equatable'
     members:
@@ -241,6 +242,13 @@ modules:
     - decl: 'public init(get: @escaping () -> Value, set: @escaping (Value) -> Void)'
     - decl: 'public var wrappedValue: Value { get nonmutating set }'
     - decl: 'public static func == (lhs: MSBinding<Value>, rhs: MSBinding<Value>) -> Bool'
+  - decl: public struct MSDynamicPropertyContext
+    members:
+    - decl: 'public var environmentValues: MSEnvironmentValues { get }'
+    - decl: 'public let label: String'
+    - decl: public func invalidate()
+    - decl: 'public func persistedValue(forKey key: String) -> Any?'
+    - decl: 'public func setPersistedValue(_ value: Any?, forKey key: String)'
   - decl: '@propertyWrapper public struct MSEnvironment<Value>'
     members:
     - decl: 'public init(_ keyPath: KeyPath<MSEnvironmentValues, Value>)'
@@ -276,11 +284,14 @@ modules:
     - decl: 'public var projectedValue: ProjectedValue<ObjectType> { get }'
     - decl: 'public var wrappedValue: ObjectType { get }'
     - decl: 'public static func == (l: MSObservedObject<ObjectType>, r: MSObservedObject<ObjectType>) -> Bool where ObjectType: ObservableObject'
+    - decl: 'public func update(in context: MSDynamicPropertyContext) where ObjectType: ObservableObject'
   - decl: '@propertyWrapper public struct MSState<Value>'
     members:
     - decl: 'public init(wrappedValue: Value)'
     - decl: 'public var projectedValue: MSBinding<Value> { get }'
     - decl: 'public var wrappedValue: Value { get nonmutating set }'
+    - decl: 'public func persist(in context: MSDynamicPropertyContext)'
+    - decl: 'public func update(in context: MSDynamicPropertyContext)'
   - decl: 'public struct MeshRenderPipeline<Content> where Content : Element'
     members:
     - decl: public typealias Body = Never
@@ -436,6 +447,10 @@ modules:
   - decl: 'public var function: any MTLFunction { get }'
   - decl: 'public static var defaultValue: Self.Value { get }'
   - decl: 'public static var functionType: MTLFunctionType { get }'
+  - decl: 'public func persist(in context: MSDynamicPropertyContext) throws'
+  - decl: 'public func persist(in context: MSDynamicPropertyContext) throws'
+  - decl: 'public func update(in context: MSDynamicPropertyContext) throws'
+  - decl: 'public func update(in context: MSDynamicPropertyContext) throws'
   extensions:
   - extended_module: Metal
     symbols:

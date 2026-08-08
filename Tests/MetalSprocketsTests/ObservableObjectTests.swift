@@ -358,4 +358,41 @@ struct ObservableObjectTests {
             #expect(TestMonitor.shared.updates == ["independent-body"])
         }
     }
+
+    // MARK: - Observation registration is not order-dependent
+
+    struct LateObservedElement: Element {
+        var label: String
+        @MSObservedObject var model = TestModel()
+
+        var body: some Element {
+            TestMonitor.shared.logUpdate("late-body-\(model.counter)")
+            return DisplayElement(value: model.counter) {
+                model.counter += 1
+            }
+        }
+    }
+
+    // Previously the reflection loop hit `return` on the first non-observed property, so an
+    // @MSObservedObject declared after any other stored property never registered a dependency.
+    @Test("An observed object declared after another property still triggers rebuilds")
+    func testObservedObjectAfterPlainProperty() throws {
+        TestMonitor.shared.reset()
+
+        let root = LateObservedElement(label: "first")
+        let system = System()
+
+        try system.update(root: root)
+        #expect(TestMonitor.shared.updates == ["late-body-0"])
+
+        TestMonitor.shared.clearUpdates()
+
+        let display = try #require(system.element(at: [0, 0], type: DisplayElement.self))
+        system.withCurrentSystem {
+            display.action()
+        }
+        try system.update(root: root)
+
+        #expect(TestMonitor.shared.updates == ["late-body-1"])
+    }
 }

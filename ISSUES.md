@@ -237,12 +237,13 @@ File: Sources/MetalSprockets/Metal/CommandBufferElement.swift
 ## 42: Do we need DynamicProperty?
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:l, needs-info
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:09Z
+updated: 2026-08-08T15:45:16Z
+closed: 2026-08-08T15:45:16Z
 +++
 
 ```
@@ -252,6 +253,16 @@ updated: 2026-04-03T17:33:09Z
 File: Sources/MetalSprockets/Core/EnvironmentValues.swift
 
 *Imported from #34*
+
+- `2026-08-08T15:45:16Z`: Implemented as a public protocol, no macro needed.
+
+Added MSDynamicProperty (public) with two optional requirements — update(in:) before the element's body is evaluated and persist(in:) after — plus MSDynamicPropertyContext, a public per-property context exposing label, environmentValues, persistedValue(forKey:)/setPersistedValue(_:forKey:) and invalidate(). Node stays internal; the context is the public surface.
+
+MSState and MSObservedObject now conform instead of the internal StateProperty / AnyObservedObject protocols, which are deleted. Element.configureNode does two uniform Mirror passes instead of three ad-hoc ones.
+
+Also fixes a real bug found on the way: the old observeObjects loop used 'return' instead of 'continue', so an @MSObservedObject declared after any other stored property never registered a dependency and never triggered rebuilds. Regression test added in ObservableObjectTests.
+
+Not done: MSEnvironment still resolves lazily from System.current at wrappedValue access rather than caching a value during update(in:). That is #212's territory and would change when the value is snapshotted.
 
 ---
 
@@ -3292,12 +3303,14 @@ Option 2: Configure DocC to publish to root
 status: new
 priority: medium
 kind: task
-labels: needs-info, effort:m
+labels: needs-info, effort:m, deferred
 created: 2026-04-02T16:16:32Z
-updated: 2026-08-08T06:04:04Z
+updated: 2026-08-08T15:39:25Z
 +++
 
 Some of MetalSprokcetsAddsOns can come in - specifically the macros we have for textures etc
+
+- `2026-08-08T15:39:25Z`: Deferred for now (see 'deferred' label): decide later which parts of MetalSprocketsAddOns (texture macros etc.) should move in.
 
 ---
 

@@ -10,13 +10,12 @@ internal extension Element {
 
         applyInheritedEnvironment(from: parent, to: node)
 
-        observeObjects(node)
-        restoreStateProperties(node)
+        try updateDynamicProperties(node)
 
         if let bodylessElement = self as? any BodylessElement {
             try bodylessElement.configureNodeBodyless(node)
         }
-        storeStateProperties(node)
+        try persistDynamicProperties(node)
     }
 
     private func applyInheritedEnvironment(from parent: Node?, to node: Node) {
@@ -36,36 +35,29 @@ internal extension Element {
         }
     }
 
-    private func observeObjects(_ node: Node) {
-        let mirror = Mirror(reflecting: self)
-        for child in mirror.children {
-            guard let observedObject = child.value as? AnyObservedObject else {
-                return
-            }
-            observedObject.addDependency(node)
+    /// Runs the pre-body phase of every ``MSDynamicProperty`` on this element.
+    private func updateDynamicProperties(_ node: Node) throws {
+        try visitDynamicProperties(node) { property, context in
+            try property.update(in: context)
         }
     }
 
-    private func restoreStateProperties(_ node: Node) {
-        let mirror = Mirror(reflecting: self)
-        for (label, value) in mirror.children {
-            guard let prop = value as? StateProperty else { continue }
-            guard let label else {
-                preconditionFailure("No label for state property.")
-            }
-            guard let propValue = node.stateProperties[label] else { continue }
-            prop.erasedValue = propValue
+    /// Runs the post-body phase of every ``MSDynamicProperty`` on this element.
+    private func persistDynamicProperties(_ node: Node) throws {
+        try visitDynamicProperties(node) { property, context in
+            try property.persist(in: context)
         }
     }
 
-    private func storeStateProperties(_ node: Node) {
-        let m = Mirror(reflecting: self)
-        for (label, value) in m.children {
-            guard let prop = value as? StateProperty else { continue }
-            guard let label else {
-                preconditionFailure("No label for state property.")
+    private func visitDynamicProperties(_ node: Node, _ body: (any MSDynamicProperty, MSDynamicPropertyContext) throws -> Void) throws {
+        for (label, value) in Mirror(reflecting: self).children {
+            guard let property = value as? any MSDynamicProperty else {
+                continue
             }
-            node.stateProperties[label] = prop.erasedValue
+            guard let label else {
+                preconditionFailure("No label for dynamic property on \(type(of: self)).")
+            }
+            try body(property, MSDynamicPropertyContext(node: node, label: label))
         }
     }
 }

@@ -1,9 +1,5 @@
 // MARK: - MSState
 
-internal protocol StateProperty {
-    var erasedValue: Any { get nonmutating set }
-}
-
 /// A property wrapper that stores mutable state within an element.
 ///
 /// `MSState` is analogous to SwiftUI's `@State`. Use it to store values that
@@ -73,14 +69,20 @@ public struct MSState<Value> {
     }
 }
 
-extension MSState: StateProperty {
-    internal var erasedValue: Any {
-        get { state }
-        nonmutating set {
-            guard let newValue = newValue as? StateBox<Value> else {
-                preconditionFailure("Expected StateBox<Value> in State.value set")
-            }
-            state = newValue
+extension MSState: MSDynamicProperty {
+    /// Restores the `StateBox` the node is holding so the value survives the element struct
+    /// being recreated.
+    public nonmutating func update(in context: MSDynamicPropertyContext) {
+        guard let persisted = context.persistedValue(forKey: context.label) else {
+            return
         }
+        guard let persisted = persisted as? StateBox<Value> else {
+            preconditionFailure("Expected StateBox<Value> for state property \(context.label)")
+        }
+        state = persisted
+    }
+
+    public nonmutating func persist(in context: MSDynamicPropertyContext) {
+        context.setPersistedValue(state, forKey: context.label)
     }
 }
