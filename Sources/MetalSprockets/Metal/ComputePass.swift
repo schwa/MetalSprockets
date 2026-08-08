@@ -120,6 +120,7 @@ public struct ComputePipeline <Content>: Element, SetupElement, BodylessContentE
 
     func setupEnter(_ node: Node) throws {
         let device = try node.environmentValues.device.orThrow(.missingEnvironment(\.device))
+        try ShaderDeviceCheck.validate([("compute", computeKernel.function)], device: device, label: label)
         let linkedFunctions = node.environmentValues.linkedFunctions
 
         // Per-node cache: rebuild the PSO only when the inputs that actually

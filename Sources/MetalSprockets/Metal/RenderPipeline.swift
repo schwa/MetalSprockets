@@ -107,6 +107,11 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
         // Copy so we never mutate a descriptor shared via the environment (see #334).
         let renderPipelineDescriptor = try environment.renderPipelineDescriptor.orThrow(.missingEnvironment(\.renderPipelineDescriptor)).copyWithType(MTLRenderPipelineDescriptor.self)
         let device = try device.orThrow(.missingEnvironment(\.device))
+        try ShaderDeviceCheck.validate(
+            [("vertex", vertexShader.function), ("fragment", fragmentShader.function)],
+            device: device,
+            label: label
+        )
 
         // Collect the values that actually affect the PSO. Pixel formats come
         // from the render-pass textures by value (texture identity churns per

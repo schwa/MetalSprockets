@@ -88,6 +88,11 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadEleme
 
         let renderPassDescriptor = try environment.renderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor)).copyWithType(MTLRenderPassDescriptor.self)
         let device = try device.orThrow(.missingEnvironment(\.device))
+        try ShaderDeviceCheck.validate(
+            [("object", objectShader?.function), ("mesh", meshShader.function), ("fragment", fragmentShader.function)],
+            device: device,
+            label: label
+        )
 
         let color0Texture = renderPassDescriptor.colorAttachments[0].texture
         let depthTexture = renderPassDescriptor.depthAttachment?.texture

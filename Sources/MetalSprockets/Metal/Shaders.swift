@@ -40,8 +40,12 @@ public protocol ShaderProtocol: Equatable {
 }
 
 public extension ShaderProtocol {
-    init(source: String, logging: Bool = false) throws {
-        let device = _MTLCreateSystemDefaultDevice()
+    /// Compiles a shader from Metal source.
+    ///
+    /// - Parameter device: The device to compile on. Defaults to the system default device, which is only the right
+    ///   choice when the renderer uses that device too (see #55).
+    init(source: String, logging: Bool = false, device: MTLDevice? = nil) throws {
+        let device = device ?? _MTLCreateSystemDefaultDevice()
         let options = MTLCompileOptions()
         options.enableLogging = logging
         let library = try device.makeLibrary(source: source, options: options)
@@ -49,8 +53,14 @@ public extension ShaderProtocol {
         self.init(function)
     }
 
-    init(library: MTLLibrary? = nil, name: String) throws {
-        let library = try library ?? _MTLCreateSystemDefaultDevice().makeDefaultLibrary().orThrow(.resourceCreationFailure("Failed to create default library"))
+    /// Looks a shader up by name.
+    ///
+    /// - Parameters:
+    ///   - library: The library to search. When `nil`, `device`'s default library is used.
+    ///   - device: The device whose default library is searched. Defaults to the system default device, which is only
+    ///     the right choice when the renderer uses that device too (see #55).
+    init(library: MTLLibrary? = nil, name: String, device: MTLDevice? = nil) throws {
+        let library = try library ?? (device ?? _MTLCreateSystemDefaultDevice()).makeDefaultLibrary().orThrow(.resourceCreationFailure("Failed to create default library"))
         let function = try library.makeFunction(name: name).orThrow(.resourceCreationFailure("Failed to create function"))
         if function.functionType != Self.functionType {
             try _throw(MetalSprocketsError.resourceCreationFailure("Function type is not \(Self.functionType)"))

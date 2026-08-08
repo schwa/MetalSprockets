@@ -55,6 +55,19 @@ import os
 /// let shader: VertexShader = namespaced.myFunction
 /// ```
 ///
+/// ## Devices
+///
+/// A library is compiled eagerly, when it is created, so that compilation never lands in the render loop. That means
+/// it picks its `MTLDevice` before any element tree exists — the system default device, unless you pass one:
+///
+/// ```swift
+/// let library = try ShaderLibrary(bundle: .myShaders(), device: renderer.device)
+/// ```
+///
+/// On a single-GPU machine the default is always right. With more than one GPU, a library compiled on one device
+/// cannot be used by a pipeline built on another; pipelines check this during setup and throw rather than letting
+/// Metal fail obscurely. See #55.
+///
 /// ## Topics
 ///
 /// ### Shader Types
@@ -159,11 +172,14 @@ public extension ShaderLibrary {
     /// inside a rendering context, the backing state is adopted by the ambient
     /// ``ShaderStore`` (if any), enabling deduplication across views.
     ///
-    /// - Parameter bundle: The bundle containing the compiled Metal library.
+    /// - Parameters:
+    ///   - bundle: The bundle containing the compiled Metal library.
+    ///   - device: The device to load the library on. Defaults to the system default device, which is only the right
+    ///     choice when the renderer uses that device too (see #55).
     /// - Throws: `MetalSprocketsError.resourceCreationFailure` if the library cannot be loaded.
-    init(bundle: Bundle) throws {
+    init(bundle: Bundle, device: MTLDevice? = nil) throws {
         let id = ID.bundle(bundle)
-        let device = _MTLCreateSystemDefaultDevice()
+        let device = device ?? _MTLCreateSystemDefaultDevice()
         let library: MTLLibrary
         if let url = bundle.url(forResource: "debug", withExtension: "metallib"), let loaded = try? device.makeLibrary(URL: url) {
             library = loaded
@@ -188,10 +204,12 @@ public extension ShaderLibrary {
     /// - Parameters:
     ///   - source: The Metal Shading Language source code to compile.
     ///   - options: Optional compile options.
+    ///   - device: The device to compile on. Defaults to the system default device, which is only the right choice
+    ///     when the renderer uses that device too (see #55).
     /// - Throws: An error if compilation fails.
-    init(source: String, options: MTLCompileOptions? = nil) throws {
+    init(source: String, options: MTLCompileOptions? = nil, device: MTLDevice? = nil) throws {
         let id = ID.source(source, options)
-        let device = _MTLCreateSystemDefaultDevice()
+        let device = device ?? _MTLCreateSystemDefaultDevice()
         let library = try device.makeLibrary(source: source, options: options)
         self.init(state: State(library: library, id: id))
     }

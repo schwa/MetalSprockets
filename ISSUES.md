@@ -463,12 +463,13 @@ This would reduce tree depth and improve traversal performance.
 ## 55: Handle MTLCreateSystemDefaultDevice() everywhere
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:09Z
+updated: 2026-08-08T18:26:32Z
+closed: 2026-08-08T18:26:32Z
 +++
 
 Audit usage of `MTLCreateSystemDefaultDevice()` throughout the codebase.
@@ -485,6 +486,7 @@ This isn't a problem today, but could become one. Consider:
 - `2026-02-19T00:00:00Z`: Having a single validated device instance
 - `2026-02-19T00:00:00Z`: Being prepared for multi-GPU scenarios
 - `2026-08-08T06:55:17Z`: Punting: this needs a design decision rather than a mechanical change. Today all 11 call sites already funnel through MetalSupport._MTLCreateSystemDefaultDevice() (fatalErrors when nil), and the remaining sites (ShaderLibrary/Shaders compilation, MetalFX spatial/temporal, ComputeDispatch's apple4 capability check, OffscreenRenderer, RenderView fallback) are all places where no device is available from the caller or environment yet. Options: (a) require an explicit device on the public initializers of those types, (b) resolve the device from the element environment at setup time instead of construction time, or (c) leave as-is and document the single-default-device assumption. Which do you want?
+- `2026-08-08T18:26:32Z`: Resolution: keep eager shader compilation and the default-device fallback, but make the device expressible and the mismatch loud. ShaderLibrary.init(bundle:device:)/init(source:options:device:) and ShaderProtocol.init(source:logging:device:)/init(library:name:device:) now take an optional device; RenderPipeline, ComputePipeline and MeshRenderPipeline check at setup that every shader stage was built on the pipeline's device and throw a hinted error otherwise; the ShaderLibrary docs spell out the single-default-device assumption. Runner/OffscreenRenderer/RenderView already accepted a device; ARKitSessionModifier builds its texture cache before any element tree exists and keeps the default.
 
 ---
 
