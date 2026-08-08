@@ -262,6 +262,12 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             viewModel.captureConfiguration = captureConfiguration
             viewModel.shaderStore = shaderStore
         }
+        dismantle: { view in
+            // Stop the display link and drop the delegate before SwiftUI releases the representable, so no draw
+            // callback can arrive after the view model is gone. See #301.
+            view.isPaused = true
+            view.delegate = nil
+        }
         .onDisappear {
             viewModelBox.value = nil
         }

@@ -3253,15 +3253,18 @@ Metal validation warning: Texture 0xb6628b200 "MTKView Depth" has storage mode P
 ## 301: Add dismantleNSView/dismantleUIView to ViewAdaptor
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:s
 created: 2026-04-01T22:07:25Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T16:15:31Z
+closed: 2026-08-08T16:15:31Z
 +++
 
 ViewAdaptor wraps NSViewRepresentable/UIViewRepresentable but doesn't implement the static dismantle methods. Adding dismantleNSView and dismantleUIView would let us pause the MTKView and clear its delegate when SwiftUI tears down the representable — preventing stray draw callbacks after the view model is released. Belt-and-suspenders for the .onDisappear fix in #297.
+
+- `2026-08-08T16:15:31Z`: ViewAdaptor now takes an optional dismantle closure, delivered to dismantleNSView/dismantleUIView via a coordinator. RenderView uses it to pause the MTKView and clear its delegate on teardown.
 
 ---
 
