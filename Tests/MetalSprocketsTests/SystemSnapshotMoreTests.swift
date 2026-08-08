@@ -59,6 +59,39 @@ struct SystemSnapshotExtendedTests {
         #expect(dump.contains("DIRTY NODES"))
     }
 
+    /// A custom dynamic property that persists something other than a `StateBox`.
+    @propertyWrapper
+    struct PlainPersistedProperty: MSDynamicProperty {
+        var wrappedValue: Int
+
+        nonmutating func persist(in context: MSDynamicPropertyContext) throws {
+            context.setPersistedValue(wrappedValue, forKey: context.label)
+        }
+    }
+
+    struct PlainPersistingElement: Element {
+        @PlainPersistedProperty var value = 7
+
+        var body: some Element {
+            EmptyElement()
+        }
+    }
+
+    @Test("Snapshots describe persisted values that are not state boxes")
+    @MainActor
+    func testNonStateBoxPersistedValue() throws {
+        let system = System()
+        try system.update(root: PlainPersistingElement())
+
+        let snapshot = system.snapshot()
+        let properties = snapshot.nodes.flatMap(\.stateProperties)
+        let plain = try #require(properties.first { $0.key == "_value" })
+
+        #expect(plain.type == "Int")
+        #expect(plain.value == "7")
+        #expect(plain.dependencies.isEmpty)
+    }
+
     @Test("textDump with NEEDS SETUP marker")
     @MainActor
     func testNeedsSetupMarkerInDump() throws {

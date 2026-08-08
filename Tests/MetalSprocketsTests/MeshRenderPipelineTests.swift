@@ -96,11 +96,28 @@ struct MeshRenderPipelineTests {
         return device.supportsFamily(.apple7)
     }
 
-    private func objectMeshPass(scale: Float, tint: SIMD4<Float>, depthCompare: Bool) throws -> some Element {
+    /// Shaders built once, so repeated renders reuse the same `MTLFunction` identities. The pipeline cache is keyed
+    /// on those identities, so rebuilding the library every time would miss the cache.
+    private struct Shaders {
+        var object: ObjectShader
+        var mesh: MeshShader
+        var fragment: FragmentShader
+    }
+
+    private func makeShaders() throws -> Shaders {
         let library = try ShaderLibrary(source: Self.objectMeshSource)
-        let objectShader = try library.function(type: ObjectShader.self, named: "object_main")
-        let meshShader = try library.function(type: MeshShader.self, named: "mesh_main")
-        let fragmentShader = try library.function(type: FragmentShader.self, named: "fragment_main")
+        return Shaders(
+            object: try library.function(type: ObjectShader.self, named: "object_main"),
+            mesh: try library.function(type: MeshShader.self, named: "mesh_main"),
+            fragment: try library.function(type: FragmentShader.self, named: "fragment_main")
+        )
+    }
+
+    private func objectMeshPass(scale: Float, tint: SIMD4<Float>, depthCompare: Bool, shaders: Shaders? = nil) throws -> some Element {
+        let shaders = try shaders ?? makeShaders()
+        let objectShader = shaders.object
+        let meshShader = shaders.mesh
+        let fragmentShader = shaders.fragment
 
         let pipeline = try MeshRenderPipeline(label: "object+mesh", objectShader: objectShader, meshShader: meshShader, fragmentShader: fragmentShader) {
             Draw { encoder in
@@ -153,10 +170,26 @@ struct MeshRenderPipelineTests {
         guard try meshShadersSupported() else {
             return
         }
+        // The same shader instances both times, so the cache key matches and the second setup takes the hit path.
+        let shaders = try makeShaders()
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
-        _ = try renderer.render(try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: true))
-        // Second render on the same renderer hits the per-node cache rather than rebuilding the PSO.
-        _ = try renderer.render(try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: true))
+        _ = try renderer.render(try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: true, shaders: shaders))
+        _ = try renderer.render(try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: true, shaders: shaders))
+    }
+
+    @Test("A mesh pipeline picks up linked functions from the environment")
+    func testMeshPipelineLinkedFunctions() throws {
+        guard try meshShadersSupported() else {
+            return
+        }
+        let shaders = try makeShaders()
+        let linked = MTLLinkedFunctions()
+        linked.functions = []
+
+        let pass = try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: false, shaders: shaders)
+            .environment(\.linkedFunctions, linked)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
+        _ = try renderer.render(pass)
     }
 
     @Test("Mesh-shader-only pipeline renders")
