@@ -157,6 +157,17 @@ public struct ShaderLibrary: Identifiable {
 }
 
 public extension ShaderLibrary {
+    /// Creates a shader library backed by a custom ``ShaderLoader``.
+    ///
+    /// Use this to give tests, tools, or multi-device hosts an isolated shader source and function cache. The
+    /// library's ``id`` comes from ``ShaderLoader/libraryID``, so a loader that reuses an existing ID will be deduped
+    /// against it by an ambient ``ShaderStore``.
+    ///
+    /// - Parameter loader: The port used for all function lookups.
+    init(loader: ShaderLoader) {
+        self.init(state: State(loader: loader))
+    }
+
     /// Creates a shader library from an existing Metal library.
     ///
     /// - Parameter library: The `MTLLibrary` to wrap.

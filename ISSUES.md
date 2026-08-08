@@ -5593,13 +5593,14 @@ Acceptance criteria:
 ## 378: Make ShaderLibrary a value type holding a ShaderLoader
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m, subtask
 depends: 377
 created: 2026-08-08T20:40:05Z
-updated: 2026-08-08T20:40:17Z
+updated: 2026-08-08T20:48:51Z
+closed: 2026-08-08T20:48:51Z
 +++
 
 Part of #295. Depends on #377. Overlaps #339 (LibraryRegistry leak).
