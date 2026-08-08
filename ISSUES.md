@@ -840,11 +840,11 @@ closed: 2026-08-08T06:05:30Z
 +++
 
 Clean up UVEnvironmentValues+Implementation.swift (should probably be renamed to MSEnvironmentValues+Implementation.swift):
-- Organize environment value definitions
-- Remove/deprecate unused values
-- Group related values together
-- Rename file to match MS naming convention
 
+- `2026-02-19T00:00:00Z`: Organize environment value definitions
+- `2026-02-19T00:00:00Z`: Remove/deprecate unused values
+- `2026-02-19T00:00:00Z`: Group related values together
+- `2026-02-19T00:00:00Z`: Rename file to match MS naming convention
 - `2026-08-08T06:05:30Z`: Closing: no longer valid — vague scraped TODO with no remaining actionable context.
 
 ---
@@ -4531,12 +4531,13 @@ Find all code similar to:\n\n```swift\nnonisolated func requiresSetup(comparedTo
 ## 344: RenderView.body creates MTLCommandQueue during GPU work
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: effort:s
 created: 2026-05-05T21:45:06Z
-updated: 2026-08-08T06:04:04Z
+updated: 2026-08-08T06:08:27Z
+closed: 2026-08-08T06:08:27Z
 +++
 
 RenderView.body evaluates `device.makeCommandQueue()` every time SwiftUI re-evaluates the body (when no commandQueue is provided via the environment). This can happen during an active draw callback, triggering the Metal warning:
@@ -4544,6 +4545,8 @@ RenderView.body evaluates `device.makeCommandQueue()` every time SwiftUI re-eval
 > Your application created a MTLCommandQueue object during GPU work
 
 The commandQueue should be created once and cached, similar to how RenderViewViewModel is lazily created via ViewModelBox (#337). The `device ?? _MTLCreateSystemDefaultDevice()` line has the same potential issue.
+
+- `2026-08-08T06:08:27Z`: Fixed: device/command queue are now resolved lazily and cached in ViewModelBox inside RenderViewHelper's update closure instead of being created during body evaluation.
 
 ---
 

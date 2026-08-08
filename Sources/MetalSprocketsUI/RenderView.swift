@@ -189,15 +189,16 @@ public struct RenderView <Content>: View where Content: Element {
     }
 
     public var body: some View {
-        let device = device ?? _MTLCreateSystemDefaultDevice()
-        let commandQueue = commandQueue ?? device.makeCommandQueue().orFatalError(.resourceCreationFailure("Failed to create command queue."))
+        // Device and command queue are resolved lazily inside RenderViewHelper's update
+        // closure rather than here: creating them during body evaluation can happen while
+        // a draw callback is in flight, which Metal warns about (#344).
         RenderViewHelper(device: device, commandQueue: commandQueue, content: content)
     }
 }
 
 internal struct RenderViewHelper <Content>: View where Content: Element {
-    var device: MTLDevice
-    var commandQueue: MTLCommandQueue
+    var device: MTLDevice?
+    var commandQueue: MTLCommandQueue?
     var content: (RenderViewContext, CGSize) throws -> Content
 
     @Environment(\.self)
@@ -222,7 +223,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     @State
     private var viewModelBox = ViewModelBox<Content>()
 
-    init(device: MTLDevice, commandQueue: MTLCommandQueue, @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
+    init(device: MTLDevice?, commandQueue: MTLCommandQueue?, @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
         self.content = content
@@ -233,6 +234,8 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             MTKView()
         }
         update: { view in
+            let device = viewModelBox.device(preferring: device)
+            let commandQueue = viewModelBox.commandQueue(preferring: commandQueue, device: device)
             let viewModel: RenderViewViewModel<Content>
             if let existing = viewModelBox.value {
                 viewModel = existing
@@ -266,9 +269,35 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     }
 }
 
-/// Cheap holder class for lazy viewModel creation in `RenderViewHelper`.
+/// Cheap holder class for lazy viewModel, device and command queue creation in `RenderViewHelper`.
 private final class ViewModelBox<Content: Element> {
     var value: RenderViewViewModel<Content>?
+    private var cachedDevice: MTLDevice?
+    private var cachedCommandQueue: MTLCommandQueue?
+
+    func device(preferring provided: MTLDevice?) -> MTLDevice {
+        if let provided {
+            return provided
+        }
+        if let cachedDevice {
+            return cachedDevice
+        }
+        let device = _MTLCreateSystemDefaultDevice()
+        cachedDevice = device
+        return device
+    }
+
+    func commandQueue(preferring provided: MTLCommandQueue?, device: MTLDevice) -> MTLCommandQueue {
+        if let provided {
+            return provided
+        }
+        if let cachedCommandQueue {
+            return cachedCommandQueue
+        }
+        let commandQueue = device.makeCommandQueue().orFatalError(.resourceCreationFailure("Failed to create command queue."))
+        cachedCommandQueue = commandQueue
+        return commandQueue
+    }
 }
 
 @Observable
