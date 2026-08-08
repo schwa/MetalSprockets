@@ -2546,15 +2546,18 @@ updated: 2026-04-03T17:33:35Z
 ## 268: device.supportsFunctionPointers
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:s
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:24Z
+updated: 2026-08-08T06:45:33Z
+closed: 2026-08-08T06:45:33Z
 +++
 
 Check `device.supportsFunctionPointers` before using function pointers / visible function tables. Add graceful fallback or clear error message when not supported.
+
+- `2026-08-08T06:45:33Z`: Added a device.supportsFunctionPointers check in VisibleFunctionTableModifier's table-creation paths (render + compute), throwing deviceCababilityFailure with a clear message instead of failing later on nil function handles. No test added: the unsupported path can't be exercised on available devices.
 
 ---
 

@@ -70,6 +70,7 @@ internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement,
     }
 
     private func createFunctionTable(renderPipelineState: MTLRenderPipelineState, reflection: Reflection) throws {
+        try Self.checkFunctionPointerSupport(device: renderPipelineState.device, name: name)
         let (index, resolvedType) = try resolveBinding(name: name, functionType: functionType, reflection: reflection, supportedTypes: [.vertex, .fragment])
 
         resolvedIndex = index
@@ -99,6 +100,7 @@ internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement,
     }
 
     private func createFunctionTable(computePipelineState: MTLComputePipelineState, reflection: Reflection) throws {
+        try Self.checkFunctionPointerSupport(device: computePipelineState.device, name: name)
         let (index, resolvedType) = try resolveBinding(name: name, functionType: functionType, reflection: reflection, supportedTypes: [.kernel])
 
         resolvedIndex = index
@@ -120,6 +122,14 @@ internal struct VisibleFunctionTableModifier<Content>: Element, BodylessElement,
         }
 
         functionTable = table
+    }
+
+    /// Visible function tables are built from function handles, which only exist on devices that
+    /// support function pointers. Fail early with a clear message instead of a nil handle later.
+    private static func checkFunctionPointerSupport(device: MTLDevice, name: String) throws {
+        guard device.supportsFunctionPointers else {
+            throw MetalSprocketsError.deviceCababilityFailure("Visible function table '\(name)' requires function pointer support, which device '\(device.name)' does not provide")
+        }
     }
 
     private func resolveBinding(name: String, functionType: MTLFunctionType?, reflection: Reflection, supportedTypes: [MTLFunctionType]) throws -> (Int, MTLFunctionType) {
