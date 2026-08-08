@@ -216,6 +216,16 @@ public extension ShaderLibrary {
 }
 
 public extension ShaderLibrary {
+    /// Looks up a shader function, trapping if it cannot be found.
+    ///
+    /// Use this only when a missing function is a programmer error (a shader that ships with the app and must exist).
+    /// Prefer ``function(type:named:namespace:constants:)`` everywhere else.
+    ///
+    /// - Parameters:
+    ///   - type: The shader type to produce, e.g. `VertexShader.self`.
+    ///   - name: The unqualified function name.
+    ///   - namespace: An optional C++ namespace qualifying `name`.
+    ///   - constants: Function constants to specialize the function with.
     func requiredFunction<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) -> T where T: ShaderProtocol {
         do {
             return try function(type: type, named: name, namespace: namespace, constants: constants)
@@ -225,68 +235,61 @@ public extension ShaderLibrary {
         }
     }
 
+    /// Looks up a shader function by name and wraps it in the requested shader type.
+    ///
+    /// Results are cached per (name, function type, constants), so repeated lookups are cheap.
+    ///
+    /// - Parameters:
+    ///   - type: The shader type to produce, e.g. `VertexShader.self`. Its ``ShaderProtocol/functionType`` must match
+    ///     the Metal function's actual type.
+    ///   - name: The unqualified function name.
+    ///   - namespace: An optional C++ namespace qualifying `name`.
+    ///   - constants: Function constants to specialize the function with.
+    /// - Throws: ``MetalSprocketsError/resourceCreationFailure(_:)`` if no function of that name exists, or if it
+    ///   exists but has the wrong function type.
     func function<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
-        let scopedNamed = namespace.map { "\($0)::\(name)" } ?? name
+        let scopedName = namespace.map { "\($0)::\(name)" } ?? name
         let expectedType = T.functionType
-
-        // Check cache first
-        let function: MTLFunction
-        if let cachedFunction = cache.get(scopedName: scopedNamed, functionType: expectedType, constants: constants) {
-            function = cachedFunction
-        } else {
-            // Cache miss - load the function
-            if !constants.isEmpty {
-                // Build the constant values using the unspecialized function for introspection
-                let mtlConstants = try constants.buildMTLConstants(for: library, functionName: scopedNamed)
-
-                // Now create the SPECIALIZED function with the constants applied
-                function = try library.makeFunction(name: scopedNamed, constantValues: mtlConstants)
-            } else {
-                // No constants, just get the function directly
-                guard let basicFunction = library.makeFunction(name: scopedNamed) else {
-                    try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedNamed)' not found in library (available: \(library.functionNames))."))
-                }
-                function = basicFunction
-            }
-
-            // Cache the loaded function
-            cache.set(scopedName: scopedNamed, functionType: expectedType, constants: constants, function: function)
+        let function = try makeFunction(scopedName: scopedName, expectedType: expectedType, constants: constants)
+        guard function.functionType == expectedType else {
+            try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedName)' is a \(function.functionType.shaderDescription) function, but a \(expectedType.shaderDescription) function (\(T.self)) was requested."))
         }
-        switch type {
-        // TODO: #86 Clean this up.
-        case is VertexShader.Type:
-            guard function.functionType == .vertex else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a vertex function."))
-            }
-            return (VertexShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create VertexShader."))
-        case is FragmentShader.Type:
-            guard function.functionType == .fragment else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a fragment function."))
-            }
-            return (FragmentShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create FragmentShader."))
-        case is ComputeKernel.Type:
-            guard function.functionType == .kernel else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a kernel function."))
-            }
-            return (ComputeKernel(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ComputeKernel."))
+        return T(function)
+    }
 
-        case is VisibleFunction.Type:
-            guard function.functionType == .visible else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a visible function."))
+    /// Returns the cached `MTLFunction` for `scopedName`, loading and caching it on a miss.
+    private func makeFunction(scopedName: String, expectedType: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction {
+        if let cached = cache.get(scopedName: scopedName, functionType: expectedType, constants: constants) {
+            return cached
+        }
+        let function: MTLFunction
+        if constants.isEmpty {
+            guard let basicFunction = library.makeFunction(name: scopedName) else {
+                try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedName)' not found in library (available: \(library.functionNames))."))
             }
-            return (VisibleFunction(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ComputeKernel."))
-        case is ObjectShader.Type:
-            guard function.functionType == .object else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not an object function."))
-            }
-            return (ObjectShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create ObjectShader."))
-        case is MeshShader.Type:
-            guard function.functionType == .mesh else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function \(scopedNamed) is not a mesh function."))
-            }
-            return (MeshShader(function) as? T).orFatalError(.resourceCreationFailure("Failed to create MeshShader."))
-        default:
-            try _throw(MetalSprocketsError.resourceCreationFailure("Unknown shader type \(type)."))
+            function = basicFunction
+        } else {
+            // `buildMTLConstants` introspects the unspecialized function; `makeFunction` then applies the constants.
+            let mtlConstants = try constants.buildMTLConstants(for: library, functionName: scopedName)
+            function = try library.makeFunction(name: scopedName, constantValues: mtlConstants)
+        }
+        cache.set(scopedName: scopedName, functionType: expectedType, constants: constants, function: function)
+        return function
+    }
+}
+
+extension MTLFunctionType {
+    /// A human-readable name used in shader lookup diagnostics.
+    var shaderDescription: String {
+        switch self {
+        case .vertex: return "vertex"
+        case .fragment: return "fragment"
+        case .kernel: return "kernel"
+        case .visible: return "visible"
+        case .intersection: return "intersection"
+        case .mesh: return "mesh"
+        case .object: return "object"
+        @unknown default: return "unknown (raw value \(rawValue))"
         }
     }
 }

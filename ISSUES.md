@@ -713,12 +713,13 @@ poi.endInterval(#function, state)
 ## 86: Clean up shader function lookup in ShaderLibrary
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:m, source:todo
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-08-08T20:19:22Z
+closed: 2026-08-08T20:19:22Z
 +++
 
 Clean up shader function lookup logic in ShaderLibrary.swift:

@@ -23,7 +23,7 @@ struct ShaderLibraryTypeMismatchTests {
     }
     """
 
-    /// A shader type the library's switch does not know about.
+    /// A `ShaderProtocol` conformer declared outside the framework, used to check that lookup is fully generic.
     struct UnknownShader: ShaderProtocol, Equatable {
         static var functionType: MTLFunctionType { .vertex }
         var function: MTLFunction
@@ -62,10 +62,23 @@ struct ShaderLibraryTypeMismatchTests {
         }
     }
 
-    @Test func `an unrecognised shader type is rejected`() throws {
+    @Test func `a shader type declared outside the framework is supported`() throws {
+        let library = try library()
+        let shader = try library.function(type: UnknownShader.self, named: "vertex_main")
+        #expect(shader.function.functionType == .vertex)
+    }
+
+    @Test func `an out-of-framework shader type still checks the function type`() throws {
         let library = try library()
         #expect(throws: MetalSprocketsError.self) {
-            _ = try library.function(type: UnknownShader.self, named: "vertex_main")
+            _ = try library.function(type: UnknownShader.self, named: "fragment_main")
+        }
+    }
+
+    @Test func `a missing function name is rejected`() throws {
+        let library = try library()
+        #expect(throws: MetalSprocketsError.self) {
+            _ = try library.function(type: VertexShader.self, named: "no_such_function")
         }
     }
 
