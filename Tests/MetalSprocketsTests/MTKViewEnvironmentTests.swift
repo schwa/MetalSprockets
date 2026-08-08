@@ -219,4 +219,32 @@ struct MTKViewEnvironmentTests {
         #expect(view.depthStencilPixelFormat == .depth32Float)
         #expect(view.preferredFramesPerSecond == 60)
     }
+
+    @Test("RenderView parameters win over the environment (#274)")
+    func testOverridesBeatEnvironment() {
+        let view = makeView()
+        var env = EnvironmentValues()
+        env.metalColorPixelFormat = .bgra8Unorm
+        env.metalDepthStencilPixelFormat = .invalid
+        env.metalSampleCount = 1
+        let overrides = MTKViewOverrides(colorPixelFormat: .rgba16Float, depthStencilPixelFormat: .depth32Float, sampleCount: 4)
+        view.configure(from: overrides.applied(to: env))
+
+        #expect(view.colorPixelFormat == .rgba16Float)
+        #expect(view.depthStencilPixelFormat == .depth32Float)
+        #expect(view.sampleCount == 4)
+    }
+
+    @Test("Unset RenderView parameters fall back to the environment (#274)")
+    func testUnsetOverridesFallBack() {
+        let view = makeView()
+        var env = EnvironmentValues()
+        env.metalColorPixelFormat = .bgra8Unorm_srgb
+        env.metalSampleCount = 4
+        let overrides = MTKViewOverrides()
+        view.configure(from: overrides.applied(to: env))
+
+        #expect(view.colorPixelFormat == .bgra8Unorm_srgb)
+        #expect(view.sampleCount == 4)
+    }
 }

@@ -75,7 +75,7 @@ public extension View {
     ///     .metalColorPixelFormat(.bgra8Unorm_srgb)
     /// ```
     ///
-    /// - Note: TODO #274 - This is so important it should be a parameter on RenderView?
+    /// - Note: `RenderView(colorPixelFormat:)` sets the same thing and takes precedence over this modifier.
     func metalColorPixelFormat(_ value: MTLPixelFormat) -> some View {
         self.environment(\.metalColorPixelFormat, value)
     }
@@ -93,7 +93,7 @@ public extension View {
     ///     .metalDepthStencilPixelFormat(.depth32Float)
     /// ```
     ///
-    /// - Note: TODO #274 - This is so important it should be a parameter on RenderView?
+    /// - Note: `RenderView(depthStencilPixelFormat:)` sets the same thing and takes precedence over this modifier.
     func metalDepthStencilPixelFormat(_ value: MTLPixelFormat) -> some View {
         self.environment(\.metalDepthStencilPixelFormat, value)
     }
@@ -106,6 +106,8 @@ public extension View {
     /// Sets the number of samples for MSAA (multisample anti-aliasing).
     ///
     /// Common values: 1 (no MSAA), 2, 4, 8
+    ///
+    /// - Note: `RenderView(sampleCount:)` sets the same thing and takes precedence over this modifier.
     func metalSampleCount(_ value: Int) -> some View {
         self.environment(\.metalSampleCount, value)
     }

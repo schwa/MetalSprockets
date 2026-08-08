@@ -177,6 +177,9 @@ public extension View {
 /// - ``FrameUniforms``
 public struct RenderView <Content>: View where Content: Element {
     var content: (RenderViewContext, CGSize) throws -> Content
+    var colorPixelFormat: MTLPixelFormat?
+    var depthStencilPixelFormat: MTLPixelFormat?
+    var sampleCount: Int?
 
     @Environment(\.device)
     var device
@@ -186,23 +189,74 @@ public struct RenderView <Content>: View where Content: Element {
 
     /// Creates a render view with the specified content.
     ///
-    /// - Parameter content: A closure that returns the elements to render each frame.
-    ///   Receives the render context and drawable size as parameters.
-    public init(@ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
+    /// - Parameters:
+    ///   - colorPixelFormat: The pixel format of the color render target. When `nil` (the default) the
+    ///     value from the environment (``SwiftUI/View/metalColorPixelFormat(_:)``) is used, falling back
+    ///     to `MTKView`'s own default.
+    ///   - depthStencilPixelFormat: The pixel format of the depth/stencil render target. Required for
+    ///     depth testing. When `nil` (the default) the environment value is used.
+    ///   - sampleCount: The number of samples used for MSAA. When `nil` (the default) the environment
+    ///     value is used.
+    ///   - content: A closure that returns the elements to render each frame.
+    ///     Receives the render context and drawable size as parameters.
+    ///
+    /// Values passed here take precedence over the equivalent environment modifiers, so a `RenderView`
+    /// that depends on a specific format cannot be broken by an ancestor view.
+    public init(
+        colorPixelFormat: MTLPixelFormat? = nil,
+        depthStencilPixelFormat: MTLPixelFormat? = nil,
+        sampleCount: Int? = nil,
+        @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content
+    ) {
         self.content = content
+        self.colorPixelFormat = colorPixelFormat
+        self.depthStencilPixelFormat = depthStencilPixelFormat
+        self.sampleCount = sampleCount
     }
 
     public var body: some View {
         // Device and command queue are resolved lazily inside RenderViewHelper's update
         // closure rather than here: creating them during body evaluation can happen while
         // a draw callback is in flight, which Metal warns about (#344).
-        RenderViewHelper(device: device, commandQueue: commandQueue, content: content)
+        RenderViewHelper(
+            device: device,
+            commandQueue: commandQueue,
+            overrides: MTKViewOverrides(
+                colorPixelFormat: colorPixelFormat,
+                depthStencilPixelFormat: depthStencilPixelFormat,
+                sampleCount: sampleCount
+            ),
+            content: content
+        )
+    }
+}
+
+/// Per-``RenderView`` configuration that wins over the equivalent SwiftUI environment values.
+internal struct MTKViewOverrides: Equatable {
+    var colorPixelFormat: MTLPixelFormat?
+    var depthStencilPixelFormat: MTLPixelFormat?
+    var sampleCount: Int?
+
+    /// Returns `environment` with each non-`nil` override applied.
+    func applied(to environment: EnvironmentValues) -> EnvironmentValues {
+        var environment = environment
+        if let colorPixelFormat {
+            environment.metalColorPixelFormat = colorPixelFormat
+        }
+        if let depthStencilPixelFormat {
+            environment.metalDepthStencilPixelFormat = depthStencilPixelFormat
+        }
+        if let sampleCount {
+            environment.metalSampleCount = sampleCount
+        }
+        return environment
     }
 }
 
 internal struct RenderViewHelper <Content>: View where Content: Element {
     var device: MTLDevice?
     var commandQueue: MTLCommandQueue?
+    var overrides: MTKViewOverrides
     var content: (RenderViewContext, CGSize) throws -> Content
 
     @Environment(\.self)
@@ -227,9 +281,10 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
     @State
     private var viewModelBox = ViewModelBox<Content>()
 
-    init(device: MTLDevice?, commandQueue: MTLCommandQueue?, @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
+    init(device: MTLDevice?, commandQueue: MTLCommandQueue?, overrides: MTKViewOverrides = MTKViewOverrides(), @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
+        self.overrides = overrides
         self.content = content
     }
 
@@ -254,7 +309,7 @@ internal struct RenderViewHelper <Content>: View where Content: Element {
             #endif
             view.device = device
             view.delegate = viewModel
-            view.configure(from: environment)
+            view.configure(from: overrides.applied(to: environment))
             viewModel.device = device
             viewModel.commandQueue = commandQueue
             viewModel.content = content

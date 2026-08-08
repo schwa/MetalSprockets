@@ -2654,12 +2654,13 @@ The RenderView currently has separate logic for environment and ProcessInfo that
 ## 274: Make sampleCount and colorPixelFormat parameters on RenderView
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:24Z
+updated: 2026-08-08T20:19:23Z
+closed: 2026-08-08T20:19:23Z
 +++
 
 File: Sources/MetalSprocketsUI/MTKView+Environment.swift
