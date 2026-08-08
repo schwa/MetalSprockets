@@ -202,20 +202,23 @@ public extension Element {
     }
 
     /// Binds an array of values to a shader parameter.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], values: [some BitwiseCopyable]) -> some Element {
-        ParameterElementModifier(functionTypes: functionTypes, name: name, value: .array(values), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], values: [some Any]) -> some Element {
+        assert(_isPOD(type(of: values).Element.self), "Parameter values must be a POD type.")
+        return ParameterElementModifier(functionTypes: functionTypes, name: name, value: .array(values), content: self)
     }
 
     /// Binds a value to a shader parameter.
     ///
-    /// The value must be `BitwiseCopyable`, i.e. a plain-old-data type Metal can memcpy: `Float`, `Int`, SIMD types
+    /// The value must be a plain-old-data type Metal can memcpy: `Float`, `Int`, SIMD types
     /// (`SIMD2<Float>`, `SIMD4<Float>`, etc.), matrices (`simd_float4x4`), and structs composed entirely of these.
-    /// Arrays are not `BitwiseCopyable` — use `values:` for those.
+    /// Use `values:` for arrays.
     ///
     /// > Important: The Swift type's memory layout must match the corresponding Metal type.
     /// Use `MemoryLayout<T>.stride` to verify sizes match your shader expectations.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: some BitwiseCopyable) -> some Element {
-        ParameterElementModifier(functionTypes: functionTypes, name: name, value: .value(value), content: self)
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: some Any) -> some Element {
+        assert(Mirror(reflecting: value).displayStyle != .collection, "Use 'values:' parameter for arrays, not 'value:'.")
+        assert(_isPOD(type(of: value)), "Parameter value must be a POD type.")
+        return ParameterElementModifier(functionTypes: functionTypes, name: name, value: .value(value), content: self)
     }
 }
 
@@ -248,41 +251,11 @@ public extension Element {
     }
 
     /// Binds an array of values to a shader parameter in one stage.
-    func parameter(_ name: String, functionType: MTLFunctionType?, values: [some BitwiseCopyable]) -> some Element {
-        parameter(name, functionTypes: .init(functionType), values: values)
-    }
-
-    /// Binds a value to a shader parameter in one stage.
-    func parameter(_ name: String, functionType: MTLFunctionType?, value: some BitwiseCopyable) -> some Element {
-        parameter(name, functionTypes: .init(functionType), value: value)
-    }
-}
-
-// MARK: - Deprecated unconstrained parameter overloads
-
-// Pre-#347 callers passed values whose types are not statically known to be
-// BitwiseCopyable (notably C/Metal header structs imported without the
-// conformance). These keep such code compiling with a runtime POD check.
-public extension Element {
-    @available(*, deprecated, message: "Pass a BitwiseCopyable value. This unconstrained overload checks POD-ness at runtime and will be removed.")
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], values: [some Any]) -> some Element {
-        assert(_isPOD(type(of: values).Element.self), "Parameter values must be a POD type.")
-        return ParameterElementModifier(functionTypes: functionTypes, name: name, value: .array(values), content: self)
-    }
-
-    @available(*, deprecated, message: "Pass a BitwiseCopyable value. This unconstrained overload checks POD-ness at runtime and will be removed.")
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: some Any) -> some Element {
-        assert(Mirror(reflecting: value).displayStyle != .collection, "Use 'values:' parameter for arrays, not 'value:'.")
-        assert(_isPOD(type(of: value)), "Parameter value must be a POD type.")
-        return ParameterElementModifier(functionTypes: functionTypes, name: name, value: .value(value), content: self)
-    }
-
-    @available(*, deprecated, message: "Pass a BitwiseCopyable value. This unconstrained overload checks POD-ness at runtime and will be removed.")
     func parameter(_ name: String, functionType: MTLFunctionType?, values: [some Any]) -> some Element {
         parameter(name, functionTypes: .init(functionType), values: values)
     }
 
-    @available(*, deprecated, message: "Pass a BitwiseCopyable value. This unconstrained overload checks POD-ness at runtime and will be removed.")
+    /// Binds a value to a shader parameter in one stage.
     func parameter(_ name: String, functionType: MTLFunctionType?, value: some Any) -> some Element {
         parameter(name, functionTypes: .init(functionType), value: value)
     }

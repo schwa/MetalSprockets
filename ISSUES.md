@@ -4794,13 +4794,12 @@ Easy to demonstrate with a `Runner` test: run the same element tree N times, cou
 ## 347: Replace isPOD with BitwiseCopyable where possible
 
 +++
-status: closed
+status: open
 priority: low
 kind: enhancement
 labels: effort:m
 created: 2026-05-18T04:25:45Z
-updated: 2026-08-08T16:23:40Z
-closed: 2026-08-08T16:23:40Z
+updated: 2026-08-08T22:00:16Z
 +++
 
 Swift 6's `BitwiseCopyable` protocol covers most of what our `isPOD`/`_isPOD` helper checks (trivially copyable, no refs, no ARC), but as a compile-time constraint rather than a runtime check.
@@ -4817,6 +4816,7 @@ Caveats:
 Decide: convert what we can to generic `BitwiseCopyable` constraints, keep `isPOD` only where runtime erasure forces it (or drop it entirely if no such sites remain).
 
 - `2026-08-08T16:23:40Z`: parameter(_:value:) and parameter(_:values:) are now constrained to BitwiseCopyable, so the POD check happens at compile time; the runtime isPOD/isPODArray/isArray asserts and the (now unused) helpers in MetalSprocketsSupport are gone. MetalSupport still ships runtime equivalents if an erased check is ever needed.
+- `2026-08-08T22:00:16Z`: Reverted: the BitwiseCopyable constraint on parameter(_:value:)/(_:values:) broke downstream callers (MetalSprocketsAddOns) passing C/Metal header structs. Back to some Any with runtime POD asserts for now.
 
 ---
 
