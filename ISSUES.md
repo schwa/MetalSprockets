@@ -5423,13 +5423,14 @@ Acceptance criteria:
 ## 370: Skip re-evaluating clean subtrees in System.update
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, subtask
 depends: 369
 created: 2026-08-08T20:39:34Z
-updated: 2026-08-08T20:40:16Z
+updated: 2026-08-08T20:51:14Z
+closed: 2026-08-08T20:51:14Z
 +++
 
 Part of #197. Depends on #369.

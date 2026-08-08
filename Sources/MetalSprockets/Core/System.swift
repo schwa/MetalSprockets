@@ -229,7 +229,29 @@ package final class System: @unchecked Sendable {
                 return index
             }
 
-            // Process a single element
+            // Splice a whole unchanged subtree from the previous traversal, reusing its nodes and events verbatim.
+            // Returns false if the subtree could not be located. See #370.
+            func spliceSubtree(_ id: StructuralIdentifier) -> Bool {
+                guard let range = Self.subtreeEventRange(for: id, in: traversalEvents) else {
+                    return false
+                }
+                var enteredCount = 0
+                for event in traversalEvents[range] {
+                    newTraversalEvents.append(event)
+                    if case .enter(let node) = event {
+                        enteredCount += 1
+                        newNodes[node.id] = node
+                    }
+                }
+                // The subtree's root identifier was already consumed by the caller; consume the descendants so the
+                // previous-identifier iterator stays aligned with the pre-order walk.
+                for _ in 1..<max(enteredCount, 1) {
+                    _ = previousIterator.next()
+                }
+                return true
+            }
+
+            // Process a single element.
             func processElement(_ element: any Element) throws {
                 // Create atom for this element
                 let typeId = ElementTypeIdentifier(type(of: element))
@@ -251,6 +273,25 @@ package final class System: @unchecked Sendable {
 
                 // Get or create the node for this element
                 let currentNode: Node
+
+                let previousNode = previousId == currentId ? nodes[currentId] : nil
+                let unchanged = previousNode.map { node in
+                    guard !isDirty(currentId) else {
+                        return false
+                    }
+                    // Identical class instances are the same element; `isEqual` deliberately refuses to guess for
+                    // reference types, so handle identity here.
+                    if let lhs = node.element as? AnyObject, let rhs = element as? AnyObject, lhs === rhs {
+                        return true
+                    }
+                    return isEqual(node.element, element)
+                } ?? false
+
+                // A clean, unchanged subtree under an unchanged parent can be reused wholesale: no body evaluation, no
+                // child walk. Dirty marks propagate to ancestors (#367), so a clean root implies a clean subtree.
+                if unchanged, !isSubtreeDirty(currentId), spliceSubtree(currentId) {
+                    return
+                }
 
                 // Compare and update nodes
                 currentNode = processNode(currentId: currentId, previousId: previousId, element: element, newNodes: &newNodes)

@@ -61,11 +61,9 @@ struct SelectiveRebuildTests {
         }
         try system.update(root: root)
 
-        // Known issue: update traversal always re-evaluates every body, so ConstantChild is
-        // rebuilt too. Subtree skipping is still open (#197).
-        withKnownIssue {
-            #expect(TestMonitor.shared.updates == ["root-body", "dynamic-body-1"])
-        }
+        // Clean subtrees are spliced from the previous traversal, so ConstantChild's body is not
+        // re-evaluated (#370).
+        #expect(TestMonitor.shared.updates == ["root-body", "dynamic-body-1"])
     }
 
     final class BindingRoot: Element {

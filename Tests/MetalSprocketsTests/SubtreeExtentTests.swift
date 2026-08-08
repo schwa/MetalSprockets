@@ -26,6 +26,25 @@ struct SubtreeExtentTests {
     }
 
     @Test
+    func cleanSubtreesAreSplicedAcrossUpdates() throws {
+        let system = System()
+        let root = Root()
+        try system.update(root: root)
+
+        let identifiers = Set(system.nodes.keys)
+        let nodesByIdentifier = system.nodes
+        let eventCount = system.traversalEvents.count
+
+        try system.update(root: root)
+
+        #expect(Set(system.nodes.keys) == identifiers)
+        #expect(system.traversalEvents.count == eventCount)
+        for (identifier, node) in system.nodes {
+            #expect(nodesByIdentifier[identifier] === node)
+        }
+    }
+
+    @Test
     func subtreeExtentCoversNestedAndSiblingStructures() throws {
         let system = System()
         try system.update(root: Root())
