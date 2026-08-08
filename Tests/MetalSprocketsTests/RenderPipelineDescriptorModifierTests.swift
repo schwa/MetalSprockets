@@ -212,9 +212,9 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
     _ = try rendering.cgImage
 }
 
-/// The pipeline cache key is built from shader identities, attachment formats, the vertex descriptor and the
-/// depth-stencil descriptor — but not from anything a `renderPipelineDescriptorModifier` does. Turning blending on
-/// between frames therefore has to be observable, or the second frame silently reuses the first frame's PSO.
+/// The pipeline cache key hashes the fully configured `MTLRenderPipelineDescriptor`, so anything a
+/// `renderPipelineDescriptorModifier` does is part of it. Turning blending on between frames has to be observable,
+/// or the second frame silently reuses the first frame's PSO. See #359.
 @Test
 @MainActor
 func testBlendStateChangeBetweenFramesTakesEffect() throws {
@@ -275,11 +275,7 @@ func testBlendStateChangeBetweenFramesTakesEffect() throws {
     let renderer = try OffscreenRenderer(size: size)
 
     try Golden.verify(try renderer.render(try scene(blending: false)).cgImage, named: "NoAlphaBlend")
-    // Frame 2 still renders unblended: the descriptor modifier's output is not part of the pipeline cache key, so
-    // the first frame's pipeline state is reused. See #359.
-    try withKnownIssue {
-        try Golden.verify(try renderer.render(try scene(blending: true)).cgImage, named: "WithAlphaBlend")
-    }
+    try Golden.verify(try renderer.render(try scene(blending: true)).cgImage, named: "WithAlphaBlend")
 }
 
 /// Regression test for #342: verifies PSO cache hits on frames 2+ when
@@ -320,6 +316,7 @@ func testPSOCacheStableWithDescriptorModifier() throws {
     rpd.depthAttachment.storeAction = .store
 
     let system = System()
+    var pipelineStates: [any MTLRenderPipelineState] = []
 
     for _ in 0..<3 {
         let root = try CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
@@ -349,5 +346,13 @@ func testPSOCacheStableWithDescriptorModifier() throws {
             try system.processSetup()
             try system.processWorkload()
         }
+
+        let frameStates = system.nodes.values.compactMap(\.environmentValues.renderPipelineState)
+        #expect(!frameStates.isEmpty)
+        pipelineStates.append(contentsOf: frameStates)
     }
+
+    // A descriptor modifier that does the same thing every frame must not defeat the cache: the modified descriptor
+    // is part of the cache key (#359), so it has to hash equal frame to frame.
+    #expect(Set(pipelineStates.map(ObjectIdentifier.init)).count == 1)
 }

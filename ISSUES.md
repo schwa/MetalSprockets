@@ -5133,11 +5133,13 @@ The test is currently wrapped in `withKnownIssue`; unwrap it when this is fixed.
 ## 359: renderPipelineDescriptorModifier changes are ignored after the first frame
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: effort:m
 created: 2026-08-08T20:02:36Z
+updated: 2026-08-08T20:24:39Z
+closed: 2026-08-08T20:24:39Z
 +++
 
 ## What happens

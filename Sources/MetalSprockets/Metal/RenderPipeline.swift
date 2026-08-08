@@ -120,41 +120,9 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
         let depthTexture = renderPassDescriptor.depthAttachment?.texture
         let stencilTexture = renderPassDescriptor.stencilAttachment?.texture
 
-        let key = RenderPipelineCache.Key(
-            vertexFunction: ObjectIdentifier(vertexShader.function),
-            fragmentFunction: ObjectIdentifier(fragmentShader.function),
-            linkedFunctions: environment.linkedFunctions.map { ObjectIdentifier($0) },
-            vertexDescriptor: environment.vertexDescriptor.map { NSObjectValueKey(object: $0) },
-            colorPixelFormat0: color0Texture?.pixelFormat ?? .invalid,
-            colorSampleCount0: color0Texture?.sampleCount ?? 1,
-            depthPixelFormat: depthTexture?.pixelFormat ?? .invalid,
-            stencilPixelFormat: stencilTexture?.pixelFormat ?? .invalid,
-            depthStencil: environment.depthStencilDescriptor.map(DepthStencilKey.init),
-            label: label
-        )
-
-        let cache = node.cache(RenderPipelineCache.self) { RenderPipelineCache() }
-
-        // A node's environment storage persists across frames (the parent environment is merged into it rather than
-        // replacing it), so a depth-stencil state this node wrote on an earlier frame is still visible here. Only a
-        // state inherited from an ancestor should win over the descriptor. See #358.
-        let inheritedDepthStencilState = environment.depthStencilState.flatMap { state in
-            state === cache.depthStencilState ? nil : state
-        }
-
-        if cache.key == key,
-            let cachedPSO = cache.pipelineState,
-            let cachedReflection = cache.reflection {
-            node.environmentValues.renderPipelineState = cachedPSO
-            node.environmentValues.reflection = cachedReflection
-            self.reflection = cachedReflection
-            if inheritedDepthStencilState == nil, let cachedDSS = cache.depthStencilState {
-                node.environmentValues.depthStencilState = cachedDSS
-            }
-            return
-        }
-
-        // Cache miss: (re)configure the descriptor and build a new PSO.
+        // Configure the descriptor _before_ building the cache key. The key hashes the fully configured descriptor,
+        // which is the only way changes made by a `renderPipelineDescriptorModifier` (which are already baked into the
+        // inherited descriptor) can be seen by the cache. See #359.
         renderPipelineDescriptor.vertexFunction = vertexShader.function
         renderPipelineDescriptor.fragmentFunction = fragmentShader.function
 
@@ -191,6 +159,39 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
             renderPipelineDescriptor.label = label
         }
 
+        let key = RenderPipelineCache.Key(
+            vertexFunction: ObjectIdentifier(vertexShader.function),
+            fragmentFunction: ObjectIdentifier(fragmentShader.function),
+            linkedFunctions: environment.linkedFunctions.map { ObjectIdentifier($0) },
+            // `renderPipelineDescriptor` is a private copy that nothing mutates from here on, so it is safe to keep
+            // it inside a hashable key.
+            descriptor: NSObjectValueKey(object: renderPipelineDescriptor),
+            depthStencil: environment.depthStencilDescriptor.map(DepthStencilKey.init),
+            label: label
+        )
+
+        let cache = node.cache(RenderPipelineCache.self) { RenderPipelineCache() }
+
+        // A node's environment storage persists across frames (the parent environment is merged into it rather than
+        // replacing it), so a depth-stencil state this node wrote on an earlier frame is still visible here. Only a
+        // state inherited from an ancestor should win over the descriptor. See #358.
+        let inheritedDepthStencilState = environment.depthStencilState.flatMap { state in
+            state === cache.depthStencilState ? nil : state
+        }
+
+        if cache.key == key,
+            let cachedPSO = cache.pipelineState,
+            let cachedReflection = cache.reflection {
+            node.environmentValues.renderPipelineState = cachedPSO
+            node.environmentValues.reflection = cachedReflection
+            self.reflection = cachedReflection
+            if inheritedDepthStencilState == nil, let cachedDSS = cache.depthStencilState {
+                node.environmentValues.depthStencilState = cachedDSS
+            }
+            return
+        }
+
+        // Cache miss: build a new PSO from the descriptor configured above.
         let (renderPipelineState, rawReflection) = try device.makeRenderPipelineState(descriptor: renderPipelineDescriptor, options: .bindingInfo)
         let reflection = Reflection(rawReflection.orFatalError(.resourceCreationFailure("Failed to create reflection.")))
         self.reflection = reflection
@@ -240,7 +241,9 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
 /// Wraps an `NSObject` for value-based `Hashable` conformance using
 /// `isEqual(_:)` / `hash`. Use instead of `ObjectIdentifier` when the
 /// object may be recreated each frame with identical contents (e.g.
-/// `MTLVertexDescriptor`). See #342.
+/// `MTLVertexDescriptor`, `MTLRenderPipelineDescriptor`). See #342.
+///
+/// > Important: the wrapped object must not be mutated while the key is alive.
 private struct NSObjectValueKey<T: NSObject>: Hashable {
     let object: T
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.object.isEqual(rhs.object) }
@@ -252,11 +255,7 @@ private final class RenderPipelineCache: NodeElementCache {
         let vertexFunction: ObjectIdentifier
         let fragmentFunction: ObjectIdentifier
         let linkedFunctions: ObjectIdentifier?
-        let vertexDescriptor: NSObjectValueKey<MTLVertexDescriptor>?
-        let colorPixelFormat0: MTLPixelFormat
-        let colorSampleCount0: Int
-        let depthPixelFormat: MTLPixelFormat
-        let stencilPixelFormat: MTLPixelFormat
+        let descriptor: NSObjectValueKey<MTLRenderPipelineDescriptor>
         let depthStencil: DepthStencilKey?
         let label: String?
     }
