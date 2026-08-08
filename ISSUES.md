@@ -8,9 +8,9 @@
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l
+labels: effort:l, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:01Z
+updated: 2026-08-08T20:34:35Z
 +++
 
 The elephant in room here is that MetalSprockets is not as type safe as it should be.
@@ -35,9 +35,9 @@ This may mean we need _more_element builder types (in the same way I think Swift
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l
+labels: effort:l, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:50Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 It would be nice if `ParameterValues` had better constructors so that we know 2nd parameter of `.buffer(…, …)` is an offset in the buffer and to get rid of the `T` generic parameter.
@@ -96,9 +96,9 @@ closed: 2026-03-31T18:19:42Z
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l
+labels: effort:l, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:50Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 Consolidate modifier architecture improvements:
@@ -139,9 +139,9 @@ closed: 2026-03-31T18:19:43Z
 status: open
 priority: low
 kind: enhancement
-labels: effort:l
+labels: effort:l, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:50Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 By default a vertex and fragment shader should be a modifier instead of a parameter
@@ -515,9 +515,9 @@ closed: 2026-03-31T18:36:08Z
 status: open
 priority: low
 kind: enhancement
-labels: effort:m
+labels: effort:m, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:09Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 Align MetalSprockets API terminology with SwiftUI's shader API where it makes sense:
@@ -551,9 +551,9 @@ closed: 2026-03-31T18:36:54Z
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l
+labels: effort:l, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:50Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 Formalize which environment keys each element reads (inputs) and writes (outputs).
@@ -577,9 +577,9 @@ Use an extension on Node (possibly with parameter packs) to explicitly declare i
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l
+labels: effort:l, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T19:35:19Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 We need a nice clean way to allow the user to customise attachments incl (but not limited to) color, depth, stencil etc.
@@ -735,10 +735,10 @@ Clean up shader function lookup logic in ShaderLibrary.swift:
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l, source:todo, has-subtasks
+labels: effort:l, source:todo, has-subtasks, deferred
 depends: 358, 359, 360, 361
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T20:07:28Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 Consolidate issues about environment and descriptor access:
@@ -1252,9 +1252,9 @@ closed: 2026-08-08T16:11:15Z
 status: open
 priority: low
 kind: feature
-labels: source:todo, effort:m
+labels: source:todo, effort:m, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:17Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 Currently, `onWorkloadExit` is only available on `AnyBodylessElement`, while `onWorkloadEnter` is available as a general modifier for all Elements through `WorkloadModifier`.
@@ -1345,9 +1345,9 @@ The custom implementation manually iterates through attributes and layouts, conv
 status: open
 priority: low
 kind: enhancement
-labels: enhancement, effort:m
+labels: enhancement, effort:m, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:30Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 Make vertex descriptor a parameter on Render and RenderPipeline instead of requiring environment setup or modifiers. This would make common cases simpler.
@@ -1639,12 +1639,13 @@ closed: 2026-03-31T18:56:27Z
 ## 196: Optimize: Unused bindings cause unnecessary child rebuilds
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: enhancement, effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T15:47:46Z
+updated: 2026-08-08T20:29:04Z
+closed: 2026-08-08T20:29:04Z
 +++
 
 ## Problem
@@ -1750,6 +1751,7 @@ This is a performance optimization - the current behavior is functionally correc
 The remaining symptom is the same one as #197: System's update traversal re-evaluates every body regardless of element equality, so the child rebuilds anyway. Fixing it means subtree skipping in System.update; see my comment on #197 for the blast radius and the question I need answered. Scenario added as a withKnownIssue test in Tests/MetalSprocketsTests/SelectiveRebuildTests.swift.
 
 - `2026-08-08T15:47:46Z`: Decision: push-based dirty propagation. StateBox will mark the dependent node and its ancestor chain dirty, and System.update will skip any subtree containing no dirty node, splicing the previous nodes and traversal events instead of re-evaluating bodies.
+- `2026-08-08T20:29:04Z`: Duplicate of #197. Both are blocked on the same work (push-based dirty propagation + subtree skipping in System.update); tracking it there. The unused-binding scenario stays covered by unusedBindingDoesNotRebuildChild in SelectiveRebuildTests.swift.
 
 ---
 
@@ -1921,6 +1923,7 @@ Added Tests/MetalSprocketsTests/SelectiveRebuildTests.swift with this issue's sc
 Unblocker: confirm you want subtree skipping in System.update, and whether dirty propagation should be push-based (StateBox marks ancestors) or pull-based (compare subtree during traversal).
 
 - `2026-08-08T15:47:46Z`: Decision: push-based dirty propagation. StateBox will mark the dependent node and its ancestor chain dirty, and System.update will skip any subtree containing no dirty node, splicing the previous nodes and traversal events instead of re-evaluating bodies.
+- `2026-08-08T20:29:04Z`: Folding #196 into this issue: both need the same feature (push-based dirty propagation + subtree skipping in System.update). #196's stated root cause (MSBinding UUID equality) was already stale — bindings to the same state compare equal. The unused-binding scenario is covered by unusedBindingDoesNotRebuildChild in Tests/MetalSprocketsTests/SelectiveRebuildTests.swift, alongside this issue's statelessChildDoesNotRebuild.
 
 ---
 
@@ -2010,9 +2013,9 @@ File: Sources/MetalSprockets/Core/StateBox.swift
 status: open
 priority: low
 kind: enhancement
-labels: effort:m
+labels: effort:m, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:17Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 EnvironmentReader should ideally be passed a Node as a parameter as noted in the TODO.
@@ -2564,9 +2567,9 @@ Create an OptionSet for Metal function types (vertex, fragment, compute, etc.) t
 status: open
 priority: low
 kind: feature
-labels: effort:xl
+labels: effort:xl, api
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:18Z
+updated: 2026-08-08T20:33:01Z
 +++
 
 Adopt Metal 4 APIs where beneficial:
@@ -2585,9 +2588,9 @@ Adopt Metal 4 APIs where beneficial:
 status: open
 priority: low
 kind: enhancement
-labels: enhancement, effort:l
+labels: enhancement, effort:l, api, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-21T04:32:14Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 We currently pass data to shaders through three different mechanisms, each with a distinct API:
@@ -2974,12 +2977,13 @@ The modifier may have been used outside of a `CommandBufferElement` context, whi
 ## 291: Audit and improve Swift concurrency throughout the framework
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: concurrency, effort:xl
 created: 2026-03-31T18:27:17Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T20:31:39Z
+closed: 2026-08-08T20:31:39Z
 +++
 
 Consolidate all concurrency-related work:
@@ -3001,6 +3005,10 @@ Consolidate all concurrency-related work:
 
 ## Related closed issues
 - #32 Re-visit MainActor usage
+
+- `2026-08-08T20:31:38Z`: Closing this umbrella. A concurrency review of Sources found three concrete problems, filed as #364 (StateBox unsynchronized while written from GPU completion handlers), #365 (ShaderLibrary.ID @unchecked Sendable over a mutable MTLCompileOptions), and #366 (KVO observation leak in OffscreenVideoRenderer.defaultWaitUntilReady).
+
+Everything else checked out: System and FrameRenderer's @unchecked Sendable is backed by documented single-isolation confinement with the genuinely cross-thread state (dirtyIdentifiers, lastGPUTime) behind OSAllocatedUnfairLock; ShaderCache and RenderViewViewModelAllocationTracker are lock-backed; no Task.detached, no DispatchQueue hops, no AsyncStream misuse.
 
 ---
 
@@ -3378,9 +3386,9 @@ Note: after this lands, https://schwa.github.io/MetalSprockets will no longer wo
 status: new
 priority: medium
 kind: task
-labels: needs-info, effort:m, deferred
+labels: needs-info, effort:m, api, deferred
 created: 2026-04-02T16:16:32Z
-updated: 2026-08-08T15:39:25Z
+updated: 2026-08-08T20:35:23Z
 +++
 
 Some of MetalSprokcetsAddsOns can come in - specifically the macros we have for textures etc
@@ -5268,5 +5276,73 @@ Acceptance criteria:
 - MSAA and MetalFX example/test scenes still render correctly.
 
 Part of #89.
+
+---
+
+## 364: StateBox has no synchronization but is written from GPU completion handlers
+
++++
+status: new
+priority: high
+kind: bug
+labels: concurrency, effort:m
+created: 2026-08-08T20:31:19Z
++++
+
+StateBox (Sources/MetalSprockets/Core/StateBox.swift) is a plain final class with no synchronization around its stored value or its dependency list.
+
+Off-isolation writes are a documented, supported scenario: the comment at StateBox.swift:47 lists "a GPU completion handler" as a place an MSBinding write can arrive from, and System.markDirty was wrapped in OSAllocatedUnfairLock for #330 specifically because "onCommandBufferCompleted handlers write back to @MSState" concurrently with System.update on the owning isolation.
+
+markDirty only protects the dirty identifier set. The value and dependency list underneath it are unprotected:
+
+- The wrappedValue setter writes _value and then walks/notifies dependencies.
+- The wrappedValue *getter* also mutates state: it reassigns dependencies (filter) and appends the current node.
+
+So a completion-handler write can race a main-thread traversal read, and two reads on different threads can race each other. Concurrent mutation of the dependencies array is a memory-safety problem (reallocation under another thread) rather than just a stale value.
+
+Not yet observed as a crash in tests; found by review. Whether off-isolation writes should be supported at all, or rejected with a precondition, is undecided — the docs currently promise both.
+
+---
+
+## 365: ShaderLibrary.ID is @unchecked Sendable and carries a mutable MTLCompileOptions
+
++++
+status: new
+priority: medium
+kind: bug
+labels: concurrency, effort:s
+created: 2026-08-08T20:31:31Z
++++
+
+ShaderLibrary.ID (Sources/MetalSprockets/Metal/ShaderLibrary.swift:81) is declared `public enum ID: Hashable, @unchecked Sendable`, and one of its cases is `source(String, MTLCompileOptions?)`.
+
+MTLCompileOptions is a mutable, non-Sendable reference type. The @unchecked annotation asserts the whole enum is safe to share, so two isolation domains can end up holding the same options object and one can mutate it while the other reads it. Nothing in the type provides the locking or immutability that would justify the annotation.
+
+Second effect: because the payload is a class, Hashable/== for the `.source` case compare by object identity. Two structurally identical MTLCompileOptions instances therefore produce different IDs, so library lookups that should hit an existing entry miss instead.
+
+---
+
+## 366: KVO observation leaks in OffscreenVideoRenderer.defaultWaitUntilReady
+
++++
+status: new
+priority: low
+kind: bug
+labels: concurrency, effort:s
+created: 2026-08-08T20:31:31Z
++++
+
+Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:141-165.
+
+defaultWaitUntilReady observes AVAssetWriterInput.isReadyForMoreMediaData with `options: [.new, .initial]`. The .initial option means the observation block can run synchronously inside the `input.observe(...)` call, i.e. before the returned NSKeyValueObservation has been assigned to the local `observation` variable.
+
+In that path:
+1. The block resumes the continuation (correctly guarded against double-resume by the OSAllocatedUnfairLock).
+2. `observation?.invalidate()` is a no-op because `observation` is still nil.
+3. `input.observe` then returns and assigns the live observation to the variable, which nobody ever invalidates.
+
+Result: the observation outlives the await, stays registered on the input, and its block runs again on every subsequent readiness change for the lifetime of the input. No crash — the resumed flag prevents a second resume — but the observer and its captured continuation leak.
+
+Hit whenever the input is not ready at call time but becomes ready between the readiness check and the observe call, or whenever .initial delivers a ready value synchronously.
 
 ---
