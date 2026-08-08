@@ -883,12 +883,13 @@ Clean up UVEnvironmentValues+Implementation.swift (should probably be renamed to
 ## 112: Reduce MTLTexture descriptor usage flags to only necessary ones
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: source:todo, effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:14Z
+updated: 2026-08-08T20:21:32Z
+closed: 2026-08-08T20:21:32Z
 +++
 
 Audit MTLTexture creation to use only the necessary usage flags. Over-specifying usage flags can prevent GPU optimizations.

@@ -91,17 +91,26 @@ public struct OffscreenRenderer {
     /// - Parameters:
     ///   - size: The size of the rendering area in pixels.
     ///   - device: The device to allocate the attachments on. Defaults to the system default device.
+    ///   - colorUsage: How the color attachment is used. Defaults to the minimum needed to render into it
+    ///     and read it back or sample it. Widen this only if you also write to it from a shader.
+    ///   - depthUsage: How the depth attachment is used. Defaults to render target only. Add `.shaderRead`
+    ///     if a later pass samples depth.
     ///
     /// - Note: TODO #20 - Most of this belongs on a RenderSession type API. We should be able to render multiple times with the same setup.
-    public init(size: CGSize, device: MTLDevice? = nil) throws {
+    public init(
+        size: CGSize,
+        device: MTLDevice? = nil,
+        colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead],
+        depthUsage: MTLTextureUsage = [.renderTarget]
+    ) throws {
         let device = device ?? _MTLCreateSystemDefaultDevice()
         let colorTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: Int(size.width), height: Int(size.height), mipmapped: false)
-        colorTextureDescriptor.usage = [.renderTarget, .shaderRead, .shaderWrite] // TODO: #25 this is all hardcoded :-(
+        colorTextureDescriptor.usage = colorUsage
         let colorTexture = try device.makeTexture(descriptor: colorTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create color texture"))
         colorTexture.label = "Color Texture"
 
         let depthTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: Int(size.width), height: Int(size.height), mipmapped: false)
-        depthTextureDescriptor.usage = [.renderTarget, .shaderRead] // TODO: #25 this is all hardcoded :-(
+        depthTextureDescriptor.usage = depthUsage
         let depthTexture = try device.makeTexture(descriptor: depthTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create depth texture"))
         depthTexture.label = "Depth Texture"
 
