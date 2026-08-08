@@ -7,8 +7,10 @@ internal struct EnvironmentWritingModifier<Content: Element>: Element, BodylessE
     /// Together with `value` and `valuesAreEqual` this lets `requiresSetup(comparedTo:)`
     /// compare what the closure *does* instead of comparing the (uncomparable) closure.
     var keyPath: AnyKeyPath?
-    var value: Any?
     var valuesAreEqual: ((Any?, Any?) -> Bool)?
+    // Declared last so the memberwise initializer doesn't end with a closure argument,
+    // which SwiftLint's trailing-closure rules would then complain about either way.
+    var value: Any?
 
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         try visit(content)
@@ -81,13 +83,13 @@ public extension Element {
                 environmentValues[keyPath: keyPath] = value
             },
             keyPath: keyPath,
-            value: value,
             valuesAreEqual: { lhs, rhs in
                 guard let lhs = lhs as? Value, let rhs = rhs as? Value else {
                     return false
                 }
                 return lhs == rhs
-            }
+            },
+            value: value
         )
     }
 }
