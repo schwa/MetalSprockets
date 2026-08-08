@@ -1,7 +1,7 @@
 import Metal
 
 // TODO: #22 Make into actual Modifier.
-public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElement, BodylessContentElement, EnvironmentModifyingElement where Content: Element {
+public struct RenderPipelineDescriptorTransformer<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     var content: Content
     var modify: (MTLRenderPipelineDescriptor) -> Void
 
@@ -16,7 +16,7 @@ public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElemen
     // Mirrors the pattern used by RenderPassDescriptorModifier. See #342.
     func configureNodeBodyless(_ node: Node) throws {
         guard let system = System.current else {
-            fatalError("RenderPipelineDescriptorModifier: No System is currently active.")
+            fatalError("RenderPipelineDescriptorTransformer: No System is currently active.")
         }
 
         let parent = system.activeNodeStack.count >= 2 ? system.activeNodeStack[system.activeNodeStack.count - 2] : nil
@@ -29,13 +29,18 @@ public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElemen
         node.environmentValues.renderPipelineDescriptor = copy
     }
 
-    nonisolated func requiresSetup(comparedTo old: RenderPipelineDescriptorModifier<Content>) -> Bool {
+    nonisolated func requiresSetup(comparedTo old: RenderPipelineDescriptorTransformer<Content>) -> Bool {
         false
     }
 }
 
 public extension Element {
+    func renderPipelineDescriptorTransformer(_ modify: @escaping (MTLRenderPipelineDescriptor) -> Void) -> some Element {
+        RenderPipelineDescriptorTransformer(content: self, modify: modify)
+    }
+
+    @available(*, deprecated, renamed: "renderPipelineDescriptorTransformer(_:)")
     func renderPipelineDescriptorModifier(_ modify: @escaping (MTLRenderPipelineDescriptor) -> Void) -> some Element {
-        RenderPipelineDescriptorModifier(content: self, modify: modify)
+        renderPipelineDescriptorTransformer(modify)
     }
 }

@@ -264,7 +264,7 @@ Modifiers configure rendering state:
 
 ```swift
 element
-    .renderPipelineDescriptorModifier { descriptor in
+    .renderPipelineDescriptorTransformer { descriptor in
         descriptor.isAlphaToCoverageEnabled = true
     }
     .environment(\.cullMode, .back)

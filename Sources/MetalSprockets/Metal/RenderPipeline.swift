@@ -121,7 +121,7 @@ public struct RenderPipeline <Content>: Element, SetupElement, WorkloadElement, 
         let stencilTexture = renderPassDescriptor.stencilAttachment?.texture
 
         // Configure the descriptor _before_ building the cache key. The key hashes the fully configured descriptor,
-        // which is the only way changes made by a `renderPipelineDescriptorModifier` (which are already baked into the
+        // which is the only way changes made by a `renderPipelineDescriptorTransformer` (which are already baked into the
         // inherited descriptor) can be seen by the cache. See #359.
         renderPipelineDescriptor.vertexFunction = vertexShader.function
         renderPipelineDescriptor.fragmentFunction = fragmentShader.function

@@ -18,15 +18,15 @@ struct EasyWins3Tests {
         #expect(a == aCopy)
     }
 
-    // MARK: RenderPipelineDescriptorModifier.requiresSetup
+    // MARK: RenderPipelineDescriptorTransformer.requiresSetup
 
-    // RenderPipelineDescriptorModifier now applies its modification during
+    // RenderPipelineDescriptorTransformer now applies its modification during
     // configureNodeBodyless (every frame) instead of setupEnter, so it no
     // longer needs setup. See #342.
-    @Test("RenderPipelineDescriptorModifier.requiresSetup is false")
-    func renderPipelineDescriptorModifierRequiresSetup() {
-        let a = RenderPipelineDescriptorModifier(content: EmptyElement()) { _ in }
-        let b = RenderPipelineDescriptorModifier(content: EmptyElement()) { _ in }
+    @Test("RenderPipelineDescriptorTransformer.requiresSetup is false")
+    func renderPipelineDescriptorTransformerRequiresSetup() {
+        let a = RenderPipelineDescriptorTransformer(content: EmptyElement()) { _ in }
+        let b = RenderPipelineDescriptorTransformer(content: EmptyElement()) { _ in }
         #expect(a.requiresSetup(comparedTo: b) == false)
     }
 

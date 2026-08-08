@@ -9,7 +9,7 @@ import Testing
 
 @Test
 @MainActor
-func testRenderPipelineDescriptorModifierWithoutAlphaBlending() throws {
+func testRenderPipelineDescriptorTransformerWithoutAlphaBlending() throws {
     let source = """
     #include <metal_stdlib>
     using namespace metal;
@@ -79,7 +79,7 @@ func testRenderPipelineDescriptorModifierWithoutAlphaBlending() throws {
 
 @Test
 @MainActor
-func testRenderPipelineDescriptorModifierWithAlphaBlending() throws {
+func testRenderPipelineDescriptorTransformerWithAlphaBlending() throws {
     let source = """
     #include <metal_stdlib>
     using namespace metal;
@@ -134,7 +134,7 @@ func testRenderPipelineDescriptorModifierWithAlphaBlending() throws {
             .parameter("color", value: blueColor)
         }
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())
-        .renderPipelineDescriptorModifier { descriptor in
+        .renderPipelineDescriptorTransformer { descriptor in
             descriptor.colorAttachments[0].isBlendingEnabled = true
             descriptor.colorAttachments[0].rgbBlendOperation = .add
             descriptor.colorAttachments[0].alphaBlendOperation = .add
@@ -213,7 +213,7 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
 }
 
 /// The pipeline cache key hashes the fully configured `MTLRenderPipelineDescriptor`, so anything a
-/// `renderPipelineDescriptorModifier` does is part of it. Turning blending on between frames has to be observable,
+/// `renderPipelineDescriptorTransformer` does is part of it. Turning blending on between frames has to be observable,
 /// or the second frame silently reuses the first frame's PSO. See #359.
 @Test
 @MainActor
@@ -259,7 +259,7 @@ func testBlendStateChangeBetweenFramesTakesEffect() throws {
                 .parameter("color", value: blueColor)
             }
             .vertexDescriptor(vertexShader.inferredVertexDescriptor())
-            .renderPipelineDescriptorModifier { descriptor in
+            .renderPipelineDescriptorTransformer { descriptor in
                 descriptor.colorAttachments[0].isBlendingEnabled = blending
                 descriptor.colorAttachments[0].rgbBlendOperation = .add
                 descriptor.colorAttachments[0].alphaBlendOperation = .add
@@ -279,7 +279,7 @@ func testBlendStateChangeBetweenFramesTakesEffect() throws {
 }
 
 /// Regression test for #342: verifies PSO cache hits on frames 2+ when
-/// a renderPipelineDescriptorModifier is present.
+/// a renderPipelineDescriptorTransformer is present.
 @Test
 @MainActor
 func testPSOCacheStableWithDescriptorModifier() throws {
@@ -329,7 +329,7 @@ func testPSOCacheStableWithDescriptorModifier() throws {
                     }
                 }
                 .vertexDescriptor(vertexShader.inferredVertexDescriptor())
-                .renderPipelineDescriptorModifier { descriptor in
+                .renderPipelineDescriptorTransformer { descriptor in
                     descriptor.colorAttachments[0].isBlendingEnabled = true
                     descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
                     descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha

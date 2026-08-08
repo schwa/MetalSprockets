@@ -2610,12 +2610,13 @@ Investigate whether these can be unified (or at least aligned) behind a more con
 ## 260: Rename renderPipelineDescriptorModifier -> renderPipelineDescriptorTransfomer
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: enhancement, effort:s
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:35Z
+updated: 2026-08-08T20:45:20Z
+closed: 2026-08-08T20:45:20Z
 +++
 
 *Imported from #251*
