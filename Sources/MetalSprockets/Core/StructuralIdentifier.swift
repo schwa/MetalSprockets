@@ -2,15 +2,20 @@ public struct StructuralIdentifier: Hashable, Sendable {
     public struct Atom: Hashable, Sendable {
         public let typeIdentifier: ElementTypeIdentifier
         public let index: Int
+        /// Identity supplied via ``Element/id(_:)``. When present it replaces sibling position
+        /// as the distinguishing part of the atom.
+        public let explicitID: AnyElementID?
 
-        public init(typeIdentifier: ElementTypeIdentifier, index: Int) {
+        public init(typeIdentifier: ElementTypeIdentifier, index: Int, explicitID: AnyElementID? = nil) {
             self.typeIdentifier = typeIdentifier
             self.index = index
+            self.explicitID = explicitID
         }
 
-        public init(element: some Element, index: Int) {
+        public init(element: some Element, index: Int, explicitID: AnyElementID? = nil) {
             self.typeIdentifier = ElementTypeIdentifier(type(of: element))
             self.index = index
+            self.explicitID = explicitID
         }
     }
 
@@ -29,7 +34,10 @@ extension StructuralIdentifier: CustomStringConvertible {
 
 extension StructuralIdentifier.Atom: CustomStringConvertible {
     public var description: String {
-        "\(typeIdentifier)#\(index)"
+        guard let explicitID else {
+            return "\(typeIdentifier)#\(index)"
+        }
+        return "\(typeIdentifier)#\(explicitID)"
     }
 }
 

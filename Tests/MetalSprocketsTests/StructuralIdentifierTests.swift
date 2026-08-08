@@ -136,6 +136,45 @@ struct StructuralIdentifierTests {
         var body: some Element { EmptyElement() }
     }
 
+    // See #187: .id() pins identity to the value instead of sibling position.
+    @Test("Explicit .id() distinguishes atoms of the same type and index")
+    func explicitIDDistinguishesAtoms() {
+        let typeId = ElementTypeIdentifier(Leaf.self)
+        let first = StructuralIdentifier.Atom(typeIdentifier: typeId, index: 0, explicitID: AnyElementID("a"))
+        let second = StructuralIdentifier.Atom(typeIdentifier: typeId, index: 0, explicitID: AnyElementID("b"))
+        let firstAgain = StructuralIdentifier.Atom(typeIdentifier: typeId, index: 1, explicitID: AnyElementID("a"))
+
+        #expect(first != second)
+        #expect(first != firstAgain)
+        #expect(first == StructuralIdentifier.Atom(typeIdentifier: typeId, index: 0, explicitID: AnyElementID("a")))
+    }
+
+    @MainActor
+    @Test("Explicit .id() keeps identity stable when an element moves")
+    func explicitIDSurvivesReordering() throws {
+        struct Container: Element {
+            var reversed: Bool
+            var body: some Element {
+                if reversed {
+                    Leaf().id("second")
+                    Leaf().id("first")
+                } else {
+                    Leaf().id("first")
+                    Leaf().id("second")
+                }
+            }
+        }
+
+        let system = System()
+        try system.update(root: Container(reversed: false))
+        let identifiersBefore = Set(system.nodes.keys.map(\.description))
+
+        try system.update(root: Container(reversed: true))
+        let identifiersAfter = Set(system.nodes.keys.map(\.description))
+
+        #expect(identifiersBefore == identifiersAfter)
+    }
+
     @Test("Atom(element:index:) derives type identifier from value")
     func atomFromElementWithIndex() {
         let atom = StructuralIdentifier.Atom(element: Leaf(), index: 7)

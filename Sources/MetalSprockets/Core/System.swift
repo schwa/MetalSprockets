@@ -135,7 +135,10 @@ package final class System: @unchecked Sendable {
                 // Create atom for this element
                 let typeId = ElementTypeIdentifier(type(of: element))
                 let index = nextIndex(for: typeId)
-                let atom = StructuralIdentifier.Atom(typeIdentifier: typeId, index: index)
+                // An explicit .id() replaces sibling position, so the element keeps its identity
+                // when it moves within its parent.
+                let explicitID = (element as? any ExplicitlyIdentifiedElement)?.explicitID
+                let atom = StructuralIdentifier.Atom(typeIdentifier: typeId, index: explicitID == nil ? index : 0, explicitID: explicitID)
 
                 // Push atom onto stack
                 atomStack.append(atom)

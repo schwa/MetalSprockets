@@ -25,6 +25,8 @@ modules:
         public func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element
     - decl: public func eraseToAnyElement() -> AnyElement
     - decl: |
+        public func id<ID>(_ id: ID) -> some Element where ID : Hashable
+    - decl: |
         public func linkedFunctions(_ functions: [any MTLFunction]) -> some Element
     - decl: |
         public func msaa(sampleCount: Int) -> some Element
@@ -118,6 +120,10 @@ modules:
   - decl: public struct AnyElement
     members:
     - decl: 'public init(_ base: some Element)'
+  - decl: public struct AnyElementID
+    members:
+    - decl: 'public init<ID>(_ id: ID) where ID : Hashable'
+    - decl: 'public var description: String { get }'
   - decl: public struct Blit
     members:
     - decl: 'public init(_ block: @escaping (any MTLBlitCommandEncoder) throws -> Void)'
@@ -382,9 +388,10 @@ modules:
     members:
     - decl: public struct Atom
       members:
-      - decl: 'public init(element: some Element, index: Int)'
-      - decl: 'public init(typeIdentifier: ElementTypeIdentifier, index: Int)'
+      - decl: 'public init(element: some Element, index: Int, explicitID: AnyElementID? = nil)'
+      - decl: 'public init(typeIdentifier: ElementTypeIdentifier, index: Int, explicitID: AnyElementID? = nil)'
       - decl: 'public var description: String { get }'
+      - decl: 'public let explicitID: AnyElementID?'
       - decl: 'public let index: Int'
       - decl: 'public let typeIdentifier: ElementTypeIdentifier'
     - decl: 'public init(atoms: [StructuralIdentifier.Atom])'

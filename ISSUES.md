@@ -1489,12 +1489,13 @@ Some closures are fundamental to the API and can't be eliminated (like @ElementB
 ## 187: Add id modifier for explicit identity
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:17Z
+updated: 2026-08-08T06:54:05Z
+closed: 2026-08-08T06:54:05Z
 +++
 
 ## Overview
@@ -1538,6 +1539,8 @@ StructuralID.Atom(
 - #17 Graph.updateContent should detect if content changed
 
 *Imported from #179*
+
+- `2026-08-08T06:54:05Z`: Added Element.id(_:) backed by IdentifiedElement plus an explicitID field on StructuralIdentifier.Atom; when present it replaces sibling index in the atom, so identity follows the value rather than position. Tests added in StructuralIdentifierTests.
 
 ---
 
