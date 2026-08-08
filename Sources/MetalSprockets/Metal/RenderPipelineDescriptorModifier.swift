@@ -1,7 +1,7 @@
 import Metal
 
 // TODO: #22 Make into actual Modifier.
-public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+public struct RenderPipelineDescriptorModifier<Content>: Element, BodylessElement, BodylessContentElement, EnvironmentModifyingElement where Content: Element {
     var content: Content
     var modify: (MTLRenderPipelineDescriptor) -> Void
 

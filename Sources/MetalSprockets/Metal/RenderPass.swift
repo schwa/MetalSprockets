@@ -64,7 +64,7 @@ import CompositorServices
 internal protocol RenderPassElement {
 }
 
-public struct RenderPass <Content>: Element, WorkloadElement, BodylessContentElement, RenderPassElement where Content: Element {
+public struct RenderPass <Content>: Element, WorkloadElement, BodylessContentElement, RenderPassElement, EnvironmentModifyingElement where Content: Element {
     private let label: String?
     internal let content: Content
 

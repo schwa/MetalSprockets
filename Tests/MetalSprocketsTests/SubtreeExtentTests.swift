@@ -85,8 +85,7 @@ struct SubtreeExtentTests {
         let branchIdentifier = try #require(children.first?.id)
         let subtreeEvents = try #require(system.previousSubtreeEvents(for: branchIdentifier))
         #expect(Array(subtreeEvents.indices) == Array(System.subtreeEventRange(for: branchIdentifier, in: events)!))
-        let subtreeNodes = try #require(system.previousSubtreeNodes(for: branchIdentifier))
-        #expect(subtreeNodes.first?.id == branchIdentifier)
+        #expect(system.previousSubtreeNodes(for: branchIdentifier).first?.id == branchIdentifier)
 
         // Unknown identifiers have no extent.
         #expect(System.subtreeEventRange(for: StructuralIdentifier(atoms: []), in: events) == nil)

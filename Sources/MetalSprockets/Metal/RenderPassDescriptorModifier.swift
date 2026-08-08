@@ -1,7 +1,7 @@
 import Metal
 
 // TODO: #22 Make into actual Modifier.
-internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
+internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement, BodylessContentElement, EnvironmentModifyingElement where Content: Element {
     var content: Content
     var modify: (MTLRenderPassDescriptor) -> Void
 

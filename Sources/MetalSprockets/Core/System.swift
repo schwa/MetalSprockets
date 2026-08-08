@@ -113,8 +113,10 @@ package final class System: @unchecked Sendable {
     /// its matching `.exit` event. Returns `nil` if the identifier is not present in `events`. See #369.
     internal static func subtreeEventRange(for id: StructuralIdentifier, in events: [TraversalEvent]) -> Range<Int>? {
         guard let start = events.firstIndex(where: { event in
-            if case .enter(let node) = event { return node.id == id }
-            return false
+            guard case .enter(let node) = event else {
+                return false
+            }
+            return node.id == id
         }) else {
             return nil
         }
@@ -142,12 +144,15 @@ package final class System: @unchecked Sendable {
     }
 
     /// The nodes of the subtree rooted at `id` in the previous traversal, in enter order.
-    internal func previousSubtreeNodes(for id: StructuralIdentifier) -> [Node]? {
-        previousSubtreeEvents(for: id).map { events in
-            events.compactMap { event in
-                if case .enter(let node) = event { return node }
+    internal func previousSubtreeNodes(for id: StructuralIdentifier) -> [Node] {
+        guard let events = previousSubtreeEvents(for: id) else {
+            return []
+        }
+        return events.compactMap { event in
+            guard case .enter(let node) = event else {
                 return nil
             }
+            return node
         }
     }
 
@@ -252,7 +257,11 @@ package final class System: @unchecked Sendable {
             }
 
             // Process a single element.
-            func processElement(_ element: any Element) throws {
+            //
+            // `environmentStable` says no ancestor changed the environment this update. Only then may a subtree be
+            // skipped: its elements read the environment while their bodies run, so a changed ancestor environment has
+            // to force re-evaluation even when the elements themselves compare equal.
+            func processElement(_ element: any Element, environmentStable: Bool = true) throws {
                 // Create atom for this element
                 let typeId = ElementTypeIdentifier(type(of: element))
                 let index = nextIndex(for: typeId)
@@ -275,21 +284,13 @@ package final class System: @unchecked Sendable {
                 let currentNode: Node
 
                 let previousNode = previousId == currentId ? nodes[currentId] : nil
-                let unchanged = previousNode.map { node in
-                    guard !isDirty(currentId) else {
-                        return false
-                    }
-                    // Identical class instances are the same element; `isEqual` deliberately refuses to guess for
-                    // reference types, so handle identity here.
-                    if let lhs = node.element as? AnyObject, let rhs = element as? AnyObject, lhs === rhs {
-                        return true
-                    }
-                    return isEqual(node.element, element)
-                } ?? false
+                // Class elements never compare equal (their mutable stored properties are invisible to `isEqual`), so
+                // they always re-evaluate; only their unchanged children get skipped.
+                let unchanged = previousNode.map { !isDirty(currentId) && isEqual($0.element, element) } ?? false
 
                 // A clean, unchanged subtree under an unchanged parent can be reused wholesale: no body evaluation, no
                 // child walk. Dirty marks propagate to ancestors (#367), so a clean root implies a clean subtree.
-                if unchanged, !isSubtreeDirty(currentId), spliceSubtree(currentId) {
+                if unchanged, environmentStable, !isSubtreeDirty(currentId), spliceSubtree(currentId) {
                     return
                 }
 
@@ -314,8 +315,10 @@ package final class System: @unchecked Sendable {
                 siblingIndices.append([:]) // Push new level for children
                 defer { siblingIndices.removeLast() } // Pop when done
 
+                let childEnvironmentStable = environmentStable && (unchanged || !(element is any EnvironmentModifyingElement))
+
                 try element.visitChildren { child in
-                    try processElement(child)
+                    try processElement(child, environmentStable: childEnvironmentStable)
                 }
             }
 

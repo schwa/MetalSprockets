@@ -17,5 +17,32 @@ internal func isEqual(_ lhs: Any, _ rhs: Any) -> Bool {
     guard !(type(of: lhs) is AnyClass), !(type(of: rhs) is AnyClass), type(of: lhs) == type(of: rhs) else {
         return false
     }
-    return Mirror(reflecting: lhs).children.isEmpty && Mirror(reflecting: rhs).children.isEmpty
+    let lhsMirror = Mirror(reflecting: lhs)
+    let rhsMirror = Mirror(reflecting: rhs)
+    // Only structs are compared field by field. A closure (or anything else without a struct display style)
+    // reflects as childless, and two distinct closures are not interchangeable.
+    guard lhsMirror.displayStyle == .struct, rhsMirror.displayStyle == .struct else {
+        return false
+    }
+    if lhsMirror.children.isEmpty, rhsMirror.children.isEmpty {
+        return true
+    }
+    // Structural comparison: a non-Equatable struct is equal when every stored property is. This lets elements
+    // holding non-Equatable payloads (e.g. an unused `@MSBinding`) still compare equal and be skipped. (#197)
+    guard lhsMirror.children.count == rhsMirror.children.count else {
+        return false
+    }
+    return zip(lhsMirror.children, rhsMirror.children).allSatisfy { lhsChild, rhsChild in
+        guard lhsChild.label == rhsChild.label else {
+            return false
+        }
+        if lhsChild.value is any EnvironmentDependentProperty {
+            return false
+        }
+        if let lhsObject = lhsChild.value as? AnyObject, let rhsObject = rhsChild.value as? AnyObject,
+            type(of: lhsChild.value) is AnyClass {
+            return lhsObject === rhsObject
+        }
+        return isEqual(lhsChild.value, rhsChild.value)
+    }
 }

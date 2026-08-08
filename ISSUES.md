@@ -5445,13 +5445,14 @@ Acceptance criteria:
 ## 371: Enable SelectiveRebuildTests and cover skipping edge cases
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:s, subtask
 depends: 370
 created: 2026-08-08T20:39:35Z
-updated: 2026-08-08T20:40:16Z
+updated: 2026-08-08T20:59:45Z
+closed: 2026-08-08T20:59:45Z
 +++
 
 Part of #197. Depends on #370.

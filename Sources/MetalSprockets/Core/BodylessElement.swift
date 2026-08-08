@@ -1,3 +1,9 @@
+/// Marks an element that writes environment values for its children during the update phase.
+///
+/// Subtree skipping (#370) uses this: once such an element changes, nothing below it may be skipped, because its
+/// descendants read the environment while their bodies run.
+internal protocol EnvironmentModifyingElement {}
+
 internal protocol BodylessElement {
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws
 

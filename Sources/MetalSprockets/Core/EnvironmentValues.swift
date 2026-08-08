@@ -161,8 +161,12 @@ public extension MSEnvironmentValues {
 /// - ``MSEnvironmentKey``
 /// - ``MSState``
 /// - ``MSBinding``
+/// Marks a property wrapper whose value comes from the environment rather than from the element's own storage.
+/// Two elements holding one compare unequal: their stored fields say nothing about the environment they will read.
+internal protocol EnvironmentDependentProperty {}
+
 @propertyWrapper
-public struct MSEnvironment <Value> {
+public struct MSEnvironment <Value>: EnvironmentDependentProperty {
     /// The current value from the environment.
     public var wrappedValue: Value {
         guard let system = System.current else {

@@ -39,7 +39,7 @@ import MetalSprocketsSupport
 ///
 /// ### Related Modifiers
 /// - ``View/metalSampleCount(_:)`` - For MTKView-based MSAA (simpler, preferred for on-screen rendering)
-internal struct MSAAModifier<Content>: Element, BodylessContentElement where Content: Element {
+internal struct MSAAModifier<Content>: Element, BodylessContentElement, EnvironmentModifyingElement where Content: Element {
     var content: Content
     var sampleCount: Int
 
