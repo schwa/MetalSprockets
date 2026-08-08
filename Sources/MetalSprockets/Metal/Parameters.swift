@@ -42,10 +42,7 @@ internal struct ParameterElementModifier<Content>: Element, WorkloadElement, Bod
     }
 
     func workloadEnter(_ node: Node) throws {
-        guard let reflection = node.environmentValues.reflection else {
-            let hint = "parameter() modifiers must be placed inside a RenderPipeline or ComputePipeline content block, not as a modifier on the pipeline itself."
-            throw MetalSprocketsError.withHint(.missingEnvironment("reflection"), hint: hint)
-        }
+        let reflection = try node.environmentValues.requireReflection(for: "parameter() modifiers")
         let renderCommandEncoder = node.environmentValues.renderCommandEncoder
         let computeCommandEncoder = node.environmentValues.computeCommandEncoder
         for parameter in collapsed.parameters.values {

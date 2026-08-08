@@ -267,4 +267,37 @@ struct ParameterBindingTests {
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
         _ = try renderer.render(pass)
     }
+
+    // MARK: - Reflection scope (#294)
+
+    @Test("Resolving bindings outside a pipeline explains the scope requirement")
+    func testRequireReflectionOutsidePipeline() throws {
+        let environment = MSEnvironmentValues()
+        #expect(throws: MetalSprocketsError.self) {
+            _ = try environment.requireReflection(for: "parameter() modifiers")
+        }
+        do {
+            _ = try environment.requireReflection(for: "parameter() modifiers")
+            Issue.record("Expected a throw.")
+        }
+        catch let error as MetalSprocketsError {
+            guard case let .withHint(underlying, hint) = error else {
+                Issue.record("Expected a hinted error, got \(error).")
+                return
+            }
+            #expect(String(describing: underlying) == "Missing environment value: reflection")
+            #expect(hint.contains("parameter() modifiers"))
+            #expect(hint.contains("RenderPipeline"))
+        }
+    }
+
+    @Test("Reflection published by a pipeline is returned unchanged")
+    func testRequireReflectionInsidePipeline() throws {
+        try withRenderEncoder { _, reflection in
+            var environment = MSEnvironmentValues()
+            environment.reflection = reflection
+            let resolved = try environment.requireReflection(for: "parameter() modifiers")
+            #expect(resolved.binding(forType: .fragment, name: "color") == reflection.binding(forType: .fragment, name: "color"))
+        }
+    }
 }

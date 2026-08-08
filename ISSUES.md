@@ -53,12 +53,13 @@ Make make this a struct… that takes closures that will call `MTLXXXCommandEnco
 ## 19: Refactor OffscreenRenderer architecture
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:01Z
+updated: 2026-08-08T19:47:39Z
+closed: 2026-08-08T19:47:39Z
 +++
 
 Consolidate OffscreenRenderer improvements:
@@ -3063,12 +3064,13 @@ EnvironmentTests and UVEnvironmentValuesTests test shallow behavior (values are 
 ## 294: Refactor: Reflection/RenderPipeline/ParameterElementModifier inter-phase contract is invisible and untested
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l
 created: 2026-03-31T19:33:58Z
-updated: 2026-04-21T02:48:18Z
+updated: 2026-08-08T19:50:36Z
+closed: 2026-08-08T19:50:36Z
 +++
 
 ## Problem
@@ -3094,6 +3096,12 @@ The deeper fix is option 2: RenderPipeline's content closure receives a context 
 ## Test Impact
 
 ParametersTests and FunctionConstantsTests currently exercise the happy path only. The stale-reflection case (call processWorkload without processSetup, or with needsSetup=false on an element that changed shaders) is unverified. A deepened interface would make the stale-reflection case structurally impossible and the tests would verify that named bindings resolve correctly given a live reflection context.
+
+- `2026-08-08T19:50:36Z`: Resolved by rescoping to option 3.
+
+The stale-reflection premise was already out of date: RenderPipeline, MeshRenderPipeline and ComputePipeline all return true from requiresSetup, so setup runs every frame and republishes the reflection (cache-hit path included). Options 1/2 (typed pipeline context threaded through the content closure) would be a DSL-wide redesign that fights the environment-based flow used by every other pipeline output, so they were not pursued.
+
+Done: added MSEnvironmentValues.requireReflection(for:), a single documented accessor stating that reflection is a setup-phase output slot and that consumers must be descendants of a pipeline. Parameters.swift and VisibleFunctionTableModifier.swift now use it instead of duplicating the guard and hint. Tests added in ParameterBindingTests covering the out-of-scope failure (hinted error, correct underlying case) and the in-scope success.
 
 ---
 

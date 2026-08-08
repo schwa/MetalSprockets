@@ -32,10 +32,9 @@ internal struct VisibleFunctionTableModifier<Content>: Element, SetupElement, Wo
     }
 
     func workloadEnter(_ node: Node) throws {
-        let hint = "visibleFunctionTable('\(name)') must be placed inside a RenderPipeline or ComputePipeline content block, not as a modifier on the pipeline itself."
-        guard let reflection = node.environmentValues.reflection else {
-            throw MetalSprocketsError.withHint(.missingEnvironment("reflection"), hint: hint)
-        }
+        let usage = "visibleFunctionTable('\(name)')"
+        let hint = "\(usage) must be placed inside a RenderPipeline or ComputePipeline content block, not as a modifier on the pipeline itself."
+        let reflection = try node.environmentValues.requireReflection(for: usage)
 
         // Create table if not already created during setup
         if functionTable == nil {
