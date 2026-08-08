@@ -5,6 +5,13 @@ import os
 internal enum TraversalEvent {
     case enter(Node)
     case exit(Node)
+
+    var node: Node {
+        switch self {
+        case .enter(let node), .exit(let node):
+            return node
+        }
+    }
 }
 
 /// The core engine that manages the element tree, node lifecycle, and render graph traversal.
@@ -99,6 +106,48 @@ package final class System: @unchecked Sendable {
         }
         return dirty.contains { descendantIdentifier in
             isDescendant(descendantIdentifier, of: id)
+        }
+    }
+
+    /// The contiguous range of traversal events covering the subtree rooted at `id`, from its `.enter` event through
+    /// its matching `.exit` event. Returns `nil` if the identifier is not present in `events`. See #369.
+    internal static func subtreeEventRange(for id: StructuralIdentifier, in events: [TraversalEvent]) -> Range<Int>? {
+        guard let start = events.firstIndex(where: { event in
+            if case .enter(let node) = event { return node.id == id }
+            return false
+        }) else {
+            return nil
+        }
+        var depth = 0
+        for index in start..<events.count {
+            switch events[index] {
+            case .enter:
+                depth += 1
+            case .exit(let node):
+                depth -= 1
+                if depth == 0 {
+                    // Balanced traversal: the exit closing the opening enter must be the same node.
+                    assert(node.id == id)
+                    return start..<(index + 1)
+                }
+            }
+        }
+        return nil
+    }
+
+    /// The traversal events for the subtree rooted at `id` in the *previous* traversal, or `nil` if that subtree was
+    /// not present.
+    internal func previousSubtreeEvents(for id: StructuralIdentifier) -> ArraySlice<TraversalEvent>? {
+        Self.subtreeEventRange(for: id, in: traversalEvents).map { traversalEvents[$0] }
+    }
+
+    /// The nodes of the subtree rooted at `id` in the previous traversal, in enter order.
+    internal func previousSubtreeNodes(for id: StructuralIdentifier) -> [Node]? {
+        previousSubtreeEvents(for: id).map { events in
+            events.compactMap { event in
+                if case .enter(let node) = event { return node }
+                return nil
+            }
         }
     }
 

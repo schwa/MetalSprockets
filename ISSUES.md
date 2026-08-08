@@ -5399,13 +5399,14 @@ closed: 2026-08-08T20:39:26Z
 ## 369: Record subtree extents in traversal events
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, subtask
 depends: 367
 created: 2026-08-08T20:39:34Z
-updated: 2026-08-08T20:40:16Z
+updated: 2026-08-08T20:48:25Z
+closed: 2026-08-08T20:48:25Z
 +++
 
 Part of #197. Depends on #367.
