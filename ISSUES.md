@@ -5246,11 +5246,13 @@ Part of #89.
 ## 362: Publish render attachment formats into the environment
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, subtask
 created: 2026-08-08T20:07:06Z
+updated: 2026-08-08T21:08:47Z
+closed: 2026-08-08T21:08:47Z
 +++
 
 `RenderPipeline` currently derives attachment pixel formats and sample count by reaching into the render pass descriptor's textures. Before it can stop doing that, the elements that produce render pass descriptors must publish the formats themselves.

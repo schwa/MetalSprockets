@@ -94,6 +94,7 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
         }
 
         node.environmentValues.renderPassDescriptor = copy
+        node.environmentValues.renderAttachmentFormats = RenderAttachmentFormats(copy)
     }
 
     private func multisampleTexture(device: MTLDevice, matching targetTexture: MTLTexture) throws -> MTLTexture {

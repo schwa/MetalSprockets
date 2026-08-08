@@ -156,6 +156,7 @@ internal struct GPUCountersModifier <Content>: Element, BodylessElement, Bodyles
         attachment.startOfFragmentSampleIndex = MTLCounterDontSample
         attachment.endOfFragmentSampleIndex = 1
         node.environmentValues.renderPassDescriptor = copy
+        node.environmentValues.renderAttachmentFormats = RenderAttachmentFormats(copy)
     }
 
     func workloadEnter(_ node: Node) throws {

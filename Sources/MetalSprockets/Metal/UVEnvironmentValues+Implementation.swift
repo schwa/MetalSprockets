@@ -82,8 +82,12 @@ public extension Element {
     }
 
     /// Sets the render pass descriptor used by ``RenderPass``.
+    ///
+    /// Also publishes the descriptor's attachment formats as
+    /// ``MSEnvironmentValues/renderAttachmentFormats``.
     func renderPassDescriptor(_ renderPassDescriptor: MTLRenderPassDescriptor) -> some Element {
         environment(\.renderPassDescriptor, renderPassDescriptor)
+            .environment(\.renderAttachmentFormats, RenderAttachmentFormats(renderPassDescriptor))
     }
 
     /// Sets the base render pipeline descriptor pipelines are built from.

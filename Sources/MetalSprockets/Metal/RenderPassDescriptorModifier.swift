@@ -27,6 +27,8 @@ internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement,
         let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
         modify(copy)
         node.environmentValues.renderPassDescriptor = copy
+        // Recompute after the caller's mutations so the published formats match the descriptor.
+        node.environmentValues.renderAttachmentFormats = RenderAttachmentFormats(copy)
     }
 
     nonisolated func requiresSetup(comparedTo old: RenderPassDescriptorModifier<Content>) -> Bool {
