@@ -97,6 +97,34 @@ struct DebugGroupTests {
         #expect(modifier.label == "Label")
     }
 
+    @Test func `two groups are equal when their labels match`() throws {
+        let a = try #require(EmptyElement().debugGroup("Scene") as? DebugGroupModifier<EmptyElement>)
+        let same = try #require(EmptyElement().debugGroup("Scene") as? DebugGroupModifier<EmptyElement>)
+        let different = try #require(EmptyElement().debugGroup("Overlay") as? DebugGroupModifier<EmptyElement>)
+
+        #expect(a == same)
+        #expect(a != different)
+    }
+
+    @Test func `a debug group works on a blit encoder`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let buffer = try #require(device.makeBuffer(length: 16, options: .storageModeShared))
+
+        try BlitPass {
+            Blit { encoder in
+                encoder.fill(buffer: buffer, range: 0..<16, value: 0x42)
+            }
+            .debugGroup("Fill")
+        }
+        .run()
+
+        // The group must not disturb the work it wraps.
+        let contents = buffer.contents().bindMemory(to: UInt8.self, capacity: 16)
+        for index in 0..<16 {
+            #expect(contents[index] == 0x42)
+        }
+    }
+
     @Test func `using the modifier with no command buffer throws`() throws {
         let system = System()
         try system.update(root: EmptyElement().debugGroup("Label"))

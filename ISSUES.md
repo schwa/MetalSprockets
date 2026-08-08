@@ -578,7 +578,7 @@ priority: medium
 kind: enhancement
 labels: effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:10Z
+updated: 2026-08-08T19:35:19Z
 +++
 
 We need a nice clean way to allow the user to customise attachments incl (but not limited to) color, depth, stencil etc.
@@ -5010,7 +5010,7 @@ Applies to both `Element.capture(_:target:destination:)` and the `View.capture(_
 status: new
 priority: high
 kind: bug
-labels: bug,effort:m
+labels: bug, effort:m
 created: 2026-08-08T19:03:49Z
 +++
 

@@ -64,4 +64,42 @@ struct DepthBiasTests {
             try system.processWorkload()
         }
     }
+
+    @Test func `two modifiers are equal when their bias settings match`() throws {
+        let a = try #require(EmptyElement().depthBias(-0.1, slopeScale: -1, clamp: -0.01) as? DepthBiasModifier<EmptyElement>)
+        let same = try #require(EmptyElement().depthBias(-0.1, slopeScale: -1, clamp: -0.01) as? DepthBiasModifier<EmptyElement>)
+        let differentBias = try #require(EmptyElement().depthBias(-0.2, slopeScale: -1, clamp: -0.01) as? DepthBiasModifier<EmptyElement>)
+        let differentSlope = try #require(EmptyElement().depthBias(-0.1, slopeScale: -2, clamp: -0.01) as? DepthBiasModifier<EmptyElement>)
+        let differentClamp = try #require(EmptyElement().depthBias(-0.1, slopeScale: -1, clamp: -0.02) as? DepthBiasModifier<EmptyElement>)
+
+        #expect(a == same)
+        #expect(a != differentBias)
+        #expect(a != differentSlope)
+        #expect(a != differentClamp)
+    }
+
+    @Test func `an unchanged biased tree reuses its nodes across renders`() throws {
+        let vs = try VertexShader(source: Self.source)
+        let fs = try FragmentShader(source: Self.source)
+
+        func pass() throws -> some Element {
+            try RenderPass {
+                try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                    Draw { encoder in
+                        let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
+                        encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
+                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    }
+                    .depthBias(-0.1, slopeScale: -1.0, clamp: -0.01)
+                }
+                .vertexDescriptor(try vs.inferredVertexDescriptor())
+            }
+        }
+
+        // Equality is what lets the System keep the existing node instead of rebuilding it, which is the whole
+        // reason the modifier is Equatable.
+        let renderer = try OffscreenRenderer(size: CGSize(width: 32, height: 32))
+        _ = try renderer.render(try pass())
+        _ = try renderer.render(try pass())
+    }
 }

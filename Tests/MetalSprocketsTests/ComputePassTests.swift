@@ -19,6 +19,31 @@ struct ComputePassTests {
     }
     """
 
+    @Test("A threadgroups dispatch with no explicit threadgroup size picks one automatically")
+    func testAutomaticThreadgroupSizeForThreadgroupsDispatch() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let kernel = try ComputeKernel(source: Self.kernelSource)
+        let count = 64
+        let buffer = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
+
+        try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                AnyBodylessElement()
+                    .onWorkloadEnter { (node: Node) in
+                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
+                    }
+                // No threadsPerThreadgroup given. A threadgroups-per-grid dispatch has no grid size to derive one
+                // from, so the automatic sizing falls back on the pipeline state's own limits.
+                try ComputeDispatch(threadgroups: MTLSize(width: 1, height: 1, depth: 1))
+            }
+        }
+        .run()
+
+        // One threadgroup ran, so at least the first element was written.
+        let contents = buffer.contents().bindMemory(to: UInt32.self, capacity: count)
+        #expect(contents[0] == 1)
+    }
+
     @Test
     func testComputePassDispatchesKernel() throws {
         let device = MTLCreateSystemDefaultDevice()!
