@@ -48,6 +48,47 @@ struct StateTests {
         #expect(system.dirtyIdentifiers.isEmpty)
     }
 
+    // MARK: - Ancestor Dirty Propagation (#367)
+
+    @Test
+    func testNestedStateMarksAncestorChainDirty() throws {
+        let root = ParentWithState()
+        let system = System()
+        try system.update(root: root)
+        try system.processWorkload()
+
+        let childElement = system.element(at: [0, 0, 1, 0], type: TrackedElement.self)!
+        system.withCurrentSystem {
+            childElement.action()
+        }
+
+        let dirty = system.dirtyIdentifiers
+        let childIdentifier = try #require(dirty.max { $0.atoms.count < $1.atoms.count })
+
+        // Every ancestor of the dirty node is dirty too.
+        var parentIdentifier = system.nodes[childIdentifier]?.parentIdentifier
+        var ancestorCount = 0
+        while let identifier = parentIdentifier {
+            #expect(system.isDirty(identifier))
+            ancestorCount += 1
+            parentIdentifier = system.nodes[identifier]?.parentIdentifier
+        }
+        #expect(ancestorCount > 0)
+
+        // A subtree containing a dirty node reports dirty; a clean leaf does not.
+        let rootIdentifier = try #require(system.nodes.values.first { $0.parentIdentifier == nil }?.id)
+        #expect(system.isSubtreeDirty(rootIdentifier))
+        let cleanIdentifier = system.nodes.keys.first { !dirty.contains($0) && $0 != childIdentifier }
+        if let cleanIdentifier, !system.isDescendant(childIdentifier, of: cleanIdentifier) {
+            #expect(!system.isSubtreeDirty(cleanIdentifier))
+        }
+
+        // Dirty marks clear after the next update.
+        try system.update(root: root)
+        #expect(system.dirtyIdentifiers.isEmpty)
+        #expect(!system.isSubtreeDirty(rootIdentifier))
+    }
+
     // MARK: - Independent State Test
 
     struct ParentWithState: Element {
@@ -105,8 +146,8 @@ struct StateTests {
             childElement.action()
         }
 
-        // Only child should be dirty
-        #expect(system.dirtyIdentifiers.count == 1)
+        // The child plus its ancestor chain is dirty (see #367).
+        #expect(system.dirtyIdentifiers.count > 1)
 
         try system.update(root: root)
         try system.processWorkload()

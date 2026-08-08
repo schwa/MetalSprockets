@@ -67,9 +67,53 @@ package final class System: @unchecked Sendable {
         _dirtyIdentifiers.withLock { _ = $0.insert(id) }
     }
 
+    /// Mark a node dirty along with every ancestor, so a subtree can be tested for dirtiness by looking only at its
+    /// root. See #367.
+    internal func markDirtyIncludingAncestors(_ node: Node) {
+        var chain: [StructuralIdentifier] = [node.id]
+        var parentIdentifier = node.parentIdentifier
+        // Bounded by the tree depth; `seen` guards against a malformed cyclic parent chain.
+        var seen: Set<StructuralIdentifier> = [node.id]
+        while let identifier = parentIdentifier, !seen.contains(identifier) {
+            chain.append(identifier)
+            seen.insert(identifier)
+            parentIdentifier = nodes[identifier]?.parentIdentifier
+        }
+        let identifiers = chain
+        _dirtyIdentifiers.withLock { $0.formUnion(identifiers) }
+    }
+
     /// Whether the given identifier is currently marked dirty.
     internal func isDirty(_ id: StructuralIdentifier) -> Bool {
         _dirtyIdentifiers.withLock { $0.contains(id) }
+    }
+
+    /// Whether the subtree rooted at `id` contains any dirty node.
+    ///
+    /// Relies on ``markDirtyIncludingAncestors(_:)``: a dirty descendant always marks its ancestors, so the root's own
+    /// mark is sufficient. Falls back to a subtree walk for identifiers marked without ancestor propagation.
+    internal func isSubtreeDirty(_ id: StructuralIdentifier) -> Bool {
+        let dirty = dirtyIdentifiers
+        if dirty.contains(id) {
+            return true
+        }
+        return dirty.contains { descendantIdentifier in
+            isDescendant(descendantIdentifier, of: id)
+        }
+    }
+
+    /// Whether `id` is a descendant of `ancestor` in the node tree.
+    internal func isDescendant(_ id: StructuralIdentifier, of ancestor: StructuralIdentifier) -> Bool {
+        var seen: Set<StructuralIdentifier> = [id]
+        var current = nodes[id]?.parentIdentifier
+        while let identifier = current, !seen.contains(identifier) {
+            if identifier == ancestor {
+                return true
+            }
+            seen.insert(identifier)
+            current = nodes[identifier]?.parentIdentifier
+        }
+        return false
     }
 
     /// Atomically remove and return all currently-dirty identifiers.

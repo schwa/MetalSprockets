@@ -78,7 +78,7 @@ internal final class StateBox<Wrapped> {
             guard let node = boxedNode() else {
                 return nil
             }
-            system.markDirty(node.id)
+            system.markDirtyIncludingAncestors(node)
             node.needsSetup = true
             return boxedNode
         }

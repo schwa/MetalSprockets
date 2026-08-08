@@ -5361,12 +5361,13 @@ Hit whenever the input is not ready at call time but becomes ready between the r
 ## 367: Propagate dirty marks up the ancestor chain
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, subtask
 created: 2026-08-08T20:39:19Z
-updated: 2026-08-08T20:40:16Z
+updated: 2026-08-08T20:47:38Z
+closed: 2026-08-08T20:47:38Z
 +++
 
 Part of #197.
