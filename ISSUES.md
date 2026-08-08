@@ -2088,12 +2088,13 @@ File: Sources/MetalSprockets/Core/Element+SystemExtensions.swift
 ## 217: Clarify purpose of AnyBodylessElement extensions
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:18Z
+updated: 2026-08-08T20:20:14Z
+closed: 2026-08-08T20:20:14Z
 +++
 
 Document the AnyBodylessElement modifier-style extensions (onSetupEnter, onSetupExit, onWorkloadEnter, onWorkloadExit).

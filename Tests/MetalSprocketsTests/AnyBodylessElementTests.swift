@@ -39,6 +39,22 @@ struct AnyBodylessElementTests {
     }
 
     @Test
+    func testAnyBodylessElementModifiersReplaceRatherThanAccumulate() throws {
+        TestMonitor.shared.reset()
+
+        let modifier = AnyBodylessElement()
+            .onWorkloadEnter { TestMonitor.shared.logUpdate("first") }
+            .onWorkloadEnter { TestMonitor.shared.logUpdate("second") }
+
+        let system = System()
+        try system.update(root: modifier)
+        try system.processSetup()
+        try system.processWorkload()
+
+        #expect(TestMonitor.shared.updates == ["second"])
+    }
+
+    @Test
     func testAnyBodylessElementNoArgOverloads() throws {
         TestMonitor.shared.reset()
 
