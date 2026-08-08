@@ -104,7 +104,8 @@ struct FrameTimingViewRenderingTests {
         ViewHosting.host(view: view, size: CGSize(width: 300, height: 200))
         defer { ViewHosting.expel() }
 
-        #expect(try view.inspect().find(ViewType.TimelineView.self) != nil)
+        // `find` throws when the view is absent, so reaching the next line is the assertion.
+        _ = try view.inspect().find(ViewType.TimelineView.self)
     }
 
     @Test func `display options compose`() {

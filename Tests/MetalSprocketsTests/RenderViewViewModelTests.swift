@@ -163,7 +163,7 @@ struct RenderViewViewModelTests {
         // view model down with it.
         let viewModel = try makeViewModel(device: device) { _, _ -> AnyElement in
             let willThrow = shouldThrow
-            return try AnyElement(
+            return AnyElement(
                 try triangle().onSetupEnter { _ in
                     if willThrow {
                         throw Failure()
@@ -236,7 +236,7 @@ struct RenderViewViewModelTests {
         }
         view.delegate = viewModel
 
-        try SystemEnvironment.$current.withValue(SystemEnvironment(enabled: ["MS_RENDERVIEW_LOG_FRAME"])) {
+        SystemEnvironment.$current.withValue(SystemEnvironment(enabled: ["MS_RENDERVIEW_LOG_FRAME"])) {
             #expect(RenderViewDebugging.logFrame)
             viewModel.diagnostics = RenderViewDiagnostics(environment: EnvironmentValues())
             #expect(viewModel.diagnostics.logFrame)

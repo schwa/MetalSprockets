@@ -152,7 +152,7 @@ struct ParameterBindingTests {
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.vertexFunction = vs.function
         pipelineDescriptor.fragmentFunction = fs.function
-        pipelineDescriptor.vertexDescriptor = try vs.inferredVertexDescriptor()
+        pipelineDescriptor.vertexDescriptor = vs.inferredVertexDescriptor()
         pipelineDescriptor.colorAttachments[0].pixelFormat = texture.pixelFormat
         let (_, rawReflection) = try device.makeRenderPipelineState(descriptor: pipelineDescriptor, options: .bindingInfo)
         let reflection = Reflection(try #require(rawReflection))

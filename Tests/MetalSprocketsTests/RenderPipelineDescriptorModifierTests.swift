@@ -258,7 +258,7 @@ func testBlendStateChangeBetweenFramesTakesEffect() throws {
                 }
                 .parameter("color", value: blueColor)
             }
-            .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
+            .vertexDescriptor(vertexShader.inferredVertexDescriptor())
             .renderPipelineDescriptorModifier { descriptor in
                 descriptor.colorAttachments[0].isBlendingEnabled = blending
                 descriptor.colorAttachments[0].rgbBlendOperation = .add

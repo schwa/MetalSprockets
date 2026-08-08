@@ -45,7 +45,7 @@ struct RenderPipelineCacheTests {
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
                 }
             }
-            .vertexDescriptor(try shaders.vertex.inferredVertexDescriptor())
+            .vertexDescriptor(shaders.vertex.inferredVertexDescriptor())
             .depthCompare(function: .less, enabled: true)
         }
     }
