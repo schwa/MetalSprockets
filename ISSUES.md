@@ -4581,12 +4581,13 @@ The commandQueue should be created once and cached, similar to how RenderViewVie
 ## 345: Repeated .run() calls rebuild System and pay per-call overhead
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: performance, effort:l
 created: 2026-05-14T04:06:44Z
-updated: 2026-08-08T06:04:04Z
+updated: 2026-08-08T06:59:29Z
+closed: 2026-08-08T06:59:29Z
 +++
 
 When driving MetalSprockets headlessly across many independent one-shot workloads (e.g. an offline bake that runs a fixed element tree per input sample, hundreds or thousands of times), `Element.run()` is the obvious entry point.
@@ -4604,6 +4605,8 @@ There's no obvious public API for "run this element tree N times against a persi
 Real-world use case: an offline UV-atlas visibility bake in <https://github.com/schwa/RoomCaptureTestbed>. Reusing one driver across all frames is the last big remaining win after caching the `ShaderLibrary` + resolved shader functions and reducing the per-frame attachment sizes.
 
 Not prescribing the shape of the fix — could be a new public "Runner" type, a reusable `System`, an extended `OffscreenRenderer`, or something else entirely. Flagging the problem so it can be considered.
+
+- `2026-08-08T06:59:29Z`: Already implemented: Sources/MetalSprockets/Roots/Runner.swift provides a public reusable driver holding a persistent device, command queue and System, with tests in RunnerTests.swift. The remaining amortization blocker described here (EnvironmentWritingModifier.requiresSetup always true) was fixed in #346, so structurally-stable trees now skip per-node setup across runs.
 
 ---
 
@@ -4678,15 +4681,22 @@ Decide: convert what we can to generic `BitwiseCopyable` constraints, keep `isPO
 ## 348: Investigate SwiftUI 27 @ContentBuilder
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: effort:m
 created: 2026-06-09T21:14:28Z
-updated: 2026-08-08T06:04:05Z
+updated: 2026-08-08T06:59:03Z
+closed: 2026-08-08T06:59:03Z
 +++
 
 Look at SwiftUI 27's @ContentBuilder result builder. Evaluate whether/how it could apply to MetalSprockets' DSL (e.g. replacing or complementing existing @PassBuilder/result builders, ambiguous overload behavior, etc.). See skill: swiftui-whats-new-27.
+
+- `2026-08-08T06:59:03Z`: Investigated. Conclusion: no action needed, and @ContentBuilder does not apply to MetalSprockets' DSL.
+- `2026-08-08T06:59:03Z`: @ContentBuilder is SwiftUI's unification of its own builders (ViewBuilder etc.); it removes the View constraint from those builders. It is not a mechanism for third-party DSLs — ElementBuilder already does what MetalSprockets needs, including variadic-generics buildBlock producing TupleElement.
+- `2026-08-08T06:59:03Z`: Audited MetalSprocketsUI and the example app for the documented SDK 27 source incompatibilities: no hardcoded TupleView in generic parameters, no MapKit import (so no empty-builder/EmptyMapContent ambiguity), no ShapeStyle expressions passed to the non-builder overlay/background (both call sites use the trailing-closure/in: forms), no Swift Charts usage.
+- `2026-08-08T06:59:03Z`: One theoretical shadowing risk: MetalSprockets declares its own public Group (an Element, not a View). Client code that imports both SwiftUI and MetalSprockets in a SwiftUI view body could hit an ambiguity that the old ViewBuilder View constraint used to resolve. Nothing in this repo trips it, and the fix would be client-side qualification (SwiftUI.Group). Worth a docs note if it ever bites; filing no change now.
+- `2026-08-08T06:59:03Z`: The package builds clean against the SDK 27 toolchain.
 
 ---
 
