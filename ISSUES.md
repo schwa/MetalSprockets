@@ -1759,13 +1759,14 @@ The remaining symptom is the same one as #197: System's update traversal re-eval
 ## 197: Optimize: Elements without parameters rebuild unnecessarily
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: enhancement, effort:l
 depends: 367, 369, 370, 371
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T20:40:04Z
+updated: 2026-08-08T21:13:12Z
+closed: 2026-08-08T21:13:12Z
 +++
 
 ## Problem
@@ -1927,6 +1928,7 @@ Unblocker: confirm you want subtree skipping in System.update, and whether dirty
 - `2026-08-08T15:47:46Z`: Decision: push-based dirty propagation. StateBox will mark the dependent node and its ancestor chain dirty, and System.update will skip any subtree containing no dirty node, splicing the previous nodes and traversal events instead of re-evaluating bodies.
 - `2026-08-08T20:29:04Z`: Folding #196 into this issue: both need the same feature (push-based dirty propagation + subtree skipping in System.update). #196's stated root cause (MSBinding UUID equality) was already stale — bindings to the same state compare equal. The unused-binding scenario is covered by unusedBindingDoesNotRebuildChild in Tests/MetalSprocketsTests/SelectiveRebuildTests.swift, alongside this issue's statelessChildDoesNotRebuild.
 - `2026-08-08T20:39:47Z`: Split into subtasks: #367 -> #369 -> #370 -> #371.
+- `2026-08-08T21:13:25Z`: Completed via subtasks #367, #369, #370, #371 (push-based dirty propagation + subtree splicing in System.update). Covered by statelessChildDoesNotRebuild and unusedBindingDoesNotRebuildChild in Tests/MetalSprocketsTests/SelectiveRebuildTests.swift.
 
 ---
 
