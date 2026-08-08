@@ -95,6 +95,18 @@ struct FrameTimingViewRenderingTests {
         }
     }
 
+    // Hosting evaluates the body, including the TimelineView content that builds the readout. The values in that
+    // readout are asserted directly against `rows(for:options:targetFramesPerSecond:)` above; reading them back out
+    // of a hosted view would mean adding ViewInspector hooks to the library itself.
+    @Test(arguments: [FrameTimingDisplayOptions.default, .all, [.frameTime, .range], []])
+    func `every option set evaluates the body when hosted`(options: FrameTimingDisplayOptions) throws {
+        let view = FrameTimingView(statistics: Self.statistics, options: options)
+        ViewHosting.host(view: view, size: CGSize(width: 300, height: 200))
+        defer { ViewHosting.expel() }
+
+        #expect(try view.inspect().find(ViewType.TimelineView.self) != nil)
+    }
+
     @Test func `display options compose`() {
         #expect(FrameTimingDisplayOptions.default == [.fps])
         #expect(FrameTimingDisplayOptions.all.contains(.gpuTime))
