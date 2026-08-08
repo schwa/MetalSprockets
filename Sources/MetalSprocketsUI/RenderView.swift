@@ -522,7 +522,7 @@ internal final class RenderViewViewModelAllocationTracker: @unchecked Sendable {
     }
 }
 
-public struct RenderViewDebugging {
+public enum RenderViewDebugging {
     public static var logFrame: Bool {
         SystemEnvironment.current.renderViewLogFrameEnabled
     }

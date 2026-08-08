@@ -6,6 +6,7 @@ import Testing
 struct FunctionConstantsTests {
     @Test("Value enum equality")
     func valueEquality() throws {
+        // Comparing equal-but-separately-constructed values is the point of these checks.
         // swiftlint:disable identical_operands
         #expect(FunctionConstants.Value.bool(true) == FunctionConstants.Value.bool(true))
         #expect(FunctionConstants.Value.bool(true) != FunctionConstants.Value.bool(false))

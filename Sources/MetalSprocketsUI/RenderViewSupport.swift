@@ -65,6 +65,9 @@ internal func sampleCountChanged(current: Int, observed: Int) -> Bool {
 /// Extracted out of `RenderViewViewModel.draw(in:)` so the element-tree construction
 /// (and its environment wiring) can be unit-tested directly, without a live MTKView.
 ///
+/// The parameter count is deliberate: each one is a distinct per-frame input the `MTKView` delegate already has on
+/// hand, and bundling them into a struct would just move the same list elsewhere.
+///
 /// - Parameters:
 ///   - content: The user-supplied element produced by the `RenderView` content closure.
 ///   - captureConfiguration: Optional GPU-capture configuration from the `View.capture()` modifier.

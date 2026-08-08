@@ -65,7 +65,6 @@ import os
 /// - ``ObjectShader``
 @dynamicMemberLookup
 public struct ShaderLibrary: Identifiable {
-    // swiftlint:disable:next type_name
     public enum ID: Hashable, @unchecked Sendable {
         case bundle(Bundle)
         case library(MTLLibrary)

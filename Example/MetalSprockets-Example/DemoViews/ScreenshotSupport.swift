@@ -36,8 +36,7 @@ struct Screenshot: Transferable {
 
     nonisolated static var transferRepresentation: some TransferRepresentation {
         ProxyRepresentation { screenshot in
-            // swiftlint:disable:next force_try
-            MainActor.assumeIsolated { try! screenshot.render() }
+            try MainActor.assumeIsolated { try screenshot.render() }
         }
     }
 }

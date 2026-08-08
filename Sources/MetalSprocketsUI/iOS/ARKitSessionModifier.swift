@@ -92,6 +92,8 @@ private struct ARKitFrameModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onAppear {
+                // The texture cache is created before any element tree exists, so there is no environment device to
+                // take here. See #55.
                 // swiftlint:disable:next MTLCreateSystemDefaultDevice
                 guard let device = MTLCreateSystemDefaultDevice() else {
                     return

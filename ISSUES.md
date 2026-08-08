@@ -590,15 +590,18 @@ We need a nice clean way to allow the user to customise attachments incl (but no
 ## 73: Fix all SwiftLint disable comments
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:13Z
+updated: 2026-08-08T16:32:10Z
+closed: 2026-08-08T16:32:10Z
 +++
 
 *Imported from #65*
+
+- `2026-08-08T16:32:10Z`: Audited all 19 disable comments. Fixed the code for 9 of them (ElementBuilder and RenderViewDebugging are now caseless enums, convenience_type enabled; ID added to type_name excluded; two force_try sites replaced with do/catch + fatalError or a rethrow; three self_binding guards use pattern matching; two orphaned_doc_comment cases fixed by moving stray comments; MTKView.configure(from:) split into three helpers). The 10 that remain are genuine and now carry a one-line reason each (indentation_width in embedded Metal source, identical_operands in equality tests, discouraged_optional_boolean/-collection three-state APIs, accessibility_label_for_image on SharePreview, function_parameter_count, MTLCreateSystemDefaultDevice in ARKit setup). cyclomatic_complexity stays off pending #353.
 
 ---
 
@@ -4879,5 +4882,27 @@ Seen with:
     }
 
 Wanted: identity-based comparison for class-typed (and @Observable) stored properties in the non-Equatable isEqual fallback, so an element holding the same model instance compares equal.
+
+---
+
+## 353: Three functions exceed the cyclomatic_complexity limit
+
++++
+status: new
+priority: low
+kind: task
+labels: effort:m
+created: 2026-08-08T16:32:00Z
++++
+
+The swiftlint cyclomatic_complexity rule is commented out of only_rules in .swiftlint.yml because three functions violate it:
+
+- Sources/MetalSprockets/Core/System+Process.swift:27 (processWorkloadWithSkipping, complexity 11)
+- Sources/MetalSprockets/Metal/FunctionConstants.swift:99 (complexity 13)
+- Sources/MetalSprockets/Metal/ShaderLibrary.swift:210 (complexity 16)
+
+Each is a long switch or if-chain that would need splitting before the rule can be enabled. Until then the rule catches nothing project-wide.
+
+Wanted: split the three functions, then enable cyclomatic_complexity in .swiftlint.yml.
 
 ---

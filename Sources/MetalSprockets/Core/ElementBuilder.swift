@@ -27,8 +27,7 @@
 /// }
 /// ```
 @resultBuilder
-// swiftlint:disable:next convenience_type
-public struct ElementBuilder {
+public enum ElementBuilder {
     public static func buildBlock<V: Element>(_ content: V) -> V {
         content
     }

@@ -3,7 +3,11 @@ import MetalSprocketsUIShaders
 
 internal extension ShaderLibrary {
     static var metalSprocketsUI: ShaderLibrary {
-        // swiftlint:disable:next force_try
-        try! ShaderLibrary(bundle: .metalSprocketsUIShaders())
+        do {
+            return try ShaderLibrary(bundle: .metalSprocketsUIShaders())
+        }
+        catch {
+            fatalError("Failed to load the MetalSprocketsUI shader library, which ships inside the framework: \(error)")
+        }
     }
 }

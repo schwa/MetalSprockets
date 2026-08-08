@@ -1,3 +1,4 @@
+// Embedded Metal source in multi-line string literals uses continuation alignment the rule can't account for.
 // swiftlint:disable indentation_width
 import Metal
 @testable import MetalSprockets

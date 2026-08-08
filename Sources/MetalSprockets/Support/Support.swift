@@ -66,6 +66,8 @@ public extension Element {
     }
 
     @ElementBuilder
+    // The optional mirrors the single-resource overloads: nil means "nothing to bind", so callers can pass an
+    // optional straight through without unwrapping.
     // swiftlint:disable:next discouraged_optional_collection
     func useComputeResources(_ resources: [any MTLResource]?, usage: MTLResourceUsage) -> some Element {
         if let resources {

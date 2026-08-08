@@ -43,8 +43,7 @@ extension MetalSprocketsError: CustomStringConvertible {
 
 public extension Optional {
     func orThrow(_ error: @autoclosure () -> MetalSprocketsError) throws -> Wrapped {
-        // swiftlint:disable:next self_binding
-        guard let value = self else {
+        guard case .some(let value) = self else {
             let error = error()
             if SystemEnvironment.current.fatalErrorOnThrow {
                 fatalError("\(error)")
@@ -57,16 +56,14 @@ public extension Optional {
     }
 
     func orFatalError(_ message: @autoclosure () -> String = String()) -> Wrapped {
-        // swiftlint:disable:next self_binding
-        guard let value = self else {
+        guard case .some(let value) = self else {
             fatalError(message())
         }
         return value
     }
 
     func orFatalError(_ error: @autoclosure () -> MetalSprocketsError) -> Wrapped {
-        // swiftlint:disable:next self_binding
-        guard let value = self else {
+        guard case .some(let value) = self else {
             fatalError("\(error())")
         }
         return value

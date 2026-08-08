@@ -2,8 +2,6 @@ import Metal
 
 // MARK: - Draw
 
-// swiftlint:disable orphaned_doc_comment
-
 /// Issues draw commands to a Metal render command encoder.
 ///
 /// `Draw` provides direct access to the `MTLRenderCommandEncoder` to set vertex buffers,
@@ -54,8 +52,9 @@ import Metal
 /// ### Related Elements
 /// - ``RenderPipeline``
 /// - ``RenderPass``
-// Note: Cannot use EnvironmentReader here because Draw needs to execute during the workload phase when the render command encoder is available, not during the tree expansion phase where EnvironmentReader operates.
 public struct Draw: Element, WorkloadElement {
+    // Cannot use EnvironmentReader here: Draw runs in the workload phase, when the render command encoder exists,
+    // not during the tree expansion phase where EnvironmentReader operates.
     public typealias Body = Never
 
     var encodeGeometry: (MTLRenderCommandEncoder) throws -> Void

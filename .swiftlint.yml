@@ -13,6 +13,8 @@ shorthand_operator: warning
 type_name:
   allowed_symbols:
     - _
+  excluded:
+    - ID
 only_rules:
   - accessibility_label_for_image
   - accessibility_trait_for_button
@@ -45,9 +47,9 @@ only_rules:
   - contains_over_range_nil_comparison
 #  - contrasted_opening_brace
   - control_statement
-#  - convenience_type # 1 violations
+  - convenience_type
   - custom_rules
-#  - cyclomatic_complexity
+#  - cyclomatic_complexity # 3 violations, see #353
   - deployment_target
   - direct_return
   - discarded_notification_center_observer

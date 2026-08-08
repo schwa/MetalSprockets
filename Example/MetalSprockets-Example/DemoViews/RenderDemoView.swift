@@ -73,6 +73,8 @@ struct RenderDemoView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
+                // SharePreview takes an Image, not a View, so there is nowhere to hang an accessibility label; the
+                // preview's own "Screenshot" title is what assistive technologies read.
                 // swiftlint:disable:next accessibility_label_for_image
                 ShareLink(item: Screenshot(), preview: SharePreview("Screenshot", image: Image(systemName: "photo")))
             }

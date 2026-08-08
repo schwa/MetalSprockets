@@ -14,6 +14,7 @@ import SwiftUI
 //         .metalClearColor(MTLClearColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1))
 
 internal extension EnvironmentValues {
+    // The optional Bools are three-state on purpose: nil means "not specified", so MTKView keeps its own default.
     // swiftlint:disable discouraged_optional_boolean
     @Entry var metalFramebufferOnly: Bool?
     @Entry var metalDepthStencilAttachmentTextureUsage: MTLTextureUsage?
@@ -166,8 +167,13 @@ public extension View {
 }
 
 extension MTKView {
-    // swiftlint:disable:next cyclomatic_complexity
     func configure(from environment: EnvironmentValues) {
+        configureAttachments(from: environment)
+        configureClearValues(from: environment)
+        configureDrawLoop(from: environment)
+    }
+
+    private func configureAttachments(from environment: EnvironmentValues) {
         if let value = environment.metalFramebufferOnly {
             self.framebufferOnly = value
         }
@@ -176,9 +182,6 @@ extension MTKView {
         }
         if let value = environment.metalMultisampleColorAttachmentTextureUsage {
             self.multisampleColorAttachmentTextureUsage = value
-        }
-        if let value = environment.metalPresentsWithTransaction {
-            self.presentsWithTransaction = value
         }
         if let value = environment.metalColorPixelFormat {
             self.colorPixelFormat = value
@@ -194,6 +197,14 @@ extension MTKView {
         if let value = environment.metalSampleCount {
             self.sampleCount = value
         }
+        #if os(macOS)
+        if let value = environment.metalColorspace {
+            self.colorspace = value
+        }
+        #endif
+    }
+
+    private func configureClearValues(from environment: EnvironmentValues) {
         if let value = environment.metalClearColor {
             self.clearColor = value
         }
@@ -202,6 +213,12 @@ extension MTKView {
         }
         if let value = environment.metalClearStencil {
             self.clearStencil = value
+        }
+    }
+
+    private func configureDrawLoop(from environment: EnvironmentValues) {
+        if let value = environment.metalPresentsWithTransaction {
+            self.presentsWithTransaction = value
         }
         if let value = environment.metalPreferredFramesPerSecond {
             self.preferredFramesPerSecond = value
@@ -215,11 +232,6 @@ extension MTKView {
         if let value = environment.metalIsPaused {
             self.isPaused = value
         }
-        #if os(macOS)
-        if let value = environment.metalColorspace {
-            self.colorspace = value
-        }
-        #endif
     }
 
     /// Makes MTKView's internal depth/stencil texture memoryless when it is a pure transient render target.
