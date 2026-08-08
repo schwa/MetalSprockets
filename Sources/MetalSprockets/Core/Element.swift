@@ -1,4 +1,5 @@
 import MetalSprocketsSupport
+import Observation
 
 // MARK: - Element Protocol
 
@@ -70,7 +71,31 @@ internal extension Element {
             // silently breaks traversal because the existential never matches the
             // concrete-type paths the system expects. Catch it in debug builds.
             assert(Body.self != (any Element).self, "Element body must return `some Element`, not `any Element` (on \(type(of: self))). See #248.")
-            try visit(body)
+            try visit(trackedBody)
+        }
+    }
+
+    /// `body`, evaluated under observation tracking so that mutating any `@Observable` property it read marks the
+    /// owning node dirty. This is the `@Observable` counterpart of ``StateBox``'s read-tracking. See #287.
+    private var trackedBody: Body {
+        get throws {
+            guard let system = System.current, let node = system.activeNodeStack.last else {
+                return try body
+            }
+            // Only the identifier is captured: the change handler is `@Sendable` and may run off the owning
+            // isolation, and marking dirty is the lock-guarded part. The next update re-evaluates the node's element
+            // and decides whether setup has to run again.
+            let id = node.id
+            var result: Result<Body, any Error>?
+            withObservationTracking {
+                result = Result { try body }
+            } onChange: {
+                system.markDirty(id)
+            }
+            guard let result else {
+                preconditionFailure("withObservationTracking did not run its body.")
+            }
+            return try result.get()
         }
     }
 }

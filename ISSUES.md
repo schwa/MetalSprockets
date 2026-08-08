@@ -2687,12 +2687,13 @@ Implement `.transformEnvironment()` modifier similar to SwiftUI's. This allows m
 ## 287: Add @Observation support
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:l
 created: 2026-02-19T00:00:00Z
-updated: 2026-04-03T17:33:25Z
+updated: 2026-08-08T16:09:20Z
+closed: 2026-08-08T16:09:20Z
 +++
 
 Implement Swift Observation framework support based on the approach from [objcio/S01E268-state-and-bindings PR #1](https://github.com/objcio/S01E268-state-and-bindings/pull/1).
@@ -2742,6 +2743,8 @@ if p1 is Observable { continue }
 - Requires Swift 5.10+ and macOS 14+
 - Does not include `Bindable` property wrapper implementation (future enhancement)
 - See also: [Swift forums discussion on isEqual simplification](https://forums.swift.org/t/comparing-two-any-values-for-equality-is-this-the-simplest-implementation/73816)
+
+- `2026-08-08T16:09:20Z`: Element bodies are now evaluated inside withObservationTracking; mutating an @Observable property the body read marks the node dirty, so the subtree rebuilds. Properties the body never read do not trigger rebuilds. The isEqual simplification listed in this issue already landed earlier; the remaining equality concern (elements holding an @Observable model compare unequal every frame) is filed as #352.
 
 ---
 
@@ -4825,5 +4828,30 @@ closed: 2026-07-21T20:29:29Z
 +++
 
 ComputeDispatch only supports CPU-specified grid sizes (threadgroupsPerGrid / threadsPerGrid). Metal's MTLComputeCommandEncoder.dispatchThreadgroups(indirectBuffer:indirectBufferOffset:threadsPerThreadgroup:) has no equivalent, so GPU-driven pipelines whose workload size is computed on the GPU (e.g. survivor counts after culling, expanded entry counts after binning) cannot size their dispatches without over-dispatching to capacity or reading counts back to the CPU. Needed by MetalSprocketsGaussianSplats RFC 0002 (TileAlt renderer).
+
+---
+
+## 352: Elements holding an @Observable model are treated as changed every frame
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:m
+created: 2026-08-08T16:09:14Z
++++
+
+An element whose stored properties are class references (e.g. an @Observable model) is not Equatable, so isEqual(node.element, element) returns false on every update. shouldUpdateNode therefore reports a change each frame, which resets the node's environment and sets needsSetup = true, so the setup phase re-runs for that node every frame even when nothing about the model changed.
+
+Observation tracking (#287) means a genuine change already marks the node dirty, so the per-frame 'changed' verdict is pure overhead.
+
+Seen with:
+
+    struct ModelElement: Element {
+        let model: Model   // @Observable class
+        var body: some Element { ... }
+    }
+
+Wanted: identity-based comparison for class-typed (and @Observable) stored properties in the non-Equatable isEqual fallback, so an element holding the same model instance compares equal.
 
 ---
