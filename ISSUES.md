@@ -5347,11 +5347,13 @@ Second effect: because the payload is a class, Hashable/== for the `.source` cas
 ## 366: KVO observation leaks in OffscreenVideoRenderer.defaultWaitUntilReady
 
 +++
-status: new
+status: closed
 priority: low
 kind: bug
 labels: concurrency, effort:s
 created: 2026-08-08T20:31:31Z
+updated: 2026-08-08T21:09:48Z
+closed: 2026-08-08T21:09:48Z
 +++
 
 Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:141-165.

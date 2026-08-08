@@ -141,25 +141,47 @@ public final class OffscreenVideoRenderer {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             // `observe` returns an `NSKeyValueObservation` we need to hold
             // alive until we've resumed, and invalidate exactly once.
+            //
+            // With `.initial` the block can run synchronously inside `observe`,
+            // before the returned observation has been stored, so the block
+            // records that it resumed and the code after `observe` invalidates
+            // whatever the block couldn't. Both paths go through `lock`. See #366.
+            let lock = OSAllocatedUnfairLock()
+            nonisolated(unsafe) var resumed = false
             nonisolated(unsafe) var observation: NSKeyValueObservation?
-            let state = OSAllocatedUnfairLock<Bool>(initialState: false)
-            observation = input.observe(\.isReadyForMoreMediaData, options: [.new, .initial]) { observed, _ in
+
+            let observer = input.observe(\.isReadyForMoreMediaData, options: [.new, .initial]) { observed, _ in
                 guard observed.isReadyForMoreMediaData else {
                     return
                 }
-                let alreadyResumed = state.withLock { resumed -> Bool in
+                let justResumed: Bool = lock.withLockUnchecked {
                     if resumed {
-                        return true
+                        return false
                     }
                     resumed = true
-                    return false
+                    return true
                 }
-                if alreadyResumed {
+                guard justResumed else {
                     return
                 }
-                observation?.invalidate()
-                observation = nil
+                let toInvalidate: NSKeyValueObservation? = lock.withLockUnchecked {
+                    let current = observation
+                    observation = nil
+                    return current
+                }
+                toInvalidate?.invalidate()
                 continuation.resume()
+            }
+
+            let alreadyResumed: Bool = lock.withLockUnchecked {
+                if resumed {
+                    return true
+                }
+                observation = observer
+                return false
+            }
+            if alreadyResumed {
+                observer.invalidate()
             }
         }
     }
