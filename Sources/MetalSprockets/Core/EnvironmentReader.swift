@@ -25,8 +25,8 @@ public struct EnvironmentReader<Value, Content: Element>: Element, BodylessEleme
     }
 
     nonisolated func requiresSetup(comparedTo old: EnvironmentReader<Value, Content>) -> Bool {
-        // EnvironmentReader dynamically creates content based on environment
-        // Since we can't compare closures, be conservative
-        true
+        // The reader itself does no setup work; it only produces content, which is visited as a
+        // child and compared on its own terms. Only a different key path matters here. (#343)
+        keyPath != old.keyPath
     }
 }

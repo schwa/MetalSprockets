@@ -467,10 +467,10 @@ Audit usage of `MTLCreateSystemDefaultDevice()` throughout the codebase.
 
 ## Not urgent
 This isn't a problem today, but could become one. Consider:
-- Passing device explicitly through the API where possible
-- Having a single validated device instance
-- Being prepared for multi-GPU scenarios
 
+- `2026-02-19T00:00:00Z`: Passing device explicitly through the API where possible
+- `2026-02-19T00:00:00Z`: Having a single validated device instance
+- `2026-02-19T00:00:00Z`: Being prepared for multi-GPU scenarios
 - `2026-08-08T06:55:17Z`: Punting: this needs a design decision rather than a mechanical change. Today all 11 call sites already funnel through MetalSupport._MTLCreateSystemDefaultDevice() (fatalErrors when nil), and the remaining sites (ShaderLibrary/Shaders compilation, MetalFX spatial/temporal, ComputeDispatch's apple4 capability check, OffscreenRenderer, RenderView fallback) are all places where no device is available from the caller or environment yet. Options: (a) require an explicit device on the public initializers of those types, (b) resolve the device from the element environment at setup time instead of construction time, or (c) leave as-is and document the single-default-device assumption. Which do you want?
 
 ---
@@ -4540,17 +4540,19 @@ Added regression test `testPSOCacheStableWithDescriptorModifier` that verifies P
 ## 343: Investigate conservative requiresSetup patterns that always return true due to closure comparison
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: effort:m
 created: 2026-05-05T21:12:22Z
-updated: 2026-08-08T06:04:04Z
+updated: 2026-08-08T06:58:29Z
+closed: 2026-08-08T06:58:29Z
 +++
 
 Find all code similar to:\n\n```swift\nnonisolated func requiresSetup(comparedTo old: RenderPipelineDescriptorModifier<Content>) -> Bool {\n    // Since we can't compare closures, be conservative\n    true\n}\n```\n\nThese always return `true` because closures can't be compared, causing unnecessary pipeline rebuilds. Investigate alternative approaches (e.g., identity tokens, dirty flags, or value-based descriptors) to avoid redundant setup work.
 
 - `2026-08-08T06:04:04Z`: Related: #346 is a concrete instance of this pattern (EnvironmentWritingModifier).
+- `2026-08-08T06:58:29Z`: Audited every conservative requiresSetup. Fixed three that hold no setup state of their own: _ConditionalContent now compares which branch is active, EnvironmentReader compares its key path, AnyElement compares the wrapped element's type. The remaining conservative sites are correct as-is: SetupModifier, AnyBodylessElement, RenderPipeline/MeshRenderPipeline/ComputePass/MetalFXSpatial all run user closures or build descriptors during setup and genuinely cannot know whether the result changed. The environment-writing case was handled separately in #346. Existing tests asserting the old always-true behaviour were updated.
 
 ---
 

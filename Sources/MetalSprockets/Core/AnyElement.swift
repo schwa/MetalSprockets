@@ -11,8 +11,9 @@ public struct AnyElement: Element, BodylessElement {
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool {
-        // Type erasure prevents comparison - be conservative
-        true
+        // AnyElement does no setup work itself; the wrapped element is visited as a child and
+        // compared on its own terms. Only a change of wrapped type matters. (#343)
+        type(of: base) != type(of: old.base)
     }
 }
 

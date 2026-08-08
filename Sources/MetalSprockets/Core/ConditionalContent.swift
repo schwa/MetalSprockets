@@ -22,8 +22,8 @@ public struct _ConditionalContent<TrueContent, FalseContent>: Element, BodylessE
     }
 
     nonisolated func requiresSetup(comparedTo old: _ConditionalContent<TrueContent, FalseContent>) -> Bool {
-        // ConditionalContent may switch branches which could affect setup
-        // Be conservative since we can't check which branch without accessing properties
-        true
+        // This element holds no setup state of its own; only a branch switch matters. The
+        // branch content is a child node and is compared on its own terms. (#343)
+        (first != nil) != (old.first != nil)
     }
 }

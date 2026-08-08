@@ -28,11 +28,14 @@ struct AnyElementTests {
         #expect(TestMonitor.shared.updates == ["leaf-42"])
     }
 
-    @Test("AnyElement requiresSetup is conservatively true")
-    func testRequiresSetupConservative() {
+    // See #343: AnyElement only requires setup when the wrapped type changes.
+    @Test("AnyElement requiresSetup tracks the wrapped type")
+    func testRequiresSetupTracksWrappedType() {
         let a = AnyElement(Leaf(value: 1))
         let b = AnyElement(Leaf(value: 1))
-        #expect(a.requiresSetup(comparedTo: b) == true)
+        let other = AnyElement(EmptyElement())
+        #expect(a.requiresSetup(comparedTo: b) == false)
+        #expect(a.requiresSetup(comparedTo: other) == true)
     }
 }
 

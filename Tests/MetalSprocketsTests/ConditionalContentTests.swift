@@ -74,11 +74,13 @@ struct ConditionalContentTests {
         #expect(TestMonitor.shared.updates == ["B"])
     }
 
+    // See #343: only a branch switch requires setup.
     @Test
-    func testRequiresSetupIsAlwaysTrue() {
-        // _ConditionalContent conservatively reports requiresSetup==true
+    func testRequiresSetupTracksBranch() {
         let a = _ConditionalContent<TrackedLeaf, TrackedLeaf>(first: TrackedLeaf(name: "x"))
         let b = _ConditionalContent<TrackedLeaf, TrackedLeaf>(first: TrackedLeaf(name: "x"))
-        #expect(a.requiresSetup(comparedTo: b) == true)
+        let other = _ConditionalContent<TrackedLeaf, TrackedLeaf>(second: TrackedLeaf(name: "x"))
+        #expect(a.requiresSetup(comparedTo: b) == false)
+        #expect(a.requiresSetup(comparedTo: other) == true)
     }
 }

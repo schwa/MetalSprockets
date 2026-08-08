@@ -74,11 +74,14 @@ struct EasyWins2Tests {
 
     // MARK: EnvironmentReader.requiresSetup
 
-    @Test("EnvironmentReader.requiresSetup is always true")
+    // See #343: only a different key path requires setup.
+    @Test("EnvironmentReader.requiresSetup tracks the key path")
     func environmentReaderRequiresSetup() {
-        let a = EnvironmentReader(keyPath: \MSEnvironmentValues.device) { _ in EmptyElement() }
-        let b = EnvironmentReader(keyPath: \MSEnvironmentValues.device) { _ in EmptyElement() }
-        #expect(a.requiresSetup(comparedTo: b) == true)
+        let a = EnvironmentReader(keyPath: \MSEnvironmentValues.depthAttachment) { _ in EmptyElement() }
+        let b = EnvironmentReader(keyPath: \MSEnvironmentValues.depthAttachment) { _ in EmptyElement() }
+        let other = EnvironmentReader(keyPath: \MSEnvironmentValues.stencilAttachment) { _ in EmptyElement() }
+        #expect(a.requiresSetup(comparedTo: b) == false)
+        #expect(a.requiresSetup(comparedTo: other) == true)
     }
 
     // MARK: RenderPassDescriptorModifier.requiresSetup
