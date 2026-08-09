@@ -255,7 +255,7 @@ File: Sources/MetalSprockets/Core/EnvironmentValues.swift
 
 *Imported from #34*
 
-- `2026-08-08T15:45:16Z`: Implemented as a public protocol, no macro needed.
+\- `2026-08-08T15:45:16Z`: Implemented as a public protocol, no macro needed.
 
 Added MSDynamicProperty (public) with two optional requirements — update(in:) before the element's body is evaluated and persist(in:) after — plus MSDynamicPropertyContext, a public per-property context exposing label, environmentValues, persistedValue(forKey:)/setPersistedValue(_:forKey:) and invalidate(). Node stays internal; the context is the public surface.
 
@@ -750,7 +750,7 @@ Consolidate issues about environment and descriptor access:
 
 The goal is a consistent pattern for environment-based configuration throughout the Metal element stack.
 
-- `2026-08-08T20:07:28Z`: Split into subtasks:
+\- `2026-08-08T20:07:28Z`: Split into subtasks:
 
 - #358 — Make the command buffer descriptor configurable via the environment (effort:s)
 - #359 — Make Metal logging a per-subtree environment value (effort:s)
@@ -1746,8 +1746,8 @@ This is a performance optimization - the current behavior is functionally correc
 
 *Imported from #188*
 
-- `2026-04-03T17:33:51Z`: Related: #197 (elements without parameters rebuild unnecessarily)
-- `2026-08-08T07:02:45Z`: Root cause as written is stale: MSState.projectedValue returns the single MSBinding instance stored on StateBox, so bindings to the same state already compare equal across rebuilds (same UUID) — no sourceIdentifier change needed.
+\- `2026-04-03T17:33:51Z`: Related: #197 (elements without parameters rebuild unnecessarily)
+\- `2026-08-08T07:02:45Z`: Root cause as written is stale: MSState.projectedValue returns the single MSBinding instance stored on StateBox, so bindings to the same state already compare equal across rebuilds (same UUID) — no sourceIdentifier change needed.
 
 The remaining symptom is the same one as #197: System's update traversal re-evaluates every body regardless of element equality, so the child rebuilds anyway. Fixing it means subtree skipping in System.update; see my comment on #197 for the blast radius and the question I need answered. Scenario added as a withKnownIssue test in Tests/MetalSprocketsTests/SelectiveRebuildTests.swift.
 
@@ -1914,8 +1914,8 @@ Performance optimization - the current behavior is functionally correct but caus
 
 *Imported from #189*
 
-- `2026-04-03T17:33:51Z`: Related: #196 (unused bindings cause unnecessary rebuilds)
-- `2026-08-08T07:02:45Z`: Partial progress + punt on the rest.
+\- `2026-04-03T17:33:51Z`: Related: #196 (unused bindings cause unnecessary rebuilds)
+\- `2026-08-08T07:02:45Z`: Partial progress + punt on the rest.
 
 Done: isEqual(Any, Any) now treats two non-Equatable *value* types of the same type with no stored properties as equal (proposal 2 in this issue). Reference types are excluded since distinct instances are meaningfully distinct.
 
@@ -3013,7 +3013,7 @@ Consolidate all concurrency-related work:
 ## Related closed issues
 - #32 Re-visit MainActor usage
 
-- `2026-08-08T20:31:38Z`: Closing this umbrella. A concurrency review of Sources found three concrete problems, filed as #364 (StateBox unsynchronized while written from GPU completion handlers), #365 (ShaderLibrary.ID @unchecked Sendable over a mutable MTLCompileOptions), and #366 (KVO observation leak in OffscreenVideoRenderer.defaultWaitUntilReady).
+\- `2026-08-08T20:31:38Z`: Closing this umbrella. A concurrency review of Sources found three concrete problems, filed as #364 (StateBox unsynchronized while written from GPU completion handlers), #365 (ShaderLibrary.ID @unchecked Sendable over a mutable MTLCompileOptions), and #366 (KVO observation leak in OffscreenVideoRenderer.defaultWaitUntilReady).
 
 Everything else checked out: System and FrameRenderer's @unchecked Sendable is backed by documented single-isolation confinement with the genuinely cross-thread state (dirtyIdentifiers, lastGPUTime) behind OSAllocatedUnfairLock; ShaderCache and RenderViewViewModelAllocationTracker are lock-backed; no Task.detached, no DispatchQueue hops, no AsyncStream misuse.
 
@@ -3135,7 +3135,7 @@ The deeper fix is option 2: RenderPipeline's content closure receives a context 
 
 ParametersTests and FunctionConstantsTests currently exercise the happy path only. The stale-reflection case (call processWorkload without processSetup, or with needsSetup=false on an element that changed shaders) is unverified. A deepened interface would make the stale-reflection case structurally impossible and the tests would verify that named bindings resolve correctly given a live reflection context.
 
-- `2026-08-08T19:50:36Z`: Resolved by rescoping to option 3.
+\- `2026-08-08T19:50:36Z`: Resolved by rescoping to option 3.
 
 The stale-reflection premise was already out of date: RenderPipeline, MeshRenderPipeline and ComputePipeline all return true from requiresSetup, so setup runs every frame and republishes the reflection (cache-hit path included). Options 1/2 (typed pipeline context threaded through the content closure) would be a DSL-wide redesign that fights the environment-based flow used by every other pipeline output, so they were not pursued.
 
@@ -3355,7 +3355,7 @@ Vertex Function(slug_vertex): argument view[0] from Buffer(1) with offset(0) and
 
 **Fix:** `.parameter()` should use `MemoryLayout<T>.stride` when calling `setVertexBytes` / `setFragmentBytes`.
 
-- `2026-04-21T01:55:02Z`: Root cause is in MetalSupport, not MetalSprockets. The four `setUnsafeBytes` helpers in `MetalSupport/Sources/MetalSupport/UnsafeBytes.swift` pass `buffer.count` (which is `MemoryLayout<T>.size`) as the byte length to `setBytes`/`setVertexBytes`/etc; Metal expects `MemoryLayout<T>.stride`.
+\- `2026-04-21T01:55:02Z`: Root cause is in MetalSupport, not MetalSprockets. The four `setUnsafeBytes` helpers in `MetalSupport/Sources/MetalSupport/UnsafeBytes.swift` pass `buffer.count` (which is `MemoryLayout<T>.size`) as the byte length to `setBytes`/`setVertexBytes`/etc; Metal expects `MemoryLayout<T>.stride`.
 
 Tracked upstream: MetalSupport#9. Once that lands, bump the MetalSupport dependency here.
 
@@ -3381,8 +3381,8 @@ closed: 2026-08-08T15:46:08Z
 
 Option 2: Configure DocC to publish to root
 
-- `2026-08-08T06:54:18Z`: Punting: this is a DNS/hosting change for docs.metalsprockets.com (plus DocC base-path config), which needs access to the domain and Pages settings that I don't have. Unblocker: confirm where docs are hosted (GitHub Pages?) and whether you want DocC published at the site root with a redirect, then I can do the DocC/workflow side.
-- `2026-08-08T15:46:08Z`: Code side done (Option 2 — DocC published at the site root):
+\- `2026-08-08T06:54:18Z`: Punting: this is a DNS/hosting change for docs.metalsprockets.com (plus DocC base-path config), which needs access to the domain and Pages settings that I don't have. Unblocker: confirm where docs are hosted (GitHub Pages?) and whether you want DocC published at the site root with a redirect, then I can do the DocC/workflow side.
+\- `2026-08-08T15:46:08Z`: Code side done (Option 2 — DocC published at the site root):
 
 - .github/workflows/docc.yml: dropped --hosting-base-path MetalSprockets so generated links are root-relative, and the workflow now writes ./docs/CNAME containing docs.metalsprockets.com into the Pages artifact.
 - README.md: the six documentation links now point at https://docs.metalsprockets.com.
@@ -3491,8 +3491,8 @@ frame #16: System.processNode(...) at System.swift:183:20
 
 Instance `0x8000000000000000` suggests a tagged pointer or sentinel value being misinterpreted as an object.
 
-- `2026-04-03T23:14:59Z`: Second occurrence: same crash, same stack trace. Appears to happen intermittently while navigating between demos. Both times the GameOfLife element tree is visible in the stack. Likely triggered by demo switching while the render loop is mid-update.
-- `2026-04-21T00:44:23Z`: Duplicate of #329. Same crash site (System.swift:237 shouldUpdateNode → Set.contains), same 0x8000000000000000 tagged-pointer signature, same bridge to -[... member:].
+\- `2026-04-03T23:14:59Z`: Second occurrence: same crash, same stack trace. Appears to happen intermittently while navigating between demos. Both times the GameOfLife element tree is visible in the stack. Likely triggered by demo switching while the render loop is mid-update.
+\- `2026-04-21T00:44:23Z`: Duplicate of #329. Same crash site (System.swift:237 shouldUpdateNode → Set.contains), same 0x8000000000000000 tagged-pointer signature, same bridge to -[... member:].
 
 Root cause identified in #329: data race on System.dirtyIdentifiers from off-main markDirty calls (e.g. @MSState writes inside onCommandBufferCompleted). Tracked and being fixed in #330.
 
@@ -3619,7 +3619,7 @@ closed: 2026-04-21T02:04:10Z
 
 When using .depthCompare() with different compare functions across frames (e.g. switching between .lessEqual and .greaterEqual), the depth stencil state is cached from the first configuration and not recreated. The Metal debugger confirmed the stencil state remained .lessEqual even after requesting .greaterEqual. Discovered while implementing switchable inverse-Z shadow mapping in MetalSprocketsAddOns.
 
-- `2026-04-21T02:04:10Z`: Fixed by switching the render/mesh pipeline cache keys to compare MTLDepthStencilDescriptor contents (via a new internal DepthStencilKey helper) instead of object identity.
+\- `2026-04-21T02:04:10Z`: Fixed by switching the render/mesh pipeline cache keys to compare MTLDepthStencilDescriptor contents (via a new internal DepthStencilKey helper) instead of object identity.
 
 Prior state after #333: every .depthCompare(function:enabled:) call allocated a fresh MTLDepthStencilDescriptor, so the identity-based key missed the cache every frame. That masked the #314 symptom (stale state could never persist, because we rebuilt every frame) but defeated the cache — any pipeline under .depthCompare rebuilt its PSO every frame, silently costing the perf #327/#333 set out to recover.
 
@@ -3649,7 +3649,7 @@ Example: an element with `@MSState var fragmentShader: FragmentShader` initializ
 
 This is the same root cause as #314 (cached depth stencil state). Both are cases where MetalSprockets caches state that should be invalidated when the element's configuration changes.
 
-- `2026-04-21T02:07:25Z`: Closing: @MSState intentionally ignores subsequent init values, matching SwiftUI's @State semantics. The initial value only applies on first construction; on every subsequent element-tree rebuild the stored value persists. That's the whole point — otherwise @MSState would reset every frame and be useless for element-owned state.
+\- `2026-04-21T02:07:25Z`: Closing: @MSState intentionally ignores subsequent init values, matching SwiftUI's @State semantics. The initial value only applies on first construction; on every subsequent element-tree rebuild the stored value persists. That's the whole point — otherwise @MSState would reset every frame and be useless for element-owned state.
 
 The reporter's example (@MSState var fragmentShader, expecting it to update when init args change) is a misuse of @MSState. For values derived from init arguments that need to rebuild on change, use a plain stored property plus a NodeElementCache inside setupEnter — the pattern established by #327 (ComputePipeline) and #333 (RenderPipeline / MeshRenderPipeline). The cache keys on the init args and rebuilds when they change.
 
@@ -3750,7 +3750,7 @@ Anywhere `AnyBodylessElement().onSetupEnter { ... }` is used for one-time resour
 
 Option 1 is the right general fix. If it's not feasible, at minimum the existing `MetalFXSpatial` should be audited (and its docstring updated) to confirm setup is supposed to be per-frame.
 
-- `2026-04-21T01:50:13Z`: Fixed: MetalFXSpatial is now a BodylessElement that uses the per-node cache pattern established in #333. The MTLFXSpatialScaler is keyed on (inputFormat, outputFormat, inputWidth, inputHeight, outputWidth, outputHeight) and only rebuilt when one of those changes — so steady-state rendering reuses the same scaler every frame, and the size-change branch still does the right thing.
+\- `2026-04-21T01:50:13Z`: Fixed: MetalFXSpatial is now a BodylessElement that uses the per-node cache pattern established in #333. The MTLFXSpatialScaler is keyed on (inputFormat, outputFormat, inputWidth, inputHeight, outputWidth, outputHeight) and only rebuilt when one of those changes — so steady-state rendering reuses the same scaler every frame, and the size-change branch still does the right thing.
 
 requiresSetup returns true (AnyBodylessElement's conservative behaviour no longer applies since MetalFXSpatial is now its own BodylessElement), but setupEnter is a cache lookup. No more wasted allocations per frame.
 
@@ -4042,7 +4042,7 @@ Suggested fix: add an opt-in invalidation key to `ComputePipeline` (e.g. `invali
 
 File: Sources/MetalSprockets/Metal/ComputePass.swift (the `requiresSetup(comparedTo:)` implementation and the surrounding TODO).
 
-- `2026-04-21T01:05:12Z`: Fixed: ComputePipeline.requiresSetup now compares computeKernel identity and an optional caller-supplied invalidationKey. Callers that depend on environment-driven inputs (linkedFunctions, etc.) opt in by passing a hashable key derived from whatever they know changed.
+\- `2026-04-21T01:05:12Z`: Fixed: ComputePipeline.requiresSetup now compares computeKernel identity and an optional caller-supplied invalidationKey. Callers that depend on environment-driven inputs (linkedFunctions, etc.) opt in by passing a hashable key derived from whatever they know changed.
 
 This is the exemplar implementation for #333. The same pattern should be applied to RenderPipeline and MeshRenderPipeline next.
 
@@ -4111,7 +4111,7 @@ Repro path: MetalSprocketsExamples Phosphor demo on main. Let it run for ~30s–
 
 Related issues: MetalSprockets#327 (ComputePipeline caches `MTLComputePipelineState` — may be unrelated but shares the general `System` re-entry area).
 
-- `2026-04-20T23:31:29Z`: Additional finding while trying to work around this:
+\- `2026-04-20T23:31:29Z`: Additional finding while trying to work around this:
 
 Attempted to hop the completion handler's `@MSState` mutation back to main via
 
@@ -4135,14 +4135,14 @@ So `MSBinding` captures its enclosing `StateBox` via `unowned`, and the `StateBo
 
 Both the original `Set.contains` crash and this `MSBinding` unowned-read crash point at the same general issue: `System`/`StateBox` lifetime assumes all reads and writes happen inline during body evaluation on main, but nothing in the API prevents (or even discourages) off-main or deferred access. `onCommandBufferCompleted` documents that it 'Called on an unspecified queue after GPU execution finishes', yet any realistic use case (ping-pong toggle, frame counter, perf stats) wants to feed that back into `@MSState`, which isn't safe.
 
-- `2026-04-20T23:31:39Z`: Correction to previous comment: the hop-to-main variant did not crash immediately — it took a while to hit, same as the original crash. The rest of the analysis stands (MSBinding captured unowned, dies if deferred past body evaluation).
-- `2026-04-20T23:34:08Z`: Split into follow-ups:
+\- `2026-04-20T23:31:39Z`: Correction to previous comment: the hop-to-main variant did not crash immediately — it took a while to hit, same as the original crash. The rest of the analysis stands (MSBinding captured unowned, dies if deferred past body evaluation).
+\- `2026-04-20T23:34:08Z`: Split into follow-ups:
 - #330: data race on System.dirtyIdentifiers (the Set.contains crash).
 - #331: MSBinding [unowned] dangles past body evaluation (the swift_abortRetainUnowned crash).
 
 #329 remains open as the umbrella / API-level isolation contract discussion.
 
-- `2026-04-21T00:58:45Z`: Fixed by:
+\- `2026-04-21T00:58:45Z`: Fixed by:
 - #330 (System.dirtyIdentifiers lock) — closed in commit b64244f4
 - #331 (MSBinding weak capture) — closed in commit 18180917
 
@@ -4189,7 +4189,7 @@ Files:
 - Sources/MetalSprockets/Core/StateBox.swift (valueDidChange → markDirty)
 - Sources/MetalSprockets/Core/ObservedObject.swift (also calls markDirty)
 
-- `2026-04-21T00:47:02Z`: Fixed by lockng System.dirtyIdentifiers with OSAllocatedUnfairLock<Set<StructuralIdentifier>>. Phosphor demo stable in testing.
+\- `2026-04-21T00:47:02Z`: Fixed by lockng System.dirtyIdentifiers with OSAllocatedUnfairLock<Set<StructuralIdentifier>>. Phosphor demo stable in testing.
 
 Follow-ups remain:
 - #329 (umbrella / Phase 2 isolation contract per RFC)
@@ -4352,7 +4352,7 @@ Files (at minimum):
 - Sources/MetalSprockets/Metal/MeshRenderPipeline.swift
 - Sources/MetalSprockets/Core/BodylessElement.swift (if hoisted to a protocol)
 
-- `2026-04-21T01:35:21Z`: Applied the ComputePipeline cache pattern to RenderPipeline and MeshRenderPipeline.
+\- `2026-04-21T01:35:21Z`: Applied the ComputePipeline cache pattern to RenderPipeline and MeshRenderPipeline.
 
 Each pipeline now:
 - Returns true from requiresSetup (stops lying).
@@ -4625,7 +4625,7 @@ closed: 2026-05-05T21:25:39Z
 
 RenderPipelineDescriptorModifier.requiresSetup always returns true (can't compare closures). This causes setupEnter to run every frame, which calls copyWithType on the descriptor. The copy creates new object identities for vertexDescriptor (and potentially other sub-objects), causing RenderPipeline's PSO cache key to change every frame — defeating the #341 fix. Result: makeRenderPipelineState called every frame for every RenderPipeline that has a renderPipelineDescriptorModifier ancestor.
 
-- `2026-05-05T21:12:14Z`: ## Analysis
+\- `2026-05-05T21:12:14Z`: ## Analysis
 
 The problem has two parts:
 
@@ -4645,7 +4645,7 @@ Follow the same pattern as `RenderPassDescriptorModifier`:
 
 This way the descriptor is always correctly modified for children, but no unnecessary `needsSetup` flags are set, and `RenderPipeline`'s cache can work properly.
 
-- `2026-05-05T21:15:24Z`: ## Fix applied
+\- `2026-05-05T21:15:24Z`: ## Fix applied
 
 Two changes:
 
@@ -4659,7 +4659,7 @@ Updated test in EasyWins3Tests to expect `requiresSetup == false`.
 
 All 347 tests pass.
 
-- `2026-05-05T21:23:36Z`: ## Correction: Root cause is different
+\- `2026-05-05T21:23:36Z`: ## Correction: Root cause is different
 
 The configureNodeBodyless fix was a valid improvement (avoids unnecessary `needsSetup` flags), but it doesn't solve the PSO rebuild problem.
 
@@ -4669,7 +4669,7 @@ This happens with or without `RenderPipelineDescriptorModifier`. The modifier is
 
 **Fix needed:** Replace `ObjectIdentifier`-based cache key fields with value-based comparisons. The `vertexDescriptor` (and potentially `linkedFunctions`) fields in `RenderPipelineCache.Key` need to compare by content, not by identity.
 
-- `2026-05-05T21:25:36Z`: ## Actual fix
+\- `2026-05-05T21:25:36Z`: ## Actual fix
 
 Replaced `ObjectIdentifier`-based cache key for `vertexDescriptor` with value-based comparison using `NSObjectValueKey<MTLVertexDescriptor>`. This wrapper uses `MTLVertexDescriptor`'s `isEqual(_:)` and `hash` (which compare by content) instead of object identity.
 
@@ -5878,7 +5878,7 @@ Note: mostly subsumes the remaining god-object part of #292; the side-channel ha
 status: new
 priority: medium
 kind: bug
-labels: effort:s,ci
+labels: effort:s, ci
 created: 2026-08-08T23:39:15Z
 +++
 
@@ -5897,5 +5897,44 @@ Options worth considering:
 - Normalise the snapshot before comparing (canonicalise `any`/`Self` spellings) so it is toolchain-independent.
 - Have the job upload the regenerated `public-api.yaml` as a workflow artifact, so the fix is "download and commit" rather than "reproduce CI's Xcode".
 - Pin the tool and toolchain together and state the required Xcode version in the failure message.
+
+---
+
+## 392: Touching @MSState from onCommandBufferCompleted crashes: Index out of range in TraversalContext
+
++++
+status: new
+priority: high
+kind: bug
+labels: effort:m
+created: 2026-08-09T18:48:34Z
+updated: 2026-08-09T18:48:44Z
++++
+
+Reading or writing @MSState inside an onCommandBufferCompleted handler crashes. The handler runs on Metal's completion queue, which has no traversal context, so TraversalContext.currentNode subscripts an empty node stack.
+
+Crash (Release, macOS 27.0, MetalSprockets-Examples StamFluid demo):
+
+    Thread 4 Crashed:: Dispatch queue: com.Metal.CompletionQueueDispatch
+    0  Swift runtime failure: Index out of range
+    ...
+    6  TraversalContext.currentNode.getter (TraversalContext.swift:23)
+    7  StateBox.wrappedValue.getter (StateBox.swift:32)
+    8  MSState.wrappedValue.getter (State.swift:57)
+    9  closure #6 in StamFluid.body.getter
+    11 thunk for @escaping @Sendable (MTLCommandBuffer) -> ()
+    12 MTLDispatchListApply
+    13 -[_MTLCommandBuffer didCompleteWithStartTime:endTime:error:]
+
+Reproduce: attach .onCommandBufferCompleted to an element in a scene that submits several command buffers per frame, and flip an @MSState Int or Bool inside it.
+
+This is worse than a plain crash, because it is a race rather than a hard failure. If a tree traversal happens to be in flight on the main thread when the completion fires, currentNode returns *some* node and the write silently lands on the wrong one. MetalSprocketsExamples has two places doing exactly this today and they have not crashed yet — GameOfLife and PhosphorPipeline both do 'currentTextureIsA.toggle()' from onCommandBufferCompleted, which is the canonical double-buffer swap and an obvious thing for users to copy.
+
+Questions this raises for the API:
+1. Should @MSState access outside a traversal trap with a clear diagnostic instead of an out-of-range crash? Right now the failure gives no hint about the real rule.
+2. Is there a supported way to mutate element state from a completion handler? Ping-ponging textures on completion is a normal Metal pattern and the framework currently has no safe answer for it. If the answer is 'marshal back to the main thread and mutate there', the docs should say so and ideally the framework should offer the hop.
+3. If it is simply unsupported, onCommandBufferCompleted's documentation should say so explicitly.
+
+Found while restructuring StamFluid for MetalSprocketsExamples#385.
 
 ---
