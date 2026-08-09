@@ -5903,12 +5903,13 @@ Options worth considering:
 ## 392: Touching @MSState from onCommandBufferCompleted crashes: Index out of range in TraversalContext
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: effort:m
 created: 2026-08-09T18:48:34Z
-updated: 2026-08-09T18:48:44Z
+updated: 2026-08-09T19:01:50Z
+closed: 2026-08-09T19:01:50Z
 +++
 
 Reading or writing @MSState inside an onCommandBufferCompleted handler crashes. The handler runs on Metal's completion queue, which has no traversal context, so TraversalContext.currentNode subscripts an empty node stack.
@@ -5936,5 +5937,7 @@ Questions this raises for the API:
 3. If it is simply unsupported, onCommandBufferCompleted's documentation should say so explicitly.
 
 Found while restructuring StamFluid for MetalSprocketsExamples#385.
+
+- `2026-08-09T19:01:50Z`: Fixed: StateBox reads only consult the traversal context when System.current is the owning system; off-isolation reads (GPU completion handlers) no longer race the node stack.
 
 ---

@@ -131,6 +131,17 @@ public extension Element {
     /// }
     /// ```
     ///
+    /// The handler runs on one of Metal's completion queues, not on the isolation that built the element tree.
+    /// Reading and writing `@MSState` from it is supported — the canonical double-buffer swap below works — but a
+    /// read taken here does not register a dependency, so state that is *only* read from a completion handler will
+    /// not cause the element to re-evaluate. Do not touch `@MSEnvironment` or the element tree itself from here.
+    ///
+    /// ```swift
+    /// .onCommandBufferCompleted { _ in
+    ///     currentTextureIsA.toggle()
+    /// }
+    /// ```
+    ///
     /// - Parameter action: The handler to call when the command buffer completes.
     ///   Called on an unspecified queue after GPU execution finishes.
     func onCommandBufferCompleted(_ action: @escaping (MTLCommandBuffer) -> Void) -> some Element {

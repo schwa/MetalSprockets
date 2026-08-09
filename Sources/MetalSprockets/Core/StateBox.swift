@@ -29,7 +29,12 @@ internal final class StateBox<Wrapped> {
 
     internal var wrappedValue: Wrapped {
         get {
-            let currentNode = resolveSystem()?.traversalContext.currentNode
+            // The traversal context belongs to whichever task is running the traversal, so it may only be
+            // touched through the task-local `System.current`. Reads arriving from elsewhere (a GPU completion
+            // handler, a detached Task) get no dependency instead of racing the node stack. See #392.
+            let currentNode = resolveSystem().flatMap { system in
+                System.current === system ? system.traversalContext.currentNode : nil
+            }
             return lock.withLockUnchecked {
                 dependencies = dependencies.filter { $0.wrappedValue != nil }
 

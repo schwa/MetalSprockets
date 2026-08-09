@@ -39,6 +39,23 @@ struct StateBoxLifetimeTests {
         }
     }
 
+    @Test func `reading state off the traversal isolation does not attach to the node stack`() throws {
+        let element = Counter(recorder: Recorder())
+        let system = System()
+        try system.update(root: element)
+
+        let child = try #require(system.nodes.values.first { $0.parentIdentifier != nil })
+
+        // Stand in for a traversal in flight on the owning isolation while a GPU completion handler touches state:
+        // `System.current` is not installed, so the read must ignore the stack rather than attach to `child`.
+        system.traversalContext.push(child)
+        defer { system.traversalContext.pop() }
+
+        _ = element.count
+        element.count = 7
+        #expect(system.isDirty(child.id) == false)
+    }
+
     @Test func `writing after the system is gone is harmless`() throws {
         let element = Counter(recorder: Recorder())
         do {
