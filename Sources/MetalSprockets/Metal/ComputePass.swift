@@ -61,7 +61,12 @@ public struct ComputePass <Content>: Element, WorkloadElement, BodylessContentEl
     func workloadEnter(_ node: Node) throws {
         logger?.verbose?.info("Enter compute pass: \(label ?? "<unlabeled>") (\(node.element.internalDescription))")
         let commandBuffer = try node.environmentValues.commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
-        let computeCommandEncoder = try commandBuffer._makeComputeCommandEncoder()
+        let computeCommandEncoder: MTLComputeCommandEncoder
+        if let computePassDescriptor = node.environmentValues.computePassDescriptor {
+            computeCommandEncoder = try commandBuffer.makeComputeCommandEncoder(descriptor: computePassDescriptor).orThrow(.resourceCreationFailure("Could not create compute command encoder."))
+        } else {
+            computeCommandEncoder = try commandBuffer._makeComputeCommandEncoder()
+        }
         if let label {
             computeCommandEncoder.label = label
         }

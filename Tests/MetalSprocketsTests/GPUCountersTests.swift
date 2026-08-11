@@ -60,6 +60,54 @@ struct GPUCountersTests {
         let sample = try #require(box.sample)
         #expect(sample.label == "Test")
         #expect(sample.endTimestamp >= sample.startTimestamp)
+        let vertex = try #require(sample.vertex)
+        let fragment = try #require(sample.fragment)
+        #expect(vertex.endTimestamp >= vertex.startTimestamp)
+        #expect(fragment.endTimestamp >= fragment.startTimestamp)
+    }
+
+    @Test(
+        "GPUCounterSampler resolves a sample for a compute pass",
+        .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Counter sampling unavailable on CI runners")
+    )
+    @MainActor
+    func gpuCountersModifierReportsComputeSample() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        try #require(GPUCounterSampler(device: device) != nil, "Device does not support stage boundary counter sampling.")
+
+        let source = """
+        #include <metal_stdlib>
+        using namespace metal;
+
+        kernel void fill_kernel(device uint *out [[buffer(0)]], uint tid [[thread_position_in_grid]]) {
+            out[tid] = tid;
+        }
+        """
+
+        let kernel = try ComputeKernel(source: source)
+        let count = 64
+        let buffer = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
+
+        let box = SampleBox()
+        try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                AnyBodylessElement()
+                    .onWorkloadEnter { (node: Node) in
+                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
+                    }
+                try ComputeDispatch(threadsPerGrid: MTLSize(width: count, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 8, height: 1, depth: 1))
+            }
+        }
+        .gpuCounters(label: "Compute") { sample in
+            box.sample = sample
+        }
+        .run()
+
+        let sample = try #require(box.sample)
+        #expect(sample.label == "Compute")
+        #expect(sample.endTimestamp >= sample.startTimestamp)
+        #expect(sample.vertex == nil)
+        #expect(sample.fragment == nil)
     }
 
     @Test(

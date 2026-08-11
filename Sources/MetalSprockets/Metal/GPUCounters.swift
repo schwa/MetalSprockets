@@ -4,10 +4,28 @@ import os
 
 // MARK: - GPUCounterSample
 
-/// A resolved pair of GPU timestamps for a single render pass.
+/// Resolved GPU timestamps for a single render or compute pass.
 ///
 /// Produced by the ``Element/gpuCounters(label:_:)`` modifier.
 public struct GPUCounterSample: Sendable, Equatable {
+    /// A pair of GPU timestamps bounding one stage of a pass.
+    public struct Interval: Sendable, Equatable {
+        /// Raw GPU timestamp taken at the start of the stage, in GPU ticks.
+        public var startTimestamp: MTLTimestamp
+
+        /// Raw GPU timestamp taken at the end of the stage, in GPU ticks.
+        public var endTimestamp: MTLTimestamp
+
+        /// Elapsed GPU time for the stage, in seconds. `nil` if tick-to-seconds correlation was not possible.
+        public var duration: TimeInterval?
+
+        public init(startTimestamp: MTLTimestamp, endTimestamp: MTLTimestamp, duration: TimeInterval? = nil) {
+            self.startTimestamp = startTimestamp
+            self.endTimestamp = endTimestamp
+            self.duration = duration
+        }
+    }
+
     /// The label passed to the modifier, if any.
     public var label: String?
 
@@ -23,12 +41,41 @@ public struct GPUCounterSample: Sendable, Equatable {
     /// `MTLDevice.sampleTimestamps(...)`. `nil` if correlation was not possible.
     public var duration: TimeInterval?
 
-    public init(label: String? = nil, startTimestamp: MTLTimestamp, endTimestamp: MTLTimestamp, duration: TimeInterval? = nil) {
+    /// The vertex-stage interval of a render pass.
+    ///
+    /// `nil` for compute passes or when the GPU did not report the stage samples.
+    ///
+    /// - Note: On tile-based deferred renderers (Apple GPUs) the vertex and fragment
+    ///   stages overlap, so `vertex.duration + fragment.duration` can exceed ``duration``.
+    public var vertex: Interval?
+
+    /// The fragment-stage interval of a render pass.
+    ///
+    /// `nil` for compute passes or when the GPU did not report the stage samples.
+    public var fragment: Interval?
+
+    public init(label: String? = nil, startTimestamp: MTLTimestamp, endTimestamp: MTLTimestamp, duration: TimeInterval? = nil, vertex: Interval? = nil, fragment: Interval? = nil) {
         self.label = label
         self.startTimestamp = startTimestamp
         self.endTimestamp = endTimestamp
         self.duration = duration
+        self.vertex = vertex
+        self.fragment = fragment
     }
+}
+
+/// The fixed sample-buffer layout used by ``Element/gpuCounters(label:_:)``.
+///
+/// Render passes fill indices 0...3 (stage boundaries); compute passes fill 4...5
+/// (encoder boundaries). ``GPUCounterSampler/resolve(_:label:)`` expects this layout.
+public enum GPUCounterSampleIndex {
+    public static let vertexStart = 0
+    public static let vertexEnd = 1
+    public static let fragmentStart = 2
+    public static let fragmentEnd = 3
+    public static let computeStart = 4
+    public static let computeEnd = 5
+    public static let count = 6
 }
 
 // MARK: - GPUCounterSampler
@@ -65,7 +112,7 @@ public final class GPUCounterSampler: @unchecked Sendable {
     }
 
     /// Creates a sample buffer able to hold `capacity` timestamps.
-    public func makeSampleBuffer(capacity: Int = 2) -> MTLCounterSampleBuffer? {
+    public func makeSampleBuffer(capacity: Int = GPUCounterSampleIndex.count) -> MTLCounterSampleBuffer? {
         let descriptor = MTLCounterSampleBufferDescriptor()
         descriptor.counterSet = counterSet
         descriptor.storageMode = .shared
@@ -73,24 +120,43 @@ public final class GPUCounterSampler: @unchecked Sendable {
         return try? device.makeCounterSampleBuffer(descriptor: descriptor)
     }
 
-    /// Resolves the first two timestamps in `sampleBuffer` into a sample.
+    /// Resolves the timestamps in `sampleBuffer` into a sample.
+    ///
+    /// Expects the layout written by ``Element/gpuCounters(label:_:)``: render stage
+    /// boundaries first, compute encoder boundaries after. Returns the render sample
+    /// (with per-stage intervals when available), falling back to the compute sample,
+    /// or `nil` if neither was taken.
     public func resolve(_ sampleBuffer: MTLCounterSampleBuffer, label: String? = nil) -> GPUCounterSample? {
-        guard let data = try? sampleBuffer.resolveCounterRange(0..<2) else {
+        guard let data = try? sampleBuffer.resolveCounterRange(0..<GPUCounterSampleIndex.count) else {
             return nil
         }
         let timestamps: [MTLTimestamp] = data.withUnsafeBytes { buffer in
             let results = buffer.bindMemory(to: MTLCounterResultTimestamp.self)
-            return results.prefix(2).map(\.timestamp)
+            return results.prefix(GPUCounterSampleIndex.count).map(\.timestamp)
         }
-        guard timestamps.count == 2 else {
+        guard timestamps.count == GPUCounterSampleIndex.count else {
             return nil
         }
-        let (start, end) = (timestamps[0], timestamps[1])
-        // MTLCounterErrorValue marks a sample the GPU could not take.
-        guard start != MTLCounterErrorValue, end != MTLCounterErrorValue, end >= start else {
-            return nil
+
+        func interval(_ startIndex: Int, _ endIndex: Int) -> GPUCounterSample.Interval? {
+            let start = timestamps[startIndex]
+            let end = timestamps[endIndex]
+            // 0 marks a sample the GPU never took; MTLCounterErrorValue one it could not take.
+            guard start != 0, end != 0, start != MTLCounterErrorValue, end != MTLCounterErrorValue, end >= start else {
+                return nil
+            }
+            return GPUCounterSample.Interval(startTimestamp: start, endTimestamp: end, duration: seconds(forTicks: end - start))
         }
-        return GPUCounterSample(label: label, startTimestamp: start, endTimestamp: end, duration: seconds(forTicks: end - start))
+
+        if let pass = interval(GPUCounterSampleIndex.vertexStart, GPUCounterSampleIndex.fragmentEnd) {
+            let vertex = interval(GPUCounterSampleIndex.vertexStart, GPUCounterSampleIndex.vertexEnd)
+            let fragment = interval(GPUCounterSampleIndex.fragmentStart, GPUCounterSampleIndex.fragmentEnd)
+            return GPUCounterSample(label: label, startTimestamp: pass.startTimestamp, endTimestamp: pass.endTimestamp, duration: pass.duration, vertex: vertex, fragment: fragment)
+        }
+        if let pass = interval(GPUCounterSampleIndex.computeStart, GPUCounterSampleIndex.computeEnd) {
+            return GPUCounterSample(label: label, startTimestamp: pass.startTimestamp, endTimestamp: pass.endTimestamp, duration: pass.duration)
+        }
+        return nil
     }
 
     /// Converts a GPU tick delta to seconds using a fresh CPU/GPU correlation pair.
@@ -164,27 +230,36 @@ internal struct GPUCountersModifier <Content>: Element, BodylessElement, Bodyles
             logger?.warning("gpuCounters: No device in environment; counters disabled.")
             return
         }
-        let parent = system.traversalContext.parentNode
-        guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
-            return
-        }
         guard let sampler = storage.sampler(makingWith: device), let sampleBuffer = sampler.makeSampleBuffer() else {
             logger?.warning("gpuCounters: GPU counter sampling unavailable on this device; counters disabled.")
             return
         }
         storage.setSampleBuffer(sampleBuffer)
 
-        let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
-        guard let attachment = copy.sampleBufferAttachments[0] else {
-            return
+        // The modifier cannot see whether its content is a render or a compute pass, so it
+        // publishes both descriptors into disjoint regions of one sample buffer; whichever
+        // pass runs writes its region and resolve() picks the populated one.
+        let parent = system.traversalContext.parentNode
+        if let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor {
+            let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
+            if let attachment = copy.sampleBufferAttachments[0] {
+                attachment.sampleBuffer = sampleBuffer
+                attachment.startOfVertexSampleIndex = GPUCounterSampleIndex.vertexStart
+                attachment.endOfVertexSampleIndex = GPUCounterSampleIndex.vertexEnd
+                attachment.startOfFragmentSampleIndex = GPUCounterSampleIndex.fragmentStart
+                attachment.endOfFragmentSampleIndex = GPUCounterSampleIndex.fragmentEnd
+                node.environmentValues.renderPassDescriptor = copy
+                node.environmentValues.renderAttachmentFormats = RenderAttachmentFormats(copy)
+            }
         }
-        attachment.sampleBuffer = sampleBuffer
-        attachment.startOfVertexSampleIndex = 0
-        attachment.endOfVertexSampleIndex = MTLCounterDontSample
-        attachment.startOfFragmentSampleIndex = MTLCounterDontSample
-        attachment.endOfFragmentSampleIndex = 1
-        node.environmentValues.renderPassDescriptor = copy
-        node.environmentValues.renderAttachmentFormats = RenderAttachmentFormats(copy)
+
+        let computePassDescriptor = (parent?.environmentValues.computePassDescriptor ?? node.environmentValues.computePassDescriptor)?.copyWithType(MTLComputePassDescriptor.self) ?? MTLComputePassDescriptor()
+        if let attachment = computePassDescriptor.sampleBufferAttachments[0] {
+            attachment.sampleBuffer = sampleBuffer
+            attachment.startOfEncoderSampleIndex = GPUCounterSampleIndex.computeStart
+            attachment.endOfEncoderSampleIndex = GPUCounterSampleIndex.computeEnd
+            node.environmentValues.computePassDescriptor = computePassDescriptor
+        }
     }
 
     func workloadEnter(_ node: Node) throws {
@@ -215,10 +290,11 @@ internal struct GPUCountersModifier <Content>: Element, BodylessElement, Bodyles
 }
 
 public extension Element {
-    /// Samples GPU timestamps around a render pass and reports the elapsed GPU time.
+    /// Samples GPU timestamps around a render or compute pass and reports the elapsed GPU time.
     ///
-    /// Apply this to a ``RenderPass``. It attaches a timestamp counter sample buffer
-    /// to the pass descriptor and resolves it when the command buffer completes.
+    /// Apply this to a ``RenderPass`` or a ``ComputePass``. It attaches a timestamp
+    /// counter sample buffer to the pass descriptor and resolves it when the command
+    /// buffer completes.
     ///
     /// ```swift
     /// try RenderPass {
@@ -226,8 +302,16 @@ public extension Element {
     /// }
     /// .gpuCounters(label: "Main") { sample in
     ///     print("GPU: \((sample.duration ?? 0) * 1000) ms")
+    ///     if let vertex = sample.vertex, let fragment = sample.fragment {
+    ///         print("vertex: \((vertex.duration ?? 0) * 1000) ms, fragment: \((fragment.duration ?? 0) * 1000) ms")
+    ///     }
     /// }
     /// ```
+    ///
+    /// Render passes report per-stage intervals via ``GPUCounterSample/vertex`` and
+    /// ``GPUCounterSample/fragment``; compute passes report whole-encoder time only.
+    /// Apply the modifier to one pass at a time — wrapping a group that contains both
+    /// a render and a compute pass reports only the render pass.
     ///
     /// On devices that do not support counter sampling at stage boundaries the
     /// modifier logs a warning and does nothing.

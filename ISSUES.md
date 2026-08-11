@@ -5945,11 +5945,13 @@ Found while restructuring StamFluid for MetalSprocketsExamples#385.
 ## 393: gpuCounters reports only whole-pass time: no vertex/fragment stage breakdown, no compute pass support
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: performance
 created: 2026-08-11T05:39:49Z
+updated: 2026-08-11T06:34:33Z
+closed: 2026-08-11T06:34:33Z
 +++
 
 The .gpuCounters() modifier samples just 2 timestamps per render pass — start-of-vertex and end-of-fragment (endOfVertexSampleIndex and startOfFragmentSampleIndex are set to MTLCounterDontSample) — so callers only get whole-pass GPU duration. There is no way to see time spent in the vertex stage vs the fragment stage, even though .atStageBoundary sampling supports all 4 boundaries. The modifier also only works on render passes: ComputePass has no counter support at all (MTLComputePassDescriptor sample buffer attachments with dispatch boundaries are never used), so compute work like splat sorting cannot be timed via counters. For comparison, the splat-render tool in gaussiansplats-ios samples all 4 render stage boundaries plus compute pass dispatch boundaries, reporting per-pass GPU time with separate vertex and fragment times.

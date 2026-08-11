@@ -21,6 +21,7 @@ public extension MSEnvironmentValues {
     @MSEntry var depthStencilDescriptor: MTLDepthStencilDescriptor?
     @MSEntry var depthStencilState: MTLDepthStencilState?
     @MSEntry var computeCommandEncoder: MTLComputeCommandEncoder?
+    @MSEntry var computePassDescriptor: MTLComputePassDescriptor?
     @MSEntry var computePipelineState: MTLComputePipelineState?
     @MSEntry var reflection: Reflection?
     @MSEntry var colorAttachment0: (MTLTexture, Int)?
@@ -88,6 +89,11 @@ public extension Element {
     func renderPassDescriptor(_ renderPassDescriptor: MTLRenderPassDescriptor) -> some Element {
         environment(\.renderPassDescriptor, renderPassDescriptor)
             .environment(\.renderAttachmentFormats, RenderAttachmentFormats(renderPassDescriptor))
+    }
+
+    /// Sets the compute pass descriptor used by ``ComputePass``.
+    func computePassDescriptor(_ computePassDescriptor: MTLComputePassDescriptor) -> some Element {
+        environment(\.computePassDescriptor, computePassDescriptor)
     }
 
     /// Sets the base render pipeline descriptor pipelines are built from.
