@@ -18,6 +18,8 @@ modules:
     - decl: |
         public func commandQueue(_ commandQueue: any MTLCommandQueue) -> some Element
     - decl: |
+        public func computePassDescriptor(_ computePassDescriptor: MTLComputePassDescriptor) -> some Element
+    - decl: |
         public func currentDrawable(_ currentDrawable: (any CAMetalDrawable)?) -> some Element
     - decl: |
         public func debugGroup(_ label: String) -> some Element
@@ -150,7 +152,7 @@ modules:
   - decl: public final class GPUCounterSampler
     members:
     - decl: 'public init?(device: any MTLDevice)'
-    - decl: 'public func makeSampleBuffer(capacity: Int = 2) -> (any MTLCounterSampleBuffer)?'
+    - decl: 'public func makeSampleBuffer(capacity: Int = GPUCounterSampleIndex.count) -> (any MTLCounterSampleBuffer)?'
     - decl: 'public func resolve(_ sampleBuffer: any MTLCounterSampleBuffer, label: String? = nil) -> GPUCounterSample?'
     - decl: 'public func seconds(forTicks ticks: UInt64) -> TimeInterval?'
   - decl: public final class MetalShaderLoader
@@ -295,11 +297,19 @@ modules:
     - decl: 'public static let visible: FunctionTypes'
   - decl: public struct GPUCounterSample
     members:
-    - decl: 'public init(label: String? = nil, startTimestamp: MTLTimestamp, endTimestamp: MTLTimestamp, duration: TimeInterval? = nil)'
+    - decl: public struct Interval
+      members:
+      - decl: 'public init(startTimestamp: MTLTimestamp, endTimestamp: MTLTimestamp, duration: TimeInterval? = nil)'
+      - decl: 'public var duration: TimeInterval?'
+      - decl: 'public var endTimestamp: MTLTimestamp'
+      - decl: 'public var startTimestamp: MTLTimestamp'
+    - decl: 'public init(label: String? = nil, startTimestamp: MTLTimestamp, endTimestamp: MTLTimestamp, duration: TimeInterval? = nil, vertex: GPUCounterSample.Interval? = nil, fragment: GPUCounterSample.Interval? = nil)'
     - decl: 'public var duration: TimeInterval?'
     - decl: 'public var endTimestamp: MTLTimestamp'
+    - decl: 'public var fragment: GPUCounterSample.Interval?'
     - decl: 'public var label: String?'
     - decl: 'public var startTimestamp: MTLTimestamp'
+    - decl: 'public var vertex: GPUCounterSample.Interval?'
   - decl: 'public struct Group<Content> where Content : Element'
     members:
     - decl: public typealias Body = Never
@@ -346,6 +356,7 @@ modules:
     - decl: 'public var commandBufferDescriptor: MTLCommandBufferDescriptor? { get set }'
     - decl: 'public var commandQueue: (any MTLCommandQueue)? { get set }'
     - decl: 'public var computeCommandEncoder: (any MTLComputeCommandEncoder)? { get set }'
+    - decl: 'public var computePassDescriptor: MTLComputePassDescriptor? { get set }'
     - decl: 'public var computePipelineState: (any MTLComputePipelineState)? { get set }'
     - decl: 'public var currentDrawable: (any CAMetalDrawable)? { get set }'
     - decl: 'public var debugDescription: String { get }'
@@ -557,6 +568,15 @@ modules:
     - decl: 'public static func buildLimitedAvailability<Content>(_ content: Content) -> AnyElement where Content : Element'
     - decl: |
         public static func buildOptional<Content>(_ content: Content?) -> some Element where Content : Element
+  - decl: public enum GPUCounterSampleIndex
+    members:
+    - decl: 'public static let computeEnd: Int'
+    - decl: 'public static let computeStart: Int'
+    - decl: 'public static let count: Int'
+    - decl: 'public static let fragmentEnd: Int'
+    - decl: 'public static let fragmentStart: Int'
+    - decl: 'public static let vertexEnd: Int'
+    - decl: 'public static let vertexStart: Int'
   - decl: 'public associatedtype Body : Element'
   - decl: public associatedtype Value
   - decl: 'public init(_ function: any MTLFunction)'
