@@ -5957,3 +5957,23 @@ closed: 2026-08-11T06:34:33Z
 The .gpuCounters() modifier samples just 2 timestamps per render pass — start-of-vertex and end-of-fragment (endOfVertexSampleIndex and startOfFragmentSampleIndex are set to MTLCounterDontSample) — so callers only get whole-pass GPU duration. There is no way to see time spent in the vertex stage vs the fragment stage, even though .atStageBoundary sampling supports all 4 boundaries. The modifier also only works on render passes: ComputePass has no counter support at all (MTLComputePassDescriptor sample buffer attachments with dispatch boundaries are never used), so compute work like splat sorting cannot be timed via counters. For comparison, the splat-render tool in gaussiansplats-ios samples all 4 render stage boundaries plus compute pass dispatch boundaries, reporting per-pass GPU time with separate vertex and fragment times.
 
 ---
+
+## 394: OffscreenRenderer: expose command-buffer GPU time on Rendering
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: offscreen,metrics,api
+created: 2026-08-18T22:43:34Z
++++
+
+OffscreenRenderer.render(_:) creates, commits, and waits on the MTLCommandBuffer internally and returns only Rendering { texture }. There is no way for callers to read the command buffer's GPU wall-clock time (commandBuffer.gpuEndTime - gpuStartTime).
+
+That whole-submission GPU time is a correlation-free measurement (unlike timestamp counters, which need CPU/GPU timestamp correlation to convert ticks to seconds), so it is valuable as a sanity cross-check on counter-derived per-pass times.
+
+Ask: capture commandBuffer.gpuStartTime / gpuEndTime in Runner/OffscreenRenderer after waitUntilCompleted and surface it, e.g. add `gpuTime: TimeInterval` (or start/end) to OffscreenRenderer.Rendering, or a small frame-timing report. Should be opt-in / near-zero cost (the values are already populated after the buffer completes).
+
+Downstream: needed by MetalSprocketsGaussianSplats issue #123 (CLI stats: command-buffer GPU clock cross-check), which is blocked until this hook exists. The splat renderer would plumb it through OffscreenSplatRenderer.FrameReport to the bench CLI.
+
+---
