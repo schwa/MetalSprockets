@@ -5961,11 +5961,13 @@ The .gpuCounters() modifier samples just 2 timestamps per render pass — start-
 ## 394: OffscreenRenderer: expose command-buffer GPU time on Rendering
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
-labels: offscreen,metrics,api
+labels: offscreen, metrics, api
 created: 2026-08-18T22:43:34Z
+updated: 2026-08-18T23:02:10Z
+closed: 2026-08-18T23:02:10Z
 +++
 
 OffscreenRenderer.render(_:) creates, commits, and waits on the MTLCommandBuffer internally and returns only Rendering { texture }. There is no way for callers to read the command buffer's GPU wall-clock time (commandBuffer.gpuEndTime - gpuStartTime).

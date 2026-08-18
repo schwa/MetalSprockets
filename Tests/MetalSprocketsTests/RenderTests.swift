@@ -56,4 +56,8 @@ func testRendering() throws {
     let image = try texture.cgImage
 
     try Golden.verify(image, named: "RedTriangle")
+
+    // gpuTime should be populated and non-negative after a completed submission.
+    let gpuTime = try #require(offscreenRenderer.render(renderPass).gpuTime)
+    #expect(gpuTime >= 0)
 }

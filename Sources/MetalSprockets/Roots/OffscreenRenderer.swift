@@ -121,6 +121,13 @@ public struct OffscreenRenderer {
     public struct Rendering {
         /// The texture containing the rendered output.
         public var texture: MTLTexture
+
+        /// The command buffer's GPU wall-clock time in seconds
+        /// (`gpuEndTime - gpuStartTime`), or `nil` if unavailable.
+        ///
+        /// This is a correlation-free whole-submission measurement, useful as a
+        /// sanity cross-check against timestamp-counter-derived per-pass times.
+        public var gpuTime: TimeInterval?
     }
 }
 
@@ -131,12 +138,21 @@ public extension OffscreenRenderer {
     /// - Returns: A ``Rendering`` containing the output texture.
     /// - Throws: Any errors that occur during rendering.
     func render<Content>(_ content: Content) throws -> Rendering where Content: Element {
+        let timing = GPUTimingBox()
         let wrapped = content
             .renderPassDescriptor(renderPassDescriptor)
             .drawableSize(size)
+            .onCommandBufferCompleted { buffer in
+                timing.gpuTime = buffer.gpuEndTime - buffer.gpuStartTime
+            }
         try runner.run(wrapped)
-        return .init(texture: colorTexture)
+        // Completed handlers fire before waitUntilCompleted returns, so timing is populated here.
+        return .init(texture: colorTexture, gpuTime: timing.gpuTime)
     }
+}
+
+private final class GPUTimingBox: @unchecked Sendable {
+    var gpuTime: TimeInterval?
 }
 
 public extension OffscreenRenderer.Rendering {
