@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/MetalCompilerPlugin",
       "state" : {
-        "revision" : "36c761478a8e3fb934acf8ef2db4696af95069b4",
-        "version" : "0.1.5"
+        "revision" : "5c8b7550d7e3e677d221273d55bc9a7bcb2856d5",
+        "version" : "0.1.7"
       }
     },
     {

@@ -19,7 +19,7 @@ public let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0"),
-        .package(url: "https://github.com/schwa/MetalCompilerPlugin", from: "0.1.4"),
+        .package(url: "https://github.com/schwa/MetalCompilerPlugin", from: "0.1.7"),
         .package(url: "https://github.com/schwa/MetalSupport", from: "1.0.5"),
         .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
         .package(url: "https://github.com/schwa/GoldenImage", branch: "0.1.5"),
@@ -49,6 +49,9 @@ public let package = Package(
         .target(
             name: "MetalSprocketsUIShaders",
             exclude: ["Metal"],
+            cSettings: [
+                .define("METAL_COMPILER_PLUGIN_DEBUG", .when(configuration: .debug))
+            ],
             plugins: [
                 .plugin(name: "MetalCompilerPlugin", package: "MetalCompilerPlugin")
             ]

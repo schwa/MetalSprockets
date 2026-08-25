@@ -5983,12 +5983,13 @@ Downstream: needed by MetalSprocketsGaussianSplats issue #123 (CLI stats: comman
 ## 395: Release builds can embed development-only Metal shader source
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: metal, release-builds
 created: 2026-08-25T22:10:25Z
-updated: 2026-08-25T22:23:36Z
+updated: 2026-08-25T22:46:26Z
+closed: 2026-08-25T22:46:26Z
 +++
 
 The MetalCompilerPlugin is attached to the MetalSprocketsUIShaders target, but the manifest does not provide a configuration-dependent compilation condition to the plugin. MetalCompilerPlugin cannot read SwiftPM's active debug or release configuration directly. As a result, its debug metallib behavior cannot differ safely between configurations, and release products can contain development-only embedded Metal shader source. App Store validation reports ITMS-91306 for affected archives.
@@ -6007,6 +6008,8 @@ cSettings: [
 ],
 ```
 
+- `2026-08-25T22:46:26Z`: Updated MetalCompilerPlugin to 0.1.7 and added the debug-only compilation condition. Debug and Release builds pass, and the test suite passes.
+
 ---
 
 ## 396: Default metallib output name implies a debug build
@@ -6015,7 +6018,7 @@ cSettings: [
 status: new
 priority: low
 kind: enhancement
-labels: metal,plugin
+labels: metal, plugin
 created: 2026-08-25T22:45:15Z
 +++
 
