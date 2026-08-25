@@ -430,6 +430,7 @@ modules:
     - decl: public struct Rendering
       members:
       - decl: 'public var cgImage: CGImage { get throws }'
+      - decl: 'public var gpuTime: TimeInterval?'
       - decl: 'public var texture: any MTLTexture'
     - decl: 'public init(size: CGSize, colorTexture: any MTLTexture, depthTexture: any MTLTexture) throws'
     - decl: 'public init(size: CGSize, device: (any MTLDevice)? = nil, colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead], depthUsage: MTLTextureUsage = [.renderTarget]) throws'
