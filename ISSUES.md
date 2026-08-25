@@ -6008,3 +6008,24 @@ cSettings: [
 ```
 
 ---
+
+## 396: Default metallib output name implies a debug build
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: metal,plugin
+created: 2026-08-25T22:45:15Z
++++
+
+MetalCompilerPlugin names its default output `debug.metallib` in every build configuration. Release builds therefore ship a metallib whose filename incorrectly suggests that it contains debug output.
+
+Expected: The default filename is configuration-neutral.
+
+Actual: Debug and Release builds both produce `debug.metallib`.
+
+## Proposed fix (per user)
+Rename the default output to a configuration-neutral filename.
+
+---
