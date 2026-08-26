@@ -1,5 +1,5 @@
 {
-  "originHash" : "c8ac1eec3df98c533d204b2fd93fcf993f803aa2ddf0bb4d9c3df9754a97d98f",
+  "originHash" : "36a72a348d3fe831bdc8a78fa01aa87c4d3a786f5f1c36aba2765bec42247f36",
   "pins" : [
     {
       "identity" : "geometrylite3d",
@@ -25,7 +25,7 @@
       "location" : "https://github.com/schwa/MetalCompilerPlugin",
       "state" : {
         "revision" : "5c8b7550d7e3e677d221273d55bc9a7bcb2856d5",
-        "version" : "0.1.7"
+        "version" : "0.2.0"
       }
     },
     {
