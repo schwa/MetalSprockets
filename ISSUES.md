@@ -6061,11 +6061,13 @@ Reported downstream in MetalSprocketsGaussianSplats. Device: iPad (model/OS not 
 ## 398: ImmersiveRuntime.renderFrame calls endSubmission on an invalidated frame when leaving immersive space
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: visionOS
 created: 2026-09-14T17:53:09Z
+updated: 2026-09-14T17:57:57Z
+closed: 2026-09-14T17:57:57Z
 +++
 
 Exiting an immersive space crashes with:
@@ -6092,5 +6094,7 @@ Actual: cp_frame_end_submission() fails on an invalid frame and the app crashes.
 Proposed fix (per reporter): do not end submission when queryDrawables() is empty. Remove the unconditional defer and only call frame.endSubmission() on the path where a drawable is obtained, returning early (without ending submission) when it is empty.
 
 Reported downstream in MetalSprocketsGaussianSplats #170. Device: Apple Vision Pro.
+
+- `2026-09-14T17:57:57Z`: Fixed in renderFrame(): removed the unconditional defer { endSubmission() }; when queryDrawables() returns empty (frame invalidated during the pre-submit sleep, e.g. leaving the immersive space) we now return without ending submission, and call endSubmission() only after a successful encode. Verified on Apple Vision Pro: exiting immersive mode no longer crashes.
 
 ---

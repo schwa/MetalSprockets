@@ -96,11 +96,11 @@ internal final class ImmersiveRuntime<Content: Element> {
         }
 
         frame.startSubmission()
-        defer {
-            frame.endSubmission()
-        }
 
         guard let drawable = frame.queryDrawables().first else {
+            // The frame was invalidated (for example the immersive space was
+            // dismissed during the pre-submit sleep). Ending submission on an
+            // invalid frame trips cp_frame_end_submission(). Bail without it.
             return
         }
 
@@ -114,6 +114,7 @@ internal final class ImmersiveRuntime<Content: Element> {
         frameTimingChange?(frameTimingStatistics)
 
         try encodeFrame(drawable: drawable, deviceAnchor: deviceAnchor, time: time, frameTimingStatistics: frameTimingStatistics)
+        frame.endSubmission()
     }
 
     func encodeFrame(drawable: LayerRenderer.Drawable, deviceAnchor: DeviceAnchor?, time: TimeInterval, frameTimingStatistics: FrameTimingStatistics) throws {
