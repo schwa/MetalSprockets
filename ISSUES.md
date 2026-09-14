@@ -6032,3 +6032,65 @@ Actual: Debug and Release builds both produce `debug.metallib`.
 Rename the default output to a configuration-neutral filename.
 
 ---
+
+## 397: FrameTimingView flashes at a steady frame rate
+
++++
+status: new
+priority: medium
+kind: bug
+labels: ui
+created: 2026-09-14T17:18:52Z
++++
+
+FrameTimingView (MetalSprocketsUI) visibly flashes even when the frame rate is steady (reported at a stable 60 FPS on iPad).
+
+The view drives an internal TimelineView(.animation(minimumInterval: 1/15)), so it re-renders about 15 times per second. With options: .all the volatile fields (frame time, 1s min–max range, GPU time) change on nearly every tick, and the rows grid uses .fixedSize(), so the badge re-lays-out as digit widths change. The result is a visible flash/jitter of the overlay.
+
+Repro:
+1. Show FrameTimingView(statistics:, options: .all) over a RenderView.
+2. Run at a stable frame rate on iPad.
+
+Expected: the readout updates smoothly without the whole badge flashing.
+Actual: the badge visibly flashes while values tick.
+
+Reported downstream in MetalSprocketsGaussianSplats. Device: iPad (model/OS not specified).
+
+---
+
+## 398: ImmersiveRuntime.renderFrame calls endSubmission on an invalidated frame when leaving immersive space
+
++++
+status: new
+priority: high
+kind: bug
+labels: visionOS
+created: 2026-09-14T17:53:09Z
++++
+
+Exiting an immersive space crashes with:
+
+BUG IN CLIENT: cp_frame_end_submission() failed because the frame is not valid. Are failures from calls to cp_frame_query_drawables() or cp_frame_predict_timing() properly handled? (Namespace: 18, Code:2)
+
+Cause: in ImmersiveRuntime.renderFrame() (MetalSprocketsUI/VisionOS/ImmersiveRuntime.swift), submission is ended unconditionally:
+
+    frame.startSubmission()
+    defer { frame.endSubmission() }
+    guard let drawable = frame.queryDrawables().first else {
+        return
+    }
+
+renderFrame awaits sleep(until: timing.optimalInputTime) before submitting. If the immersive space is dismissed during that await, the frame becomes invalid. After the sleep the state == .running guard can still pass (or race), startSubmission() runs, then queryDrawables().first returns empty because the frame is no longer valid. The guard returns, but the defer still calls endSubmission() on the invalid frame, producing the error above. The runtime message explicitly says an empty queryDrawables()/predictTiming() result must not lead to endSubmission().
+
+Reproduction:
+1. Enter an immersive space that runs the ImmersiveRuntime render loop.
+2. Exit the immersive space.
+
+Expected: the render loop tears down cleanly.
+Actual: cp_frame_end_submission() fails on an invalid frame and the app crashes.
+
+Proposed fix (per reporter): do not end submission when queryDrawables() is empty. Remove the unconditional defer and only call frame.endSubmission() on the path where a drawable is obtained, returning early (without ending submission) when it is empty.
+
+Reported downstream in MetalSprocketsGaussianSplats #170. Device: Apple Vision Pro.
+
+---
