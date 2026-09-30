@@ -25,7 +25,6 @@ steps:
 
   - label: ":hammer: Example ({{matrix}})"
     key: "example"
-    # DerivedData lives in the checkout, so jobs on different agents never share (and lock) one build database.
     matrix:
       - "platform=macOS"
       - "generic/platform=iOS"
@@ -35,7 +34,6 @@ steps:
       -project Example/MetalSprockets-Example.xcodeproj
       -scheme MetalSprockets-Example
       -destination '{{matrix}}'
-      -derivedDataPath .derivedData
       -skipPackagePluginValidation
       -skipMacroValidation
       CODE_SIGNING_ALLOWED=NO
