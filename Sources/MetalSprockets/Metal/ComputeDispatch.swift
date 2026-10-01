@@ -155,9 +155,12 @@ public struct ComputeDispatch: Element, WorkloadElement {
     internal static func automaticThreadsPerThreadgroup(for pipelineState: MTLComputePipelineState, gridSize: MTLSize?) -> MTLSize {
         let maxTotal = max(1, pipelineState.maxTotalThreadsPerThreadgroup)
         let executionWidth = max(1, min(pipelineState.threadExecutionWidth, maxTotal))
-        // A 1D grid gets a 1D threadgroup; anything else (or an unknown grid) gets a 2D one.
-        if let gridSize, gridSize.height <= 1, gridSize.depth <= 1 {
-            let width = min(maxTotal, max(executionWidth, gridSize.width))
+        // Only split into a 2D threadgroup when the grid is known to be 2D/3D. A 1D grid, or an
+        // unknown grid (threadgroups/indirect dispatch), gets a 1D threadgroup: that stays valid for
+        // scalar, 2D, and 3D `thread_position_in_grid` kernels, whereas a 2D threadgroup aborts a
+        // scalar-tid kernel in the Metal validation layer.
+        guard let gridSize, gridSize.height > 1 || gridSize.depth > 1 else {
+            let width = min(maxTotal, max(executionWidth, gridSize?.width ?? executionWidth))
             return MTLSize(width: max(1, width), height: 1, depth: 1)
         }
         let height = max(1, maxTotal / executionWidth)
