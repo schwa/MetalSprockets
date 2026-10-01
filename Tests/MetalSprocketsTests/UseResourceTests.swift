@@ -248,7 +248,11 @@ struct UseResourceTests {
 
     @Test("missingEnvironment(keyPath) helper")
     func testMissingEnvironmentKeyPath() {
-        let err = MetalSprocketsError.missingEnvironment(\MSEnvironmentValues.device)
-        #expect("\(err)".contains("device"))
+        // The keypath overload just forwards the interpolated keypath to the string overload. We can't
+        // assert the message contains "device": keypath string interpolation drops the property name in
+        // optimized builds, so compare against the same interpolation instead of a hardcoded substring.
+        let keyPath = \MSEnvironmentValues.device
+        let err = MetalSprocketsError.missingEnvironment(keyPath)
+        #expect("\(err)" == "\(MetalSprocketsError.missingEnvironment("\(keyPath)"))")
     }
 }
