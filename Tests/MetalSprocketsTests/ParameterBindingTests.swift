@@ -60,9 +60,43 @@ struct ParameterBindingTests {
         }
     }
 
+    // A fragment shader that needs only the SIMD4 color parameter, so this test can exercise
+    // SIMD4 binding without also having to bind the texture/sampler that `fragment_main` requires.
+    static let colorOnlySource = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    struct VertexIn {
+        float2 position [[attribute(0)]];
+    };
+
+    struct VertexOut {
+        float4 position [[position]];
+        float2 uv;
+    };
+
+    [[vertex]] VertexOut vertex_main(
+        const VertexIn in [[stage_in]],
+        constant float4x4 &transform [[buffer(1)]]
+    ) {
+        VertexOut out;
+        out.position = transform * float4(in.position, 0.0, 1.0);
+        out.uv = (in.position + 1.0) * 0.5;
+        return out;
+    }
+
+    [[fragment]] float4 fragment_main(
+        VertexOut in [[stage_in]],
+        constant float4 &color [[buffer(0)]]
+    ) {
+        return color;
+    }
+    """
+
     @Test("Fragment SIMD4 parameter binds without error")
     func testFragmentSIMD4Parameter() throws {
-        let (vs, fs, _) = try makeBasePass()
+        let vs = try VertexShader(source: Self.colorOnlySource)
+        let fs = try FragmentShader(source: Self.colorOnlySource)
         let pass = try renderPass(vs: vs, fs: fs) {
             Draw { encoder in
                 let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
@@ -116,7 +150,9 @@ struct ParameterBindingTests {
 
     @Test("Buffer parameter binding")
     func testBufferParameter() throws {
-        let (vs, fs, device) = try makeBasePass()
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let vs = try VertexShader(source: Self.colorOnlySource)
+        let fs = try FragmentShader(source: Self.colorOnlySource)
         // transform buffer
         var transform = simd_float4x4.identity
         let buf = try #require(device.makeBuffer(bytes: &transform, length: MemoryLayout<simd_float4x4>.stride, options: .storageModeShared))
