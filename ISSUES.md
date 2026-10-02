@@ -8909,3 +8909,35 @@ created: 2026-10-02T16:32:33Z
 Metal 4 APIs are unavailable in the iOS/visionOS Simulator. Code paths relying on Metal 4 fail or can't be exercised there; need a fallback or to document/guard the limitation.
 
 ---
+
+## 474: Public element modifier to attach a ResourceCollection (persistent residency)
+
++++
+status: new
+priority: medium
+kind: feature
+labels: metal4, residency
+created: 2026-10-02T20:15:52Z
++++
+
+Elements cannot attach a persistent `ResourceCollection` or `MTLResidencySet` from inside the element tree. The only public entry point is `ResidencyConfiguration` at the root (`RenderView`, `Runner`, `OffscreenRenderer`).
+
+Because of this, long-lived buffers go through the automatic `ResidencyTracker`. It reference-counts each allocation per submission. When frames retire before the next commit, the count drops to 0 and the allocation is removed, then added again on the next frame. A GPU trace of MetalSprocketsGaussianSplats shows about 15 `removeAllocation` calls + `commit`, then the same ~15 `addAllocation` calls + `commit`, on every frame. The buffers include Splats, SHCoefficients, CloudData and all the GPUSort scratch buffers.
+
+Inside the framework, `MSAAModifier` and the function-table path already avoid this with `scope.useResourceCollection(_:)`. But `ScopeModifier` and `RecordingScope` are internal, so library code outside the framework (for example the splat pipelines) cannot do the same.
+
+Proposed: add a public modifier, roughly:
+
+```swift
+public extension Element {
+    func useResourceCollection(_ collection: ResourceCollection) -> some Element {
+        ScopeModifier(content: self) { try $0.useResourceCollection(collection) }
+    }
+}
+```
+
+Maybe also add `useResidencySet(_:)` for externally owned sets.
+
+Done when a pipeline element can register its persistent buffers in its own `ResourceCollection`, attach it with the modifier, and the per-frame add/remove churn is gone from the trace. Callers must not need any root-level `ResidencyConfiguration` wiring.
+
+---
