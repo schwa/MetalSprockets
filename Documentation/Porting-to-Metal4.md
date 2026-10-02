@@ -127,7 +127,7 @@ Support depends on the kind of MPS kernel.
 - **MPSGraph** can run on an `MTL4CommandQueue`, but it commits its own work, so it cannot join a MetalSprockets
   submission. Run it outside the element tree.
 
-See `RFCs/0004-metal3-interop.md` for a possible route for image kernels.
+See `RFCs/0005-metal3-interop.md` for a possible route for image kernels.
 
 Texture copies use `$0.copy(sourceTexture: source, destinationTexture: destination)`, not `copy(from:to:)`.
 
@@ -143,9 +143,45 @@ Metal 4 does not track hazards between commands.
 - `.useResource(s)` and `.useComputeResource(s)` keep resources resident and alive for the submission. They no
   longer imply ordering. Declare anything a raw closure touches, or a shader reaches through an argument buffer.
 
+A missing barrier does not cause an error. The code builds, validation does not report it, and the output is
+usually correct, because the GPU often runs the passes in order anyway. The result is an intermittent race.
+
+The common case is a compute pass that produces data for a draw, for example a GPU sort or cull followed by an
+indirect draw. Put the barrier on the producer, so that every consumer is covered:
+
+```swift
+try ComputePass(label: "Sort") {
+    // ... dispatches, with EncoderBarrier between dependent dispatches ...
+}
+.barrierAfterPass(after: .dispatch, beforeQueueStages: .vertex)
+
+try RenderPass {
+    try MyPipeline(sortedIndices: indices)   // reads indices and indirect args in the vertex stage
+}
+```
+
+`.vertex` also covers the read of indirect draw arguments. Use `.fragment` (or `[.vertex, .fragment]`) when only
+the fragment stage reads the data, for example a texture that a compute pass wrote.
+
+Ordering also applies in the other direction. If a pass writes a buffer that an earlier pass or an earlier frame
+still reads, that is a write-after-read hazard. Buffers reused every frame need either one copy per frame in flight
+(see `maximumInFlightSubmissions`) or a barrier before the write.
+
+To check the ordering, take a GPU capture and open the Dependencies view in Xcode. A correct producer and consumer
+have a Barrier node (for example "Dispatch → Vertex") and edges between the two encoders. Two encoders with no
+edge between them are not ordered.
+
 ## Persistent and manual residency
 
 Automatic residency remains the default. Unregistered client resources stay resident until their submitted work retires.
+
+**Automatic residency is for short-lived resources.** It counts the uses of each allocation per submission. When a
+frame retires before the next frame commits, the count goes to zero and the allocation is removed from the
+residency set. The next frame adds it again. A long-lived buffer (mesh data, a splat cloud, sort scratch) is then
+removed and added again every frame. A GPU capture shows this as a block of `removeAllocation` calls and a
+`commit`, then a block of `addAllocation` calls and a `commit`, for the same allocations on each frame. Put
+anything that lives longer than one frame in a `ResourceCollection`.
+
 Framework-owned scratch buffers, MSAA targets, offscreen targets, stencil targets, and visible-function tables stay resident for their owning lifetime.
 `RenderView` keeps its non-memoryless depth/MSAA attachments resident across frames. Resizing or changing the sample count updates that collection.
 Replaced attachments stay resident until earlier submissions finish. Drawable textures use the layer's residency set, not this collection.
@@ -174,6 +210,42 @@ MyPipeline(...)
 ```
 
 The collection applies to every submission the subtree encodes into.
+
+When a type owns its buffers (for example one set of buffers per frame in flight, or buffers that grow), give the
+type the collection. Register every buffer when you make it. When you replace buffers, unregister the old ones and
+register the new ones. Buffers that a submission still uses stay resident until that submission completes.
+
+```swift
+final class SortResources {
+    let resourceCollection: ResourceCollection
+    private(set) var slots: [Slot]
+
+    init(device: any MTLDevice, capacity: Int) throws {
+        resourceCollection = try ResourceCollection(device: device)
+        slots = try (0..<3).map { _ in try Slot(device: device, capacity: capacity) }
+        for buffer in slots.flatMap(\.buffers) {
+            try resourceCollection.register(buffer)
+        }
+    }
+
+    func grow(to capacity: Int, device: any MTLDevice) throws {
+        let newSlots = try (0..<3).map { _ in try Slot(device: device, capacity: capacity) }
+        for buffer in slots.flatMap(\.buffers) {
+            resourceCollection.unregister(buffer)
+        }
+        slots = newSlots
+        for buffer in slots.flatMap(\.buffers) {
+            try resourceCollection.register(buffer)
+        }
+    }
+}
+
+// In the element that uses them:
+try ComputePass { ... }
+    .useResourceCollection(sortResources.resourceCollection)
+```
+
+A collection that an element owns can be kept in `@MSState` and made the first time the body runs.
 `.useResidencySet(set)` does the same for an externally owned `MTLResidencySet`. The rules for raw sets below apply.
 
 `register` is idempotent. `unregister` removes collection membership immediately.
@@ -277,7 +349,10 @@ Use `gpuDuration`, or measure CPU time around `submit` yourself.
 
 1. Build. Removed APIs show up as unknown names; find each one in the tables above.
 2. Move vertex data and textures out of `Draw` closures into modifiers.
-3. Add barriers where one command reads what another wrote.
-4. Run with `MTL_DEBUG_LAYER=1` (Metal API Validation) and fix any unset bindings it reports.
+3. Add barriers where one command reads what another wrote, inside a pass and between passes.
+4. Put resources that live longer than one frame in a `ResourceCollection`.
+5. Run with `MTL_DEBUG_LAYER=1` (Metal API Validation) and fix any unset bindings it reports.
+6. Take a GPU capture. In the Dependencies view, check that every producer and consumer pass has an edge between
+   them, and that the command list has no per-frame `addAllocation`/`removeAllocation` for long-lived resources.
 
 See `RELEASENOTES.md` for the full list of changes.
