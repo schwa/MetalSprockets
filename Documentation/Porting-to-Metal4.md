@@ -146,6 +146,14 @@ Metal 4 does not track hazards between commands.
 A missing barrier does not cause an error. The code builds, validation does not report it, and the output is
 usually correct, because the GPU often runs the passes in order anyway. The result is an intermittent race.
 
+**If the rendering looks wrong, check your barriers first.** Without a barrier, the consumer can read the producer's
+output before the producer writes it. Then it uses data from an earlier frame. Symptoms:
+
+- The first frame is empty. The buffers have no data yet, so an indirect draw has an instance count of 0.
+- The output is one or more frames late, which you see only during motion. With one buffer copy per frame in
+  flight, the consumer reads the data from the last time that copy was used.
+- Flicker, or the output changes between runs or between machines.
+
 The common case is a compute pass that produces data for a draw, for example a GPU sort or cull followed by an
 indirect draw. Put the barrier on the producer, so that every consumer is covered:
 
