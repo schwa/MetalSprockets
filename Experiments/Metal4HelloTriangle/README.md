@@ -1,11 +1,8 @@
 # Metal4HelloTriangle
 
-Standalone proof-of-concept: renders a single triangle using Metal 4
-APIs only. No MetalSprockets, no third-party dependencies.
+This standalone example renders one triangle with Metal 4 APIs.
+It does not use MetalSprockets or third-party dependencies.
 
-Exists to validate the Metal 4 command / encoder / argument-table model
-end-to-end before that knowledge feeds back into MetalSprockets.
-See `../../RFCs/0002-metal-4.md`.
 
 ## Requirements
 
@@ -37,10 +34,9 @@ xcodebuild -project Metal4HelloTriangle.xcodeproj -scheme Metal4HelloTriangle -d
   `setArgumentTable(_:stages:)` and `drawPrimitives(primitiveType:…)`
 - `MTL4CommandQueue.commit(_:)` + `signalDrawable(_:)` + `drawable.present()`
 
-## What it doesn't exercise
+## What it does not cover
 
-- `MTL4CommitOptions` / commit-feedback callbacks (the MetalSprockets
-  shape that needs to route `onCommandBufferCompleted` through them)
+- `MTL4CommitOptions` and commit-feedback callbacks that deliver `onCommandBufferCompleted` results
 - Residency sets
 - Suspending / resuming render passes
 - Compute / blit encoders

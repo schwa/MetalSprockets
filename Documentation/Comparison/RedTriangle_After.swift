@@ -19,22 +19,13 @@ enum RedTriangle {
             ) {
                 // Draw the triangle
                 Draw { encoder in
-                    let vertices: [SIMD2<Float>] = [
-                        [0, 0.75],
-                        [-0.75, -0.75],
-                        [0.75, -0.75]
-                    ]
-                    encoder.setVertexBytes(
-                        vertices,
-                        length: MemoryLayout<SIMD2<Float>>.stride * 3,
-                        index: 0
-                    )
                     encoder.drawPrimitives(
-                        type: .triangle,
+                        primitiveType: .triangle,
                         vertexStart: 0,
                         vertexCount: 3
                     )
                 }
+                .vertexValues([SIMD2<Float>(0, 0.75), [-0.75, -0.75], [0.75, -0.75]], index: 0)
                 // Hardcoded buffer indices are fragile — if the shader changes,
                 // these can silently break. Binding by name (via shader reflection)
                 // is safer but adds complexity in raw Metal.

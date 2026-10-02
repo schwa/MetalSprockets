@@ -3,13 +3,13 @@
 ## MetalSprockets Code
 
 ```swift
-Render {
+RenderPass {
     RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
         Draw { encoder in
-            encoder.setVertexBytes(<...>)
-            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
         }
-        .parameter("color", SIMD4<Float>([1, 0, 0, 1]))
+        .vertexValues(<...>, index: 0)
+        .parameter("color", value: SIMD4<Float>([1, 0, 0, 1]))
     }
 }
 ```
@@ -58,4 +58,4 @@ flowchart TB
 
 ---
 
-> **Summary:** MetalSprockets dramatically simplifies Metal setup and boilerplate while retaining flexibility. The real benefit is the ease of composing complex render graphs from simpler components—similar to how SwiftUI enables composable user interfaces.
+> **Summary:** MetalSprockets reduces Metal setup code. It composes render graphs from smaller elements, as SwiftUI composes user interfaces from views.

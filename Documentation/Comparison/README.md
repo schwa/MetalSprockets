@@ -1,6 +1,6 @@
 # MetalSprockets vs Raw Metal Comparison
 
-A side-by-side comparison of rendering a red triangle using traditional Metal vs MetalSprockets.
+These examples render the same red triangle with traditional Metal and MetalSprockets.
 
 ## Files
 
@@ -12,7 +12,7 @@ A side-by-side comparison of rendering a red triangle using traditional Metal vs
 
 ## Regenerating the diff
 
-Requires `delta`, `ansitoimg`, and `rsvg-convert`:
+The commands require `delta`, `ansitoimg`, and `rsvg-convert`:
 
 ```fish
 # Generate side-by-side diff as PNG

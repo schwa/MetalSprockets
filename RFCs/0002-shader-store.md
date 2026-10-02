@@ -7,35 +7,25 @@
 
 ## Summary
 
-Replace the process-global `LibraryRegistry` with `ShaderStore`: a user-
-ownable, scopable cache of compiled `MTLLibrary`s and specialized
-`MTLFunction`s. `ShaderStore` is attached to a view/element subtree via
-an environment modifier. When no store is attached, `RenderView`
-provides a private one scoped to its own lifetime. Shaders no longer
-leak for the process lifetime.
+Replace the process-global `LibraryRegistry` with `ShaderStore`, a client-owned cache of compiled `MTLLibrary`s and specialized `MTLFunction`s.
+An environment modifier attaches the store to a view or element subtree.
+When no store is attached, `RenderView` provides a private store with the same lifetime as the view.
+Shaders no longer remain retained for the process lifetime.
 
 ## Motivation
 
-Today, every `ShaderLibrary` (bundle, source, or wrapped `MTLLibrary`)
-is deduped through `LibraryRegistry.shared`, a strong-reference
-singleton that lives for the whole process. This has two problems:
+Today, `LibraryRegistry.shared` deduplicates every `ShaderLibrary`, whether it comes from a bundle, source, or wrapped `MTLLibrary`.
+This singleton holds strong references for the process lifetime. It has two problems:
 
-1. **It leaks.** Long-running apps, apps that compile shaders from
-   procedurally-generated sources, and test suites that compile many
-   variants retain every `MTLLibrary` they've ever seen. The per-library
-   `ShaderCache` of specialized `MTLFunction`s retains with it.
-2. **It's not scopable.** Callers have no way to say "these shaders
-   belong together and should share a cache," nor "throw these away when
-   this view goes away."
+1. **It leaks.** Long-running apps and test suites retain every compiled `MTLLibrary`, including libraries from generated sources.
+   Each library also retains its `ShaderCache` of specialized `MTLFunction`s.
+2. **It has no client-controlled scope.** Callers cannot group shaders in a shared cache or release them with a view.
 
 The fix needs to preserve two things today's registry gets right:
 
-- **Deduplication.** Two `ShaderLibrary(bundle: .main)` values under the
-  same scope should share one compiled library and one function cache.
-- **Predictable compile timing.** Compilation happens at `init`, not
-  inside the render loop. A lazy-resolve design that defers compilation
-  to first use during `draw()` is not acceptable — it would put
-  shader compiles on the frame critical path.
+- **Deduplication.** The design requires two `ShaderLibrary(bundle: .main)` values in one scope to share a compiled library and function cache.
+- **Predictable compile timing.** Compilation occurs at `init`, not in the render loop.
+  Deferring compilation until first use in `draw()` puts that cost on the frame's critical path.
 
 ## Non-goals
 
@@ -71,7 +61,7 @@ construction site, never inside `draw()`.
 
 Each `ShaderLibrary` value holds its `State` in a small `StateBox`.
 The first time a `ShaderLibrary` is used from inside a live `System`
-context (i.e. inside an element's `body`/`setup`/`run` where
+context (that is inside an element's `body`/`setup`/`run` where
 `System.current.activeNodeStack.last` is non-nil), the box looks for a
 `ShaderStore` in the ambient `MSEnvironmentValues` and **adopts**
 against it:
@@ -81,10 +71,9 @@ against it:
   compile, but no correctness issue).
 - Otherwise, the box inserts its `State` into the store.
 
-After adoption the box never swaps again. Outside a System — e.g. from
-unit tests, or from code constructing `ShaderLibrary` at view init —
-the box simply keeps using its private `State`, which dies with the
-`ShaderLibrary` value.
+After adoption, the box does not swap again.
+Outside a System, the box uses its private `State`, whose lifetime follows the `ShaderLibrary` value.
+Examples include unit tests and `ShaderLibrary` construction during view initialization.
 
 This gives us:
 
@@ -92,8 +81,7 @@ This gives us:
 - **Dedup within a store.** All `ShaderLibrary`s with the same ID used
   under the same ambient store converge on one `State`.
 - **No cross-store sharing.** Separate stores are fully independent.
-- **Graceful fallback.** `ShaderLibrary` still works outside any
-  rendering context (tests, one-offs); it just doesn't dedupe.
+- **Standalone use.** `ShaderLibrary` works outside a rendering context, such as in tests or one-off operations. It does not deduplicate libraries there.
 
 ### Environment modifiers
 
@@ -113,16 +101,13 @@ extension Element {
 ```
 
 Both write into their respective environment's `shaderStore` entry.
-`RenderView` reads the SwiftUI env value and propagates it into the
-MetalSprockets env when building the root element tree each frame.
+Each frame, `RenderView` copies the SwiftUI environment value into the MetalSprockets environment for the root element tree.
 
 ### `RenderView` fallback
 
-If no `ShaderStore` is attached above a `RenderView`, the view creates
-a private `ShaderStore` owned by its `RenderViewViewModel`. It dies
-when the `RenderView`'s view model dies (typically when the SwiftUI
-view is torn down). This replaces the leak of the old global registry
-with a bounded lifetime tied to the view.
+If no ancestor provides a `ShaderStore`, `RenderView` creates a private store owned by its `RenderViewViewModel`.
+The store's lifetime follows the view model, which usually ends when SwiftUI removes the view.
+This bounds the lifetime that the global registry left unbounded.
 
 ### Typical usage
 
@@ -192,28 +177,21 @@ libraries created in any order, used in any order, converge on one
 
 ### Lazy compilation with ambient-resolved state
 
-A design where `ShaderLibrary` holds only the `ID` and resolves both
-the `MTLLibrary` *and* the cache entry at first use. Conceptually
-clean: the cache scope is purely environment-driven, and construction
-is free anywhere. Rejected because it moves `MTLLibrary` compilation
-into `draw()` on the first frame a given shader is touched, making
-frame-time spikes inevitable and hard to diagnose.
+In this alternative, `ShaderLibrary` holds only the `ID`. It resolves the `MTLLibrary` and cache entry at first use.
+The environment controls the cache scope, and construction does not compile shaders.
+This design is rejected because first use compiles the library in `draw()`. That adds frame-time spikes that are difficult to diagnose.
 
 ### Explicit store parameter on every initializer
 
-`ShaderLibrary(bundle:, store:)` etc., with no ambient resolution.
-Fully explicit, no magic, but forces store-threading through every
-call site that constructs a library, including utility extensions like
-`ShaderLibrary.metalSprocketsUI`. Too noisy given how often these are
-constructed as stored properties far from any view.
+This alternative passes the store explicitly, as in `ShaderLibrary(bundle:, store:)`, without environment lookup.
+Every library initializer and utility extension, including `ShaderLibrary.metalSprocketsUI`, must receive the store.
+That adds arguments to stored-property initializers far from the view.
 
 ### Weak-referenced global registry
 
-Keep a process-global registry but weak-reference its entries so states
-die when the last `ShaderLibrary` value does. Fixes the leak, but
-doesn't give callers control over sharing scope, and "weak" is fragile
-with `MTLLibrary`s that some caller might be holding via unrelated
-paths. Explicit ownership is clearer.
+This alternative keeps a global registry with weak references. States are released with the last `ShaderLibrary` value.
+It fixes the leak but does not give callers control of sharing scope.
+Unrelated references to an `MTLLibrary` also affect its lifetime. Explicit ownership is clearer.
 
 ## Open questions
 
@@ -223,7 +201,7 @@ paths. Explicit ownership is clearer.
 - Should `ShaderStore` track statistics (hit/miss/compile counts) for
   diagnostics? Useful, but separable.
 - Should there be a convenience `ShaderStore` instance on `RenderView`
-  exposed for external observation (e.g. debugging which shaders a
+  exposed for external observation (for example debugging which shaders a
   view has compiled)? Separable.
 
 ## Status

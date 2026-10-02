@@ -51,11 +51,11 @@ Today users have to:
 3. Call `setArgumentTable(_:stages:)` inside `Draw` closures.
 4. Repeat for `ComputeDispatch`.
 
-All of that is mechanical and reflection knows the right answers.
+Reflection provides the information for these repetitive operations.
 Metal 4 pipeline state exposes `reflection.vertexBindings`,
 `fragmentBindings`, and `bindings`, each an array of `MTLBinding` with
 `name`, `index`, and `type` (`.buffer` / `.texture` / `.sampler` / …).
-We can look up the name, find the stage + slot, and write for the user.
+The framework can resolve each name to a stage and slot, then write the binding.
 
 ## Design
 
@@ -81,18 +81,13 @@ public extension ComputePipeline {
 }
 ```
 
-`.bindings(...)` is scoped to `RenderPipeline` / `ComputePipeline`
-deliberately. It is **not** an `Element` extension. Attaching it to a
-`RenderPass`, `Draw`, `Group`, or any other element is a compile
-error — this prevents the common "attached at the wrong level"
-mistake. Internally, `RenderPipeline` / `ComputePipeline` gain a
-private `bindings: [Bind]` field; the modifier returns a new value
-with it populated.
+`.bindings(...)` applies only to `RenderPipeline` / `ComputePipeline`. It is **not** an `Element` extension.
+Attaching it to `RenderPass`, `Draw`, `Group`, or another element produces a compile error.
+This prevents bindings at the wrong level.
+Internally, each pipeline gains a private `bindings: [Bind]` field. The modifier returns a new pipeline value with that field populated.
 
-Not a result builder: result builders buy conditional/loop syntax but
-we have no real need for that yet, and variadic is dramatically less
-machinery. The array overload covers conditional/loop cases for the
-rare user that needs them:
+The design uses variadic arguments rather than a result builder. This needs less implementation code for the common flat list.
+The array overload supports conditional and loop-generated bindings:
 
 ```swift
 .bindings([
@@ -101,8 +96,7 @@ rare user that needs them:
 ].compactMap(\.self))
 ```
 
-If this proves painful, add a `@BindingBuilder` later without changing
-call sites that already use variadic form.
+If callers need builder syntax later, `@BindingBuilder` can coexist with the variadic form.
 
 ### Naming
 
@@ -161,24 +155,18 @@ ComputeDispatch { encoder in ... }
 
 Every resource passed via `.bindings(...)` is registered with the
 enclosing `CommandBufferLifecycle`'s root residency set during setup.
-The existing `.useResource(_:)` modifier stays for the "resource the
-GPU reads but isn't bound as a named argument" case (rare).
+The existing `.useResource(_:)` modifier covers resources that the GPU reads without a named argument binding.
 
 ### Missing / extra bindings
 
-- **Missing binding (reflection expects a name, user didn't pass one):**
-  throw at setup. Better a build-time failure than undefined fragment
-  output.
-- **Extra binding (user passed a name that isn't in the shader):**
-  throw at setup. Likely a rename-induced typo; don't swallow it.
-- **Duplicate name in `.bindings(...)`:** last one wins, with a
-  warning. Could be an error; leaning toward warning so toggling code
-  paths during development stays ergonomic.
+- **Missing binding:** If reflection expects a name that the caller omits, throw during setup rather than produce undefined fragment output.
+- **Extra binding:** If the caller supplies a name absent from the shader, throw during setup. A shader rename can cause this error.
+- **Duplicate name in `.bindings(...)`:** The last value wins, with a warning. An error is another option. The proposed warning permits switching code paths during development.
 
-### What's explicitly out of scope for v1
+### Out of scope for v1
 
 1. **Per-draw binding overrides.** `Draw { encoder in ... }.bindings(...)`
-   doesn't exist; bindings live at the pipeline level. If different
+   does not exist. Bindings live at the pipeline level. If different
    draws need different bindings, use separate `RenderPipeline` blocks
    or write the argument table by hand inside `Draw`.
 2. **`.value("name", someEquatable)`** — bind arbitrary CPU-side values
@@ -186,9 +174,8 @@ GPU reads but isn't bound as a named argument" case (rare).
    allocator on the lifecycle; covered by a follow-on RFC.
 3. **Argument-table sharing across pipelines.** Each pipeline builds
    its own tables. If two pipelines share binding shapes, they each
-   get their own tables anyway. Sharing is a Step 5 optimisation.
-4. **Function constants / specialisation.** Separate story; RFC 0002
-   Step 5.
+   get separate tables. Sharing is a Step 5 optimization.
+4. **Function constants / specialization.** Separate work in RFC 0002, Step 5.
 5. **Namespaced bindings / structs.** Bindings are flat `(name,
    resource)` pairs. Named struct members (`.foo.bar`) get pushed to
    a later RFC.
@@ -237,10 +224,8 @@ var body: some View {
 }
 ```
 
-Six `MTL4ArgumentTable`-handling lines and three argument tables
-removed. The user-side knowledge required shrinks from "argument
-tables, slot indices, stage routing, residency sets" to "what my
-shader's bindings are called."
+The example removes six lines of argument-table code and three argument tables.
+Callers need shader binding names rather than argument-table indices, stage routing, and residency-set details.
 
 ## Implementation notes
 
@@ -267,23 +252,18 @@ shader's bindings are called."
   etc.). If users rename a shader parameter, their `.bindings(...)`
   call breaks. Error message at setup needs to list the names
   reflection actually saw, so the fix is obvious.
-- **Stage sharing.** A buffer named `uniforms` might appear in both
-  vertex and fragment stages at the same slot. We write it to both
-  tables. Fine. But if the same name appears at *different* slots in
-  different stages (unusual but legal), we need to honour that — the
-  slot map keys by `(stage, name)`, not `name`.
+- **Stage sharing.** A buffer named `uniforms` can appear in both vertex and fragment stages. The framework writes it to both tables.
+  Its slot can differ between stages, so the map uses `(stage, name)` as the key, not `name` alone.
 - **Forgetting `.bindings(...)`.** If the user passes none and the
   shader expects some, setup throws. If the shader expects none and
   the user passes some, setup throws. If both are empty, everything
-  just works.
+  needs no binding work.
 
 ## Future: compile-time safety via codegen
 
-The v1 design is string-keyed and reflection-checked at pipeline
-setup. That catches missing bindings, typos, and drift — but only on
-the first frame after a shader change. Genuine compile-time safety
-needs the Swift type system to know what bindings your `.metal` file
-actually declares.
+The v1 design uses string keys and validates bindings through reflection during pipeline setup.
+It catches missing bindings and name mismatches on the first frame after a shader change.
+Compile-time validation requires Swift types that represent the bindings declared in the `.metal` file.
 
 The path: a SwiftPM build plugin (extending `MetalCompilerPlugin`)
 parses the `.metal` sources (or consumes `xcrun metal --reflection`
@@ -340,9 +320,8 @@ This is deliberately deferred to a follow-on RFC because:
 - The string-keyed v1 and the codegen form share one mental model and
   one type (`Bind`). No throwaway surface.
 
-What compile-time safety still *can't* give you, even with codegen:
-passing the wrong buffer of the right type (vertex buffer A vs vertex
-buffer B). That's a semantic error no type system catches.
+Generated types still cannot distinguish two buffers with the same type, such as vertex buffer A and vertex buffer B.
+Passing the wrong one remains a semantic error.
 
 The separate RFC 0004 will track this work.
 
@@ -361,7 +340,7 @@ The separate RFC 0004 will track this work.
 
 ## Rollout
 
-One commit for this RFC; the codegen path lives in RFC 0004.
+One commit contains this RFC. RFC 0004 covers code generation.
 
 One commit:
 

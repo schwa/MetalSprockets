@@ -6,34 +6,24 @@
 
 ## Summary
 
-Add a `MetalFXTemporal` element wrapping `MTLFXTemporalScaler`, mirroring
-the existing `MetalFXSpatial` element. Temporal upscaling accumulates
-information across frames using motion vectors and sub-pixel jitter,
-producing significantly better image quality than spatial upscaling at
-low input resolutions (0.25× and below).
+Add a `MetalFXTemporal` element around `MTLFXTemporalScaler`, with the same structure as `MetalFXSpatial`.
+Temporal upscaling combines information across frames through motion vectors and sub-pixel jitter.
+At low input resolutions (0.25× and below), it produces better image quality than spatial upscaling.
 
 ## Motivation
 
-`MetalFXSpatial` already exists and is used to trade resolution for
-perf. At low input resolutions (≤ 0.5×) spatial upscaling introduces
-visible blur on thin features and high-contrast edges. Temporal
-upscaling is the industry-standard next step: it uses prior-frame
-history, per-pixel motion vectors, and a jittered projection to
-reconstruct detail that would otherwise be lost.
+`MetalFXSpatial` trades resolution for performance. At low input resolutions (≤ 0.5×), spatial upscaling blurs thin features and high-contrast edges.
+Temporal upscaling reconstructs detail from earlier frames, per-pixel motion vectors, and a jittered projection.
 
-For MetalSprockets' use cases — rasterized scenes with available motion
-vectors, or ray-marched scenes that can synthesize them — temporal is
-often the cheapest way to stay at 60 fps when the fragment shader is
-expensive (e.g. SDF scenes with many primitives).
+MetalSprockets scenes can provide motion vectors through rasterization or ray marching.
+For expensive fragment shaders, temporal upscaling is often the least expensive way to maintain 60 fps.
+Examples include SDF scenes with many primitives.
 
 ## Non-goals
 
-- Automatic jitter / motion-vector generation. Callers compute and pass
-  these; we're not offering a higher-level "just make my scene temporal"
-  abstraction.
+- Automatic jitter or motion-vector generation. Callers calculate and supply both. This RFC does not propose automatic temporal rendering.
 - Reactive mask / transparency mask support. Can be added later.
-- Convenience over `MTLFXFrameInterpolator` (different feature; its own
-  RFC when we want it).
+- A wrapper for `MTLFXFrameInterpolator`. This separate feature needs its own RFC.
 
 ## Proposed API
 
@@ -59,7 +49,7 @@ public struct MetalFXTemporal: Element {
 
 - **Motion vectors**: per-pixel displacement from the *previous* frame
   position to the *current* frame position, in **input-texture pixels**.
-  Pixel format should be 2-channel float (`.rg16Float` works well).
+  The recommended pixel format is two-channel float, such as `.rg16Float`.
   Zero motion = static pixel.
 - **Jitter**: the sub-pixel offset (in input pixels, typically in
   `[-0.5, 0.5]` on each axis) that the caller applied to their projection
@@ -68,7 +58,7 @@ public struct MetalFXTemporal: Element {
   standard choice.
 - **Reset**: set `true` for one frame whenever scene topology, camera,
   or projection parameters change in a way that invalidates history
-  (e.g. camera teleport, scale change, render-settings flip). The scaler
+  (for example camera teleport, scale change, render-settings flip). The scaler
   clears its history and starts fresh.
 
 ### Scaler lifecycle
@@ -81,10 +71,8 @@ public struct MetalFXTemporal: Element {
 
 ### Error surface
 
-- Fails with `MetalSprocketsError.resourceCreationFailure` if the scaler
-  can't be created (wrong texture formats, unsupported device, etc.).
-- Does not validate that `motionTexture` contains reasonable data; silly
-  inputs produce smearing / ghosting but don't error.
+- If scaler creation fails, throws `MetalSprocketsError.resourceCreationFailure`. Causes include incompatible texture formats and unsupported devices.
+- Does not validate the contents of `motionTexture`. Invalid motion data produces smearing or ghosting without an error.
 
 ## Implementation sketch
 
@@ -103,9 +91,7 @@ command buffer to encode into, same as spatial.
 
 ## Caller responsibilities
 
-Using this element correctly will require a fair bit of work on the
-caller's side. We should document these in the API comments and provide
-an example in `MetalSprocketsExamples`:
+Callers have the following responsibilities. The proposal includes API comments and a `MetalSprocketsExamples` example that explains them:
 
 1. **Allocate three extra textures** at low-res: color, depth, motion.
    The depth and motion textures must live alongside the color target.
@@ -124,27 +110,21 @@ an example in `MetalSprocketsExamples`:
 
 ## Interaction with existing API
 
-- `MetalFXSpatial` stays as-is. They share neither code nor a protocol;
-  callers choose one or the other.
+- `MetalFXSpatial` remains unchanged. The two elements share neither code nor a protocol. Callers choose one.
 - Both expect to be composed inside `RenderView` or `OffscreenRenderer`
   that has set up a command buffer environment.
-- Both allocate internal resources on setup; swapping between them at
-  runtime requires view reconstruction (same as spatial).
+- Both allocate internal resources during setup. Switching between them at runtime requires view reconstruction, as with spatial upscaling.
 
 ## Anticipated pitfalls
 
-A few integration issues likely to bite first-time callers. Worth
-surfacing here so docs + examples can address them proactively.
+Documentation and examples need to explain these integration constraints.
 
 ### Two fragment entry points
 
-For shaders that write motion vectors, we recommend a **separate
-fragment entry point** rather than a runtime flag. The motion variant's
-pipeline has two color attachments (color + motion) vs. the
-non-temporal variant's one; Metal pipeline state is fixed at
-compile/link time, so there's no single shader that can do both. A
-Swift-side `enum Variant { case color, colorAndMotion }` selects the
-appropriate entry point and the matching render-pass descriptor.
+For shaders that write motion vectors, the recommendation is a **separate fragment entry point**, not a runtime flag.
+The motion variant uses two color attachments: color and motion. The non-temporal variant uses one.
+Metal fixes pipeline state at compile/link time, so one shader cannot serve both configurations.
+A Swift-side `enum Variant { case color, colorAndMotion }` selects the entry point and matching render-pass descriptor.
 
 ### Jitter math for Metal-style projection
 
@@ -171,27 +151,20 @@ motion-writing pipeline. Callers have two options:
 - Give the overlay its own motion-writing variant. Expensive to retrofit
   for third-party elements.
 
-Our existing `MetalFXSpatial` path has no such problem because its
-pipeline is single-attachment. Docs should call out that switching from
-spatial to temporal may force callers to restructure their render-pass
-graph.
+The existing `MetalFXSpatial` pipeline uses one attachment and avoids this problem.
+Switching to temporal upscaling can require changes to the render-pass graph. The documentation needs to explain this constraint.
 
 ### Per-frame state is caller-owned
 
-Jitter counter, previous view-projection matrix, and reset flag are all
-caller-managed. MetalSprockets deliberately does **not** own a per-view
-"temporal state" concept — it'd couple the rendering core to scene graph
-assumptions. Callers that want convenience can build it on top.
+Callers manage the jitter counter, previous view-projection matrix, and reset flag.
+MetalSprockets does **not** own per-view temporal state because that couples the rendering core to scene-graph assumptions.
+Clients can add that convenience separately.
 
 ### ElementBuilder and per-frame side effects
 
-`ElementBuilder` does not tolerate Swift statement-level mutations
-(side-effectful ifs, assignments) between elements. Callers that need to
-advance per-frame state mid-build (e.g. increment a jitter counter,
-update a `previousVP` cache) have to do it outside the builder body or
-via a ternary-wrapped no-op expression. Minor ergonomic papercut; worth
-documenting alongside the temporal example so the workaround is
-discoverable.
+`ElementBuilder` does not support statement-level mutations between elements, such as assignments or conditional statements with side effects.
+Per-frame state changes belong outside the builder body or in a ternary-wrapped no-op expression.
+Examples include incrementing a jitter counter and updating a `previousVP` cache. The temporal example needs to document this constraint.
 
 ## Future work
 

@@ -1,6 +1,8 @@
 # MetalSprockets Example
 
-This project demonstrates the core concepts of MetalSprockets through a simple spinning cube. It shows how to integrate Metal rendering into SwiftUI using `RenderView`, compose render passes using the Element pattern (similar to SwiftUI's View hierarchy), and extend to platform-specific features like ARKit camera passthrough on iOS and immersive mixed reality on visionOS.
+This project demonstrates MetalSprockets with a spinning cube. It uses `RenderView` to integrate Metal rendering into SwiftUI. Render passes form an element tree, similar to a SwiftUI view hierarchy.
+
+Platform examples include ARKit camera passthrough on iOS and immersive mixed reality on visionOS.
 
 ## Platforms
 

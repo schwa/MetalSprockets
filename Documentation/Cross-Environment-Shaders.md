@@ -1,12 +1,12 @@
 # Cross-environment shader headers
 
-MetalSprockets has a set of preprocessor macros that let you write one struct definition that compiles on both the GPU (Metal) and CPU (Swift/ObjC). This is the `MetalSprocketsShaders` target.
+The `MetalSprocketsShaders` target provides preprocessor macros for shared struct definitions. One definition compiles for both the GPU (Metal) and CPU (Swift/ObjC).
 
 ## The problem
 
-Metal shaders and Swift/ObjC code need to agree on struct layouts for argument buffers, vertex data, and uniforms. But the types are different — a texture on the GPU is `metal::texture2d<float, access::sample>`, while on the CPU side it's `MTLResourceID`.
+Metal shaders and Swift/ObjC code need matching struct layouts for argument buffers, vertex data, and uniforms. The resource types differ. For example, a texture uses `metal::texture2d<float, access::sample>` on the GPU and `MTLResourceID` on the CPU.
 
-Maintaining two separate definitions gets out of sync fast. These macros let you write one header that works in both places.
+Separate definitions can differ by mistake. These macros provide one header for both environments.
 
 ## The macros
 
@@ -49,7 +49,7 @@ struct MyArguments {
 };
 ```
 
-Include this from both `.metal` files and Swift (via a bridging/umbrella header) and the layout will match.
+Include this definition from `.metal` files and through a bridging or umbrella header for Swift. Both environments then use the same layout.
 
 ## Using MetalSprocketsShaders in your project
 
@@ -72,7 +72,9 @@ In your `Package.swift`, add `MetalSprocketsShaders` as a dependency of your sha
 
 ### 2. Configure MetalCompilerPlugin
 
-The Metal shader compiler doesn't use SPM's module maps, so it can't resolve `#import <MetalSprocketsShaders/MetalSprocketsShaders.h>` the way a C/ObjC compiler can. You need to tell [MetalCompilerPlugin](https://github.com/schwa/MetalCompilerPlugin) where to find headers.
+The Metal shader compiler does not use SPM module maps. It cannot resolve `#import <MetalSprocketsShaders/MetalSprocketsShaders.h>` as a C/ObjC compiler does.
+
+Configure the header paths in [MetalCompilerPlugin](https://github.com/schwa/MetalCompilerPlugin).
 
 Create (or update) `metal-compiler-plugin.json` in your shaders target directory:
 
@@ -106,7 +108,7 @@ struct MyVertexUniforms {
 };
 ```
 
-**Use quoted includes (`"..."`) not angle-bracket includes (`<...>`).** The Metal compiler resolves quoted includes via `-I` paths. Angle-bracket includes need module map support that the Metal compiler doesn't have. On the CPU side both forms work, but stick with quoted includes so your headers compile everywhere.
+**Use quoted includes (`"..."`), not angle-bracket includes (`<...>`).** The Metal compiler resolves quoted includes through `-I` paths. Angle-bracket includes need module map support, which the Metal compiler does not provide. Both forms work on the CPU. Quoted includes work in both environments.
 
 ### 4. Include from Metal shaders
 
@@ -132,8 +134,7 @@ The macros check `__METAL_VERSION__` (defined automatically by the Metal compile
 - In `.metal` files → Metal types (`metal::texture2d`, etc.)
 - From Swift → CPU types (`MTLResourceID`, etc.)
 
-## Gotchas
+## Constraints
 
 - Transitive dependencies work, but every intermediate target needs to list its dependencies in `Package.swift`. The plugin walks the full graph.
-- `dependency-path-suffix` applies to all dependencies the same way. If you have dependencies with different header layouts, add explicit paths via `include-paths`.
-- 
+- `dependency-path-suffix` applies to all dependencies. If dependencies use different header layouts, add explicit paths through `include-paths`.
