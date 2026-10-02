@@ -8913,11 +8913,13 @@ Metal 4 APIs are unavailable in the iOS/visionOS Simulator. Code paths relying o
 ## 474: Public element modifier to attach a ResourceCollection (persistent residency)
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 labels: metal4, residency
 created: 2026-10-02T20:15:52Z
+updated: 2026-10-02T20:18:10Z
+closed: 2026-10-02T20:18:10Z
 +++
 
 Elements cannot attach a persistent `ResourceCollection` or `MTLResidencySet` from inside the element tree. The only public entry point is `ResidencyConfiguration` at the root (`RenderView`, `Runner`, `OffscreenRenderer`).

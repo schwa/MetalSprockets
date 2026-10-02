@@ -240,6 +240,36 @@ struct ResourceCollectionTests {
     }
 
     @Test
+    func `element modifiers attach collections and sets without root configuration`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let collection = try ResourceCollection(device: device)
+        let buffer = try #require(device.makeBuffer(length: 16, options: .storageModeShared))
+        let externalBuffer = try #require(device.makeBuffer(length: 16, options: .storageModeShared))
+        try collection.register(buffer)
+        let external = try device.makeResidencySet(descriptor: MTLResidencySetDescriptor())
+        external.addAllocation(externalBuffer)
+        external.commit()
+        let runner = try Runner(device: device)
+        for value in UInt8(1)...3 {
+            let submission = try runner.submit(
+                try ComputePass {
+                    ComputeCommand {
+                        $0.fill(buffer: buffer, range: 0..<16, value: value)
+                        $0.fill(buffer: externalBuffer, range: 0..<16, value: value + 10)
+                    }
+                }
+                .useResources([buffer, externalBuffer])
+                .useResourceCollection(collection)
+                .useResidencySet(external)
+            )
+            #expect(runner.context.residentAllocationCount == 0)
+            try submission.waitUntilCompleted()
+            #expect(buffer.contents().load(as: UInt8.self) == value)
+            #expect(externalBuffer.contents().load(as: UInt8.self) == value + 10)
+        }
+    }
+
+    @Test
     func `MSAA replacement retains old targets until submitted work completes`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let context = try MetalContext(device: device)

@@ -165,6 +165,17 @@ let runner = try Runner(device: device, residency: residency)
 `runner.residency` changes apply to subsequent submissions. View configuration changes apply to subsequent frames.
 Collections, residency sets, and the renderer must use the same device.
 
+Elements can attach a collection from inside the tree, with no root configuration.
+Use this when a reusable pipeline owns long-lived buffers:
+
+```swift
+MyPipeline(...)
+    .useResourceCollection(resources)
+```
+
+The collection applies to every submission the subtree encodes into.
+`.useResidencySet(set)` does the same for an externally owned `MTLResidencySet`. The rules for raw sets below apply.
+
 `register` is idempotent. `unregister` removes collection membership immediately.
 The collection keeps the resource resident until all submissions that already use it complete successfully.
 Encoding failures release resources without submission. Failed or timed-out GPU submissions keep their resources retained and resident.

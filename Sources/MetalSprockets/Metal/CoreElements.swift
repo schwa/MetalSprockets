@@ -135,6 +135,18 @@ internal struct ScopeModifier<Content>: Element, WorkloadElement, BodylessConten
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }
 }
 
+public extension Element {
+    /// Keeps `collection` resident for every submission this subtree encodes into.
+    func useResourceCollection(_ collection: ResourceCollection) -> some Element {
+        ScopeModifier(content: self) { try $0.useResourceCollection(collection) }
+    }
+
+    /// Attaches an externally owned residency set to every submission this subtree encodes into.
+    func useResidencySet(_ residencySet: any MTLResidencySet) -> some Element {
+        ScopeModifier(content: self) { try $0.useResidencySet(residencySet) }
+    }
+}
+
 package extension Element {
     /// Sets the full depth and stencil state for draws in this subtree.
     func depthStencil(_ state: DepthState, stencilReference: UInt32 = 0) -> some Element {
