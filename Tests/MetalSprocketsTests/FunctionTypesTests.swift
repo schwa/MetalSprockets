@@ -61,16 +61,15 @@ struct MultiStageParameterTests {
     }
     """
 
-    @Test func `a parameter present in both stages binds to both`() throws {
+    @Test(.requiresMetal4) func `a parameter present in both stages binds to both`() throws {
         let vs = try VertexShader(source: Self.source)
         let fs = try FragmentShader(source: Self.source)
         let pass = try RenderPass {
             try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
                 Draw { encoder in
-                    let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
                 .parameter("tint", functionTypes: .render, value: SIMD4<Float>(1, 0, 0, 1))
             }
             .vertexDescriptor(vs.inferredVertexDescriptor())
@@ -79,15 +78,34 @@ struct MultiStageParameterTests {
         _ = try renderer.render(pass)
     }
 
-    @Test func `the modifier records the requested stages`() throws {
-        let element = EmptyElement().parameter("tint", functionTypes: .render, value: SIMD4<Float>(1, 0, 0, 1))
-        let modifier = try #require(element as? ParameterElementModifier<EmptyElement>)
-        #expect(modifier.parameters[name: "tint"]?.functionTypes == .render)
+    /// Renders with `tint` bound per stage and returns the center pixel (BGRA).
+    private func centerPixel(_ bind: (Draw) -> some Element) throws -> [UInt8] {
+        let vs = try VertexShader(source: Self.source)
+        let fs = try FragmentShader(source: Self.source)
+        let pass = try RenderPass {
+            try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                bind(Draw { $0.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3) })
+                    .vertexValues(([[-1, -1], [3, -1], [-1, 3]] as [SIMD2<Float>]), index: 0)
+            }
+            .vertexDescriptor(vs.inferredVertexDescriptor())
+        }
+        let texture = try OffscreenRenderer(size: CGSize(width: 8, height: 8)).render(pass).texture
+        var pixel = [UInt8](repeating: 0, count: 4)
+        texture.getBytes(&pixel, bytesPerRow: 8 * 4, from: MTLRegionMake2D(4, 4, 1, 1), mipmapLevel: 0)
+        return pixel
     }
 
-    @Test func `the single-stage overload still targets one stage`() throws {
-        let element = EmptyElement().parameter("tint", functionType: .fragment, value: SIMD4<Float>(1, 0, 0, 1))
-        let modifier = try #require(element as? ParameterElementModifier<EmptyElement>)
-        #expect(modifier.parameters[name: "tint"]?.functionTypes == .fragment)
+    @Test(.requiresMetal4) func `a render-stage set reaches both stages`() throws {
+        // The vertex stage needs tint.w == 1 to keep the triangle; the fragment stage outputs tint.
+        #expect(try centerPixel { $0.parameter("tint", functionTypes: .render, value: SIMD4<Float>(1, 0, 0, 1)) } == [0, 0, 255, 255])
+    }
+
+    @Test(.requiresMetal4) func `single-stage overloads bind only their stage`() throws {
+        // The same name, different values per stage: green only if each filter reaches exactly its own stage.
+        let pixel = try centerPixel {
+            $0.parameter("tint", functionType: .vertex, value: SIMD4<Float>(0, 0, 0, 1))
+                .parameter("tint", functionType: .fragment, value: SIMD4<Float>(0, 1, 0, 1))
+        }
+        #expect(pixel == [0, 255, 0, 255])
     }
 }

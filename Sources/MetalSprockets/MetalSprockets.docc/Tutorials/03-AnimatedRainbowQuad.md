@@ -1,14 +1,14 @@
 # Tutorial 3: Animated Rainbow Quad
 
-In the previous tutorial, we created a static rainbow gradient. Now we'll animate it by passing time from RenderView to our shader.
+The previous tutorial created a static rainbow gradient. This tutorial animates it with a time value from RenderView.
 
 📦 **[Companion Code](https://github.com/schwa/MetalSprocketsTutorials/tree/main/Tutorial%203)**
 
 ---
 
-## What We're Building
+## What we are Building
 
-An animated rainbow quad where the colors continuously cycle. You'll learn:
+This tutorial renders a rainbow quad with colors that cycle continuously. It covers:
 
 - How to access frame timing from RenderView's context
 - How to pass parameters from Swift to shaders using `.parameter()`
@@ -18,7 +18,7 @@ An animated rainbow quad where the colors continuously cycle. You'll learn:
 
 ## Step 1: Start With the Previous Tutorial
 
-Start with the project from Tutorial 2. We'll modify it to add animation.
+Start with the project from Tutorial 2. This tutorial adds animation.
 
 ---
 
@@ -64,8 +64,8 @@ fragment float4 rainbowQuadFragmentShader(VertexOut in [[stage_in]],
 **What's new:**
 
 - **`constant float &time [[buffer(0)]]`** — The fragment shader now receives a time value from a buffer. The `constant` address space is for read-only data.
-- **`time * 0.5`** — We add time to the hue calculation, making the rainbow scroll. The `* 0.5` controls the animation speed.
-- **`fmod(hue, 1.0)`** — Wraps the hue value to keep it in the 0-1 range, creating a seamless loop.
+- **`time * 0.5`** — Time changes the hue so the rainbow scrolls. The `* 0.5` controls the animation speed.
+- **`fmod(hue, 1.0)`** — Wraps the hue to the 0-1 range so the animation repeats without a visible jump.
 
 ---
 
@@ -104,14 +104,9 @@ struct RainbowQuadRenderPipeline: Element {
                 fragmentShader: library.rainbowQuadFragmentShader
             ) {
                 Draw { encoder in
-                    var verts = vertices
-                    encoder.setVertexBytes(
-                        &verts,
-                        length: MemoryLayout<Vertex>.stride * vertices.count,
-                        index: 0
-                    )
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6)
                 }
+                .vertexValues(vertices, index: 0)
                 .parameter("time", value: time)
             }
             .vertexDescriptor(Vertex.descriptor)
@@ -124,7 +119,7 @@ struct RainbowQuadRenderPipeline: Element {
 
 - **`let time: Float`** — The pipeline now stores the current time.
 - **`init(time: Float)`** — Accept time when creating the pipeline.
-- **`.parameter("time", value: time)`** — This is MetalSprockets' declarative way to pass data to shaders. The name `"time"` matches the parameter name in the shader, and MetalSprockets automatically binds it to the correct buffer index.
+- **`.parameter("time", value: time)`** — Passes data to the shader by name. MetalSprockets matches `"time"` to the shader parameter and binds the value to its buffer index.
 
 ---
 
@@ -151,13 +146,15 @@ struct ContentView: View {
 
 **What's new:**
 
-- **`context.frameUniforms.time`** — RenderView provides frame-level uniforms including `time`, which is the elapsed time in seconds since the view started rendering. This updates every frame automatically.
+- **`context.frameUniforms.time`** — Gives the elapsed time in seconds since the view started rendering. RenderView updates this value each frame.
 
 ---
 
 ## Step 5: Run It
 
-Press **⌘R**. You should see the rainbow gradient animating, with colors cycling smoothly across the quad.
+Press **⌘R**.
+
+The rainbow colors cycle across the quad.
 
 ![An animated rainbow quad](tutorial-03-result)
 
@@ -216,14 +213,9 @@ struct RainbowQuadRenderPipeline: Element {
                 fragmentShader: library.rainbowQuadFragmentShader
             ) {
                 Draw { encoder in
-                    var verts = vertices
-                    encoder.setVertexBytes(
-                        &verts,
-                        length: MemoryLayout<Vertex>.stride * vertices.count,
-                        index: 0
-                    )
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6)
                 }
+                .vertexValues(vertices, index: 0)
                 .parameter("time", value: time)
             }
             .vertexDescriptor(Vertex.descriptor)

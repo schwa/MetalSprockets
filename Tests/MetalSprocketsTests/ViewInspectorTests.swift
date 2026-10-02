@@ -114,7 +114,7 @@ struct ViewInspectorTests {
     }
 
     #if os(macOS)
-    @Test("metalColorspace (macOS)")
+    @Test("metalColorspace (macOS)", .requiresMetal4)
     func testMetalColorspace() throws {
         let space = CGColorSpace(name: CGColorSpace.displayP3)
         let v = renderView().metalColorspace(space)
@@ -154,7 +154,7 @@ struct ViewInspectorTests {
 
     // MARK: - View.capture() env wiring
 
-    @Test("RenderView.capture() writes RenderViewCaptureConfiguration")
+    @Test("RenderView.capture() writes RenderViewCaptureConfiguration", .requiresMetal4)
     func testCaptureConfiguration() throws {
         let v = renderView().capture(true, target: .commandQueue, destination: .developerTools)
         let config = try v.inspect().environment(\.renderViewCapture)
@@ -163,7 +163,7 @@ struct ViewInspectorTests {
         #expect(config?.destination == .developerTools)
     }
 
-    @Test("RenderView.capture(false) still records disabled config")
+    @Test("RenderView.capture(false) still records disabled config", .requiresMetal4)
     func testCaptureDisabledConfiguration() throws {
         let v = renderView().capture(false)
         let config = try v.inspect().environment(\.renderViewCapture)

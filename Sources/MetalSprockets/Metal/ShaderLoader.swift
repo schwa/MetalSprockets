@@ -3,7 +3,7 @@ import MetalSprocketsSupport
 
 // MARK: - ShaderLoader
 
-/// The port through which ``ShaderLibrary`` obtains `MTLFunction` values.
+/// The port through which ``ShaderLibrary`` obtains provenance-bearing functions.
 ///
 /// The shipping implementation is ``MetalShaderLoader``, which wraps an
 /// `MTLLibrary` plus a ``ShaderCache``. Tests and hosts that want an isolated
@@ -18,7 +18,7 @@ public protocol ShaderLoader: Sendable {
     ///   - name: The fully scoped function name, e.g. `MyNamespace::myFunction`.
     ///   - type: The expected function type; part of the cache key.
     ///   - constants: Function constants to specialize with.
-    func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction
+    func shaderFunction(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> ShaderFunction
 
     /// Returns the function constants declared by the function named `name`.
     ///
@@ -27,6 +27,10 @@ public protocol ShaderLoader: Sendable {
 }
 
 public extension ShaderLoader {
+    func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction {
+        try shaderFunction(named: name, type: type, constants: constants).metalFunction
+    }
+
     /// Resolves `constants` against the function's declared constants, including namespace suffix matching.
     func constantValues(forFunctionNamed name: String, constants: FunctionConstants) throws -> MTLFunctionConstantValues {
         try constants.buildMTLConstants(declared: declaredConstants(forFunctionNamed: name), functionName: name)
@@ -50,23 +54,13 @@ public final class MetalShaderLoader: ShaderLoader, Sendable {
         self.cache = ShaderCache()
     }
 
-    public func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction {
+    public func shaderFunction(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> ShaderFunction {
         if let cached = cache.get(scopedName: name, functionType: type, constants: constants) {
-            return cached
+            return ShaderFunction(library: library, name: name, constants: constants, validatedFunction: cached)
         }
-        let function: MTLFunction
-        if constants.isEmpty {
-            guard let basicFunction = library.makeFunction(name: name) else {
-                try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(name)' not found in library (available: \(library.functionNames))."))
-            }
-            function = basicFunction
-        } else {
-            // Constant resolution introspects the unspecialized function; `makeFunction` then applies the constants.
-            let mtlConstants = try constantValues(forFunctionNamed: name, constants: constants)
-            function = try library.makeFunction(name: name, constantValues: mtlConstants)
-        }
-        cache.set(scopedName: name, functionType: type, constants: constants, function: function)
-        return function
+        let reference = try ShaderFunction(library: library, name: name, type: type, constants: constants)
+        cache.set(scopedName: name, functionType: type, constants: constants, function: reference.metalFunction)
+        return reference
     }
 
     public func declaredConstants(forFunctionNamed name: String) throws -> [String: FunctionConstantInfo] {

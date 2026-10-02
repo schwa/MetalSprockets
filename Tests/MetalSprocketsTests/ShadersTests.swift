@@ -80,31 +80,23 @@ struct ShadersTests {
     @Test("Equality: same function == same, different functions !=")
     func testEquality() throws {
         let vsA = try VertexShader(source: Self.source)
-        let vsA2 = VertexShader(vsA.function)
+        let vsA2 = try VertexShader(vsA.reference)
         #expect(vsA == vsA2)
 
         let vsB = try VertexShader(source: Self.source) // fresh compile = fresh function
         #expect(vsA != vsB || vsA == vsB) // either outcome is fine; just exercise `==`.
 
         let fs = try FragmentShader(source: Self.source)
-        let fs2 = FragmentShader(fs.function)
+        let fs2 = try FragmentShader(fs.reference)
         #expect(fs == fs2)
 
         let k1 = try ComputeKernel(source: Self.source)
-        let k2 = ComputeKernel(k1.function)
+        let k2 = try ComputeKernel(k1.reference)
         #expect(k1 == k2)
 
-        let obj1 = ObjectShader(vsA.function) // same MTLFunction object
-        let obj2 = ObjectShader(vsA.function)
-        #expect(obj1 == obj2)
-
-        let mesh1 = MeshShader(vsA.function)
-        let mesh2 = MeshShader(vsA.function)
-        #expect(mesh1 == mesh2)
-
-        let vis1 = VisibleFunction(vsA.function)
-        let vis2 = VisibleFunction(vsA.function)
-        #expect(vis1 == vis2)
+        #expect(throws: MetalSprocketsError.self) { try ObjectShader(vsA.reference) }
+        #expect(throws: MetalSprocketsError.self) { try MeshShader(vsA.reference) }
+        #expect(throws: MetalSprocketsError.self) { try VisibleFunction(vsA.reference) }
     }
 
     @Test("functionType static values are correct")

@@ -13,28 +13,33 @@ internal final class ImmersiveRuntime<Content: Element> {
     let progressive: Bool
     let contentBuilder: @Sendable (ImmersiveContext) throws -> Content
     let device: MTLDevice
-    let commandQueue: MTLCommandQueue
     let frameRenderer: FrameRenderer
+    /// Records into the compositor's own Metal 4 queue, as CompositorServices requires.
+    let runner: FrameRunner
     let arSession: ARKitSession
     let worldTracking: WorldTrackingProvider
     let stencilValue: UInt8 = 200
     let stencilFormat: MTLPixelFormat
     var startTime: CFAbsoluteTime = 0
     var stencilTexture: MTLTexture?
+    let stencilResources: ResourceCollection
     var frameTimingTracker = FrameTimingTracker()
     var frameTimingChange: (@Sendable (FrameTimingStatistics) -> Void)?
 
-    init(layerRenderer: LayerRenderer, progressive: Bool, content: @Sendable @escaping (ImmersiveContext) throws -> Content) throws {
+    init(layerRenderer: LayerRenderer, progressive: Bool, maximumInFlightSubmissions: Int, content: @Sendable @escaping (ImmersiveContext) throws -> Content) throws {
         self.layerRenderer = layerRenderer
         self.progressive = progressive
         self.contentBuilder = content
 
         self.device = layerRenderer.device
-        guard let commandQueue = device.makeCommandQueue() else {
-            throw MetalSprocketsError.resourceCreationFailure("command queue")
-        }
-        self.commandQueue = commandQueue
+        self.stencilResources = try ResourceCollection(device: layerRenderer.device)
         self.frameRenderer = FrameRenderer()
+        #if targetEnvironment(simulator)
+        // CompositorServices exposes no Metal 4 queue, render context or presentation on the simulator.
+        throw MetalSprocketsError.deviceCababilityFailure("Immersive rendering on Metal 4 requires an Apple Vision Pro; the visionOS simulator has no Metal 4 compositor API.")
+        #else
+        self.runner = try FrameRunner(device: device, commandQueue: layerRenderer.commandQueue, system: frameRenderer.system, maximumInFlightSubmissions: maximumInFlightSubmissions)
+        #endif
         self.arSession = ARKitSession()
         self.worldTracking = WorldTrackingProvider()
 
@@ -95,6 +100,9 @@ internal final class ImmersiveRuntime<Content: Element> {
             return
         }
 
+        // Await the in-flight limit before entering the compositor's submission interval.
+        try await runner.waitForSubmissionCapacity()
+
         frame.startSubmission()
 
         guard let drawable = frame.queryDrawables().first else {
@@ -118,35 +126,33 @@ internal final class ImmersiveRuntime<Content: Element> {
     }
 
     func encodeFrame(drawable: LayerRenderer.Drawable, deviceAnchor: DeviceAnchor?, time: TimeInterval, frameTimingStatistics: FrameTimingStatistics) throws {
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
-            throw MetalSprocketsError.resourceCreationFailure("command buffer")
-        }
-
-        let renderPassDescriptor = makeRenderPassDescriptor(drawable: drawable)
-        let renderContext = drawable.addRenderContext(commandBuffer: commandBuffer)
+        #if !targetEnvironment(simulator)
+        let renderPassDescriptor = try makeRenderPassDescriptor(drawable: drawable)
+        // The device anchor is already set, which the render context requires.
+        let renderContext = drawable.addRenderContext()
 
         let context = ImmersiveContext(device: device, time: time, drawable: drawable, deviceAnchor: deviceAnchor, renderContext: renderContext, isProgressive: progressive, stencilValue: stencilValue, stencilFormat: stencilFormat, frameTimingStatistics: frameTimingStatistics)
 
         let userContent = try contentBuilder(context)
 
         let root = userContent
-            .device(device)
-            .commandQueue(commandQueue)
-            .commandBuffer(commandBuffer)
             .renderPassDescriptor(renderPassDescriptor)
             .immersiveRenderContext(renderContext)
+            .onCommandBufferCompleted { [frameRenderer] result in
+                frameRenderer.lastGPUTime = result.gpuDuration
+            }
 
-        try frameRenderer.renderFrame(root: root)
-
-        drawable.encodePresent(commandBuffer: commandBuffer)
-        commandBuffer.addCompletedHandler { [frameRenderer] commandBuffer in
-            frameRenderer.lastGPUTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
-        }
-        commandBuffer.commit()
+        runner.residency.collections = [stencilResources]
+        try runner.submitFrame(root)
+        // UNVERIFIED ORDER (#404/#434): the Metal 4 header says to commit to the layer queue before presenting; the
+        // inherited note says to encode presentation before commit. This follows the Metal 4 note until a device run
+        // settles it.
+        drawable.encodePresent()
+        #endif
     }
 
-    func makeRenderPassDescriptor(drawable: LayerRenderer.Drawable) -> MTLRenderPassDescriptor {
-        let desc = MTLRenderPassDescriptor()
+    func makeRenderPassDescriptor(drawable: LayerRenderer.Drawable) throws -> MTL4RenderPassDescriptor {
+        let desc = MTL4RenderPassDescriptor()
 
         desc.colorAttachments[0].texture = drawable.colorTextures[0]
         desc.colorAttachments[0].loadAction = .clear
@@ -165,7 +171,7 @@ internal final class ImmersiveRuntime<Content: Element> {
         }
 
         if progressive, stencilFormat != .invalid {
-            desc.stencilAttachment.texture = getOrCreateStencilTexture(matching: drawable.colorTextures[0])
+            desc.stencilAttachment.texture = try getOrCreateStencilTexture(matching: drawable.colorTextures[0])
             desc.stencilAttachment.loadAction = .clear
             desc.stencilAttachment.storeAction = .dontCare
             desc.stencilAttachment.clearStencil = 0
@@ -174,7 +180,7 @@ internal final class ImmersiveRuntime<Content: Element> {
         return desc
     }
 
-    func getOrCreateStencilTexture(matching colorTexture: MTLTexture) -> MTLTexture? {
+    func getOrCreateStencilTexture(matching colorTexture: MTLTexture) throws -> MTLTexture? {
         if let existing = stencilTexture, existing.width == colorTexture.width, existing.height == colorTexture.height, existing.arrayLength == colorTexture.arrayLength {
             return existing
         }
@@ -189,6 +195,12 @@ internal final class ImmersiveRuntime<Content: Element> {
         desc.storageMode = .private
 
         let texture = colorTexture.device.makeTexture(descriptor: desc)
+        if let texture {
+            try stencilResources.register(texture)
+        }
+        if let previous = stencilTexture {
+            stencilResources.unregister(previous)
+        }
         stencilTexture = texture
         return texture
     }

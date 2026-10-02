@@ -1,10 +1,10 @@
 # ``MetalSprockets``
 
-A declarative, composable framework for Metal rendering—like SwiftUI, but for GPU work.
+A declarative framework that composes Metal rendering operations, like SwiftUI for GPU work.
 
 ## Overview
 
-MetalSprockets lets you describe render graphs in Swift the same way you describe views in SwiftUI. You compose `Element` types into a tree that represents GPU work: render passes, pipelines, and draw commands.
+MetalSprockets describes render graphs in Swift, as SwiftUI describes views. `Element` types form a tree of GPU work: render passes, pipelines, and draw commands.
 
 ```swift
 struct MyTriangle: Element {
@@ -22,7 +22,7 @@ struct MyTriangle: Element {
                     fragmentShader: library.fragmentMain
                 ) {
                     Draw { encoder in
-                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                     }
                 }
             }
@@ -43,7 +43,7 @@ MetalSprockets mirrors SwiftUI's design patterns:
 | `@Environment` | `@MSEnvironment` | Scoped context and resources |
 | View host | `RenderView` | Embeds elements in SwiftUI |
 
-Unlike SwiftUI's `body`, Element bodies can throw errors—useful since Metal operations can fail.
+Unlike SwiftUI's `body`, Element bodies can throw errors because Metal operations can fail.
 
 ## Topics
 

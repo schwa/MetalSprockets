@@ -70,6 +70,10 @@ public struct ARFrameData {
     /// The view matrix (inverse camera transform), adjusted for screen orientation.
     public var viewMatrix: simd_float4x4 = .init(diagonal: [1, 1, 1, 1])
 
+    /// The `CVMetalTexture`s backing the textures. The textures are valid only while these live, so a renderer keeps
+    /// them until its GPU work finishes.
+    package var textureOwners: [AnyObject] = []
+
     /// Creates empty frame data.
     public init() {
         // This line intentionally left blank.
@@ -156,11 +160,13 @@ private struct ARKitFrameModifier: ViewModifier {
         var data = ARFrameData()
         data.textureY = CVMetalTextureGetTexture(newCvTextureY)
         data.textureCbCr = CVMetalTextureGetTexture(newCvTextureCbCr)
+        data.textureOwners = [newCvTextureY, newCvTextureCbCr]
 
         CVMetalTextureCacheFlush(textureCache, 0)
 
         // Camera sensor is landscape, rotate to match screen orientation
-        let interfaceOrientation = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.interfaceOrientation ?? .portrait
+        // effectiveGeometry replaces the deprecated UIWindowScene.interfaceOrientation.
+        let interfaceOrientation = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.effectiveGeometry.interfaceOrientation ?? .portrait
 
         let orientationRotation: simd_float4x4
         switch interfaceOrientation {

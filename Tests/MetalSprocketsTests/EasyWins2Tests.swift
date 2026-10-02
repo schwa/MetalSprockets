@@ -83,7 +83,7 @@ struct EasyWins2Tests {
 
     // MARK: Parameter on a ComputePipeline — covers compute-encoder set path
 
-    @Test("Parameter on a ComputePipeline dispatches via the compute encoder")
+    @Test("Parameter on a ComputePipeline dispatches via the compute encoder", .requiresMetal4)
     func computePipelineParameter() throws {
         let kernelSource = """
         #include <metal_stdlib>
@@ -104,15 +104,11 @@ struct EasyWins2Tests {
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        let encoder = node.environmentValues.computeCommandEncoder!
-                        encoder.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: count / 8, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: 8, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .parameter("scale", value: Float(2.0))
             }
         }

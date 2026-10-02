@@ -4,11 +4,11 @@ Create your first Metal render using declarative Swift.
 
 ## Overview
 
-MetalSprockets lets you build GPU render graphs using familiar SwiftUI patterns. This guide walks you through the core concepts.
+MetalSprockets builds GPU render graphs with SwiftUI patterns. This guide introduces the core concepts.
 
 ### The Element Protocol
 
-``Element`` is the fundamental building block—like SwiftUI's `View`, but for GPU work. Elements compose together to form render graphs:
+``Element`` is the unit of composition for GPU work, like SwiftUI's `View` for user interfaces. Elements form render graphs:
 
 ```swift
 struct ColorfulTriangle: Element {
@@ -26,7 +26,7 @@ struct ColorfulTriangle: Element {
                     fragmentShader: library.myFragmentShader
                 ) {
                     Draw { encoder in
-                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                     }
                 }
             }
@@ -45,7 +45,7 @@ RenderPass
     └── Draw (issues GPU commands)
 ```
 
-You can have multiple pipelines in a pass (for different materials) and multiple passes in a frame (for shadow maps, post-processing, etc.).
+A pass can contain multiple pipelines for different materials. A frame can contain multiple passes for operations such as shadow maps and post-processing.
 
 ### Loading Shaders
 
@@ -65,7 +65,7 @@ Use the `.parameter()` modifier to bind values by name:
 
 ```swift
 Draw { encoder in
-    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
 }
 .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
 .parameter("transform", value: modelMatrix)

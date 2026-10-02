@@ -6,9 +6,9 @@ In the previous tutorial, we hardcoded vertex data in the shader. That works for
 
 ---
 
-## What We're Building
+## What we are Building
 
-A quad with a rainbow gradient across it. You'll learn:
+This tutorial renders a quad with a rainbow gradient. It covers:
 
 - How to define vertex data in Swift and send it to the GPU
 - How vertex descriptors tell Metal the layout of your data
@@ -18,7 +18,7 @@ A quad with a rainbow gradient across it. You'll learn:
 
 ## Step 1: Start With the Previous Tutorial
 
-Start with the project from Tutorial 1, or create a new one following those steps. We'll modify it to use vertex buffers.
+Start with the project from Tutorial 1, or create one with the same steps. This tutorial adds vertex buffers.
 
 ---
 
@@ -67,8 +67,8 @@ fragment float4 rainbowQuadFragmentShader(VertexOut in [[stage_in]]) {
 **What's new:**
 
 - **`VertexIn`** uses `[[attribute(N)]]` to receive data from Swift. Each attribute maps to a field in our Swift struct.
-- **`textureCoordinate`** tells the fragment shader where each pixel is within the quad (0-1 on each axis). We use it here for the rainbow gradient, but it's typically used for texture mapping.
-- **`hueToRGB`** converts a hue value (0-1) to an RGB color—this creates our rainbow.
+- **`textureCoordinate`** gives each pixel's position within the quad (0-1 on each axis). This example uses it for the gradient. Other shaders use it for texture mapping.
+- **`hueToRGB`** converts a hue value (0-1) to an RGB color for the rainbow.
 - The diagonal UV position creates a rainbow gradient from corner to corner.
 
 ---
@@ -124,7 +124,9 @@ Each `[[attribute(N)]]` in the shader maps to `descriptor.attributes[N]` here. T
 
 ## Step 5: Create a Reusable Render Pipeline
 
-Instead of putting all our rendering code in the view, let's create a reusable Element. This is like a SwiftUI View, but for Metal rendering. Create `RainbowQuadRenderPipeline.swift`:
+A reusable Element holds the rendering code separately from the view. It is the Metal equivalent of a SwiftUI View.
+
+Create `RainbowQuadRenderPipeline.swift`:
 
 ```swift
 import Metal
@@ -169,17 +171,11 @@ struct RainbowQuadRenderPipeline: Element {
                 fragmentShader: library.rainbowQuadFragmentShader
             ) {
                 Draw { encoder in
-                    // Send vertex data to GPU
-                    var verts = vertices
-                    encoder.setVertexBytes(
-                        &verts,
-                        length: MemoryLayout<Vertex>.stride * vertices.count,
-                        index: 0
-                    )
-
                     // Draw the quad (6 vertices = 2 triangles)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6)
                 }
+                // Send vertex data to the GPU at buffer index 0
+                .vertexValues(vertices, index: 0)
             }
             .vertexDescriptor(Vertex.descriptor)
         }
@@ -189,11 +185,11 @@ struct RainbowQuadRenderPipeline: Element {
 
 **What's happening:**
 
-- **`Element`** is MetalSprockets' equivalent of SwiftUI's `View`. It has a `body` that returns other Elements. Unlike SwiftUI, Element bodies can throw errors—useful since Metal operations can fail.
-- **`init`** loads the shader library once when the element is created—not in `body`, which runs every frame.
+- **`Element`** is the MetalSprockets equivalent of SwiftUI's `View`. Its `body` returns other Elements. Element bodies can throw errors because Metal operations can fail.
+- **`init`** loads the shader library when the element is created, rather than in the per-frame `body`.
 - **`vertices`** defines a quad as two triangles. Each vertex has a position and texture coordinate.
-- **`setVertexBytes`** sends our vertex array to the GPU at buffer index 0. Unlike Tutorial 1 where we hardcoded vertices in the shader, here we define them in Swift and send them to the GPU each frame.
-- **`.vertexDescriptor()`** tells the pipeline how to interpret our vertex data—matching Swift's `Vertex` struct to the shader's `VertexIn`.
+- **`.vertexValues(_:index:)`** sends the Swift vertex array to the GPU at buffer index 0 each frame. Tutorial 1 stored the vertices in the shader.
+- **`.vertexDescriptor()`** matches the Swift `Vertex` layout to the shader's `VertexIn` layout.
 
 ---
 
@@ -218,13 +214,15 @@ struct ContentView: View {
 }
 ```
 
-Notice how clean this is—all the rendering logic is encapsulated in `RainbowQuadRenderPipeline`.
+`RainbowQuadRenderPipeline` contains the rendering logic.
 
 ---
 
 ## Step 7: Run It
 
-Press **⌘R**. You should see a quad with a rainbow gradient flowing diagonally from one corner to the other.
+Press **⌘R**.
+
+The app shows a quad with a diagonal rainbow gradient.
 
 ![A rainbow quad rendered with Metal](tutorial-02-result)
 
@@ -289,14 +287,9 @@ struct RainbowQuadRenderPipeline: Element {
                 fragmentShader: library.rainbowQuadFragmentShader
             ) {
                 Draw { encoder in
-                    var verts = vertices
-                    encoder.setVertexBytes(
-                        &verts,
-                        length: MemoryLayout<Vertex>.stride * vertices.count,
-                        index: 0
-                    )
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6)
                 }
+                .vertexValues(vertices, index: 0)
             }
             .vertexDescriptor(Vertex.descriptor)
         }
@@ -362,6 +355,6 @@ fragment float4 rainbowQuadFragmentShader(VertexOut in [[stage_in]]) {
 
 ## What You Learned
 
-1. **Vertex buffers** — Define geometry in Swift, send it to the GPU with `setVertexBytes`
+1. **Vertex buffers** — Define geometry in Swift, send it to the GPU with `.vertexValues(_:index:)`
 2. **Vertex descriptors** — Tell Metal how to interpret your vertex struct layout
 3. **Custom Elements** — Encapsulate rendering logic in reusable, composable units

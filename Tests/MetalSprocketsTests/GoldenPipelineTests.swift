@@ -44,10 +44,9 @@ struct GoldenPipelineTests {
 
         let pipeline = try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
             Draw { encoder in
-                let vertices = Self.triangle
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * vertices.count, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: Self.triangle.count)
             }
+            .vertexValues(Self.triangle, index: 0)
         }
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())
 
@@ -56,11 +55,11 @@ struct GoldenPipelineTests {
         }
     }
 
-    @Test func `an unsmoothed diagonal edge is aliased`() throws {
+    @Test(.requiresMetal4) func `an unsmoothed diagonal edge is aliased`() throws {
         try Golden.verify(try tiltedTriangle(warmTint: false), named: "AliasedDiagonal")
     }
 
-    @Test func `a function constant selects the warm tint`() throws {
+    @Test(.requiresMetal4) func `a function constant selects the warm tint`() throws {
         try Golden.verify(try tiltedTriangle(warmTint: true), named: "WarmTintDiagonal")
     }
 

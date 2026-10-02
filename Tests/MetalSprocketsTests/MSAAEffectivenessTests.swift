@@ -42,10 +42,9 @@ struct MSAAEffectivenessTests {
         let pass = try RenderPass {
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                 Draw { encoder in
-                    let vertices = triangle(scale: scale)
-                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * vertices.count, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: triangle(scale: scale).count)
                 }
+                .vertexValues(triangle(scale: scale), index: 0)
             }
             .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         }
@@ -71,7 +70,7 @@ struct MSAAEffectivenessTests {
         }
     }
 
-    @Test("MSAA actually anti-aliases")
+    @Test("MSAA actually anti-aliases", .requiresMetal4)
     func testMSAADiffersFromAliased() throws {
         let aliased = try Self.render(scale: 1, sampleCount: nil)
         let multisampled = try Self.render(scale: 1, sampleCount: 4)
@@ -81,7 +80,7 @@ struct MSAAEffectivenessTests {
         #expect(Self.partialCoverageCount(multisampled) > Self.partialCoverageCount(aliased) * 10)
     }
 
-    @Test("MSAA keeps working after the first frame")
+    @Test("MSAA keeps working after the first frame", .requiresMetal4)
     func testMSAASecondFrameUpdates() throws {
         let renderer = try OffscreenRenderer(size: CGSize(width: 256, height: 256))
         let frame1 = try Self.render(scale: 1, sampleCount: 4, renderer: renderer)
@@ -89,7 +88,7 @@ struct MSAAEffectivenessTests {
         #expect(frame1 != frame2)
     }
 
-    @Test("A misplaced msaa modifier is reported")
+    @Test("A misplaced msaa modifier is reported", .requiresMetal4)
     func testMisplacedMSAAThrows() throws {
         let vertexShader = try VertexShader(source: Self.source)
         let fragmentShader = try FragmentShader(source: Self.source)
@@ -98,10 +97,9 @@ struct MSAAEffectivenessTests {
             let pass = try RenderPass {
                 try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                     Draw { encoder in
-                        let vertices = Self.triangle(scale: 1)
-                        encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * vertices.count, index: 0)
-                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+                        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: Self.triangle(scale: 1).count)
                     }
+                    .vertexValues(Self.triangle(scale: 1), index: 0)
                 }
                 .msaa(sampleCount: 4)
                 .vertexDescriptor(vertexShader.inferredVertexDescriptor())

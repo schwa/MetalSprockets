@@ -7,7 +7,7 @@ import simd
 import SwiftUI
 import Testing
 
-@Test
+@Test(.requiresMetal4)
 @MainActor
 func testRenderPipelineDescriptorTransformerWithoutAlphaBlending() throws {
     let source = """
@@ -48,17 +48,15 @@ func testRenderPipelineDescriptorTransformerWithoutAlphaBlending() throws {
     let renderPass = try RenderPass {
         try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
             Draw { encoder in
-                let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             .parameter("color", value: redColor)
 
             Draw { encoder in
-                let vertices: [SIMD2<Float>] = [[0, -0.5], [-0.5, 0.5], [0.5, 0.5]]
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, -0.5], [-0.5, 0.5], [0.5, 0.5]] as [SIMD2<Float>]), index: 0)
             .parameter("color", value: blueColor)
         }
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())
@@ -74,7 +72,7 @@ func testRenderPipelineDescriptorTransformerWithoutAlphaBlending() throws {
     #expect(isMatch)
 }
 
-@Test
+@Test(.requiresMetal4)
 @MainActor
 func testRenderPipelineDescriptorTransformerWithAlphaBlending() throws {
     let source = """
@@ -115,22 +113,20 @@ func testRenderPipelineDescriptorTransformerWithAlphaBlending() throws {
     let renderPass = try RenderPass {
         try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
             Draw { encoder in
-                let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             .parameter("color", value: redColor)
 
             Draw { encoder in
-                let vertices: [SIMD2<Float>] = [[0, -0.5], [-0.5, 0.5], [0.5, 0.5]]
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, -0.5], [-0.5, 0.5], [0.5, 0.5]] as [SIMD2<Float>]), index: 0)
             .parameter("color", value: blueColor)
         }
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         .renderPipelineDescriptorTransformer { descriptor in
-            descriptor.colorAttachments[0].isBlendingEnabled = true
+            descriptor.colorAttachments[0].blendingState = .enabled
             descriptor.colorAttachments[0].rgbBlendOperation = .add
             descriptor.colorAttachments[0].alphaBlendOperation = .add
             descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
@@ -150,7 +146,7 @@ func testRenderPipelineDescriptorTransformerWithAlphaBlending() throws {
     #expect(isMatch)
 }
 
-@Test
+@Test(.requiresMetal4)
 @MainActor
 func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
     let source = """
@@ -188,10 +184,9 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
     let renderPass = try RenderPass {
         try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
             Draw { encoder in
-                let vertices: [SIMD2<Float>] = [[0, 0.75], [-0.75, -0.75], [0.75, -0.75]]
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.75], [-0.75, -0.75], [0.75, -0.75]] as [SIMD2<Float>]), index: 0)
             .parameter("color", value: color)
         }
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())
@@ -208,7 +203,7 @@ func testRenderPassDescriptorModifierWithOffscreenRenderer() throws {
 /// The pipeline cache key hashes the fully configured `MTLRenderPipelineDescriptor`, so anything a
 /// `renderPipelineDescriptorTransformer` does is part of it. Turning blending on between frames has to be observable,
 /// or the second frame silently reuses the first frame's PSO. See #359.
-@Test
+@Test(.requiresMetal4)
 @MainActor
 func testBlendStateChangeBetweenFramesTakesEffect() throws {
     let source = """
@@ -238,22 +233,20 @@ func testBlendStateChangeBetweenFramesTakesEffect() throws {
         try RenderPass {
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                 Draw { encoder in
-                    let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
                 .parameter("color", value: redColor)
 
                 Draw { encoder in
-                    let vertices: [SIMD2<Float>] = [[0, -0.5], [-0.5, 0.5], [0.5, 0.5]]
-                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, -0.5], [-0.5, 0.5], [0.5, 0.5]] as [SIMD2<Float>]), index: 0)
                 .parameter("color", value: blueColor)
             }
             .vertexDescriptor(vertexShader.inferredVertexDescriptor())
             .renderPipelineDescriptorTransformer { descriptor in
-                descriptor.colorAttachments[0].isBlendingEnabled = blending
+                descriptor.colorAttachments[0].blendingState = blending ? .enabled : .disabled
                 descriptor.colorAttachments[0].rgbBlendOperation = .add
                 descriptor.colorAttachments[0].alphaBlendOperation = .add
                 descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
@@ -273,7 +266,7 @@ func testBlendStateChangeBetweenFramesTakesEffect() throws {
 
 /// Regression test for #342: verifies PSO cache hits on frames 2+ when
 /// a renderPipelineDescriptorTransformer is present.
-@Test
+@Test(.requiresMetal4)
 @MainActor
 func testPSOCacheStableWithDescriptorModifier() throws {
     let source = """
@@ -290,7 +283,7 @@ func testPSOCacheStableWithDescriptorModifier() throws {
     let fragmentShader = try FragmentShader(source: source)
 
     let device = try #require(MTLCreateSystemDefaultDevice())
-    let commandQueue = try #require(device.makeCommandQueue())
+    let commandQueue = try #require(device.makeMTL4CommandQueue())
 
     let colorDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: 64, height: 64, mipmapped: false)
     colorDesc.usage = [.renderTarget, .shaderRead, .shaderWrite]
@@ -299,7 +292,7 @@ func testPSOCacheStableWithDescriptorModifier() throws {
     depthDesc.usage = [.renderTarget, .shaderRead]
     let depthTexture = try #require(device.makeTexture(descriptor: depthDesc))
 
-    let rpd = MTLRenderPassDescriptor()
+    let rpd = MTL4RenderPassDescriptor()
     rpd.colorAttachments[0].texture = colorTexture
     rpd.colorAttachments[0].loadAction = .clear
     rpd.colorAttachments[0].storeAction = .store
@@ -308,39 +301,32 @@ func testPSOCacheStableWithDescriptorModifier() throws {
     rpd.depthAttachment.clearDepth = 1
     rpd.depthAttachment.storeAction = .store
 
-    let system = System()
+    let runner = try Runner(device: device, commandQueue: commandQueue)
     var pipelineStates: [any MTLRenderPipelineState] = []
 
     for _ in 0..<3 {
-        let root = try CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
+        let root = try Group {
             try RenderPass {
                 try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                     Draw { encoder in
-                        let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                        encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                     }
+                    .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
                 }
                 .vertexDescriptor(vertexShader.inferredVertexDescriptor())
                 .renderPipelineDescriptorTransformer { descriptor in
-                    descriptor.colorAttachments[0].isBlendingEnabled = true
+                    descriptor.colorAttachments[0].blendingState = .enabled
                     descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
                     descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
                 }
             }
         }
-        .environment(\.device, device)
-        .environment(\.commandQueue, commandQueue)
         .renderPassDescriptor(rpd)
         .environment(\.drawableSize, CGSize(width: 64, height: 64))
 
-        try system.update(root: root)
-        try system.withCurrentSystem {
-            try system.processSetup()
-            try system.processWorkload()
-        }
+        try runner.run(root)
 
-        let frameStates = system.nodes.values.compactMap(\.environmentValues.renderPipelineState)
+        let frameStates = runner.system.nodes.values.compactMap(\.environmentValues.renderPipelineState)
         #expect(!frameStates.isEmpty)
         pipelineStates.append(contentsOf: frameStates)
     }

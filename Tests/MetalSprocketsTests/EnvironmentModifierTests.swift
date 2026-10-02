@@ -41,24 +41,26 @@ struct EnvironmentModifierTests {
         #expect(try probeMatched(probe.device(device)))
     }
 
-    @Test func `the command queue modifier reaches descendants`() throws {
-        let device = try #require(MTLCreateSystemDefaultDevice())
-        let commandQueue = try #require(device.makeCommandQueue())
-        let probe = Probe(\.commandQueue) { $0 === commandQueue }
-        #expect(try probeMatched(probe.commandQueue(commandQueue)))
+    // The queue and command buffer are owned by the root on Metal 4, so there are no modifiers for them: the root
+    // publishes them to every element it renders.
+    @Test(.requiresMetal4) func `the root publishes its queue and command buffer`() throws {
+        let runner = try Runner()
+        final class Seen: @unchecked Sendable {
+            var queue: (any MTL4CommandQueue)?
+            var buffer: (any MTL4CommandBuffer)?
+        }
+        let seen = Seen()
+        try runner.run(EmptyElement().onWorkloadEnter { environment in
+            seen.queue = environment.commandQueue
+            seen.buffer = environment.commandBuffer
+        })
+        #expect(seen.queue === runner.commandQueue)
+        #expect(seen.buffer != nil)
     }
 
-    @Test func `the command buffer modifier reaches descendants`() throws {
-        let device = try #require(MTLCreateSystemDefaultDevice())
-        let commandQueue = try #require(device.makeCommandQueue())
-        let commandBuffer = try #require(commandQueue.makeCommandBuffer())
-        let probe = Probe(\.commandBuffer) { $0 === commandBuffer }
-        #expect(try probeMatched(probe.commandBuffer(commandBuffer)))
-    }
-
-    @Test func `the descriptor modifiers reach descendants`() throws {
-        let renderPassDescriptor = MTLRenderPassDescriptor()
-        let renderPipelineDescriptor = MTLRenderPipelineDescriptor()
+    @Test(.requiresMetal4) func `the descriptor modifiers reach descendants`() throws {
+        let renderPassDescriptor = MTL4RenderPassDescriptor()
+        let renderPipelineDescriptor = MTL4RenderPipelineDescriptor()
         let passProbe = Probe(\.renderPassDescriptor) { $0 === renderPassDescriptor }
         let pipelineProbe = Probe(\.renderPipelineDescriptor) { $0 === renderPipelineDescriptor }
         #expect(try probeMatched(passProbe.renderPassDescriptor(renderPassDescriptor)))

@@ -215,14 +215,19 @@ package final class System: @unchecked Sendable {
         let updateStart = CACurrentMediaTime()
         try update(root: root)
         let setupStart = CACurrentMediaTime()
-        return try withCurrentSystem {
+        let timings = try withCurrentSystem {
             try processSetup()
             let workloadStart = CACurrentMediaTime()
             try processWorkload()
             let end = CACurrentMediaTime()
             return PhaseTimings(update: setupStart - updateStart, setup: workloadStart - setupStart, workload: end - workloadStart)
         }
+        lastPhaseTimings = timings
+        return timings
     }
+
+    /// Timings of the most recent successful ``render(root:)``, for roots that render through another driver.
+    package private(set) var lastPhaseTimings: PhaseTimings?
 
     internal func update(root: some Element) throws {
         assert(traversalContext.isEmpty)

@@ -108,7 +108,7 @@ struct YCbCrBillboardRenderPassTests {
 
     // MARK: - Tests
 
-    @Test("YCbCr billboard renders without error")
+    @Test("YCbCr billboard renders without error", .requiresMetal4)
     func testBasicRender() throws {
         let device = MTLCreateSystemDefaultDevice()!
 
@@ -126,7 +126,7 @@ struct YCbCrBillboardRenderPassTests {
         #expect(rendering.texture.width == 256)
     }
 
-    @Test("YCbCr billboard with custom texture coordinates")
+    @Test("YCbCr billboard with custom texture coordinates", .requiresMetal4)
     func testCustomTextureCoordinates() throws {
         let device = MTLCreateSystemDefaultDevice()!
 
@@ -154,7 +154,7 @@ struct YCbCrBillboardRenderPassTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("YCbCr billboard produces non-black output")
+    @Test("YCbCr billboard produces non-black output", .requiresMetal4)
     func testProducesNonBlackOutput() throws {
         let device = MTLCreateSystemDefaultDevice()!
 

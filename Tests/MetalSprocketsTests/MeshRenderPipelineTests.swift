@@ -122,7 +122,7 @@ struct MeshRenderPipelineTests {
         let pipeline = try MeshRenderPipeline(label: "object+mesh", objectShader: objectShader, meshShader: meshShader, fragmentShader: fragmentShader) {
             Draw { encoder in
                 encoder.drawMeshThreadgroups(
-                    MTLSize(width: 1, height: 1, depth: 1),
+                    threadgroupsPerGrid: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerObjectThreadgroup: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerMeshThreadgroup: MTLSize(width: 3, height: 1, depth: 1)
                 )
@@ -141,7 +141,7 @@ struct MeshRenderPipelineTests {
         }
     }
 
-    @Test("An object shader feeds the mesh stage")
+    @Test("An object shader feeds the mesh stage", .requiresMetal4)
     func testObjectAndMeshShaders() throws {
         guard try meshShadersSupported() else {
             return
@@ -149,7 +149,7 @@ struct MeshRenderPipelineTests {
         try Golden.verify(try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: false), named: "MeshTriangle", size: CGSize(width: 128, height: 128))
     }
 
-    @Test("Parameters bound to the object stage reach the mesh stage")
+    @Test("Parameters bound to the object stage reach the mesh stage", .requiresMetal4)
     func testObjectStageParameter() throws {
         guard try meshShadersSupported() else {
             return
@@ -157,7 +157,7 @@ struct MeshRenderPipelineTests {
         try Golden.verify(try objectMeshPass(scale: 0.5, tint: [1, 0, 1, 1], depthCompare: false), named: "MeshTriangleHalfScale", size: CGSize(width: 128, height: 128))
     }
 
-    @Test("A depth-tested mesh pipeline builds its depth stencil state")
+    @Test("A depth-tested mesh pipeline builds its depth stencil state", .requiresMetal4)
     func testMeshPipelineWithDepthStencil() throws {
         guard try meshShadersSupported() else {
             return
@@ -165,7 +165,7 @@ struct MeshRenderPipelineTests {
         try Golden.verify(try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: true), named: "MeshTriangle", size: CGSize(width: 128, height: 128))
     }
 
-    @Test("Rendering the same mesh pipeline twice reuses the cached pipeline state")
+    @Test("Rendering the same mesh pipeline twice reuses the cached pipeline state", .requiresMetal4)
     func testMeshPipelineCacheHit() throws {
         guard try meshShadersSupported() else {
             return
@@ -177,14 +177,13 @@ struct MeshRenderPipelineTests {
         _ = try renderer.render(try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: true, shaders: shaders))
     }
 
-    @Test("A mesh pipeline picks up linked functions from the environment")
+    @Test("A mesh pipeline picks up linked functions from the environment", .requiresMetal4)
     func testMeshPipelineLinkedFunctions() throws {
         guard try meshShadersSupported() else {
             return
         }
         let shaders = try makeShaders()
-        let linked = MTLLinkedFunctions()
-        linked.functions = []
+        let linked: [VisibleFunction] = []
 
         let pass = try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: false, shaders: shaders)
             .environment(\.linkedFunctions, linked)
@@ -192,7 +191,7 @@ struct MeshRenderPipelineTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("Mesh-shader-only pipeline renders")
+    @Test("Mesh-shader-only pipeline renders", .requiresMetal4)
     func testMeshRenderPipelineWithoutObjectShader() throws {
         let device = MTLCreateSystemDefaultDevice()!
         guard device.supportsFamily(.apple7) else {
@@ -206,7 +205,7 @@ struct MeshRenderPipelineTests {
             try MeshRenderPipeline(label: "test", meshShader: meshShader, fragmentShader: fragment) {
                 Draw { encoder in
                     encoder.drawMeshThreadgroups(
-                        MTLSize(width: 1, height: 1, depth: 1),
+                        threadgroupsPerGrid: MTLSize(width: 1, height: 1, depth: 1),
                         threadsPerObjectThreadgroup: MTLSize(width: 1, height: 1, depth: 1),
                         threadsPerMeshThreadgroup: MTLSize(width: 3, height: 1, depth: 1)
                     )
@@ -219,7 +218,7 @@ struct MeshRenderPipelineTests {
         #expect(rendering.texture.width == 64)
     }
 
-    @Test("A stencil attachment contributes its pixel format to the mesh pipeline")
+    @Test("A stencil attachment contributes its pixel format to the mesh pipeline", .requiresMetal4)
     func testMeshPipelineWithStencilAttachment() throws {
         guard try meshShadersSupported() else {
             return
@@ -240,7 +239,7 @@ struct MeshRenderPipelineTests {
         let colorTexture = try makeTexture(format: .bgra8Unorm_srgb, usage: [.renderTarget, .shaderRead], storage: .shared)
         let depthStencilTexture = try makeTexture(format: .depth32Float_stencil8, usage: [.renderTarget], storage: .private)
 
-        let descriptor = MTLRenderPassDescriptor()
+        let descriptor = MTL4RenderPassDescriptor()
         descriptor.colorAttachments[0].texture = colorTexture
         descriptor.colorAttachments[0].loadAction = .clear
         descriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)

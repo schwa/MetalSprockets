@@ -5,135 +5,64 @@ import MetalSprockets
 
 /// Renders YCbCr video textures as a full-screen billboard.
 ///
-/// Use this element to display camera feeds or video frames that use YCbCr
-/// color encoding (common in ARKit, AVFoundation, and video codecs).
-///
-/// ## Overview
-///
-/// YCbCr separates luminance (Y) from chrominance (CbCr), which is more
-/// efficient for video compression. This element converts YCbCr to RGB
-/// and renders it as a full-screen quad.
+/// Use this element to display camera feeds or video frames that use YCbCr color encoding (common in ARKit,
+/// AVFoundation, and video codecs). It converts BT.601 YCbCr to RGB and draws a full-screen quad with no depth test or
+/// depth write, so it works as a background layer.
 ///
 /// ## ARKit Camera Background
 ///
-/// Display ARKit camera feed as a background layer:
-///
 /// ```swift
 /// RenderPass {
-///     if let textureY = frameData.textureY,
-///        let textureCbCr = frameData.textureCbCr {
-///         YCbCrBillboardRenderPass(
-///             textureY: textureY,
-///             textureCbCr: textureCbCr,
-///             textureCoordinates: frameData.textureCoordinates
-///         )
+///     if frameData.isReady {
+///         try YCbCrBillboardRenderPass(frameData: frameData)
 ///     }
 ///     // Render 3D content on top...
 /// }
 /// ```
 ///
+/// Camera textures are valid only while their `CVMetalTexture`s live. Pass those as `owners` (the `frameData`
+/// initializer does this), so they stay alive until the GPU has finished reading, not just until the next camera
+/// frame arrives.
+///
 /// ## Texture Coordinates
 ///
-/// The default texture coordinates assume the texture is oriented correctly.
-/// For camera feeds, apply the display transform to match screen orientation:
+/// The default texture coordinates assume the texture is oriented correctly. For camera feeds, apply the display
+/// transform to match screen orientation:
 ///
 /// ```swift
 /// let transform = frame.displayTransform(for: orientation, viewportSize: size)
 /// let texCoords = baseCoords.map { $0.applying(transform) }
 /// ```
-///
-
 public struct YCbCrBillboardRenderPass: Element {
-    @MSState
-    private var vertexShader = ShaderLibrary.metalSprocketsUI
-        .namespaced("YCbCrBillboard")
-        .requiredFunction(named: "vertex_main", type: VertexShader.self)
-
-    @MSState
-    private var fragmentShader = ShaderLibrary.metalSprocketsUI
-        .namespaced("YCbCrBillboard")
-        .requiredFunction(named: "fragment_main", type: FragmentShader.self)
-
     let textureY: MTLTexture
     let textureCbCr: MTLTexture
     let textureCoordinates: [SIMD2<Float>]
+    let owners: [AnyObject]
 
-    /// Creates a YCbCr billboard render pass.
+    /// Creates a YCbCr billboard.
+    ///
     /// - Parameters:
-    ///   - textureY: The Y (luminance) texture in r8Unorm format.
-    ///   - textureCbCr: The CbCr (chrominance) texture in rg8Unorm format.
-    ///   - textureCoordinates: The texture coordinates for the 4 corners of the quad
-    ///     (bottom-left, bottom-right, top-left, top-right). Apply display transform here.
-    public init(textureY: MTLTexture, textureCbCr: MTLTexture, textureCoordinates: [SIMD2<Float>]) {
+    ///   - textureY: The luma plane (`r8Unorm`).
+    ///   - textureCbCr: The chroma plane (`rg8Unorm`).
+    ///   - textureCoordinates: Bottom-left, bottom-right, top-left, top-right texture coordinates.
+    ///   - owners: Objects that must outlive GPU use of the textures, such as `CVMetalTexture`s.
+    public init(textureY: MTLTexture, textureCbCr: MTLTexture, textureCoordinates: [SIMD2<Float>] = [[0, 1], [1, 1], [0, 0], [1, 0]], owners: [AnyObject] = []) {
         self.textureY = textureY
         self.textureCbCr = textureCbCr
         self.textureCoordinates = textureCoordinates
+        self.owners = owners
     }
 
-    /// Creates a YCbCr billboard render pass with default texture coordinates.
-    /// - Parameters:
-    ///   - textureY: The Y (luminance) texture in r8Unorm format.
-    ///   - textureCbCr: The CbCr (chrominance) texture in rg8Unorm format.
-    public init(textureY: MTLTexture, textureCbCr: MTLTexture) {
-        self.init(
-            textureY: textureY,
-            textureCbCr: textureCbCr,
-            textureCoordinates: [
-                [0, 1],  // bottom-left
-                [1, 1],  // bottom-right
-                [0, 0],  // top-left
-                [1, 0]   // top-right
-            ]
-        )
+    #if os(iOS)
+    /// Creates a billboard for an ARKit frame, keeping its `CVMetalTexture`s alive until the GPU is done.
+    public init(frameData: ARFrameData) throws {
+        let textureY = try frameData.textureY.orThrow(.validationError("ARFrameData has no Y texture"))
+        let textureCbCr = try frameData.textureCbCr.orThrow(.validationError("ARFrameData has no CbCr texture"))
+        self.init(textureY: textureY, textureCbCr: textureCbCr, textureCoordinates: frameData.textureCoordinates, owners: frameData.textureOwners)
     }
-
-    nonisolated(unsafe) private static let vertexDescriptor: MTLVertexDescriptor = {
-        let desc = MTLVertexDescriptor()
-        desc.attributes[0].format = .float2
-        desc.attributes[0].offset = 0
-        desc.attributes[0].bufferIndex = 0
-        desc.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride
-        desc.layouts[0].stepFunction = .perVertex
-        desc.attributes[1].format = .float2
-        desc.attributes[1].offset = 0
-        desc.attributes[1].bufferIndex = 1
-        desc.layouts[1].stride = MemoryLayout<SIMD2<Float>>.stride
-        desc.layouts[1].stepFunction = .perVertex
-        return desc
-    }()
+    #endif
 
     public var body: some Element {
-        get throws {
-            // Clip-space quad positions (full screen)
-            let positions: [SIMD2<Float>] = [
-                [-1, -1],  // bottom-left
-                [+1, -1],  // bottom-right
-                [-1, +1],  // top-left
-                [+1, +1]   // top-right
-            ]
-
-            try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
-                Draw { encoder in
-                    var positions = positions
-                    encoder.setVertexBytes(&positions, length: MemoryLayout<SIMD2<Float>>.stride * positions.count, index: 0)
-
-                    var texCoords = textureCoordinates
-                    encoder.setVertexBytes(&texCoords, length: MemoryLayout<SIMD2<Float>>.stride * texCoords.count, index: 1)
-
-                    encoder.setFragmentTexture(textureY, index: 0)
-                    encoder.setFragmentTexture(textureCbCr, index: 1)
-
-                    let samplerDescriptor = MTLSamplerDescriptor()
-                    samplerDescriptor.minFilter = .linear
-                    samplerDescriptor.magFilter = .linear
-                    let sampler = encoder.device.makeSamplerState(descriptor: samplerDescriptor)
-                    encoder.setFragmentSamplerState(sampler, index: 0)
-
-                    encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
-                }
-            }
-            .vertexDescriptor(Self.vertexDescriptor)
-            .depthCompare(function: .always, enabled: false)  // Background layer, no depth test
-        }
+        YCbCrBillboard(textureY: textureY, textureCbCr: textureCbCr, textureCoordinates: textureCoordinates, owners: owners)
     }
 }

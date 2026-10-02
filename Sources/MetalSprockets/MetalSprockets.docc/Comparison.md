@@ -4,11 +4,11 @@ See how MetalSprockets simplifies Metal rendering with a side-by-side comparison
 
 ## Overview
 
-This article compares rendering a simple red triangle using traditional Metal code versus MetalSprockets. The contrast highlights how MetalSprockets reduces boilerplate while maintaining full control over the rendering pipeline.
+This article compares two ways to render a red triangle: traditional Metal and MetalSprockets. MetalSprockets reduces setup code while preserving control of the rendering pipeline.
 
 ## Traditional Metal Approach
 
-Here's the traditional way to render a red triangle with Metal—approximately 100 lines of setup code:
+The traditional Metal version needs approximately 100 lines of setup code:
 
 ```swift
 import Metal
@@ -131,7 +131,7 @@ enum TraditionalRedTriangle {
 }
 ```
 
-This requires understanding and manually managing:
+This version requires manual management of:
 - Device and command queue creation
 - Shader compilation and function lookup
 - Vertex descriptors
@@ -143,7 +143,7 @@ This requires understanding and manually managing:
 
 ## MetalSprockets Approach
 
-Here's the same triangle with MetalSprockets:
+This version renders the same triangle with MetalSprockets:
 
 ```swift
 import MetalSprockets
@@ -186,22 +186,13 @@ enum RedTriangleInline {
                 fragmentShader: fragmentShader
             ) {
                 Draw { encoder in
-                    let vertices: [SIMD2<Float>] = [
-                        [0, 0.75], 
-                        [-0.75, -0.75], 
-                        [0.75, -0.75]
-                    ]
-                    encoder.setVertexBytes(
-                        vertices, 
-                        length: MemoryLayout<SIMD2<Float>>.stride * 3, 
-                        index: 0
-                    )
                     encoder.drawPrimitives(
-                        type: .triangle, 
-                        vertexStart: 0, 
+                        primitiveType: .triangle,
+                        vertexStart: 0,
                         vertexCount: 3
                     )
                 }
+                .vertexValues([SIMD2<Float>(0, 0.75), [-0.75, -0.75], [0.75, -0.75]], index: 0)
                 .parameter("color", value: SIMD4<Float>([1, 0, 0, 1]))
             }
             .vertexDescriptor(try vertexShader.inferredVertexDescriptor())
@@ -240,7 +231,7 @@ MetalSprockets automatically manages:
 
 ## What You Still Control
 
-MetalSprockets doesn't hide Metal—you still have direct access to:
+MetalSprockets provides direct access to:
 
 - **The render encoder** — Full control in ``Draw`` closures
 - **Shader source** — Write standard Metal Shading Language

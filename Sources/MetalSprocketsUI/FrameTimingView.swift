@@ -148,9 +148,11 @@ public struct FrameTimingView: View {
         }
         return Double(screen.maximumFramesPerSecond)
         #elseif os(iOS) || os(tvOS)
-        // No SwiftUI equivalent: refresh-rate capability is not surfaced through the environment.
-        let screen = UIScreen.main
-        guard screen.maximumFramesPerSecond > 0 else {
+        // No SwiftUI equivalent: refresh-rate capability is not surfaced through the environment. UIScreen.main is
+        // deprecated, so read the screen of a connected window scene, preferring the foreground-active one.
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        guard let screen = scene?.screen, screen.maximumFramesPerSecond > 0 else {
             return fallbackFramesPerSecond
         }
         return Double(screen.maximumFramesPerSecond)

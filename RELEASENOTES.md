@@ -1,5 +1,41 @@
 # Release Notes
 
+## Unreleased
+
+### Deployment requirements
+
+- Minimum deployment targets are now macOS 26, iOS 26, and visionOS 26.
+- CI builds with Xcode 26.6 (the newest on GitHub runners). Development used Xcode 27.
+- The public API snapshot (`.public-api.yaml`) is generated with Xcode 27 by `Scripts/api-snapshot.sh`, which pins
+  `swift-api-tool`. Buildkite checks the snapshot. GitHub Actions no longer checks it.
+
+### Breaking shader API changes
+
+- Shader wrappers now retain a `ShaderFunction` with library, name, constants, and optional specialized export name.
+- Replace raw-function constructors with `try VertexShader(library: library, name: "vertex_main")` or the equivalent typed shader initializer.
+- `.function` remains readable but is no longer directly mutable. Custom shaders implement `init(_ reference: ShaderFunction) throws` and provide `reference`.
+- Custom `ShaderLoader` implementations now provide `shaderFunction(named:type:constants:)`.
+- Linked and visible-function table modifiers now take `VisibleFunction` values, not raw `MTLFunction` objects.
+- See [Porting to Metal 4](Documentation/Porting-to-Metal4.md#shaders-and-gpu-timing).
+
+### Metal 4 backend (breaking)
+
+All rendering now uses Metal 4. There is no Metal 3 fallback. Devices must support `MTLGPUFamily.metal4`.
+
+- `Draw` receives an `MTL4RenderCommandEncoder`, with the pipeline, parameters and draw state already bound. Metal 4 has no `setVertexBytes`/`setFragmentTexture`: use `.vertexValues(_:index:)`, `.vertexBuffer(_:index:)` and `.parameter(...)`. Draw calls are spelled `drawPrimitives(primitiveType:vertexStart:vertexCount:)`.
+- `ComputePass`/`ComputeDispatch` keep their structure. `ComputeCommand` provides raw compute access. Commands in a pass are unordered. Add `EncoderBarrier`, `QueueBarrier`, or `.barrierAfterPass(after:beforeQueueStages:)` for dependencies.
+- Removed (see [Porting to Metal 4](Documentation/Porting-to-Metal4.md) for replacements): `BlitPass`/`Blit` (use `ComputeCommand`), `CommandBufferElement` (roots own submission; use `Runner.run` or `Runner.submit`), `onCommandBufferScheduled` (use `onSubmissionCommitted`), command-buffer descriptors and `.metalLoggingEnabled(_:)` (use the new `shaderLogging:` root option or `.metalShaderLogging(_:)` on `RenderView`; `MS_METAL_LOGGING=1` still sets the default), `GPUCounterSampler` and `GPUCounterSampleIndex` (use `.gpuCounters(label:_:)`), `MTLFunction`-based shader initializers and linked/visible-function overloads (use `ShaderFunction`/`VisibleFunction`), `Runner(commandQueue: MTLCommandQueue)`, legacy queue, buffer and descriptor modifiers, and the deprecated `renderPipelineDescriptorModifier(_:)` (use `renderPipelineDescriptorTransformer(_:)`). The old names are gone entirely; the compiler reports them as unknown.
+- `onCommandBufferCompleted` receives a `SubmissionResult` with the outcome and optional GPU timing. `Runner.submit(_:)` submits immediately and returns a completion handle. `Runner.run(_:)` also waits. Deferred commit, `RecordedSubmission`, and the redundant `recordingIdentifier` are removed.
+- `maximumInFlightSubmissions` explicitly limits CPU/GPU overlap (default: 3). At the limit, `Runner` waits, `RenderView` skips frames, and immersive rendering awaits capacity. Command buffers and allocators are recycled only after successful GPU retirement.
+- Environment queue, buffer, encoder and descriptor values use Metal 4 types. Descriptor modifiers take `MTL4RenderPassDescriptor`/`MTL4RenderPipelineDescriptor` (blending: `blendingState = .enabled`).
+- Samplers bound with `.parameter(_:samplerState:)` need `supportArgumentBuffers = true`.
+- Parameter values must be `BitwiseCopyable`. A parameter with no stage filter binds every stage that declares it.
+- `.useResource(s)` keeps resources resident and alive. It no longer implies hazard tracking.
+- `.capture()` must wrap whole passes. `GPUCounterSample.fragment` is always `nil`. `.depthBias` can wrap a pass. A size-less `ComputeDispatch(threadgroups:)` now uses one SIMD group per threadgroup.
+- Visible-function tables that name an unlinked function are an error.
+- `YCbCrBillboardRenderPass` takes `owners` (and `init(frameData:)` on iOS) so camera textures outlive GPU use.
+- visionOS immersive rendering uses the compositor's Metal 4 queue and requires a device. The simulator reports an error.
+
 ## 0.1.7
 
 ### New: MetalSprocketsShaders target

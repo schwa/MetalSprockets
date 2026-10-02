@@ -40,16 +40,15 @@ struct MSAAModifierTests {
         return try RenderPass {
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                 Draw { encoder in
-                    let vertices: [SIMD2<Float>] = [[0, 0.75], [-0.75, -0.75], [0.75, -0.75]]
-                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.75], [-0.75, -0.75], [0.75, -0.75]] as [SIMD2<Float>]), index: 0)
             }
             .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         }
     }
 
-    @Test("MSAA 4x renders successfully")
+    @Test("MSAA 4x renders successfully", .requiresMetal4)
     @MainActor
     func testMSAAEnabledRenders() throws {
         let pass = try makeTriangle().msaa(sampleCount: 4)
@@ -59,7 +58,7 @@ struct MSAAModifierTests {
         #expect(rendering.texture.height == 128)
     }
 
-    @Test("MSAA recreates textures when size changes")
+    @Test("MSAA recreates textures when size changes", .requiresMetal4)
     @MainActor
     func testMSAATextureRecreationOnSizeChange() throws {
         // Two renderers rather than one: each OffscreenRenderer builds its own System, so this checks
@@ -74,7 +73,7 @@ struct MSAAModifierTests {
         #expect(rendering.texture.width == 128)
     }
 
-    @Test("MSAA with unsupported sample count throws")
+    @Test("MSAA with unsupported sample count throws", .requiresMetal4)
     @MainActor
     func testMSAAUnsupportedSampleCountThrows() throws {
         // 3 is never a supported sample count.
@@ -85,7 +84,7 @@ struct MSAAModifierTests {
         }
     }
 
-    @Test("MSAA reuses textures on second render with same size")
+    @Test("MSAA reuses textures on second render with same size", .requiresMetal4)
     @MainActor
     func testMSAATextureReuseSameSize() throws {
         // Two renderers at the same size: MSAAModifier re-runs setupEnter against fresh @MSState each

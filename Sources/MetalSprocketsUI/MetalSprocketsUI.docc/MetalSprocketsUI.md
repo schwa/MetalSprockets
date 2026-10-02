@@ -1,10 +1,10 @@
 # ``MetalSprocketsUI``
 
-SwiftUI integration for MetalSprockets—render to views, ARKit sessions, and visionOS immersive spaces.
+SwiftUI integration for MetalSprockets, with rendering in views, ARKit sessions, and visionOS immersive spaces.
 
 ## Overview
 
-MetalSprocketsUI bridges MetalSprockets with SwiftUI, providing views and modifiers that let you embed GPU rendering in your app's UI.
+MetalSprocketsUI connects MetalSprockets to SwiftUI. Its views and modifiers embed GPU rendering in your app's user interface.
 
 ```swift
 import SwiftUI

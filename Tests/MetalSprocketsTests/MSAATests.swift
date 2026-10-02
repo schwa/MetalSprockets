@@ -4,7 +4,7 @@ import Testing
 
 @Suite("MSAA Tests")
 struct MSAATests {
-    @Test("MSAA modifier with sample count 1 is a no-op")
+    @Test("MSAA modifier with sample count 1 is a no-op", .requiresMetal4)
     @MainActor
     func testMSAAModifierNoOp() throws {
         let source = """
@@ -40,10 +40,9 @@ struct MSAATests {
         let renderPass = try RenderPass {
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                 Draw { encoder in
-                    let vertices: [SIMD2<Float>] = [[0, 0.75], [-0.75, -0.75], [0.75, -0.75]]
-                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.75], [-0.75, -0.75], [0.75, -0.75]] as [SIMD2<Float>]), index: 0)
             }
             .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         }
@@ -57,7 +56,7 @@ struct MSAATests {
         #expect(rendering.texture.sampleCount == 1)
     }
 
-    @Test("Render pipeline infers sample count from texture")
+    @Test("Render pipeline infers sample count from texture", .requiresMetal4)
     @MainActor
     func testPipelineSampleCountFromTexture() throws {
         // A multisample texture is impractical to build here, so this only covers the
@@ -96,10 +95,9 @@ struct MSAATests {
         let renderPass = try RenderPass {
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                 Draw { encoder in
-                    let vertices: [SIMD2<Float>] = [[0, 0.75], [-0.75, -0.75], [0.75, -0.75]]
-                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.75], [-0.75, -0.75], [0.75, -0.75]] as [SIMD2<Float>]), index: 0)
             }
             .vertexDescriptor(vertexShader.inferredVertexDescriptor())
         }

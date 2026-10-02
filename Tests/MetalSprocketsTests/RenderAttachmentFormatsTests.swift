@@ -38,8 +38,8 @@ struct RenderAttachmentFormatsTests {
         return try #require(device.makeTexture(descriptor: descriptor))
     }
 
-    private static func makeDescriptor(device: MTLDevice) throws -> MTLRenderPassDescriptor {
-        let descriptor = MTLRenderPassDescriptor()
+    private static func makeDescriptor(device: MTLDevice) throws -> MTL4RenderPassDescriptor {
+        let descriptor = MTL4RenderPassDescriptor()
         descriptor.colorAttachments[0].texture = try makeTexture(device: device, pixelFormat: .bgra8Unorm)
         descriptor.depthAttachment.texture = try makeTexture(device: device, pixelFormat: .depth32Float)
         return descriptor
@@ -55,7 +55,7 @@ struct RenderAttachmentFormatsTests {
         #expect(formats.rasterSampleCount == 1)
     }
 
-    @Test func `MSAA republishes the multisample formats`() throws {
+    @Test(.requiresMetal4) func `MSAA republishes the multisample formats`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let descriptor = try Self.makeDescriptor(device: device)
         let formats = try capturedFormats(

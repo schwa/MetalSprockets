@@ -39,11 +39,30 @@ private final class MockFunction: NSObject, MTLFunction {
     }
 }
 
+private final class MockLibrary: NSObject, MTLLibrary {
+    nonisolated(unsafe) var label: String?
+    var device: MTLDevice { fatalError("GPU-free library has no device") }
+    var functionNames: [String] { [] }
+    var type: MTLLibraryType { .executable }
+    var installName: String? { nil }
+
+    func makeFunction(name: String) -> (any MTLFunction)? { nil }
+    func makeFunction(name: String, constantValues: MTLFunctionConstantValues) throws -> any MTLFunction { fatalError("unavailable") }
+    func makeFunction(name: String, constantValues: MTLFunctionConstantValues, completionHandler: @escaping @Sendable ((any MTLFunction)?, (any Error)?) -> Void) { fatalError("unavailable") }
+    func makeFunction(descriptor: MTLFunctionDescriptor) throws -> any MTLFunction { fatalError("unavailable") }
+    func makeFunction(descriptor: MTLFunctionDescriptor, completionHandler: @escaping @Sendable ((any MTLFunction)?, (any Error)?) -> Void) { fatalError("unavailable") }
+    func makeIntersectionFunction(descriptor: MTLIntersectionFunctionDescriptor) throws -> any MTLFunction { fatalError("unavailable") }
+    func makeIntersectionFunction(descriptor: MTLIntersectionFunctionDescriptor, completionHandler: @escaping @Sendable ((any MTLFunction)?, (any Error)?) -> Void) { fatalError("unavailable") }
+    @available(macOS 26.0, iOS 26.0, visionOS 26.0, *)
+    func reflection(functionName: String) -> MTLFunctionReflection? { nil }
+}
+
 /// A loader that manufactures `MockFunction`s, so cache and error paths can be exercised without a device.
 private final class MockLoader: ShaderLoader {
     let libraryID: ShaderLibrary.ID = .source("mock", nil)
     /// Function names the loader knows about, and the type it reports for each.
     let known: [String: MTLFunctionType]
+    private let library = MockLibrary()
     private let state = OSAllocatedUnfairLock<(calls: Int, cache: [String: MockFunction])>(initialState: (0, [:]))
 
     init(known: [String: MTLFunctionType]) {
@@ -52,11 +71,11 @@ private final class MockLoader: ShaderLoader {
 
     var callCount: Int { state.withLock { $0.calls } }
 
-    func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction {
+    func shaderFunction(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> ShaderFunction {
         guard let actualType = known[name] else {
             try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(name)' not found in library (available: \(known.keys.sorted()))."))
         }
-        return state.withLock { state in
+        let function = state.withLock { state in
             state.calls += 1
             if let cached = state.cache[name] {
                 return cached
@@ -65,6 +84,7 @@ private final class MockLoader: ShaderLoader {
             state.cache[name] = function
             return function
         }
+        return ShaderFunction(library: library, name: name, constants: constants, validatedFunction: function)
     }
 
     func declaredConstants(forFunctionNamed name: String) throws -> [String: FunctionConstantInfo] {

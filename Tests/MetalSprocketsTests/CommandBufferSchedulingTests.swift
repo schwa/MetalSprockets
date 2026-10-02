@@ -1,102 +1,105 @@
+import Foundation
 import Metal
 @testable import MetalSprockets
+import MetalSprocketsSupport
 import Testing
 
+// `onCommandBufferScheduled` has no Metal 4 equivalent; `onSubmissionCommitted` reports the CPU commit instead.
 @MainActor
-@Suite("Command Buffer Scheduling Tests")
+@Suite("Submission Commit Notification Tests")
 struct CommandBufferSchedulingTests {
-    @Test("onCommandBufferScheduled fires after the command buffer is scheduled")
-    func scheduledHandlerFires() throws {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            Issue.record("Metal not available")
-            return
-        }
-
+    @Test("onSubmissionCommitted fires on commit with the submission identifier, before completion", .requiresMetal4)
+    func committedHandlerFires() throws {
         final class Box: @unchecked Sendable {
-            var capturedBuffer: MTLCommandBuffer?
-            var scheduledFired = false
+            var events: [String] = []
+            var committedIdentifier: UInt64?
         }
         let box = Box()
-
-        let root = CommandBufferElement(completion: .none) {
+        let runner = try Runner()
+        let recording = try runner.submit(
             EmptyElement()
-                .onWorkloadEnter { env in
-                    box.capturedBuffer = env.commandBuffer
+                .onSubmissionCommitted { identifier in
+                    box.committedIdentifier = identifier
+                    box.events.append("committed")
                 }
-                .onCommandBufferScheduled { _ in
-                    box.scheduledFired = true
+                .onCommandBufferCompleted { _ in
+                    box.events.append("completed")
                 }
-        }
-        .environment(\.commandQueue, queue)
-
-        let system = System()
-        try system.update(root: root)
-        try system.processSetup()
-        try system.processWorkload()
-
-        let buffer = try #require(box.capturedBuffer)
-        buffer.commit()
-        buffer.waitUntilCompleted()
-        #expect(box.scheduledFired)
+        )
+        let submission = recording
+        #expect(box.committedIdentifier == submission.identifier)
+        try submission.waitUntilCompleted()
+        #expect(box.events == ["committed", "completed"])
     }
 
-    @Test("CommandBufferElement with .commit completion commits the buffer")
-    func commitCompletionMode() throws {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            Issue.record("Metal not available")
-            return
-        }
-
+    @Test("Runner.run commits and waits", .requiresMetal4)
+    func runCommitsAndWaits() throws {
         final class Box: @unchecked Sendable {
-            var buffer: MTLCommandBuffer?
+            var result: SubmissionResult?
         }
         let box = Box()
+        try Runner().run(EmptyElement().onCommandBufferCompleted { box.result = $0 })
+        #expect(box.result?.outcome == .completed)
+    }
 
-        let root = CommandBufferElement(completion: .commit) {
-            EmptyElement()
-                .onWorkloadEnter { env in
-                    box.buffer = env.commandBuffer
-                }
+    @Test("Encoding failure never reports a commit", .requiresMetal4)
+    func failedEncodingIsNotCommitted() throws {
+        enum Failure: Error { case expected }
+        let runner = try Runner()
+        #expect(throws: Failure.expected) {
+            try runner.submit(
+                EmptyElement()
+                    .onSubmissionCommitted { _ in Issue.record("Failed encoding must not report a commit") }
+                    .onWorkloadEnter { _ in throw Failure.expected }
+            )
         }
-        .environment(\.commandQueue, queue)
-
-        let system = System()
-        try system.update(root: root)
-        try system.processSetup()
-        try system.processWorkload()
-
-        let buffer = try #require(box.buffer)
-        // After .commit completion, the buffer should no longer be in .notEnqueued state.
-        buffer.waitUntilCompleted()
-        #expect(buffer.status == .completed)
     }
 
-    @Test("onCommandBufferScheduled outside a CommandBufferElement logs a warning and no-ops")
-    func scheduledHandlerWithoutCommandBuffer() throws {
-        // No CommandBufferElement in the tree -> no commandBuffer in environment -> warning branch.
-        let root = EmptyElement()
-            .onCommandBufferScheduled { _ in
-                Issue.record("Handler should not be called without a command buffer")
+    @Test("onSubmissionFinished fires when a committed recording completes", .requiresMetal4)
+    func submissionFinishedFiresOnCompletion() throws {
+        final class Box: @unchecked Sendable {
+            var count = 0
+        }
+        let box = Box()
+        let lock = NSLock()
+        let recording = try Runner().submit(
+            EmptyElement().onSubmissionFinished {
+                lock.lock(); box.count += 1; lock.unlock()
             }
-
-        let system = System()
-        try system.update(root: root)
-        try system.processSetup()
-        try system.processWorkload()
+        )
+        try recording.waitUntilCompleted()
+        lock.lock(); let count = box.count; lock.unlock()
+        #expect(count == 1)
     }
 
-    @Test("onCommandBufferCompleted outside a CommandBufferElement logs a warning and no-ops")
-    func completedHandlerWithoutCommandBuffer() throws {
-        let root = EmptyElement()
-            .onCommandBufferCompleted { _ in
-                Issue.record("Handler should not be called without a command buffer")
-            }
+    @Test("onSubmissionFinished fires when encoding throws", .requiresMetal4)
+    func submissionFinishedFiresOnEncodingFailure() throws {
+        enum Failure: Error { case expected }
+        final class Box: @unchecked Sendable {
+            var count = 0
+        }
+        let box = Box()
+        let lock = NSLock()
+        #expect(throws: Failure.expected) {
+            try Runner().submit(
+                EmptyElement()
+                    .onWorkloadEnter { _ in throw Failure.expected }
+                    .onSubmissionFinished {
+                        lock.lock(); box.count += 1; lock.unlock()
+                    }
+            )
+        }
+        lock.lock(); let count = box.count; lock.unlock()
+        #expect(count == 1)
+    }
 
+    @Test("Submission callbacks outside a root are reported")
+    func callbacksWithoutRootThrow() throws {
         let system = System()
-        try system.update(root: root)
+        try system.update(root: EmptyElement().onCommandBufferCompleted { _ in })
         try system.processSetup()
-        try system.processWorkload()
+        #expect(throws: MetalSprocketsError.self) {
+            try system.processWorkload()
+        }
     }
 }

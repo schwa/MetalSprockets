@@ -71,6 +71,7 @@ import SwiftUI
 /// - ``ImmersiveRenderPass``
 public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
     let progressive: Bool
+    let maximumInFlightSubmissions: Int
     let content: @Sendable (ImmersiveContext) throws -> Content
     var frameTimingChange: (@Sendable (FrameTimingStatistics) -> Void)?
 
@@ -78,9 +79,11 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
     ///
     /// - Parameters:
     ///   - progressive: Enable progressive rendering for complex scenes.
+    ///   - maximumInFlightSubmissions: A positive limit. The render loop awaits capacity before submitting.
     ///   - content: A closure that returns the elements to render each frame.
-    public init(progressive: Bool = false, @ElementBuilder content: @Sendable @escaping (ImmersiveContext) throws -> Content) {
+    public init(progressive: Bool = false, maximumInFlightSubmissions: Int = 3, @ElementBuilder content: @Sendable @escaping (ImmersiveContext) throws -> Content) {
         self.progressive = progressive
+        self.maximumInFlightSubmissions = maximumInFlightSubmissions
         self.content = content
     }
 
@@ -93,6 +96,7 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
                     let runtime = try ImmersiveRuntime(
                         layerRenderer: layerRenderer,
                         progressive: progressive,
+                        maximumInFlightSubmissions: maximumInFlightSubmissions,
                         content: content
                     )
                     runtime.frameTimingChange = frameTimingChange
@@ -211,6 +215,8 @@ internal struct ImmersiveLayerConfiguration: CompositorLayerConfiguration {
     func makeConfiguration(capabilities: LayerRenderer.Capabilities, configuration: inout LayerRenderer.Configuration) {
         configuration.colorFormat = .rgba16Float
         configuration.depthFormat = .depth32Float
+        // MetalSprockets renders only with Metal 4, through the compositor's Metal 4 queue.
+        configuration.supportsMTL4 = true
 
         if capabilities.supportsFoveation {
             configuration.isFoveationEnabled = true

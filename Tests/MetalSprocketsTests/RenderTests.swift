@@ -6,7 +6,7 @@ import simd
 import SwiftUI
 import Testing
 
-@Test
+@Test(.requiresMetal4)
 @MainActor
 func testRendering() throws {
     let source = """
@@ -43,10 +43,9 @@ func testRendering() throws {
         let fragmentShader = try FragmentShader(source: source)
         try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
             Draw { encoder in
-                let vertices: [SIMD2<Float>] = [[0, 0.75], [-0.75, -0.75], [0.75, -0.75]]
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.75], [-0.75, -0.75], [0.75, -0.75]] as [SIMD2<Float>]), index: 0)
             .parameter("color", value: color)
         }
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())

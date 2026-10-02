@@ -39,23 +39,22 @@ struct CaptureModifierTests {
         return try RenderPass {
             try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
                 Draw { encoder in
-                    let verts: [SIMD2<Float>] = [[0, 0.75], [-0.75, -0.75], [0.75, -0.75]]
-                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.75], [-0.75, -0.75], [0.75, -0.75]] as [SIMD2<Float>]), index: 0)
             }
             .vertexDescriptor(vs.inferredVertexDescriptor())
         }
     }
 
-    @Test("Capture disabled is a no-op")
+    @Test("Capture disabled is a no-op", .requiresMetal4)
     func testCaptureDisabled() throws {
         let pass = try makeTriangleRenderPass().capture(false)
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
         _ = try renderer.render(pass)
     }
 
-    @Test("Capture with unsupported destination logs a warning and does not throw")
+    @Test("Capture with unsupported destination logs a warning and does not throw", .requiresMetal4)
     func testCaptureUnsupportedDestination() throws {
         // In the test harness MTL_CAPTURE_ENABLED is not set, so
         // MTLCaptureManager.supportsDestination(.developerTools) returns false.
@@ -65,7 +64,7 @@ struct CaptureModifierTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("Capture with commandQueue target")
+    @Test("Capture with commandQueue target", .requiresMetal4)
     func testCaptureCommandQueueTarget() throws {
         // Still hits the unsupported-destination early-return (captures are disabled in tests),
         // but exercises the .commandQueue branch validation.
@@ -74,7 +73,7 @@ struct CaptureModifierTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("A capture scope writes a .gputrace when given an output URL")
+    @Test("A capture scope writes a .gputrace when given an output URL", .requiresMetal4)
     func testCaptureEnabledPath() throws {
         let manager = MTLCaptureManager.shared()
         // Only reachable when the host was launched with MTL_CAPTURE_ENABLED=1.
@@ -95,7 +94,7 @@ struct CaptureModifierTests {
         #expect(FileManager.default.fileExists(atPath: outputURL.path))
     }
 
-    @Test("A .gpuTraceDocument capture without an output URL is reported")
+    @Test("A .gpuTraceDocument capture without an output URL is reported", .requiresMetal4)
     func testCaptureGPUTraceDocumentWithoutOutputURL() throws {
         let manager = MTLCaptureManager.shared()
         guard manager.supportsDestination(.gpuTraceDocument) else {
@@ -108,7 +107,7 @@ struct CaptureModifierTests {
         }
     }
 
-    @Test("A nested capture scope is skipped")
+    @Test("A nested capture scope is skipped", .requiresMetal4)
     func testCaptureAlreadyCapturing() throws {
         let manager = MTLCaptureManager.shared()
         guard manager.supportsDestination(.gpuTraceDocument) else {
@@ -143,7 +142,7 @@ struct CaptureModifierTests {
         #expect(manager.isCapturing)
     }
 
-    @Test("CaptureModifier.requiresSetup is false")
+    @Test("CaptureModifier.requiresSetup is false", .requiresMetal4)
     func testCaptureRequiresSetupIsFalse() throws {
         struct Leaf: Element, BodylessElement { var body: Never { fatalError() } }
         let a = CaptureModifier(content: Leaf(), enabled: true, target: .device, destination: .developerTools, outputURL: nil)

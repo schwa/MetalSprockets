@@ -290,11 +290,9 @@ public extension ShaderLibrary {
     func function<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
         let scopedName = namespace.map { "\($0)::\(name)" } ?? name
         let expectedType = T.functionType
-        let function = try loader.function(named: scopedName, type: expectedType, constants: constants)
-        guard function.functionType == expectedType else {
-            try _throw(MetalSprocketsError.resourceCreationFailure("Function '\(scopedName)' is a \(function.functionType.shaderDescription) function, but a \(expectedType.shaderDescription) function (\(T.self)) was requested."))
-        }
-        return T(function)
+        let reference = try loader.shaderFunction(named: scopedName, type: expectedType, constants: constants)
+        try reference.validate(type: expectedType)
+        return try T(reference)
     }
 }
 

@@ -12,8 +12,9 @@ public extension EnvironmentValues {
     @Entry
     var device: MTLDevice?
 
+    /// A Metal 4 queue for ``RenderView`` to submit to. Defaults to a queue the view creates.
     @Entry
-    var commandQueue: MTLCommandQueue?
+    var commandQueue: (any MTL4CommandQueue)?
 
     @Entry
     internal var drawableSizeChange: CallbackBox<CGSize>?
@@ -26,6 +27,9 @@ public extension EnvironmentValues {
 
     @Entry
     internal var renderViewCapture: RenderViewCaptureConfiguration?
+
+    @Entry
+    internal var metalShaderLogging: ShaderLogging?
 
     // Three-state on purpose: nil means "not specified", so the process environment decides. See #269.
     // swiftlint:disable discouraged_optional_boolean
@@ -74,6 +78,14 @@ public extension View {
     /// Defaults to whatever the `MS_FATALERROR_ON_THROW` environment variable says; this modifier overrides it.
     func renderViewFatalErrorOnError(_ enabled: Bool = true) -> some View {
         environment(\.renderViewFatalErrorOnError, enabled)
+    }
+
+    /// Sets where shader `os_log` messages from descendant ``RenderView``s go.
+    ///
+    /// Defaults to ``MetalSprockets/ShaderLogging/processDefault`` (the `MS_METAL_LOGGING` environment variable).
+    /// Takes effect when a view first renders; a view keeps the setting it started with.
+    func metalShaderLogging(_ logging: ShaderLogging) -> some View {
+        environment(\.metalShaderLogging, logging)
     }
 }
 
@@ -266,6 +278,8 @@ public struct RenderView <Content>: View where Content: Element {
     var colorPixelFormat: MTLPixelFormat?
     var depthStencilPixelFormat: MTLPixelFormat?
     var sampleCount: Int?
+    var residency: ResidencyConfiguration
+    var maximumInFlightSubmissions: Int
 
     @Environment(\.device)
     var device
@@ -283,6 +297,7 @@ public struct RenderView <Content>: View where Content: Element {
     ///     depth testing. When `nil` (the default) the environment value is used.
     ///   - sampleCount: The number of samples used for MSAA. When `nil` (the default) the environment
     ///     value is used.
+    ///   - maximumInFlightSubmissions: A positive limit. Frames are skipped at the limit, without blocking the UI.
     ///   - content: A closure that returns the elements to render each frame.
     ///     Receives the render context and drawable size as parameters.
     ///
@@ -292,12 +307,16 @@ public struct RenderView <Content>: View where Content: Element {
         colorPixelFormat: MTLPixelFormat? = nil,
         depthStencilPixelFormat: MTLPixelFormat? = nil,
         sampleCount: Int? = nil,
+        residency: ResidencyConfiguration = ResidencyConfiguration(),
+        maximumInFlightSubmissions: Int = 3,
         @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content
     ) {
         self.content = content
         self.colorPixelFormat = colorPixelFormat
         self.depthStencilPixelFormat = depthStencilPixelFormat
         self.sampleCount = sampleCount
+        self.residency = residency
+        self.maximumInFlightSubmissions = maximumInFlightSubmissions
     }
 
     public var body: some View {
@@ -307,6 +326,8 @@ public struct RenderView <Content>: View where Content: Element {
         MetalHostView(
             device: device,
             commandQueue: commandQueue,
+            residency: residency,
+            maximumInFlightSubmissions: maximumInFlightSubmissions,
             overrides: MTKViewOverrides(
                 colorPixelFormat: colorPixelFormat,
                 depthStencilPixelFormat: depthStencilPixelFormat,
@@ -341,7 +362,9 @@ internal struct MTKViewOverrides: Equatable {
 
 internal struct MetalHostView <Content>: View where Content: Element {
     var device: MTLDevice?
-    var commandQueue: MTLCommandQueue?
+    var commandQueue: (any MTL4CommandQueue)?
+    var residency: ResidencyConfiguration
+    var maximumInFlightSubmissions: Int
     var overrides: MTKViewOverrides
     var content: (RenderViewContext, CGSize) throws -> Content
 
@@ -360,6 +383,9 @@ internal struct MetalHostView <Content>: View where Content: Element {
     @Environment(\.renderViewCapture)
     private var captureConfiguration
 
+    @Environment(\.metalShaderLogging)
+    private var shaderLogging
+
     /// Holder so we can lazily create the viewModel on first `update` without
     /// re-allocating per body eval. The box itself is allocated per body (cheap
     /// empty class), SwiftUI keeps the first, and the real viewModel is created
@@ -367,9 +393,11 @@ internal struct MetalHostView <Content>: View where Content: Element {
     @State
     private var viewModelBox = ViewModelBox<Content>()
 
-    init(device: MTLDevice?, commandQueue: MTLCommandQueue?, overrides: MTKViewOverrides = MTKViewOverrides(), @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
+    init(device: MTLDevice?, commandQueue: (any MTL4CommandQueue)?, residency: ResidencyConfiguration, maximumInFlightSubmissions: Int, overrides: MTKViewOverrides = MTKViewOverrides(), @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
+        self.residency = residency
+        self.maximumInFlightSubmissions = maximumInFlightSubmissions
         self.overrides = overrides
         self.content = content
     }
@@ -396,8 +424,6 @@ internal struct MetalHostView <Content>: View where Content: Element {
             view.device = device
             view.delegate = viewModel
             view.configure(from: overrides.applied(to: environment))
-            viewModel.device = device
-            viewModel.commandQueue = commandQueue
             viewModel.content = content
             viewModel.drawableSizeChange = drawableSizeChange.map { box in { box($0) } }
             viewModel.frameTimingChange = frameTimingChange.map { box in { box($0) } }
@@ -405,6 +431,9 @@ internal struct MetalHostView <Content>: View where Content: Element {
                 logger?.info("RenderView: capture configuration changed to \(String(describing: captureConfiguration))")
             }
             viewModel.captureConfiguration = captureConfiguration
+            viewModel.shaderLogging = shaderLogging ?? .processDefault
+            viewModel.residency = residency
+            viewModel.maximumInFlightSubmissions = maximumInFlightSubmissions
             viewModel.shaderStore = shaderStore
             viewModel.diagnostics = RenderViewDiagnostics(environment: environment)
         }
@@ -426,7 +455,7 @@ internal struct MetalHostView <Content>: View where Content: Element {
 internal final class ViewModelBox<Content: Element> {
     var value: RenderViewViewModel<Content>?
     private var cachedDevice: MTLDevice?
-    private var cachedCommandQueue: MTLCommandQueue?
+    private var cachedCommandQueue: (any MTL4CommandQueue)?
 
     func device(preferring provided: MTLDevice?) -> MTLDevice {
         if let provided {
@@ -440,14 +469,14 @@ internal final class ViewModelBox<Content: Element> {
         return device
     }
 
-    func commandQueue(preferring provided: MTLCommandQueue?, device: MTLDevice) -> MTLCommandQueue {
+    func commandQueue(preferring provided: (any MTL4CommandQueue)?, device: MTLDevice) -> any MTL4CommandQueue {
         if let provided {
             return provided
         }
         if let cachedCommandQueue {
             return cachedCommandQueue
         }
-        let commandQueue = device.makeCommandQueue().orFatalError(.resourceCreationFailure("Failed to create command queue."))
+        let commandQueue = device.makeMTL4CommandQueue().orFatalError(.resourceCreationFailure("Failed to create Metal 4 command queue."))
         cachedCommandQueue = commandQueue
         return commandQueue
     }
@@ -456,10 +485,11 @@ internal final class ViewModelBox<Content: Element> {
 @Observable
 internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Content: Element {
     @ObservationIgnored
-    var device: MTLDevice
+    let device: MTLDevice
 
+    /// Fixed for the view model's lifetime: the Metal 4 context, and everything in flight, is bound to it.
     @ObservationIgnored
-    var commandQueue: MTLCommandQueue
+    let commandQueue: any MTL4CommandQueue
 
     @ObservationIgnored
     var content: (RenderViewContext, CGSize) throws -> Content
@@ -480,6 +510,41 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
         _frameRenderer = renderer
         return renderer
     }
+
+    /// The Metal 4 context and element tree, created on the first frame (see #337).
+    @ObservationIgnored
+    private var _runner: FrameRunner?
+    func runner() throws -> FrameRunner {
+        if let runner = _runner {
+            try runner.setMaximumInFlightSubmissions(maximumInFlightSubmissions)
+            return runner
+        }
+        let runner = try FrameRunner(device: device, commandQueue: commandQueue, system: frameRenderer.system, shaderLogging: shaderLogging, maximumInFlightSubmissions: maximumInFlightSubmissions)
+        _runner = runner
+        return runner
+    }
+
+    /// Applied when the runner is created on the first frame; the log state belongs to the Metal 4 context.
+    @ObservationIgnored
+    var shaderLogging: ShaderLogging = .processDefault
+
+    @ObservationIgnored
+    var residency = ResidencyConfiguration()
+
+    @ObservationIgnored
+    private var attachmentResources: ResourceCollection?
+    @ObservationIgnored
+    private var residentAttachments: [ObjectIdentifier: any MTLTexture] = [:]
+
+    @ObservationIgnored
+    var maximumInFlightSubmissions = 3
+
+    /// Frames dropped at the in-flight limit, or because the drawable was already presented.
+    @ObservationIgnored
+    var skippedFrameCount = 0
+
+    @ObservationIgnored
+    private weak var lastPresentedDrawable: CAMetalDrawable?
 
     @ObservationIgnored
     var drawableSizeChange: ((CGSize) -> Void)?
@@ -533,12 +598,49 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     var diagnostics = RenderViewDiagnostics(environment: EnvironmentValues())
 
-    init(device: MTLDevice, commandQueue: MTLCommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) {
+    init(device: MTLDevice, commandQueue: any MTL4CommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
         self.content = content
         super.init()
         RenderViewViewModelAllocationTracker.shared.recordAllocation()
+    }
+
+    func updateAttachmentResidency(for descriptor: MTL4RenderPassDescriptor, drawableTexture: any MTLTexture) throws -> ResourceCollection {
+        let resources: ResourceCollection
+        if let attachmentResources {
+            resources = attachmentResources
+        } else {
+            resources = try ResourceCollection(device: device)
+            attachmentResources = resources
+        }
+        var textures: [any MTLTexture] = []
+        for index in 0..<8 {
+            let attachment = descriptor.colorAttachments[index]
+            textures.append(contentsOf: [attachment?.texture, attachment?.resolveTexture].compactMap(\.self))
+        }
+        textures.append(contentsOf: [descriptor.depthAttachment.texture, descriptor.depthAttachment.resolveTexture, descriptor.stencilAttachment.texture, descriptor.stencilAttachment.resolveTexture].compactMap(\.self))
+        var current: [ObjectIdentifier: any MTLTexture] = [:]
+        for texture in textures where texture !== drawableTexture && texture.storageMode != .memoryless {
+            current[ObjectIdentifier(texture)] = texture
+        }
+        for (identifier, texture) in current where residentAttachments[identifier] == nil {
+            if texture.label == nil {
+                if texture === descriptor.depthAttachment.texture {
+                    texture.label = "RenderView Depth"
+                } else if texture === descriptor.stencilAttachment.texture {
+                    texture.label = "RenderView Stencil"
+                } else {
+                    texture.label = "RenderView Color (\(texture.sampleCount)x)"
+                }
+            }
+            try resources.register(texture)
+        }
+        for (identifier, texture) in residentAttachments where current[identifier] == nil {
+            resources.unregister(texture)
+        }
+        residentAttachments = current
+        return resources
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -558,7 +660,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
         }
 
         // An MSAA toggle only shows up on the drawable's texture, not on any value MTKView reports.
-        let actualSampleCount = view.currentRenderPassDescriptor?.colorAttachments[0].texture?.sampleCount ?? 1
+        let actualSampleCount = view.currentMTL4RenderPassDescriptor?.colorAttachments[0]?.texture?.sampleCount ?? 1
         if sampleCountChanged(current: currentSampleCount, observed: actualSampleCount) {
             currentSampleCount = actualSampleCount
             frameRenderer.invalidateSetup()
@@ -572,12 +674,24 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 logger?.verbose?.info("Exit draw callback (frame #\(currentFrame))")
             }
             try withIntervalSignpost(signposter, name: "RenderViewViewModel.draw()", id: signpostID) {
+                let runner = try runner()
+                // Skip at the configured in-flight limit rather than block the display callback.
+                guard try runner.prepareFrame() else {
+                    skippedFrameCount += 1
+                    return
+                }
                 let currentDrawable = try view.currentDrawable.orThrow(.resourceCreationFailure("No drawable available"))
+                // MTKView releases its drawable after each draw(); a drawable already presented cannot be waited on
+                // again by a Metal 4 queue, so a repeated one (drawing outside MTKView's cycle) is skipped.
+                guard currentDrawable !== lastPresentedDrawable else {
+                    skippedFrameCount += 1
+                    return
+                }
+                lastPresentedDrawable = currentDrawable
                 defer {
-                    currentDrawable.present()
                     timingState.commit()
                 }
-                let currentRenderPassDescriptor = try view.currentRenderPassDescriptor.orThrow(.resourceCreationFailure("No render pass descriptor available"))
+                let currentRenderPassDescriptor = try view.currentMTL4RenderPassDescriptor.orThrow(.resourceCreationFailure("No render pass descriptor available"))
 
                 let currentTime: CFTimeInterval = CACurrentMediaTime()
                 let frameUniforms = timingState.advance(
@@ -600,15 +714,20 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     renderPassDescriptor: currentRenderPassDescriptor,
                     currentDrawable: currentDrawable,
                     drawableSize: view.drawableSize
-                ) { [frameRenderer] commandBuffer in
-                    frameRenderer.lastGPUTime = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
+                ) { [frameRenderer] result in
+                    frameRenderer.lastGPUTime = result.gpuDuration
                 }
                 let contentDuration = CACurrentMediaTime() - t0
 
                 do {
-                    let timings = try frameRenderer.renderFrame(root: rootElement)
+                    // Commit waits for the drawable, signals it after the frame's work, then presents.
+                    let residencySets = ((view.layer as? CAMetalLayer)?.residencySet).map { [$0] } ?? []
+                    var frameResidency = residency
+                    frameResidency.collections.append(try updateAttachmentResidency(for: currentRenderPassDescriptor, drawableTexture: currentDrawable.texture))
+                    runner.residency = frameResidency
+                    try runner.submitFrame(rootElement, presenting: currentDrawable, residencySets: residencySets)
 
-                    if diagnostics.logFrame {
+                    if diagnostics.logFrame, let timings = runner.system.lastPhaseTimings {
                         let contentMs = contentDuration * 1_000
                         let updateMs = timings.update * 1_000
                         let setupMs = timings.setup * 1_000
@@ -725,9 +844,9 @@ public struct RenderViewContext {
 ///
 /// ```swift
 /// Draw { encoder in
-///     var uniforms = context.frameUniforms
-///     encoder.setFragmentBytes(&uniforms.time, length: MemoryLayout<Float>.stride, index: 0)
+///     encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
 /// }
+/// .parameter("time", value: context.frameUniforms.time)
 /// ```
 public struct FrameUniforms: Equatable, Sendable {
     /// The zero-based frame number, incrementing each frame.

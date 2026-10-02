@@ -220,7 +220,7 @@ struct MTKViewEnvironmentTests {
         #expect(view.preferredFramesPerSecond == 60)
     }
 
-    @Test("RenderView parameters win over the environment (#274)")
+    @Test("RenderView parameters win over the environment (#274)", .requiresMetal4)
     func testOverridesBeatEnvironment() {
         let view = makeView()
         var env = EnvironmentValues()
@@ -235,7 +235,7 @@ struct MTKViewEnvironmentTests {
         #expect(view.sampleCount == 4)
     }
 
-    @Test("Unset RenderView parameters fall back to the environment (#274)")
+    @Test("Unset RenderView parameters fall back to the environment (#274)", .requiresMetal4)
     func testUnsetOverridesFallBack() {
         let view = makeView()
         var env = EnvironmentValues()

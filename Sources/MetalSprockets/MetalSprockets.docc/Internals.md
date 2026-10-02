@@ -4,7 +4,7 @@ Implementation details for contributors and advanced users.
 
 ## Overview
 
-This document covers internal implementation details of MetalSprockets. It's intended for contributors or developers who need to understand the framework's internals for debugging or extension.
+This document describes the MetalSprockets implementation. It is for contributors and developers who debug or extend the framework.
 
 For the public API architecture, see <doc:Architecture>.
 
@@ -21,7 +21,7 @@ The `System` class is the central coordinator that manages the element tree, str
 
 ## Structural Identity
 
-Each element in the tree is identified by its structural position, similar to SwiftUI's approach. This enables:
+Each element's position in the tree determines its structural identity, as in SwiftUI. This provides:
 
 - Stable identity across frames
 - Efficient state preservation
@@ -63,8 +63,8 @@ Executes the actual rendering work via `System.processWorkload`:
 
 - Called via `workloadEnter` and `workloadExit` on BodylessElements
 - Creates and configures Metal encoders
-- Manages encoder lifecycle (crucial for Metal's single-encoder rule)
-- Handles parent-child and sibling relationships properly
+- Manages encoder lifetimes to obey Metal's single-encoder rule
+- Handles parent-child and sibling relationships
 
 ## Known Architectural Issues
 
@@ -90,13 +90,13 @@ The framework has an architectural inconsistency in how environment values are a
 1. **Pass node explicitly**: Redesign @MSEnvironment to take node as parameter
 2. **Context object**: Pass a context containing both node and environment
 3. **Remove property wrapper**: Use explicit `node.environmentValues` access
-4. **Accept the tradeoff**: Document clearly and ensure stack is always valid
+4. **Accept the tradeoff**: Document the dependency and keep the stack valid
 
-This is a known limitation that trades implementation simplicity for architectural purity.
+This limitation keeps the implementation simple but leaves a global dependency.
 
 ## Performance Considerations
 
-### What's Optimized
+### Current Optimizations
 
 - Structural identity avoids expensive comparisons
 - Setup phase results are cached
@@ -121,7 +121,7 @@ This is a known limitation that trades implementation simplicity for architectur
 
 ### Processing Order
 
-The depth-first traversal with proper sibling handling ensures:
+Depth-first traversal and sibling handling provide:
 
 - Metal's single-encoder rule is respected
 - Parent context is available to children

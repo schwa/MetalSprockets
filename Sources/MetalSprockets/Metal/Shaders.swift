@@ -35,11 +35,19 @@ public protocol ShaderProtocol: Equatable {
     /// The underlying Metal function.
     var function: MTLFunction { get }
 
-    /// Creates a shader from a Metal function.
-    init(_ function: MTLFunction)
+    var reference: ShaderFunction { get }
+
+    /// Creates a shader from a function with explicit library provenance.
+    init(_ reference: ShaderFunction) throws
 }
 
 public extension ShaderProtocol {
+    var function: MTLFunction { reference.metalFunction }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.reference == rhs.reference
+    }
+
     /// Compiles a shader from Metal source.
     ///
     /// - Parameter device: The device to compile on. Defaults to the system default device, which is only the right
@@ -50,7 +58,7 @@ public extension ShaderProtocol {
         options.enableLogging = logging
         let library = try device.makeLibrary(source: source, options: options)
         let function = try library.functionNames.compactMap { library.makeFunction(name: $0) }.first { $0.functionType == Self.functionType }.orThrow(.resourceCreationFailure("Failed to create function"))
-        self.init(function)
+        try self.init(ShaderFunction(library: library, name: function.name, type: Self.functionType))
     }
 
     /// Looks a shader up by name.
@@ -59,13 +67,12 @@ public extension ShaderProtocol {
     ///   - library: The library to search. When `nil`, `device`'s default library is used.
     ///   - device: The device whose default library is searched. Defaults to the system default device, which is only
     ///     the right choice when the renderer uses that device too (see #55).
-    init(library: MTLLibrary? = nil, name: String, device: MTLDevice? = nil) throws {
+    init(library: MTLLibrary? = nil, name: String, constants: FunctionConstants = FunctionConstants(), specializedName: String? = nil, device: MTLDevice? = nil) throws {
         let library = try library ?? (device ?? _MTLCreateSystemDefaultDevice()).makeDefaultLibrary().orThrow(.resourceCreationFailure("Failed to create default library"))
-        let function = try library.makeFunction(name: name).orThrow(.resourceCreationFailure("Failed to create function"))
-        if function.functionType != Self.functionType {
-            try _throw(MetalSprocketsError.resourceCreationFailure("Function type is not \(Self.functionType)"))
+        if let device, library.device !== device {
+            throw MetalSprocketsError.configurationError("Shader library and requested device do not match")
         }
-        self.init(function)
+        try self.init(ShaderFunction(library: library, name: name, type: Self.functionType, constants: constants, specializedName: specializedName))
     }
 }
 
@@ -88,14 +95,11 @@ public extension ShaderProtocol {
 /// ```
 public struct ComputeKernel: ShaderProtocol {
     public static let functionType: MTLFunctionType = .kernel
-    public var function: MTLFunction
+    public let reference: ShaderFunction
 
-    public init(_ function: MTLFunction) {
-        self.function = function
-    }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.function === rhs.function
+    public init(_ reference: ShaderFunction) throws {
+        try reference.validate(type: Self.functionType)
+        self.reference = reference
     }
 }
 
@@ -115,14 +119,11 @@ public struct ComputeKernel: ShaderProtocol {
 /// ```
 public struct VertexShader: ShaderProtocol {
     public static let functionType: MTLFunctionType = .vertex
-    public var function: MTLFunction
+    public let reference: ShaderFunction
 
-    public init(_ function: MTLFunction) {
-        self.function = function
-    }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.function === rhs.function
+    public init(_ reference: ShaderFunction) throws {
+        try reference.validate(type: Self.functionType)
+        self.reference = reference
     }
 }
 
@@ -142,14 +143,11 @@ public struct VertexShader: ShaderProtocol {
 /// ```
 public struct FragmentShader: ShaderProtocol {
     public static let functionType: MTLFunctionType = .fragment
-    public var function: MTLFunction
+    public let reference: ShaderFunction
 
-    public init(_ function: MTLFunction) {
-        self.function = function
-    }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.function === rhs.function
+    public init(_ reference: ShaderFunction) throws {
+        try reference.validate(type: Self.functionType)
+        self.reference = reference
     }
 }
 
@@ -170,14 +168,11 @@ public struct FragmentShader: ShaderProtocol {
 /// ```
 public struct ObjectShader: ShaderProtocol {
     public static let functionType: MTLFunctionType = .object
-    public var function: MTLFunction
+    public let reference: ShaderFunction
 
-    public init(_ function: MTLFunction) {
-        self.function = function
-    }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.function === rhs.function
+    public init(_ reference: ShaderFunction) throws {
+        try reference.validate(type: Self.functionType)
+        self.reference = reference
     }
 }
 
@@ -197,14 +192,11 @@ public struct ObjectShader: ShaderProtocol {
 /// ```
 public struct MeshShader: ShaderProtocol {
     public static let functionType: MTLFunctionType = .mesh
-    public var function: MTLFunction
+    public let reference: ShaderFunction
 
-    public init(_ function: MTLFunction) {
-        self.function = function
-    }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.function === rhs.function
+    public init(_ reference: ShaderFunction) throws {
+        try reference.validate(type: Self.functionType)
+        self.reference = reference
     }
 }
 
@@ -219,13 +211,10 @@ public struct MeshShader: ShaderProtocol {
 /// - Note: TODO - Not really a "Shader". Sounds like we have a grand renaming coming.
 public struct VisibleFunction: ShaderProtocol {
     public static let functionType: MTLFunctionType = .visible
-    public var function: MTLFunction
+    public let reference: ShaderFunction
 
-    public init(_ function: MTLFunction) {
-        self.function = function
-    }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.function === rhs.function
+    public init(_ reference: ShaderFunction) throws {
+        try reference.validate(type: Self.functionType)
+        self.reference = reference
     }
 }

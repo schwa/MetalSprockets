@@ -7,12 +7,7 @@ import MetalSupport
 
 /// Renders MetalSprockets elements to an offscreen texture.
 ///
-/// Use `OffscreenRenderer` for headless rendering, image generation, or
-/// render-to-texture workflows without a display.
-///
-/// ## Overview
-///
-/// Create a renderer and render elements to a texture:
+/// Use `OffscreenRenderer` for headless rendering, image generation, or render-to-texture workflows without a display.
 ///
 /// ```swift
 /// let renderer = try OffscreenRenderer(size: CGSize(width: 1920, height: 1080))
@@ -28,47 +23,39 @@ import MetalSupport
 /// )
 ///
 /// // Access the rendered image
-/// let cgImage = try rendering.cgImage
+/// let image = try rendering.cgImage
 /// ```
 ///
-/// ## Custom Textures
-///
-/// Provide your own textures for more control:
-///
-/// ```swift
-/// let renderer = try OffscreenRenderer(
-///     size: size,
-///     colorTexture: myColorTexture,
-///     depthTexture: myDepthTexture
-/// )
-/// ```
-///
-/// ## Topics
-///
-/// ### Related Types
-/// - ``OffscreenVideoRenderer``
+/// Content supplies its own ``RenderPass``; the renderer provides its ``renderPassDescriptor`` through the environment.
+/// ``render(_:)`` returns after the GPU finishes, so the texture is safe to read.
 public struct OffscreenRenderer {
     public var device: MTLDevice
     public var size: CGSize
-    public var colorTexture: MTLTexture
-    public var depthTexture: MTLTexture
-    public var renderPassDescriptor: MTLRenderPassDescriptor
-    public var commandQueue: MTLCommandQueue
+    public var colorTexture: MTLTexture {
+        willSet {
+            if newValue !== colorTexture {
+                ownedResources?.unregister(colorTexture)
+            }
+        }
+    }
+    public var depthTexture: MTLTexture {
+        willSet {
+            if newValue !== depthTexture {
+                ownedResources?.unregister(depthTexture)
+            }
+        }
+    }
+    public var renderPassDescriptor: MTL4RenderPassDescriptor
+    public var commandQueue: any MTL4CommandQueue
     private let runner: Runner
+    private var ownedResources: ResourceCollection?
 
-    /// Creates an offscreen renderer with custom textures.
-    ///
-    /// - Parameters:
-    ///   - size: The size of the rendering area.
-    ///   - colorTexture: The texture to render color output to.
-    ///   - depthTexture: The texture to use for depth testing.
-    public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture) throws {
+    public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture, shaderLogging: ShaderLogging = .processDefault) throws {
         self.device = colorTexture.device
         self.size = size
         self.colorTexture = colorTexture
         self.depthTexture = depthTexture
-
-        let renderPassDescriptor = MTLRenderPassDescriptor()
+        let renderPassDescriptor = MTL4RenderPassDescriptor()
         renderPassDescriptor.colorAttachments[0].texture = colorTexture
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
@@ -78,92 +65,58 @@ public struct OffscreenRenderer {
         renderPassDescriptor.depthAttachment.clearDepth = 1
         renderPassDescriptor.depthAttachment.storeAction = .store // TODO: #25 This is hardcoded. Should usually be .dontCare but we need to read back in some examples.
         self.renderPassDescriptor = renderPassDescriptor
-
-        self.runner = try Runner(device: device)
+        self.runner = try Runner(device: device, shaderLogging: shaderLogging)
         self.commandQueue = runner.commandQueue
     }
 
-    /// Creates an offscreen renderer with automatically created textures.
-    ///
-    /// Creates color (BGRA8Unorm_sRGB) and depth (Depth32Float) textures
-    /// at the specified size.
-    ///
-    /// - Parameters:
-    ///   - size: The size of the rendering area in pixels.
-    ///   - device: The device to allocate the attachments on. Defaults to the system default device.
-    ///   - colorUsage: How the color attachment is used. Defaults to the minimum needed to render into it
-    ///     and read it back or sample it. Widen this only if you also write to it from a shader.
-    ///   - depthUsage: How the depth attachment is used. Defaults to render target only. Add `.shaderRead`
-    ///     if a later pass samples depth.
-    ///
-    /// - Note: TODO #20 - Most of this belongs on a RenderSession type API. We should be able to render multiple times with the same setup.
     public init(
         size: CGSize,
         device: MTLDevice? = nil,
         colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead],
-        depthUsage: MTLTextureUsage = [.renderTarget]
+        depthUsage: MTLTextureUsage = [.renderTarget],
+        shaderLogging: ShaderLogging = .processDefault
     ) throws {
         let device = device ?? _MTLCreateSystemDefaultDevice()
         let colorTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: Int(size.width), height: Int(size.height), mipmapped: false)
         colorTextureDescriptor.usage = colorUsage
         let colorTexture = try device.makeTexture(descriptor: colorTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create color texture"))
         colorTexture.label = "Color Texture"
-
         let depthTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: Int(size.width), height: Int(size.height), mipmapped: false)
         depthTextureDescriptor.usage = depthUsage
         let depthTexture = try device.makeTexture(descriptor: depthTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create depth texture"))
         depthTexture.label = "Depth Texture"
-
-        try self.init(size: size, colorTexture: colorTexture, depthTexture: depthTexture)
+        try self.init(size: size, colorTexture: colorTexture, depthTexture: depthTexture, shaderLogging: shaderLogging)
+        let resources = try ResourceCollection(device: device)
+        try resources.register(colorTexture)
+        try resources.register(depthTexture)
+        ownedResources = resources
+        runner.residency.collections = [resources]
     }
 
-    /// The result of an offscreen render operation.
     public struct Rendering {
-        /// The texture containing the rendered output.
         public var texture: MTLTexture
-
-        /// The command buffer's GPU wall-clock time in seconds
-        /// (`gpuEndTime - gpuStartTime`), or `nil` if unavailable.
-        ///
-        /// This is a correlation-free whole-submission measurement, useful as a
-        /// sanity cross-check against timestamp-counter-derived per-pass times.
+        /// GPU time for the whole submission, or `nil` when Metal reported no valid timing.
         public var gpuTime: TimeInterval?
     }
 }
 
 public extension OffscreenRenderer {
-    /// Renders the specified element and returns the result.
-    ///
-    /// - Parameter content: The element to render.
-    /// - Returns: A ``Rendering`` containing the output texture.
-    /// - Throws: Any errors that occur during rendering.
+    /// Renders `content` and waits for the GPU. Earlier renderings keep their textures; reading them is safe.
     func render<Content>(_ content: Content) throws -> Rendering where Content: Element {
-        let timing = GPUTimingBox()
         let wrapped = content
             .renderPassDescriptor(renderPassDescriptor)
             .drawableSize(size)
-            .onCommandBufferCompleted { buffer in
-                timing.gpuTime = buffer.gpuEndTime - buffer.gpuStartTime
-            }
-        try runner.run(wrapped)
-        // Completed handlers fire before waitUntilCompleted returns, so timing is populated here.
-        return .init(texture: colorTexture, gpuTime: timing.gpuTime)
+        let submission = try runner.submit(wrapped)
+        let result = try runner.context.waitForResult(submission)
+        try runner.context.retireCompletedSubmissions()
+        guard result.outcome == .completed else {
+            throw MetalSprocketsError.validationError("Offscreen render did not complete: \(result.outcome)")
+        }
+        return .init(texture: colorTexture, gpuTime: result.gpuDuration)
     }
 }
 
-private final class GPUTimingBox: @unchecked Sendable {
-    var gpuTime: TimeInterval?
-}
-
 public extension OffscreenRenderer.Rendering {
-    /// Converts the rendered texture to a Core Graphics image.
-    ///
-    /// Use this to save the rendering to disk or display in UIKit/AppKit.
-    ///
-    /// ```swift
-    /// let rendering = try renderer.render(myElement)
-    /// let image = try rendering.cgImage
-    /// ```
     var cgImage: CGImage {
         get throws {
             try texture.toCGImage()

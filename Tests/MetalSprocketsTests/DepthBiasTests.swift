@@ -24,16 +24,15 @@ struct DepthBiasTests {
     }
     """
 
-    @Test func `a biased draw renders`() throws {
+    @Test(.requiresMetal4) func `a biased draw renders`() throws {
         let vs = try VertexShader(source: Self.source)
         let fs = try FragmentShader(source: Self.source)
         let pass = try RenderPass {
             try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
                 Draw { encoder in
-                    let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
                 .depthBias(-0.1, slopeScale: -1.0, clamp: -0.01)
             }
             .vertexDescriptor(vs.inferredVertexDescriptor())
@@ -57,12 +56,14 @@ struct DepthBiasTests {
         #expect(modifier.clamp == 0)
     }
 
-    @Test func `using the modifier outside a render pass throws`() throws {
+    // On Metal 4 the bias is per-draw state carried in the environment, so the modifier may wrap a whole pass and
+    // applies to every draw inside it. (Legacy set encoder state and had to sit inside a pass.)
+    @Test(.requiresMetal4) func `the modifier publishes the bias to everything it wraps`() throws {
+        var seen: DepthBias?
         let system = System()
-        try system.update(root: EmptyElement().depthBias(0.5))
-        #expect(throws: (any Error).self) {
-            try system.processWorkload()
-        }
+        try system.update(root: EmptyElement().onWorkloadEnter { seen = $0.depthBias }.depthBias(0.5, slopeScale: 2, clamp: 1))
+        try system.processWorkload()
+        #expect(seen == DepthBias(bias: 0.5, slopeScale: 2, clamp: 1))
     }
 
     @Test func `two modifiers are equal when their bias settings match`() throws {
@@ -78,7 +79,7 @@ struct DepthBiasTests {
         #expect(a != differentClamp)
     }
 
-    @Test func `an unchanged biased tree reuses its nodes across renders`() throws {
+    @Test(.requiresMetal4) func `an unchanged biased tree reuses its nodes across renders`() throws {
         let vs = try VertexShader(source: Self.source)
         let fs = try FragmentShader(source: Self.source)
 
@@ -86,10 +87,9 @@ struct DepthBiasTests {
             try RenderPass {
                 try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
                     Draw { encoder in
-                        let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                        encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                     }
+                    .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
                     .depthBias(-0.1, slopeScale: -1.0, clamp: -0.01)
                 }
                 .vertexDescriptor(vs.inferredVertexDescriptor())

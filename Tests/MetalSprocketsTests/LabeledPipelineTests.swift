@@ -33,17 +33,16 @@ struct LabeledPipelineTests {
     kernel void noop_kernel(uint tid [[thread_position_in_grid]]) {}
     """
 
-    @Test("RenderPass and RenderPipeline with labels render successfully")
+    @Test("RenderPass and RenderPipeline with labels render successfully", .requiresMetal4)
     func labeledRenderPassAndPipeline() throws {
         let vs = try VertexShader(source: Self.source)
         let fs = try FragmentShader(source: Self.source)
         let pass = try RenderPass(label: "MyPass") {
             try RenderPipeline(label: "MyPipeline", vertexShader: vs, fragmentShader: fs) {
                 Draw { encoder in
-                    let verts: [SIMD2<Float>] = [[0, 0.75], [-0.75, -0.75], [0.75, -0.75]]
-                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues([SIMD2<Float>(0, 0.75), [-0.75, -0.75], [0.75, -0.75]], index: 0)
             }
             .vertexDescriptor(vs.inferredVertexDescriptor())
         }
@@ -51,7 +50,7 @@ struct LabeledPipelineTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("ComputePass with a label runs without error")
+    @Test("ComputePass with a label runs without error", .requiresMetal4)
     func labeledComputePass() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let kernel = try ComputeKernel(source: Self.source)

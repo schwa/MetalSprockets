@@ -11,17 +11,20 @@ import CompositorServices
 public extension MSEnvironmentValues {
     // TODO: #106 This is messy and needs organisation and possibly deprecation of unused elements.
     @MSEntry var device: MTLDevice?
-    @MSEntry var commandQueue: MTLCommandQueue?
-    @MSEntry var commandBuffer: MTLCommandBuffer?
-    @MSEntry var renderCommandEncoder: MTLRenderCommandEncoder?
-    @MSEntry var renderPassDescriptor: MTLRenderPassDescriptor?
-    @MSEntry var renderPipelineDescriptor: MTLRenderPipelineDescriptor?
+    /// The Metal 4 queue of the root rendering this tree.
+    @MSEntry var commandQueue: (any MTL4CommandQueue)?
+    /// The Metal 4 command buffer being recorded. Present only during the workload phase.
+    @MSEntry var commandBuffer: (any MTL4CommandBuffer)?
+    /// The open render encoder inside a ``RenderPass``. Present only during the workload phase.
+    @MSEntry var renderCommandEncoder: (any MTL4RenderCommandEncoder)?
+    @MSEntry var renderPassDescriptor: MTL4RenderPassDescriptor?
+    @MSEntry var renderPipelineDescriptor: MTL4RenderPipelineDescriptor?
     @MSEntry var renderPipelineState: MTLRenderPipelineState?
     @MSEntry var vertexDescriptor: MTLVertexDescriptor?
     @MSEntry var depthStencilDescriptor: MTLDepthStencilDescriptor?
     @MSEntry var depthStencilState: MTLDepthStencilState?
-    @MSEntry var computeCommandEncoder: MTLComputeCommandEncoder?
-    @MSEntry var computePassDescriptor: MTLComputePassDescriptor?
+    /// The open compute encoder inside a ``ComputePass``. Present only during the workload phase.
+    @MSEntry var computeCommandEncoder: (any MTL4ComputeCommandEncoder)?
     @MSEntry var computePipelineState: MTLComputePipelineState?
     @MSEntry var reflection: Reflection?
     @MSEntry var colorAttachment0: (MTLTexture, Int)?
@@ -29,13 +32,13 @@ public extension MSEnvironmentValues {
     @MSEntry var stencilAttachment: MTLTexture?
     @MSEntry var currentDrawable: CAMetalDrawable?
     @MSEntry var drawableSize: CGSize?
-    @MSEntry var blitCommandEncoder: MTLBlitCommandEncoder?
-    @MSEntry var linkedFunctions: MTLLinkedFunctions?
+    // nil preserves descriptor linkage; an empty array overrides it.
+    // swiftlint:disable:next discouraged_optional_collection
+    @MSEntry var linkedFunctions: [VisibleFunction]?
     @MSEntry var shaderStore: ShaderStore?
 
-    /// Whether ``CommandBufferElement`` attaches Metal shader logging to the command buffers it creates.
-    ///
-    /// Defaults to the process-wide `MS_METAL_LOGGING` setting.
+    /// The process-wide `MS_METAL_LOGGING` setting. On Metal 4 a log state covers a whole command buffer, so roots
+    /// read this once rather than per subtree.
     @MSEntry var metalLoggingEnabled: Bool = SystemEnvironment.current.metalLoggingEnabled
 }
 
@@ -45,13 +48,6 @@ public extension Element {
     /// ``ShaderLibrary`` values used inside the scope will share the attached
     /// store, deduplicating compiled Metal libraries and specialized functions
     /// across views that mount inside the same store.
-    ///
-    /// ```swift
-    /// RenderPass {
-    ///     try RenderPipeline(vertexShader: vs, fragmentShader: fs) { ... }
-    /// }
-    /// .shaderStore(myStore)
-    /// ```
     ///
     /// If no store is attached, ``RenderView`` provides a private one scoped to
     /// its own lifetime.
@@ -72,40 +68,18 @@ public extension Element {
         environment(\.device, device)
     }
 
-    /// Sets the command queue work is submitted to.
-    func commandQueue(_ commandQueue: MTLCommandQueue) -> some Element {
-        environment(\.commandQueue, commandQueue)
-    }
-
-    /// Sets the command buffer commands are encoded into, instead of letting ``CommandBufferElement`` make one.
-    func commandBuffer(_ commandBuffer: MTLCommandBuffer) -> some Element {
-        environment(\.commandBuffer, commandBuffer)
-    }
-
     /// Sets the render pass descriptor used by ``RenderPass``.
     ///
     /// Also publishes the descriptor's attachment formats as
     /// ``MSEnvironmentValues/renderAttachmentFormats``.
-    func renderPassDescriptor(_ renderPassDescriptor: MTLRenderPassDescriptor) -> some Element {
+    func renderPassDescriptor(_ renderPassDescriptor: MTL4RenderPassDescriptor) -> some Element {
         environment(\.renderPassDescriptor, renderPassDescriptor)
             .environment(\.renderAttachmentFormats, RenderAttachmentFormats(renderPassDescriptor))
     }
 
-    /// Sets the compute pass descriptor used by ``ComputePass``.
-    func computePassDescriptor(_ computePassDescriptor: MTLComputePassDescriptor) -> some Element {
-        environment(\.computePassDescriptor, computePassDescriptor)
-    }
-
     /// Sets the base render pipeline descriptor pipelines are built from.
-    func renderPipelineDescriptor(_ renderPipelineDescriptor: MTLRenderPipelineDescriptor) -> some Element {
+    func renderPipelineDescriptor(_ renderPipelineDescriptor: MTL4RenderPipelineDescriptor) -> some Element {
         environment(\.renderPipelineDescriptor, renderPipelineDescriptor)
-    }
-
-    /// Enables or disables Metal shader logging for command buffers created in this subtree.
-    ///
-    /// Overrides the process-wide `MS_METAL_LOGGING` setting.
-    func metalLoggingEnabled(_ enabled: Bool) -> some Element {
-        environment(\.metalLoggingEnabled, enabled)
     }
 
     /// Sets the drawable this frame presents to.
@@ -134,14 +108,12 @@ public extension Element {
 // MARK: - Depth/Stencil Modifiers
 
 public extension Element {
-    /// Sets a custom depth/stencil descriptor.
+    /// Sets a custom depth/stencil descriptor for draws in this subtree.
     func depthStencilDescriptor(_ depthStencilDescriptor: MTLDepthStencilDescriptor) -> some Element {
         environment(\.depthStencilDescriptor, depthStencilDescriptor)
     }
 
-    /// Configures depth testing for the render pipeline.
-    ///
-    /// Enable depth testing for 3D rendering:
+    /// Configures depth testing for draws in this subtree.
     ///
     /// ```swift
     /// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
@@ -165,28 +137,17 @@ public extension Element {
 public extension Element {
     /// Sets the vertex descriptor for interpreting vertex buffer data.
     ///
-    /// The vertex descriptor tells Metal how to map vertex buffer data
-    /// to shader input attributes.
-    ///
     /// ```swift
     /// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
     ///     Draw { encoder in ... }
     /// }
     /// .vertexDescriptor(MyVertex.descriptor)
     /// ```
-    ///
-    /// - Parameter vertexDescriptor: The Metal vertex descriptor.
     func vertexDescriptor(_ vertexDescriptor: MTLVertexDescriptor?) -> some Element {
         environment(\.vertexDescriptor, vertexDescriptor)
     }
 
     /// Sets the vertex descriptor from a Model I/O descriptor.
-    ///
-    /// Useful when loading meshes from Model I/O:
-    ///
-    /// ```swift
-    /// .vertexDescriptor(mdlMesh.vertexDescriptor)
-    /// ```
     func vertexDescriptor(_ vertexDescriptor: MDLVertexDescriptor) -> some Element {
         self.vertexDescriptor(MTKMetalVertexDescriptorFromModelIO(vertexDescriptor).orFatalError(.resourceCreationFailure("Failed to create MTLVertexDescriptor from MDLVertexDescriptor")))
     }
@@ -197,13 +158,12 @@ public extension Element {
 #if os(visionOS)
 public extension MSEnvironmentValues {
     /// The render context for CompositorServices immersive rendering.
-    /// When set, RenderPass will use `renderContext.endEncoding(commandEncoder:)` instead of `encoder.endEncoding()`.
+    /// When set, ``RenderPass`` ends its encoder through `renderContext.endEncoding(commandEncoder:)`.
     @MSEntry var immersiveRenderContext: LayerRenderer.Drawable.RenderContext?
 }
 
 public extension Element {
     /// Sets the immersive render context for CompositorServices rendering.
-    /// This enables proper integration with visionOS immersive spaces.
     func immersiveRenderContext(_ renderContext: LayerRenderer.Drawable.RenderContext?) -> some Element {
         environment(\.immersiveRenderContext, renderContext)
     }

@@ -20,7 +20,7 @@ struct Screenshot: Transferable {
         let projectionMatrix = float4x4.perspective(fovY: .pi / 4, aspect: aspect, near: 0.1, far: 100.0)
         let transform = projectionMatrix * viewMatrix * modelMatrix
 
-        let renderPass = try RenderPass {
+        let renderPass = try RenderPass(label: "Cube Screenshot") {
             try DemoCubeRenderPipeline(transform: transform, time: time)
         }
 

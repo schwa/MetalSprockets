@@ -15,23 +15,25 @@ A declarative, composable layer for Metal in Swift.
 
 ## Why MetalSprockets?
 
-Metal is powerful but setting up even a simple render pass means writing a lot of descriptor/pipeline/encoder boilerplate. Mixing render and compute passes makes it worse.
+Even a simple Metal render pass needs descriptors, pipeline state, and encoder setup. Mixed render and compute passes need more setup.
 
-MetalSprockets steals some of SwiftUI's ideas (result builders, composable trees, property wrappers) and applies them to Metal. You build GPU workloads as a tree of `Element`s, bind shader parameters by name instead of buffer indices, and mix render, compute, mesh, and object shaders in the same graph. It works in SwiftUI (`RenderView`), ARKit, visionOS immersive spaces, or offscreen.
+MetalSprockets applies SwiftUI's result builders, composable trees, and property wrappers to Metal. You build GPU workloads as a tree of `Element`s. Shader parameters bind by name instead of buffer index. One graph can combine render, compute, mesh, and object shaders.
+
+MetalSprockets supports SwiftUI (`RenderView`), ARKit, visionOS immersive spaces, and offscreen rendering.
 
 ---
 
 ## Requirements
 
-- Apple Silicon Mac, iOS, or visionOS device
-- Swift 6.1 / Xcode 16+
+- macOS 26, iOS 26, or visionOS 26 or later
+- Swift 6.2+ and Xcode 26.6+ (CI uses Xcode 26.6; developed with Xcode 27)
 - **Apple GPUs only:** Intel Macs are not supported.
 
 ---
 
 ## Installation
 
-Add via Swift Package Manager in your `Package.swift`
+Add the dependency to your `Package.swift`:
 
 ```swift
 let package = Package(
@@ -51,7 +53,7 @@ let package = Package(
 )
 ```
 
-Or in Xcode: **File ▸ Add Packages…** and paste the repo URL.
+Alternatively, select **File ▸ Add Packages…** in Xcode. Then paste the repository URL.
 
 ---
 
@@ -66,7 +68,9 @@ Or in Xcode: **File ▸ Add Packages…** and paste the repo URL.
 
 ## Core concepts
 
-`Element` is MetalSprockets' `View`. Conform to it, give it a `var body: some Element`, compose them into trees. Unlike `View.body`, `Element.body` throws by default, so you wrap it in `get throws { }`. If your body doesn't throw, skip the `get throws` and return directly.
+`Element` is the MetalSprockets equivalent of `View`. Each element declares a `var body: some Element` and composes other elements into a tree.
+
+Unlike `View.body`, `Element.body` supports throwing getters. For a throwing body, use `get throws { }`. If the body does not throw, return directly.
 
 ```swift
 struct MyRenderPass: Element {
@@ -80,7 +84,7 @@ struct MyRenderPass: Element {
 }
 ```
 
-`body` uses `@ElementBuilder` (a result builder), so `if`/`else`, and optional chaining work directly. `ForEach`, `Group`, and many other combinators work like their SwiftUI counterparts.
+`body` uses the `@ElementBuilder` result builder. It supports `if`/`else` and optional chaining. `ForEach`, `Group`, and many other combinators work like their SwiftUI counterparts.
 
 The built-in elements map to Metal's structure:
 
@@ -149,15 +153,13 @@ struct ContentView: View {
                     fragmentShader: library.particleFragment
                 ) {
                     Draw { encoder in
-                        encoder.setVertexBuffer(
-                            particleBuffer, offset: 0, index: 0
-                        )
                         encoder.drawPrimitives(
-                            type: .point,
+                            primitiveType: .point,
                             vertexStart: 0,
                             vertexCount: particleCount
                         )
                     }
+                    .vertexBuffer(particleBuffer, index: 0)
                 }
                 .parameter("viewProjection", value: viewProjectionMatrix)
                 .depthCompare(function: .less, enabled: true)
@@ -174,7 +176,7 @@ See the [Tutorials](https://docs.metalsprockets.com/documentation/metalsprockets
 
 ## Comparison
 
-A red triangle rendered both ways. Traditional Metal on the left, MetalSprockets on the right. 
+Both examples render a red triangle. Traditional Metal is on the left. MetalSprockets is on the right.
 
 [![Traditional Metal vs MetalSprockets](Documentation/Comparison/RedTriangle_diff_thumb.png)](Documentation/Comparison/RedTriangle_diff.png)
 
@@ -184,7 +186,7 @@ A red triangle rendered both ways. Traditional Metal on the left, MetalSprockets
 
 ## Environment Variables
 
-Set these in Xcode's scheme editor or your shell. Truthy values: `yes`, `true`, `1`, `on` (case-insensitive).
+Set these variables in Xcode's scheme editor or your shell. The values `yes`, `true`, `1`, and `on` enable them. Values are case-insensitive.
 
 | Variable | Description |
 |----------|-------------|

@@ -75,14 +75,14 @@ struct RenderViewSupportTests {
         #expect(sampleCountChanged(current: 1, observed: 4) == true)
     }
 
-    @Test("sampleCountChanged reports no-op")
+    @Test("sampleCountChanged reports no-op", .requiresMetal4)
     func testSampleCountChangedFalse() {
         #expect(sampleCountChanged(current: 4, observed: 4) == false)
     }
 
     // MARK: - buildRenderViewRootElement
 
-    @Test("Root element renders via OffscreenRenderer")
+    @Test("Root element renders via OffscreenRenderer", .requiresMetal4)
     func testBuildRootElementRenders() throws {
         // Use OffscreenRenderer to exercise the assembled element tree
         // end-to-end without any MTKView. We swap the outer CommandBufferElement
@@ -110,23 +110,26 @@ struct RenderViewSupportTests {
         let content = try RenderPass {
             try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
                 Draw { encoder in
-                    let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                    encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             }
             .vertexDescriptor(vs.inferredVertexDescriptor())
         }
 
-        // Drive the helper directly. We don't supply a drawable; the helper
-        // only puts it in the environment, and the RenderPass below won't need it
-        // because OffscreenRenderer supplies its own renderPassDescriptor.
+        // Drive the helper through a real root, as RenderView does, with an offscreen target standing in for the
+        // drawable. The root submits; the helper's completion callback must see the result.
         let device = MTLCreateSystemDefaultDevice()!
-        let queue = device.makeCommandQueue()!
-        let rpDesc = MTLRenderPassDescriptor()
+        let queue = device.makeMTL4CommandQueue()!
+        let targetDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 64, height: 64, mipmapped: false)
+        targetDescriptor.usage = .renderTarget
+        let rpDesc = MTL4RenderPassDescriptor()
+        rpDesc.colorAttachments[0].texture = device.makeTexture(descriptor: targetDescriptor)
         rpDesc.colorAttachments[0].loadAction = .clear
+        rpDesc.colorAttachments[0].storeAction = .store
 
-        var completedCalled = false
+        final class Box: @unchecked Sendable { var result: SubmissionResult? }
+        let box = Box()
         let root = try buildRenderViewRootElement(
             content: content,
             captureConfiguration: nil,
@@ -135,25 +138,19 @@ struct RenderViewSupportTests {
             shaderStore: ShaderStore(),
             renderPassDescriptor: rpDesc,
             currentDrawable: nil,
-            drawableSize: CGSize(width: 256, height: 256)
-        ) { _ in
-            completedCalled = true
+            drawableSize: CGSize(width: 64, height: 64)
+        ) { result in
+            box.result = result
         }
-        _ = root
-
-        // The element tree is constructed fine. To actually render, we wrap the user
-        // content directly through OffscreenRenderer (which sets its own env keys).
-        let renderer = try OffscreenRenderer(size: CGSize(width: 128, height: 128))
-        _ = try renderer.render(content)
-        // Presence check only: whether the handler fires depends on the commit path.
-        _ = completedCalled
+        try Runner(device: device, commandQueue: queue).run(root)
+        #expect(box.result?.outcome == .completed)
     }
 
-    @Test("Root element honors capture configuration when enabled==false")
+    @Test("Root element honors capture configuration when enabled==false", .requiresMetal4)
     func testBuildRootElementCaptureDisabled() throws {
         let device = MTLCreateSystemDefaultDevice()!
-        let queue = device.makeCommandQueue()!
-        let rpDesc = MTLRenderPassDescriptor()
+        let queue = device.makeMTL4CommandQueue()!
+        let rpDesc = MTL4RenderPassDescriptor()
         let config = RenderViewCaptureConfiguration(enabled: false, target: .device, destination: .developerTools)
 
         _ = try buildRenderViewRootElement(
@@ -168,11 +165,11 @@ struct RenderViewSupportTests {
         ) { _ in }
     }
 
-    @Test("Root element handles nil captureConfiguration")
+    @Test("Root element handles nil captureConfiguration", .requiresMetal4)
     func testBuildRootElementNilCapture() throws {
         let device = MTLCreateSystemDefaultDevice()!
-        let queue = device.makeCommandQueue()!
-        let rpDesc = MTLRenderPassDescriptor()
+        let queue = device.makeMTL4CommandQueue()!
+        let rpDesc = MTL4RenderPassDescriptor()
 
         _ = try buildRenderViewRootElement(
             content: EmptyElement(),

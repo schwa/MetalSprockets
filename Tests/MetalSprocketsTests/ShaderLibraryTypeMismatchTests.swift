@@ -26,14 +26,10 @@ struct ShaderLibraryTypeMismatchTests {
     /// A `ShaderProtocol` conformer declared outside the framework, used to check that lookup is fully generic.
     struct UnknownShader: ShaderProtocol, Equatable {
         static var functionType: MTLFunctionType { .vertex }
-        var function: MTLFunction
+        let reference: ShaderFunction
 
-        init(_ function: MTLFunction) {
-            self.function = function
-        }
-
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.function === rhs.function
+        init(_ reference: ShaderFunction) {
+            self.reference = reference
         }
     }
 

@@ -4,94 +4,69 @@ import MetalSupport
 
 // MARK: - Runner
 
-/// A reusable driver for running an element tree many times against the same
-/// device and command queue.
+/// A reusable driver for running an element tree many times against the same device and Metal 4 queue.
 ///
-/// Use `Runner` instead of ``Element/run()`` when you need to execute the same
-/// (or structurally similar) element tree repeatedly — for example, an offline
-/// bake that renders thousands of frames. A single ``Runner`` amortizes the
-/// cost of constructing the internal engine, looking up pipeline state objects,
-/// and resolving descriptors across calls.
-///
-/// ## Overview
+/// Use `Runner` instead of ``Element/run()`` when you execute the same (or structurally similar) tree repeatedly, for
+/// example an offline bake that renders thousands of frames. One runner owns one Metal 4 context: its command allocators,
+/// residency set, compiled pipelines and element nodes are reused across calls, so steady-state calls neither
+/// recompile nor rebuild setup.
 ///
 /// ```swift
 /// let runner = try Runner()
 /// for sample in samples {
 ///     try runner.run(
-///         RenderPass {
+///         ComputePass {
 ///             // ... element tree, possibly parameterized by `sample`
 ///         }
 ///     )
 /// }
 /// ```
 ///
-/// Each call to ``run(_:)`` wraps the supplied element in a
-/// `CommandBufferElement(completion: .commitAndWaitUntilCompleted)`, injects
-/// the runner's `device` and `commandQueue` into the environment, then drives
-/// the internal engine through its update, setup, and workload phases.
+/// ``run(_:)`` submits and waits. ``submit(_:)`` returns after submission, allowing CPU/GPU overlap.
+/// When `maximumInFlightSubmissions` is reached, submission waits for the oldest outstanding work.
 ///
-/// When successive calls use a structurally-equal element tree, nodes are
-/// reused and the setup phase becomes a near no-op, leaving only the actual
-/// workload (command buffer encoding + GPU execution) on the per-call path.
-///
-/// ## Isolation
-///
-/// `Runner` is intentionally not `Sendable`. An instance must be confined to a
-/// single isolation context (one actor, one thread, or synchronous
-/// single-threaded code). Do not share a `Runner` across isolation domains.
-///
-/// ## Topics
-///
-/// ### Creating a Runner
-/// - ``init(device:commandQueue:)``
-///
-/// ### Running an Element Tree
-/// - ``run(_:)``
-///
-/// ### Inspecting the Runner
-/// - ``device``
-/// - ``commandQueue``
+/// `Runner` is not thread-safe; use it from one isolation domain.
 public final class Runner {
-    /// The Metal device used by this runner.
     public let device: MTLDevice
+    public let commandQueue: any MTL4CommandQueue
+    internal let context: MetalContext
+    internal let system = System()
+    public let maximumInFlightSubmissions: Int
 
-    /// The command queue used to submit work for each ``run(_:)`` call.
-    public let commandQueue: MTLCommandQueue
-
-    private let frameRenderer: FrameRenderer
-
-    /// Creates a new runner.
-    ///
-    /// - Parameters:
-    ///   - device: The Metal device to render against. If `nil`, the system
-    ///     default device is used.
-    ///   - commandQueue: The command queue to submit work to. If `nil`, a new
-    ///     command queue is created from `device`.
-    /// - Throws: ``MetalSprocketsError`` if a command queue cannot be created.
-    public init(device: MTLDevice? = nil, commandQueue: MTLCommandQueue? = nil) throws {
-        let resolvedDevice = device ?? _MTLCreateSystemDefaultDevice()
-        self.device = resolvedDevice
-        self.commandQueue = try commandQueue ?? resolvedDevice._makeCommandQueue()
-        self.frameRenderer = FrameRenderer()
+    public var residency: ResidencyConfiguration {
+        get { context.residencyConfiguration }
+        set { context.residencyConfiguration = newValue }
     }
 
-    /// Runs the given element tree once, reusing the internal engine.
+    /// Creates a runner.
     ///
-    /// The content is wrapped in a `CommandBufferElement` that commits and
-    /// waits for completion before returning. Successive calls with a
-    /// structurally-equal tree reuse cached pipeline state and skip per-node
-    /// setup work.
-    ///
-    /// - Parameter content: The element tree to run.
-    /// - Throws: Any error thrown during update, setup, or workload phases.
-    public func run<Content>(_ content: Content) throws where Content: Element {
-        let wrapped = CommandBufferElement(completion: .commitAndWaitUntilCompleted) {
-            content
-        }
-        .commandQueue(commandQueue)
-        .device(device)
+    /// - Parameters:
+    ///   - device: The device to use. Defaults to the system default device, which must support Metal 4.
+    ///   - commandQueue: A Metal 4 queue on `device`. Defaults to a new queue.
+    ///   - shaderLogging: Where shader `os_log` messages go. Defaults to ``ShaderLogging/processDefault``.
+    public init(device: MTLDevice? = nil, commandQueue: (any MTL4CommandQueue)? = nil, shaderLogging: ShaderLogging = .processDefault, residency: ResidencyConfiguration = ResidencyConfiguration(), maximumInFlightSubmissions: Int = 3) throws {
+        let resolvedDevice = device ?? commandQueue?.device ?? _MTLCreateSystemDefaultDevice()
+        context = try MetalContext(device: resolvedDevice, commandQueue: commandQueue, maximumInFlightSubmissions: maximumInFlightSubmissions, shaderLogging: shaderLogging.configuration)
+        self.maximumInFlightSubmissions = maximumInFlightSubmissions
+        context.residencyConfiguration = residency
+        self.device = resolvedDevice
+        self.commandQueue = context.commandQueue
+    }
 
-        try frameRenderer.renderFrame(root: wrapped)
+    /// Encodes `content`, commits it, and waits for the GPU to finish.
+    ///
+    /// Throws if encoding fails, or if the GPU reports a failure or does not finish within the deadline.
+    public func run<Content>(_ content: Content) throws where Content: Element {
+        let submission = try submit(content)
+        let result = try context.waitForResult(submission)
+        try context.retireCompletedSubmissions()
+        guard result.outcome == .completed else {
+            throw MetalSprocketsError.validationError("GPU work did not complete: \(result.outcome)")
+        }
+    }
+
+    /// Submits `content` without waiting for its completion; waits for earlier work if the in-flight limit is reached.
+    public func submit<Content>(_ content: Content) throws -> Submission where Content: Element {
+        try context.submit(content, system: system)
     }
 }

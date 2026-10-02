@@ -49,12 +49,18 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
     @MSState
     private var multisampleDepthTexture: MTLTexture?
 
+    @MSState
+    private var resources: ResourceCollection?
+
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         try visit(content)
     }
 
     func configureNodeBodyless(_ node: Node) throws {
         guard sampleCount > 1 else {
+            resources = nil
+            multisampleTexture = nil
+            multisampleDepthTexture = nil
             return
         }
 
@@ -77,9 +83,12 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
         }
 
         let device = try node.environmentValues.device.orThrow(.missingEnvironment(\.device))
+        if resources == nil {
+            resources = try ResourceCollection(device: device)
+        }
         let multisampleTexture = try multisampleTexture(device: device, matching: targetTexture)
 
-        let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
+        let copy = renderPassDescriptor.copyWithType(MTL4RenderPassDescriptor.self)
         // Render into the multisample texture and let the GPU resolve straight back into
         // the texture the caller supplied, so no copy-back step is needed (see #354).
         copy.colorAttachments[0].texture = multisampleTexture
@@ -87,11 +96,17 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
         copy.colorAttachments[0].storeAction = .multisampleResolve
 
         // Depth has to match the colour attachment's sample count or the pass is invalid.
-        if let depthTexture = renderPassDescriptor.depthAttachment?.texture {
+        if let depthTexture = renderPassDescriptor.depthAttachment.texture {
             copy.depthAttachment.texture = try multisampleDepthTexture(device: device, matching: depthTexture)
             copy.depthAttachment.storeAction = .dontCare
+        } else if let previous = multisampleDepthTexture {
+            resources?.unregister(previous)
+            multisampleDepthTexture = nil
         }
 
+        if let resources, let scope = node.environmentValues.recordingScope {
+            try scope.useResourceCollection(resources)
+        }
         node.environmentValues.renderPassDescriptor = copy
         node.environmentValues.renderAttachmentFormats = RenderAttachmentFormats(copy)
     }
@@ -120,6 +135,10 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
         let texture = try device.makeTexture(descriptor: descriptor)
             .orThrow(.resourceCreationFailure("Failed to create multisample texture"))
         texture.label = "MSAA Multisample Texture (\(sampleCount)x)"
+        try resources?.register(texture)
+        if let previous = multisampleTexture {
+            resources?.unregister(previous)
+        }
         multisampleTexture = texture
         return texture
     }
@@ -145,6 +164,10 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
         let texture = try device.makeTexture(descriptor: descriptor)
             .orThrow(.resourceCreationFailure("Failed to create multisample depth texture"))
         texture.label = "MSAA Multisample Depth Texture (\(sampleCount)x)"
+        try resources?.register(texture)
+        if let previous = multisampleDepthTexture {
+            resources?.unregister(previous)
+        }
         multisampleDepthTexture = texture
         return texture
     }
@@ -172,7 +195,7 @@ public extension Element {
     /// RenderPass {
     ///     RenderPipeline(vertexShader: vs, fragmentShader: fs) {
     ///         Draw { encoder in
-    ///             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+    ///             encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
     ///         }
     ///     }
     /// }

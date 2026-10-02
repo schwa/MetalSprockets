@@ -3,7 +3,7 @@ import Metal
 // TODO: #22 Make into actual Modifier.
 public struct RenderPipelineDescriptorTransformer<Content>: Element, BodylessElement, BodylessContentElement where Content: Element {
     var content: Content
-    var modify: (MTLRenderPipelineDescriptor) -> Void
+    var modify: (MTL4RenderPipelineDescriptor) -> Void
 
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         try visit(content)
@@ -22,7 +22,7 @@ public struct RenderPipelineDescriptorTransformer<Content>: Element, BodylessEle
             return // Descriptor not set yet
         }
 
-        let copy = renderPipelineDescriptor.copyWithType(MTLRenderPipelineDescriptor.self)
+        let copy = renderPipelineDescriptor.copyWithType(MTL4RenderPipelineDescriptor.self)
         modify(copy)
         node.environmentValues.renderPipelineDescriptor = copy
     }
@@ -33,12 +33,7 @@ public struct RenderPipelineDescriptorTransformer<Content>: Element, BodylessEle
 }
 
 public extension Element {
-    func renderPipelineDescriptorTransformer(_ modify: @escaping (MTLRenderPipelineDescriptor) -> Void) -> some Element {
+    func renderPipelineDescriptorTransformer(_ modify: @escaping (MTL4RenderPipelineDescriptor) -> Void) -> some Element {
         RenderPipelineDescriptorTransformer(content: self, modify: modify)
-    }
-
-    @available(*, deprecated, renamed: "renderPipelineDescriptorTransformer(_:)")
-    func renderPipelineDescriptorModifier(_ modify: @escaping (MTLRenderPipelineDescriptor) -> Void) -> some Element {
-        renderPipelineDescriptorTransformer(modify)
     }
 }

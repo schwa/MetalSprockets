@@ -70,6 +70,14 @@ public struct MSEnvironmentValues {
     ///
     /// Called on every node as the tree is traversed, so values written by ancestors during the
     /// setup and workload phases become visible to descendants entered afterwards.
+    /// Reads a value as inherited from the parent, ignoring any value written on this environment.
+    ///
+    /// Accumulating modifiers use this so they rebuild from the parent's current value each frame instead of reading
+    /// their own stale write back.
+    internal func inheritedValue<Key: MSEnvironmentKey>(_ key: Key.Type) -> Key.Value {
+        (inheritedValues[.init(key)] as? Key.Value) ?? Key.defaultValue
+    }
+
     internal mutating func inherit(from parent: Self) {
         inheritedValues = parent.effectiveValues
         recomputeEffectiveValues()

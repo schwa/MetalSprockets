@@ -39,10 +39,9 @@ private func makeTriangle(color: SIMD4<Float>) throws -> some Element {
     return try RenderPass {
         try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
             Draw { encoder in
-                let vertices: [SIMD2<Float>] = [[0, 0.75], [-0.75, -0.75], [0.75, -0.75]]
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.75], [-0.75, -0.75], [0.75, -0.75]] as [SIMD2<Float>]), index: 0)
             .parameter("color", value: color)
         }
         .vertexDescriptor(vertexShader.inferredVertexDescriptor())
@@ -89,7 +88,7 @@ private func inspect(url: URL) async throws -> RecordedVideoInfo {
 
 // MARK: - Content verification (#335)
 
-@Test("Renders 30 frames and produces a valid .mov with matching duration and dimensions")
+@Test("Renders 30 frames and produces a valid .mov with matching duration and dimensions", .requiresMetal4)
 func testVideoRendererProducesValidFile() async throws {
     let outputURL = makeTempOutputURL(suffix: "valid")
     defer { try? FileManager.default.removeItem(at: outputURL) }
@@ -123,7 +122,7 @@ func testVideoRendererProducesValidFile() async throws {
     )
 }
 
-@Test("Two sequential renders produce two distinct, valid files")
+@Test("Two sequential renders produce two distinct, valid files", .requiresMetal4)
 func testVideoRendererSequentialRuns() async throws {
     let urlA = makeTempOutputURL(suffix: "runA")
     let urlB = makeTempOutputURL(suffix: "runB")
@@ -151,7 +150,7 @@ func testVideoRendererSequentialRuns() async throws {
     #expect(infoB.naturalSize == CGSize(width: 320, height: 240))
 }
 
-@Test("An existing file at the output URL is replaced")
+@Test("An existing file at the output URL is replaced", .requiresMetal4)
 func testVideoRendererReplacesExistingFile() async throws {
     let url = makeTempOutputURL(suffix: "replaced")
     defer { try? FileManager.default.removeItem(at: url) }
@@ -178,7 +177,7 @@ func testVideoRendererReplacesExistingFile() async throws {
 /// Verifies that the injected `waitUntilReady` strategy is actually awaited
 /// between frames. We count invocations and gate them so the renderer has to
 /// suspend on each call; if it weren't awaited the counter would stay at 0.
-@Test("Injected waitUntilReady is awaited once per frame")
+@Test("Injected waitUntilReady is awaited once per frame", .requiresMetal4)
 func testVideoRendererBackPressureSeam() async throws {
     let outputURL = makeTempOutputURL(suffix: "backpressure")
     defer { try? FileManager.default.removeItem(at: outputURL) }

@@ -1,166 +1,64 @@
 import Metal
 import MetalSprocketsSupport
-import MetalSupport
 
 // MARK: - ComputeDispatch
 
-/// Dispatches compute shader work to the GPU.
-///
-/// Use `ComputeDispatch` inside a ``ComputePipeline`` to execute compute
-/// work with the specified thread configuration.
-///
-/// ## Overview
-///
-/// Dispatch compute work with explicit threadgroup counts:
+/// Dispatches the enclosing ``ComputePipeline`` with the parameters in scope.
 ///
 /// ```swift
-/// ComputePass {
-///     ComputePipeline(computeKernel: kernel) {
-///         ComputeDispatch(
-///             threadgroups: MTLSize(width: 32, height: 32, depth: 1),
-///             threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1)
-///         )
+/// try ComputePass {
+///     try ComputePipeline(computeKernel: kernel) {
+///         try ComputeDispatch(threadsPerGrid: MTLSize(width: 1024, height: 1, depth: 1))
+///             .parameter("output", buffer: output)
 ///     }
 /// }
 /// ```
 ///
-/// ## Dispatch Modes
-///
-/// Two dispatch modes are available:
-///
-/// ### Threadgroups per Grid
-/// Specify the number of threadgroups. Total threads = threadgroups × threadsPerThreadgroup.
-///
-/// ```swift
-/// ComputeDispatch(
-///     threadgroups: MTLSize(width: 32, height: 32, depth: 1),
-///     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1)
-/// )
-/// // Total: 256×256 threads
-/// ```
-///
-/// ### Threads per Grid (Non-uniform)
-/// Specify exact thread count. Metal handles edge cases automatically.
-/// Requires Apple GPU Family 4+ (A11 or later).
-///
-/// ```swift
-/// ComputeDispatch(
-///     threadsPerGrid: MTLSize(width: 1920, height: 1080, depth: 1),
-///     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1)
-/// )
-/// ```
-///
-/// ### Indirect Dispatch
-/// Read the threadgroup count from a GPU buffer containing an
-/// `MTLDispatchThreadgroupsIndirectArguments` value, enabling GPU-driven
-/// pipelines to size their own dispatches.
-///
-/// ```swift
-/// ComputeDispatch(
-///     indirectBuffer: argumentsBuffer,
-///     indirectBufferOffset: 0,
-///     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1)
-/// )
-/// ```
+/// When `threadsPerThreadgroup` is `nil`, a size is chosen from the pipeline's execution width and limits.
 public struct ComputeDispatch: Element, WorkloadElement {
-    private enum Dimensions {
-        case threadgroupsPerGrid(MTLSize)
-        case threadsPerGrid(MTLSize)
-        case indirect(buffer: MTLBuffer, offset: Int)
+    public typealias Body = Never
+    private let grid: ComputePassEncoder.Grid
+    private let threadsPerThreadgroup: MTLSize?
 
-        /// The grid this dispatch covers, when known. Indirect dispatches size themselves on the GPU.
-        var gridSize: MTLSize? {
-            switch self {
-            case .threadsPerGrid(let size):
-                return size
-            case .threadgroupsPerGrid, .indirect:
-                return nil
-            }
-        }
-    }
-
-    private var dimensions: Dimensions
-    /// `nil` means "pick a threadgroup size from the pipeline state at dispatch time".
-    private var threadsPerThreadgroup: MTLSize?
-
-    /// Creates a dispatch with explicit threadgroup counts.
-    ///
-    /// - Parameters:
-    ///   - threadgroups: The number of threadgroups in each dimension.
-    ///   - threadsPerThreadgroup: The number of threads per threadgroup. Pass `nil` (the default)
-    ///     to derive it from the compute pipeline state at dispatch time.
+    /// Dispatches a number of threadgroups.
     public init(threadgroups: MTLSize, threadsPerThreadgroup: MTLSize? = nil) throws {
-        self.dimensions = .threadgroupsPerGrid(threadgroups)
+        grid = .threadgroups(threadgroups)
         self.threadsPerThreadgroup = threadsPerThreadgroup
     }
 
-    /// Creates a dispatch with exact thread counts (non-uniform threadgroups).
-    ///
-    /// This mode handles edge cases automatically but requires Apple GPU Family 4+.
-    ///
-    /// - Parameters:
-    ///   - threadsPerGrid: The total number of threads in each dimension.
-    ///   - threadsPerThreadgroup: The number of threads per threadgroup. Pass `nil` (the default)
-    ///     to derive it from the compute pipeline state at dispatch time.
+    /// Dispatches an exact number of threads (non-uniform threadgroups; Apple GPU Family 4 or later).
     public init(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize? = nil) throws {
-        // The Apple-family check happens at dispatch time against the device actually in use,
-        // rather than the system default device at construction time. See #55.
-        self.dimensions = .threadsPerGrid(threadsPerGrid)
+        // The Apple-family check happens at dispatch time against the device actually in use. See #55.
+        grid = .threads(threadsPerGrid)
         self.threadsPerThreadgroup = threadsPerThreadgroup
     }
 
-    /// Creates a dispatch whose threadgroup count is read from a GPU buffer.
-    ///
-    /// The buffer must contain an `MTLDispatchThreadgroupsIndirectArguments`
-    /// value at `indirectBufferOffset`, which must be a multiple of 4.
-    ///
-    /// - Parameters:
-    ///   - indirectBuffer: The buffer containing the dispatch arguments.
-    ///   - indirectBufferOffset: The byte offset of the arguments in the buffer.
-    ///   - threadsPerThreadgroup: The number of threads per threadgroup. Pass `nil` (the default)
-    ///     to derive it from the compute pipeline state at dispatch time.
+    /// Dispatches threadgroup counts read by the GPU from `indirectBuffer` (`MTLDispatchThreadgroupsIndirectArguments`).
     public init(indirectBuffer: MTLBuffer, indirectBufferOffset: Int = 0, threadsPerThreadgroup: MTLSize? = nil) throws {
         guard indirectBufferOffset >= 0, indirectBufferOffset.isMultiple(of: 4) else {
             try _throw(MetalSprocketsError.configurationError("indirectBufferOffset must be a non-negative multiple of 4."))
         }
-        self.dimensions = .indirect(buffer: indirectBuffer, offset: indirectBufferOffset)
+        grid = .indirect(indirectBuffer, offset: indirectBufferOffset)
         self.threadsPerThreadgroup = threadsPerThreadgroup
     }
 
     func workloadEnter(_ node: Node) throws {
-        guard let computeCommandEncoder = node.environmentValues.computeCommandEncoder, let computePipelineState = node.environmentValues.computePipelineState else {
-            preconditionFailure("No compute command encoder/compute pipeline state found.")
-        }
-        computeCommandEncoder.setComputePipelineState(computePipelineState)
-
-        let threadsPerThreadgroup = self.threadsPerThreadgroup ?? Self.automaticThreadsPerThreadgroup(for: computePipelineState, gridSize: dimensions.gridSize)
-
-        switch dimensions {
-        case .threadgroupsPerGrid(let threadgroupCount):
-            computeCommandEncoder.dispatchThreadgroups(threadgroupCount, threadsPerThreadgroup: threadsPerThreadgroup)
-        case .threadsPerGrid(let threads):
-            guard computePipelineState.device.supportsFamily(.apple4) else {
-                throw MetalSprocketsError.deviceCababilityFailure("Non-uniform threadgroup sizes require Apple GPU Family 4+ (A11 or later); device '\(computePipelineState.device.name)' does not support them")
-            }
-            computeCommandEncoder.dispatchThreads(threads, threadsPerThreadgroup: threadsPerThreadgroup)
-        case let .indirect(buffer, offset):
-            computeCommandEncoder.dispatchThreadgroups(indirectBuffer: buffer, indirectBufferOffset: offset, threadsPerThreadgroup: threadsPerThreadgroup)
-        }
+        let pass = try node.environmentValues.computePassEncoder.orThrow(.withHint(.missingEnvironment(\.computeCommandEncoder), hint: "Place ComputeDispatch inside a ComputePass."))
+        let pipeline = try node.environmentValues.computePipeline.orThrow(.withHint(.missingEnvironment(\.computePipelineState), hint: "Place ComputeDispatch inside a ComputePipeline."))
+        try pass.dispatch(pipeline, parameters: node.environmentValues.parameterSet ?? ParameterSet(), grid: grid, threadsPerThreadgroup: threadsPerThreadgroup)
     }
 
-    /// Derives a threadgroup size from the pipeline state, following Apple's recommended
-    /// `threadExecutionWidth` × (`maxTotalThreadsPerThreadgroup` / `threadExecutionWidth`) split.
-    /// The pipeline state is only available at dispatch time, and its limits can vary with
-    /// linked functions, so this can't be computed when the element is constructed (#328).
     internal static func automaticThreadsPerThreadgroup(for pipelineState: MTLComputePipelineState, gridSize: MTLSize?) -> MTLSize {
         let maxTotal = max(1, pipelineState.maxTotalThreadsPerThreadgroup)
         let executionWidth = max(1, min(pipelineState.threadExecutionWidth, maxTotal))
-        // Only split into a 2D threadgroup when the grid is known to be 2D/3D. A 1D grid, or an
-        // unknown grid (threadgroups/indirect dispatch), gets a 1D threadgroup: that stays valid for
-        // scalar, 2D, and 3D `thread_position_in_grid` kernels, whereas a 2D threadgroup aborts a
-        // scalar-tid kernel in the Metal validation layer.
-        guard let gridSize, gridSize.height > 1 || gridSize.depth > 1 else {
-            let width = min(maxTotal, max(executionWidth, gridSize?.width ?? executionWidth))
+        guard let gridSize else {
+            // Unknown grid (threadgroup or indirect dispatch): one SIMD group, which suits kernels of any
+            // dimensionality. A 2D default is rejected by API Validation for kernels with a 1D thread position.
+            return MTLSize(width: executionWidth, height: 1, depth: 1)
+        }
+        // A 1D grid gets a 1D threadgroup; a 2D or 3D grid gets a 2D one.
+        if gridSize.height <= 1, gridSize.depth <= 1 {
+            let width = min(maxTotal, max(executionWidth, gridSize.width))
             return MTLSize(width: max(1, width), height: 1, depth: 1)
         }
         let height = max(1, maxTotal / executionWidth)
@@ -171,4 +69,36 @@ public struct ComputeDispatch: Element, WorkloadElement {
         // ComputeDispatch only dispatches during workload, never needs setup
         false
     }
+}
+
+// MARK: - ComputeCommand
+
+/// Raw access to the Metal 4 compute encoder inside a ``ComputePass``, without a pipeline.
+///
+/// Use it for copies, fills and other pipeline-free commands (the replacement for `BlitPass`). The encoder performs no
+/// hazard tracking: declare every referenced resource with ``Element/useComputeResources(_:usage:)``, and order
+/// dependent commands with ``EncoderBarrier``.
+///
+/// ```swift
+/// try ComputePass {
+///     ComputeCommand { encoder in
+///         encoder.copy(sourceBuffer: source, sourceOffset: 0, destinationBuffer: destination, destinationOffset: 0, size: 256)
+///     }
+///     .useComputeResources([source, destination], usage: [.read, .write])
+/// }
+/// ```
+public struct ComputeCommand: Element, WorkloadElement {
+    public typealias Body = Never
+    let encode: (any MTL4ComputeCommandEncoder) throws -> Void
+
+    public init(_ encode: @escaping (any MTL4ComputeCommandEncoder) throws -> Void) {
+        self.encode = encode
+    }
+
+    func workloadEnter(_ node: Node) throws {
+        let pass = try node.environmentValues.computePassEncoder.orThrow(.withHint(.missingEnvironment(\.computeCommandEncoder), hint: "Place ComputeCommand inside a ComputePass."))
+        try pass.command(encode)
+    }
+
+    nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }
 }

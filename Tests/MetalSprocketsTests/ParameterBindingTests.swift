@@ -50,13 +50,36 @@ struct ParameterBindingTests {
     private func renderPass(
         vs: VertexShader,
         fs: FragmentShader,
+        bindTextureDefaults: Bool = true,
         @ElementBuilder body: () throws -> some Element
     ) throws -> some Element {
-        try RenderPass {
-            try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
-                try body()
+        // Metal 4 API Validation requires every binding a shader uses to be set. These pipeline-level defaults cover
+        // the inputs a test is not about; the test's own, inner parameters override them.
+        let device = vs.function.device
+        let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false)
+        textureDescriptor.usage = .shaderRead
+        let texture = try #require(device.makeTexture(descriptor: textureDescriptor))
+        let samplerDescriptor = MTLSamplerDescriptor()
+        samplerDescriptor.supportArgumentBuffers = true
+        let sampler = try #require(device.makeSamplerState(descriptor: samplerDescriptor))
+        return try RenderPass {
+            if bindTextureDefaults {
+                try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                    try body()
+                }
+                .parameter("transform", functionType: .vertex, value: matrix_identity_float4x4)
+                .parameter("color", functionType: .fragment, value: SIMD4<Float>(1, 1, 1, 1))
+                .parameter("tex", functionType: .fragment, texture: texture)
+                .parameter("smp", functionType: .fragment, samplerState: sampler)
+                .vertexDescriptor(vs.inferredVertexDescriptor())
+            } else {
+                try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                    try body()
+                }
+                .parameter("transform", functionType: .vertex, value: matrix_identity_float4x4)
+                .parameter("color", functionType: .fragment, value: SIMD4<Float>(1, 1, 1, 1))
+                .vertexDescriptor(vs.inferredVertexDescriptor())
             }
-            .vertexDescriptor(vs.inferredVertexDescriptor())
         }
     }
 
@@ -93,24 +116,23 @@ struct ParameterBindingTests {
     }
     """
 
-    @Test("Fragment SIMD4 parameter binds without error")
+    @Test("Fragment SIMD4 parameter binds without error", .requiresMetal4)
     func testFragmentSIMD4Parameter() throws {
         let vs = try VertexShader(source: Self.colorOnlySource)
         let fs = try FragmentShader(source: Self.colorOnlySource)
-        let pass = try renderPass(vs: vs, fs: fs) {
+        let pass = try renderPass(vs: vs, fs: fs, bindTextureDefaults: false) {
             Draw { encoder in
-                let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             .parameter("color", functionType: .fragment, value: SIMD4<Float>(1, 0, 0, 1))
-            .parameter("transform", functionType: .vertex, value: simd_float4x4.identity)
+            .parameter("transform", functionType: .vertex, value: matrix_identity_float4x4)
         }
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
         _ = try renderer.render(pass)
     }
 
-    @Test("Texture + sampler parameter binding")
+    @Test("Texture + sampler parameter binding", .requiresMetal4)
     func testTextureSamplerParameters() throws {
         let (vs, fs, device) = try makeBasePass()
         let texDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: 4, height: 4, mipmapped: false)
@@ -131,38 +153,38 @@ struct ParameterBindingTests {
         let samplerDesc = MTLSamplerDescriptor()
         samplerDesc.minFilter = .linear
         samplerDesc.magFilter = .linear
+        // Metal 4 argument tables bind samplers by resource ID.
+        samplerDesc.supportArgumentBuffers = true
         let sampler = try #require(device.makeSamplerState(descriptor: samplerDesc))
 
         let pass = try renderPass(vs: vs, fs: fs) {
             Draw { encoder in
-                let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             .parameter("tex", texture: texture)
             .parameter("smp", samplerState: sampler)
             .parameter("color", value: SIMD4<Float>(1, 1, 1, 1))
-            .parameter("transform", value: simd_float4x4.identity)
+            .parameter("transform", value: matrix_identity_float4x4)
         }
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
         _ = try renderer.render(pass)
     }
 
-    @Test("Buffer parameter binding")
+    @Test("Buffer parameter binding", .requiresMetal4)
     func testBufferParameter() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let vs = try VertexShader(source: Self.colorOnlySource)
         let fs = try FragmentShader(source: Self.colorOnlySource)
         // transform buffer
-        var transform = simd_float4x4.identity
+        var transform = matrix_identity_float4x4
         let buf = try #require(device.makeBuffer(bytes: &transform, length: MemoryLayout<simd_float4x4>.stride, options: .storageModeShared))
 
-        let pass = try renderPass(vs: vs, fs: fs) {
+        let pass = try renderPass(vs: vs, fs: fs, bindTextureDefaults: false) {
             Draw { encoder in
-                let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
             .parameter("transform", functionType: .vertex, buffer: buf, offset: 0)
         }
@@ -172,74 +194,45 @@ struct ParameterBindingTests {
 
     // MARK: - Rejected bindings
     //
-    // These drive Parameter.set(on:reflection:) against an encoder the test owns. Going through the element tree
-    // instead would abort the process: a throw mid-pass skips the pass's workloadExit, the encoder is released
-    // without endEncoding, and Metal asserts. See #357.
+    // On Metal 4 a throw mid-pass unwinds cleanly (every open encoder ends before the recording is discarded), so
+    // these go through the element tree rather than an encoder the test owns (compare #357).
 
-    /// A render command encoder plus the reflection of a pipeline built from the test shaders.
-    private func withRenderEncoder(_ body: (MTLRenderCommandEncoder, Reflection) throws -> Void) throws {
-        let (vs, fs, device) = try makeBasePass()
-
-        let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 16, height: 16, mipmapped: false)
-        textureDescriptor.usage = [.renderTarget]
-        textureDescriptor.storageMode = .private
-        let texture = try #require(device.makeTexture(descriptor: textureDescriptor))
-
-        let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.vertexFunction = vs.function
-        pipelineDescriptor.fragmentFunction = fs.function
-        pipelineDescriptor.vertexDescriptor = vs.inferredVertexDescriptor()
-        pipelineDescriptor.colorAttachments[0].pixelFormat = texture.pixelFormat
-        let (_, rawReflection) = try device.makeRenderPipelineState(descriptor: pipelineDescriptor, options: .bindingInfo)
-        let reflection = Reflection(try #require(rawReflection))
-
-        let commandQueue = try #require(device.makeCommandQueue())
-        let commandBuffer = try #require(commandQueue.makeCommandBuffer())
-        let passDescriptor = MTLRenderPassDescriptor()
-        passDescriptor.colorAttachments[0].texture = texture
-        passDescriptor.colorAttachments[0].loadAction = .clear
-        passDescriptor.colorAttachments[0].storeAction = .store
-        let encoder = try #require(commandBuffer.makeRenderCommandEncoder(descriptor: passDescriptor))
-        defer {
-            encoder.endEncoding()
-            commandBuffer.commit()
-            commandBuffer.waitUntilCompleted()
+    private func renderFails(@ElementBuilder _ draw: () throws -> some Element) throws -> Bool {
+        let (vs, fs, _) = try makeBasePass()
+        let pass = try renderPass(vs: vs, fs: fs, body: draw)
+        do {
+            _ = try OffscreenRenderer(size: CGSize(width: 16, height: 16)).render(pass)
+            return false
+        } catch {
+            return true
         }
+    }
 
-        try body(encoder, reflection)
+    private func triangle() -> some Element {
+        Draw { encoder in
+            encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
+        }
+        .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
     }
 
     @Test("An unknown parameter name is reported")
     func testMissingBinding() throws {
-        try withRenderEncoder { encoder, reflection in
-            let parameter = Parameter(name: "noSuchUniform", value: ParameterValue<Float>.value(1))
-            #expect(throws: MetalSprocketsError.self) {
-                try parameter.set(on: encoder, reflection: reflection)
-            }
-        }
+        #expect(try renderFails { triangle().parameter("noSuchUniform", value: Float(1)) })
     }
 
-    @Test("Compute-only stages are rejected on a render encoder")
+    @Test("Compute-only stages are rejected on a render pipeline")
     func testKernelStageOnRenderEncoder() throws {
-        try withRenderEncoder { encoder, reflection in
-            let parameter = Parameter(name: "color", functionTypes: .kernel, value: ParameterValue<SIMD4<Float>>.value([1, 0, 0, 1]))
-            #expect(throws: MetalSprocketsError.self) {
-                try parameter.set(on: encoder, reflection: reflection)
-            }
-        }
+        #expect(try renderFails { triangle().parameter("color", functionTypes: .kernel, value: SIMD4<Float>(1, 0, 0, 1)) })
     }
 
-    @Test("Naming several render stages binds each one that has the parameter")
+    @Test("Naming several render stages binds each one that has the parameter", .requiresMetal4)
     func testMultipleRenderStages() throws {
-        try withRenderEncoder { encoder, reflection in
-            // "color" only exists in the fragment stage; naming both stages binds where it is found and ignores
-            // the stage where it is not, rather than failing.
-            let parameter = Parameter(name: "color", functionTypes: .render, value: ParameterValue<SIMD4<Float>>.value([1, 0, 0, 1]))
-            try parameter.set(on: encoder, reflection: reflection)
-        }
+        // "color" only exists in the fragment stage; naming both stages binds where it is found and ignores
+        // the stage where it is not, rather than failing.
+        #expect(try !renderFails { triangle().parameter("color", functionTypes: .render, value: SIMD4<Float>(1, 0, 0, 1)) })
     }
 
-    @Test("Render stages are rejected on a compute encoder")
+    @Test("Render stages are rejected on a compute pipeline", .requiresMetal4)
     func testRenderStageOnComputeEncoder() throws {
         let source = """
         #include <metal_stdlib>
@@ -251,33 +244,27 @@ struct ParameterBindingTests {
         """
         let device = try #require(MTLCreateSystemDefaultDevice())
         let kernel = try ComputeKernel(source: source)
-        let pipelineDescriptor = MTLComputePipelineDescriptor()
-        pipelineDescriptor.computeFunction = kernel.function
-        let (_, rawReflection) = try device.makeComputePipelineState(descriptor: pipelineDescriptor, options: .bindingInfo)
-        let reflection = Reflection(try #require(rawReflection))
-
-        let commandQueue = try #require(device.makeCommandQueue())
-        let commandBuffer = try #require(commandQueue.makeCommandBuffer())
-        let encoder = try #require(commandBuffer.makeComputeCommandEncoder())
-        defer {
-            encoder.endEncoding()
-            commandBuffer.commit()
-            commandBuffer.waitUntilCompleted()
+        let output = try #require(device.makeBuffer(length: 16, options: .storageModeShared))
+        func dispatch(scaleStages: FunctionTypes) throws -> some Element {
+            try ComputePass {
+                try ComputePipeline(computeKernel: kernel) {
+                    try ComputeDispatch(threadsPerGrid: MTLSize(width: 4, height: 1, depth: 1))
+                        .parameter("out", buffer: output)
+                        .parameter("scale", functionTypes: scaleStages, value: Float(3))
+                }
+            }
         }
-
-        let parameter = Parameter(name: "scale", functionTypes: .vertex, value: ParameterValue<Float>.value(1))
-        #expect(throws: MetalSprocketsError.self) {
-            try parameter.set(on: encoder, reflection: reflection)
+        #expect(throws: (any Error).self) {
+            try dispatch(scaleStages: .vertex).run()
         }
-
         // The same parameter is accepted once it names the kernel stage.
-        let kernelParameter = Parameter(name: "scale", functionTypes: .kernel, value: ParameterValue<Float>.value(1))
-        try kernelParameter.set(on: encoder, reflection: reflection)
+        try dispatch(scaleStages: .kernel).run()
+        #expect(output.contents().load(as: Float.self) == 3)
     }
 
     // MARK: - Single-stage convenience overloads
 
-    @Test("Single-stage texture, sampler and array overloads bind")
+    @Test("Single-stage texture, sampler and array overloads bind", .requiresMetal4)
     func testSingleStageOverloads() throws {
         let (vs, fs, device) = try makeBasePass()
 
@@ -287,18 +274,18 @@ struct ParameterBindingTests {
         let texture = try #require(device.makeTexture(descriptor: textureDescriptor))
 
         let samplerDescriptor = MTLSamplerDescriptor()
+        samplerDescriptor.supportArgumentBuffers = true
         let sampler = try #require(device.makeSamplerState(descriptor: samplerDescriptor))
 
         let pass = try renderPass(vs: vs, fs: fs) {
             Draw { encoder in
-                let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
             }
+            .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             .parameter("tex", functionType: .fragment, texture: texture)
             .parameter("smp", functionType: .fragment, samplerState: sampler)
             .parameter("color", functionType: .fragment, values: [SIMD4<Float>(1, 0, 0, 1)])
-            .parameter("transform", functionType: .vertex, value: simd_float4x4.identity)
+            .parameter("transform", functionType: .vertex, value: matrix_identity_float4x4)
         }
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
         _ = try renderer.render(pass)
@@ -327,13 +314,20 @@ struct ParameterBindingTests {
         }
     }
 
-    @Test("Reflection published by a pipeline is returned unchanged")
+    @Test("Reflection published by a pipeline is returned unchanged", .requiresMetal4)
     func testRequireReflectionInsidePipeline() throws {
-        try withRenderEncoder { _, reflection in
-            var environment = MSEnvironmentValues()
-            environment.reflection = reflection
-            let resolved = try environment.requireReflection(for: "parameter() modifiers")
-            #expect(resolved.binding(forType: .fragment, name: "color") == reflection.binding(forType: .fragment, name: "color"))
+        // RenderPipeline publishes the reflection of the pipeline it compiled.
+        let (vs, fs, _) = try makeBasePass()
+        final class Box: @unchecked Sendable { var reflection: Reflection? }
+        let box = Box()
+        let pass = try renderPass(vs: vs, fs: fs) {
+            EmptyElement().onWorkloadEnter { environment in
+                box.reflection = try environment.requireReflection(for: "parameter() modifiers")
+            }
         }
+        _ = try OffscreenRenderer(size: CGSize(width: 16, height: 16)).render(pass)
+        let reflection = try #require(box.reflection)
+        #expect(reflection.binding(forType: .fragment, name: "color") == 0)
+        #expect(reflection.binding(forType: .vertex, name: "transform") == 1)
     }
 }

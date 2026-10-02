@@ -1,14 +1,14 @@
 # Tutorial 4: 3D Spinning Cube
 
-Time to enter the third dimension! We'll render a spinning cube with proper depth testing and perspective projection.
+This tutorial renders a spinning cube with depth testing and perspective projection.
 
 📦 **[Companion Code](https://github.com/schwa/MetalSprocketsTutorials/tree/main/Tutorial%204)**
 
 ---
 
-## What We're Building
+## What we are Building
 
-A colorful 3D cube that spins continuously. You'll learn:
+This tutorial renders a colorful 3D cube that spins continuously. It covers:
 
 - The MVP (Model-View-Projection) matrix pipeline
 - How to enable depth testing for correct 3D rendering
@@ -28,13 +28,13 @@ A colorful 3D cube that spins continuously. You'll learn:
 
 ### Depth Testing
 
-Without depth testing, triangles render in draw order—back faces can appear over front faces. Enabling depth testing ensures correct occlusion based on distance from the camera.
+Without depth testing, triangles render in draw order. Back faces can appear over front faces. Depth testing determines visibility from the distance to the camera.
 
 ---
 
 ## Step 1: Start Fresh or Build on Tutorial 3
 
-You can start with the project from Tutorial 3 or create a new one. We'll replace most of the code for 3D rendering.
+Start with the project from Tutorial 3, or create a new project. This tutorial replaces most of the code for 3D rendering.
 
 ---
 
@@ -83,7 +83,7 @@ fragment float4 cubeFragmentShader(VertexOut in [[stage_in]]) {
 
 **What's new:**
 
-- **`float3 position`** — We're now working in 3D space.
+- **`float3 position`** — Stores a position in 3D space.
 - **`float4 color`** — Each vertex has its own color (RGBA).
 - **`Uniforms` struct** — Contains all three transformation matrices.
 - **Matrix chain** — The vertex shader applies model → view → projection transforms in sequence.
@@ -163,7 +163,7 @@ func generateCubeVertices() -> [Vertex] {
 - **3D position** — `SIMD3<Float>` instead of `SIMD2<Float>`.
 - **Vertex colors** — Each vertex gets a color based on its 3D position (X→Red, Y→Green, Z→Blue).
 - **`generateCubeVertices()`** — Creates all 36 vertices (6 faces × 2 triangles × 3 vertices) for a unit cube.
-- **SIMD3 stride** — Note that `SIMD3<Float>` has a stride of 16 bytes (not 12) due to alignment requirements.
+- **SIMD3 stride** — Alignment requires a stride of 16 bytes for `SIMD3<Float>`, not 12.
 
 ---
 
@@ -244,28 +244,16 @@ struct SpinningCubeRenderPipeline: Element {
 
     var body: some Element {
         get throws {
+            let cubeVertices = generateCubeVertices()
             try RenderPipeline(
                 vertexShader: library.cubeVertexShader,
                 fragmentShader: library.cubeFragmentShader
             ) {
                 Draw { encoder in
-                    // Pass uniforms to vertex shader
-                    var uniforms = uniforms
-                    encoder.setVertexBytes(
-                        &uniforms,
-                        length: MemoryLayout<Uniforms>.stride,
-                        index: 1
-                    )
-
-                    // Generate and pass cube vertices
-                    var vertices = generateCubeVertices()
-                    encoder.setVertexBytes(
-                        &vertices,
-                        length: MemoryLayout<Vertex>.stride * vertices.count,
-                        index: 0
-                    )
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: cubeVertices.count)
                 }
+                .vertexValues(cubeVertices, index: 0)
+                .parameter("uniforms", value: uniforms)
             }
             .vertexDescriptor(Vertex.descriptor)
             // Enable depth testing so back faces don't render over front faces
@@ -278,8 +266,8 @@ struct SpinningCubeRenderPipeline: Element {
 **What's new:**
 
 - **`Uniforms` struct** — Matches the shader's struct layout exactly. Contains all three matrices.
-- **Buffer index 1** — Uniforms go to buffer index 1, vertices stay at index 0.
-- **`.depthCompare(function: .less, enabled: true)`** — Enables depth testing. Fragments only render if they're closer than what's already in the depth buffer.
+- **`.parameter("uniforms", value: uniforms)`** — Binds uniforms by shader argument name. `.vertexValues` sends vertices to layout index 0.
+- **`.depthCompare(function: .less, enabled: true)`** — Enables depth testing. A fragment renders only when it is closer than the stored depth.
 
 ---
 
@@ -336,13 +324,15 @@ struct ContentView: View {
 - **Model matrix** — Rotates the cube based on elapsed time.
 - **View matrix** — Positions the "camera" 6 units back along the Z axis.
 - **Projection matrix** — Creates perspective with a 45° field of view.
-- **`.metalDepthStencilPixelFormat(.depth32Float)`** — **Critical!** This tells RenderView to create a depth buffer. Without it, depth testing won't work.
+- **`.metalDepthStencilPixelFormat(.depth32Float)`** — Tells RenderView to create a depth buffer. Depth testing requires this buffer.
 
 ---
 
 ## Step 7: Run It
 
-Press **⌘R**. You should see a colorful cube spinning in 3D space, with correct depth sorting so near faces always appear in front of far faces.
+Press **⌘R**.
+
+The app shows a spinning cube. Depth testing keeps nearer faces in front of farther faces.
 
 ![A spinning 3D cube](tutorial-04-result)
 
@@ -466,26 +456,16 @@ struct SpinningCubeRenderPipeline: Element {
 
     var body: some Element {
         get throws {
+            let cubeVertices = generateCubeVertices()
             try RenderPipeline(
                 vertexShader: library.cubeVertexShader,
                 fragmentShader: library.cubeFragmentShader
             ) {
                 Draw { encoder in
-                    var uniforms = uniforms
-                    encoder.setVertexBytes(
-                        &uniforms,
-                        length: MemoryLayout<Uniforms>.stride,
-                        index: 1
-                    )
-
-                    var vertices = generateCubeVertices()
-                    encoder.setVertexBytes(
-                        &vertices,
-                        length: MemoryLayout<Vertex>.stride * vertices.count,
-                        index: 0
-                    )
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: cubeVertices.count)
                 }
+                .vertexValues(cubeVertices, index: 0)
+                .parameter("uniforms", value: uniforms)
             }
             .vertexDescriptor(Vertex.descriptor)
             .depthCompare(function: .less, enabled: true)

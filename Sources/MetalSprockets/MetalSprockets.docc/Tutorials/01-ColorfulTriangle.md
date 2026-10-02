@@ -1,6 +1,6 @@
 # Tutorial 1: Your First Metal Triangle
 
-Render a colorful triangle using MetalSprockets. The GPU will blend red, green, and blue corners across the surface—this interpolation is fundamental to how GPUs shade geometry.
+Render a colorful triangle with MetalSprockets. The GPU interpolates the red, green, and blue corner colors across the surface.
 
 📦 **[Companion Code](https://github.com/schwa/MetalSprocketsTutorials/tree/main/Tutorial%201)**
 
@@ -51,10 +51,12 @@ struct ContentView: View {
 
 **What's happening:**
 
-- **`RenderView`** is a SwiftUI view that runs Metal. Its closure is called every frame, giving you a chance to draw. The closure can throw errors—RenderView catches them and handles them for you.
-- **`RenderPass`** clears the screen and sets up drawing. The `try` is needed because creating Metal resources can fail. A RenderView needs at least one RenderPass to render anything interesting. Inside a RenderPass, you'll add one or more *render pipelines*—we'll get to those shortly.
+- **`RenderView`** is a SwiftUI view that runs Metal. It calls your drawing closure every frame and handles errors that the closure throws.
+- **`RenderPass`** clears the screen and prepares drawing. Creating Metal resources can fail, so this call needs `try`. A RenderView needs a RenderPass to render the scene. The following steps add render pipelines inside that pass.
 
-Run it (**⌘R**). You'll see a black square. This is a valid Metal program—it just doesn't draw anything yet. But Metal is actively rendering: clearing the screen to black every frame, ready for your drawing commands. The fixed aspect ratio keeps our triangle from stretching when the window resizes. The `RenderView` closure executes every frame, ready for your rendering code.
+Run the app (**⌘R**).
+
+The app shows a black square. Metal clears the screen to black each frame, but there are no drawing commands yet. The fixed aspect ratio prevents distortion when the window resizes.
 
 ---
 
@@ -100,7 +102,7 @@ fragment float4 colorfulTriangleFragmentShader(VertexOut in [[stage_in]]) {
 }
 ```
 
-> **Note:** We're hardcoding vertex data directly in the shader for simplicity. Real projects pass vertex data from Swift using vertex buffers and descriptors—you'll learn that pattern in a later tutorial.
+> **Note:** This example stores vertex data directly in the shader. A later tutorial passes vertex data from Swift through buffers and descriptors.
 
 **How a RenderPass uses these shaders:**
 
@@ -134,9 +136,9 @@ struct ContentView: View {
 }
 ```
 
-We use `try!` here for simplicity—in a real app you'd handle the error properly. But if your shader file is bundled with the app, it should always load successfully.
+This example uses `try!` for brevity. Production apps need error handling. A shader file bundled with the app is expected to load successfully.
 
-`ShaderLibrary` loads and compiles your `.metal` file. This is expensive, so we do it once when the view is created—not inside the `RenderView` closure, which runs every frame. 
+`ShaderLibrary` loads and compiles your `.metal` file. This example performs that expensive work once, when the view is created. It does not repeat the work in the per-frame `RenderView` closure.
 
 ---
 
@@ -158,7 +160,7 @@ RenderView { context, size in
 .aspectRatio(1, contentMode: .fit)
 ```
 
-Here we're taking the shaders we wrote earlier and telling the GPU about them. The `RenderPipeline` binds our vertex and fragment shaders together into a single unit that the GPU can execute.
+`RenderPipeline` combines the vertex and fragment shaders into one pipeline for the GPU.
 
 ---
 
@@ -172,18 +174,20 @@ try RenderPipeline(
     fragmentShader: library.colorfulTriangleFragmentShader
 ) {
     Draw { encoder in
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
     }
 }
 ```
 
-This ties it all together. The `Draw` block gives you access to the Metal encoder, where you issue drawing commands. We tell the GPU to draw a triangle using 3 vertices—and our vertex shader receives each vertex ID (0, 1, 2), looks up the position and color, and passes them to the fragment shader.
+The `Draw` block provides the Metal encoder for drawing commands. This command draws a triangle with three vertices. The vertex shader receives each vertex ID (0, 1, 2). It looks up the position and color, then passes them to the fragment shader.
 
 ---
 
 ## Step 8: Run It
 
-Press **⌘R**. You should see a triangle with colors smoothly blending from red (top) to green (bottom-left) to blue (bottom-right).
+Press **⌘R**.
+
+The app shows a triangle with colors that blend from red (top) to green (bottom-left) to blue (bottom-right).
 
 ![A colorful triangle rendered with Metal](tutorial-01-result)
 
@@ -209,7 +213,7 @@ struct ContentView: View {
                     fragmentShader: library.colorfulTriangleFragmentShader
                 ) {
                     Draw { encoder in
-                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                     }
                 }
             }

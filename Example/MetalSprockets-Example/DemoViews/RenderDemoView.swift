@@ -32,8 +32,12 @@ struct RenderDemoView: View {
             let transform = projectionMatrix * viewMatrix * modelMatrix
 
             // RenderPass creates a render command encoder, contains one or more pipelines
-            try RenderPass {
+            try RenderPass(label: "Cube") {
                 try DemoCubeRenderPipeline(transform: transform, time: time)
+            }
+            .onWorkloadEnter { environment in
+                let commandBuffer = try environment.commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
+                commandBuffer.label = "Cube Frame"
             }
         }
         .ignoresSafeArea()

@@ -45,7 +45,7 @@ public extension RenderAttachmentFormats {
     private static let maxColorAttachments = 8
 
     /// Derives the formats from a render pass descriptor's attachment textures.
-    init(_ descriptor: MTLRenderPassDescriptor) {
+    init(_ descriptor: MTL4RenderPassDescriptor) {
         var colorFormats: [MTLPixelFormat] = []
         var sampleCount = 1
         for index in 0..<Self.maxColorAttachments {
@@ -63,8 +63,8 @@ public extension RenderAttachmentFormats {
             colorFormats.removeLast()
         }
 
-        let depthTexture = descriptor.depthAttachment?.texture
-        let stencilTexture = descriptor.stencilAttachment?.texture
+        let depthTexture = descriptor.depthAttachment.texture
+        let stencilTexture = descriptor.stencilAttachment.texture
         if let depthTexture {
             sampleCount = max(sampleCount, depthTexture.sampleCount)
         }

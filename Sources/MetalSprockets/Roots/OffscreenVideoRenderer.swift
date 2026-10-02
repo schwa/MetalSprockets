@@ -5,7 +5,6 @@ import CoreVideo
 import Metal
 import MetalSprocketsSupport
 import MetalSupport
-import os
 
 public final class OffscreenVideoRenderer {
     public let size: CGSize
@@ -14,39 +13,36 @@ public final class OffscreenVideoRenderer {
     public let pixelFormat: MTLPixelFormat
     public let videoCodec: AVVideoCodecType
     let device: MTLDevice
-    let commandQueue: MTLCommandQueue
+    let commandQueue: any MTL4CommandQueue
     let runner: Runner
-    let assetWriter: AVAssetWriter
-    let assetWriterInput: AVAssetWriterInput
-    let pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor
+    let writer: VideoFrameWriter
     let colorTexture: MTLTexture
     let depthTexture: MTLTexture
-    let renderPassDescriptor: MTLRenderPassDescriptor
+    let renderPassDescriptor: MTL4RenderPassDescriptor
+    private var isCancelled = false
 
-    /// Test seam: awaits until the sink is ready to accept another frame.
-    /// Production uses KVO on `AVAssetWriterInput.isReadyForMoreMediaData`
-    /// via ``defaultWaitUntilReady(_:)``; tests can inject a custom strategy
-    /// to drive the back-pressure path deterministically. See #321 / #336.
-    internal let waitUntilReady: () async -> Void
+    var writtenFrameCount: Int { writer.frameNumber }
+    var residentAllocationCount: Int { runner.context.residentAllocationCount }
 
-    var frameNumber: Int = 0
-    let frameDuration: CMTime
-
-    public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264) throws {
-        try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, waitUntilReady: nil)
+    public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, shaderLogging: ShaderLogging = .processDefault) throws {
+        try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, shaderLogging: shaderLogging, waitUntilReady: nil)
     }
 
     /// Designated init. `waitUntilReady` is the back-pressure strategy; when
     /// `nil`, the default KVO-based implementation is used against the
-    /// renderer's own `AVAssetWriterInput`.
-    internal init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, waitUntilReady: (() async -> Void)?) throws {
+    /// writer's own `AVAssetWriterInput`.
+    internal init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, shaderLogging: ShaderLogging = .processDefault, waitUntilReady: (() async -> Void)?) throws {
         self.size = size
         self.frameRate = frameRate
         self.outputURL = outputURL
         self.pixelFormat = pixelFormat
         self.videoCodec = videoCodec
 
-        runner = try Runner()
+        // The writer reads BGRA bytes directly, so the color attachment must match that layout.
+        guard pixelFormat == .bgra8Unorm || pixelFormat == .bgra8Unorm_srgb else {
+            throw MetalSprocketsError.configurationError("Video export requires a BGRA8 pixel format, not \(pixelFormat).")
+        }
+        runner = try Runner(shaderLogging: shaderLogging)
         device = runner.device
         commandQueue = runner.commandQueue
 
@@ -69,8 +65,12 @@ public final class OffscreenVideoRenderer {
         depthTextureDescriptor.usage = [.renderTarget]
         depthTexture = try device.makeTexture(descriptor: depthTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create video depth texture"))
         depthTexture.label = "Video Depth Texture"
+        let resources = try ResourceCollection(device: device)
+        try resources.register(colorTexture)
+        try resources.register(depthTexture)
+        runner.residency.collections = [resources]
 
-        renderPassDescriptor = MTLRenderPassDescriptor()
+        renderPassDescriptor = MTL4RenderPassDescriptor()
         renderPassDescriptor.colorAttachments[0].texture = colorTexture
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
@@ -80,175 +80,30 @@ public final class OffscreenVideoRenderer {
         renderPassDescriptor.depthAttachment.clearDepth = 1
         renderPassDescriptor.depthAttachment.storeAction = .dontCare
 
-        if FileManager.default.fileExists(atPath: outputURL.path) {
-            try FileManager.default.removeItem(at: outputURL)
-        }
-
-        assetWriter = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
-
-        let videoSettings: [String: Any] = [
-            AVVideoCodecKey: videoCodec,
-            AVVideoWidthKey: Int(size.width),
-            AVVideoHeightKey: Int(size.height)
-        ]
-
-        assetWriterInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
-        assetWriterInput.expectsMediaDataInRealTime = false
-
-        let sourcePixelBufferAttributes: [String: Any] = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey as String: Int(size.width),
-            kCVPixelBufferHeightKey as String: Int(size.height),
-            kCVPixelBufferMetalCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-        ]
-
-        pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
-            assetWriterInput: assetWriterInput,
-            sourcePixelBufferAttributes: sourcePixelBufferAttributes
-        )
-
-        guard assetWriter.canAdd(assetWriterInput) else {
-            throw MetalSprocketsError.configurationError("Asset writer cannot accept the video input for \(outputURL.lastPathComponent)")
-        }
-        assetWriter.add(assetWriterInput)
-
-        guard assetWriter.startWriting() else {
-            throw MetalSprocketsError.configurationError("Asset writer failed to start writing to \(outputURL.lastPathComponent): \(assetWriter.error?.localizedDescription ?? "no error reported")")
-        }
-        assetWriter.startSession(atSourceTime: .zero)
-
-        frameDuration = CMTime(value: 1, timescale: CMTimeScale(frameRate))
-
-        if let waitUntilReady {
-            self.waitUntilReady = waitUntilReady
-        } else {
-            // Production: KVO-based wait on the renderer's own writer input.
-            let input = assetWriterInput
-            self.waitUntilReady = { await Self.defaultWaitUntilReady(input) }
-        }
+        writer = try VideoFrameWriter(size: size, frameRate: frameRate, outputURL: outputURL, videoCodec: videoCodec, waitUntilReady: waitUntilReady)
     }
 
-    /// Default production implementation of ``waitUntilReady``: awaits
-    /// `AVAssetWriterInput.isReadyForMoreMediaData` via KVO, returning
-    /// immediately if the input is already ready. Replaces the 10 ms
-    /// `Thread.sleep` polling loop that was carried over from the Metal 3
-    /// port. See #321.
-    internal static func defaultWaitUntilReady(_ input: AVAssetWriterInput) async {
-        if input.isReadyForMoreMediaData {
-            return
+    /// Renders one frame and appends it. An encoding error throws before anything is appended.
+    nonisolated(nonsending) public func render<Content>(_ element: Content) async throws where Content: Element {
+        guard !isCancelled else {
+            throw MetalSprocketsError.validationError("The video export was cancelled.")
         }
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            // `observe` returns an `NSKeyValueObservation` we need to hold
-            // alive until we've resumed, and invalidate exactly once.
-            //
-            // With `.initial` the block can run synchronously inside `observe`,
-            // before the returned observation has been stored, so the block
-            // records that it resumed and the code after `observe` invalidates
-            // whatever the block couldn't. Both paths go through `lock`. See #366.
-            let lock = OSAllocatedUnfairLock()
-            nonisolated(unsafe) var resumed = false
-            nonisolated(unsafe) var observation: NSKeyValueObservation?
-
-            let observer = input.observe(\.isReadyForMoreMediaData, options: [.new, .initial]) { observed, _ in
-                guard observed.isReadyForMoreMediaData else {
-                    return
-                }
-                let justResumed: Bool = lock.withLockUnchecked {
-                    if resumed {
-                        return false
-                    }
-                    resumed = true
-                    return true
-                }
-                guard justResumed else {
-                    return
-                }
-                let toInvalidate: NSKeyValueObservation? = lock.withLockUnchecked {
-                    let current = observation
-                    observation = nil
-                    return current
-                }
-                toInvalidate?.invalidate()
-                continuation.resume()
-            }
-
-            let alreadyResumed: Bool = lock.withLockUnchecked {
-                if resumed {
-                    return true
-                }
-                observation = observer
-                return false
-            }
-            if alreadyResumed {
-                observer.invalidate()
-            }
-        }
-    }
-
-    public func render<Content>(_ element: Content) async throws where Content: Element {
         let wrapped = element
             .renderPassDescriptor(renderPassDescriptor)
             .drawableSize(size)
 
         // TODO: #220 Setup should be smart enough to skip elements that are already configured - avoid redundant setup every frame
+        // Runner.run commits and waits, so the texture is complete before the writer reads it.
         try runner.run(wrapped)
-
-        // Write the frame to video
-        try await appendFrame()
+        try await writer.append(colorTexture)
     }
 
-    func appendFrame() async throws {
-        guard let pixelBufferPool = pixelBufferAdaptor.pixelBufferPool else {
-            throw MetalSprocketsError.resourceCreationFailure("Pixel buffer adaptor has no pixel buffer pool (frame \(frameNumber))")
-        }
-
-        var pixelBuffer: CVPixelBuffer?
-        let status = CVPixelBufferPoolCreatePixelBuffer(nil, pixelBufferPool, &pixelBuffer)
-        guard status == kCVReturnSuccess, let pixelBuffer else {
-            throw MetalSprocketsError.resourceCreationFailure("Failed to create pixel buffer from pool (frame \(frameNumber), CVReturn \(status))")
-        }
-
-        CVPixelBufferLockBaseAddress(pixelBuffer, [])
-        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
-
-        let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
-        let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer)
-
-        guard let baseAddress else {
-            throw MetalSprocketsError.resourceCreationFailure("Pixel buffer has no base address (frame \(frameNumber))")
-        }
-
-        let region = MTLRegionMake2D(0, 0, Int(size.width), Int(size.height))
-        colorTexture.getBytes(
-            baseAddress,
-            bytesPerRow: bytesPerRow,
-            from: region,
-            mipmapLevel: 0
-        )
-
-        let presentationTime = CMTime(value: CMTimeValue(frameNumber), timescale: CMTimeScale(frameRate))
-
-        await waitUntilReady()
-
-        guard pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: presentationTime) else {
-            throw MetalSprocketsError.validationError("Failed to append pixel buffer for frame \(frameNumber) at \(presentationTime.seconds)s: \(assetWriter.error?.localizedDescription ?? "no error reported")")
-        }
-
-        frameNumber += 1
+    nonisolated(nonsending) public func finalize() async throws {
+        try await writer.finalize()
     }
 
-    public func finalize() async throws {
-        assetWriterInput.markAsFinished()
-
-        await withCheckedContinuation { continuation in
-            assetWriter.finishWriting {
-                continuation.resume()
-            }
-        }
-
-        if assetWriter.status == .failed {
-            throw assetWriter.error ?? MetalSprocketsError.validationError("Asset writer finished in a failed state for \(outputURL.lastPathComponent)")
-        }
+    func cancel() {
+        isCancelled = true
+        writer.cancel()
     }
 }

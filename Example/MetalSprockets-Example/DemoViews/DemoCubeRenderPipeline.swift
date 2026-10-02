@@ -19,13 +19,13 @@ struct DemoCubeRenderPipeline: Element {
     var body: some Element {
         get throws {
             // RenderPipeline binds shaders and configures pipeline state
-            try RenderPipeline(vertexShader: shaderLibrary.vertexMain, fragmentShader: shaderLibrary.fragmentMain) {
-                // Draw gives direct access to MTLRenderCommandEncoder
+            try RenderPipeline(label: "Vertex-Colored Cube", vertexShader: shaderLibrary.vertexMain, fragmentShader: shaderLibrary.fragmentMain) {
+                // Draw gives direct access to the Metal 4 render encoder; the pipeline and inputs are already bound.
                 Draw { encoder in
-                    var vertices = generateCubeVertices()
-                    encoder.setVertexBytes(&vertices, length: MemoryLayout<Vertex>.stride * vertices.count, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: cubeVertexCount)
                 }
+                // Metal 4 has no setVertexBytes: small vertex data goes through scratch storage.
+                .vertexValues(generateCubeVertices(), index: 0)
                 // Bind shader uniforms by name via reflection — no hardcoded buffer indices.
                 .parameter("transform", value: transform)
                 .parameter("time", value: time)

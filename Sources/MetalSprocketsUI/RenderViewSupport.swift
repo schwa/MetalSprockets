@@ -7,27 +7,11 @@ import QuartzCore
 
 // MARK: - FrameTimingState
 
-/// The mutable timing state maintained across frames by `RenderView`.
-///
-/// Isolated from `RenderViewViewModel` so the timing math can be unit-tested
-/// without an MTKView or an active draw loop.
 internal struct FrameTimingState: Equatable {
-    /// The absolute host time (`CACurrentMediaTime`) of the first advance.
-    /// Stays `0` until the first frame is recorded.
     var firstFrameTime: CFTimeInterval = 0
-
-    /// The time of the previous advance, expressed as seconds since `firstFrameTime`.
     var frameTime: CFTimeInterval = 0
-
-    /// The zero-based index of the next frame to be produced.
     var frame: Int = 0
 
-    /// Advances timing state by one frame.
-    ///
-    /// - Parameters:
-    ///   - now: The current host time, typically `CACurrentMediaTime()`.
-    ///   - viewportSize: The current drawable size in pixels.
-    /// - Returns: The ``FrameUniforms`` describing this frame.
     mutating func advance(now: CFTimeInterval, viewportSize: SIMD2<UInt32>) -> FrameUniforms {
         if firstFrameTime == 0 {
             firstFrameTime = now
@@ -43,7 +27,6 @@ internal struct FrameTimingState: Equatable {
         )
     }
 
-    /// Call after a frame has been successfully committed.
     mutating func commit() {
         frame += 1
     }
@@ -51,8 +34,6 @@ internal struct FrameTimingState: Equatable {
 
 // MARK: - Sample-count change detection
 
-/// Returns `true` if `observed` differs from `current`; intended as a signal that
-/// the `System` needs to mark nodes as needing setup (MSAA sample count changed).
 @inlinable
 internal func sampleCountChanged(current: Int, observed: Int) -> Bool {
     current != observed
@@ -60,50 +41,30 @@ internal func sampleCountChanged(current: Int, observed: Int) -> Bool {
 
 // MARK: - Root element construction
 
-/// Builds the root render element graph used by `RenderView` each frame.
-///
-/// Extracted out of `RenderViewViewModel.draw(in:)` so the element-tree construction
-/// (and its environment wiring) can be unit-tested directly, without a live MTKView.
-///
-/// The parameter count is deliberate: each one is a distinct per-frame input the `MTKView` delegate already has on
-/// hand, and bundling them into a struct would just move the same list elsewhere.
-///
-/// - Parameters:
-///   - content: The user-supplied element produced by the `RenderView` content closure.
-///   - captureConfiguration: Optional GPU-capture configuration from the `View.capture()` modifier.
-///   - device: The Metal device to attach to the environment.
-///   - commandQueue: The command queue to attach to the environment.
-///   - renderPassDescriptor: The current render pass descriptor from the `MTKView`.
-///   - currentDrawable: The current drawable from the `MTKView`.
-///   - drawableSize: The drawable size.
-///   - onCommandBufferCompleted: Invoked when the command buffer completes on the GPU.
+/// Wraps a frame's content with the view's render target, drawable and timing callback. The root submits the frame.
 internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable:this function_parameter_count
     content: Content,
     captureConfiguration: RenderViewCaptureConfiguration?,
     device: MTLDevice,
-    commandQueue: MTLCommandQueue,
+    commandQueue: any MTL4CommandQueue,
     shaderStore: ShaderStore,
-    renderPassDescriptor: MTLRenderPassDescriptor,
+    renderPassDescriptor: MTL4RenderPassDescriptor,
     currentDrawable: CAMetalDrawable?,
     drawableSize: CGSize,
-    onCommandBufferCompleted: @escaping (MTLCommandBuffer) -> Void
+    onCompleted: @escaping @Sendable (SubmissionResult) -> Void
 ) throws -> some Element {
-    try CommandBufferElement(completion: .commit) {
-        try Group {
-            content
-        }
-        .onCommandBufferCompleted(onCommandBufferCompleted)
+    try Group {
+        content
     }
+    .onCommandBufferCompleted(onCompleted)
     .capture(
         captureConfiguration?.enabled ?? false,
         target: captureConfiguration?.target ?? .device,
         destination: captureConfiguration?.destination ?? .developerTools,
         outputURL: captureConfiguration?.outputURL
     )
-    .device(device)
-    .commandQueue(commandQueue)
     .renderPassDescriptor(renderPassDescriptor)
-    .renderPipelineDescriptor(MTLRenderPipelineDescriptor())
+    .renderPipelineDescriptor(MTL4RenderPipelineDescriptor())
     .currentDrawable(currentDrawable)
     .drawableSize(drawableSize)
     .shaderStore(shaderStore)

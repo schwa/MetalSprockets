@@ -65,13 +65,16 @@ public struct ImmersiveRenderPass<Content: Element>: Element {
     public var body: some Element {
         get throws {
             try RenderPass(label: label) {
-                Draw { encoder in
+                // The compositor draws the progressive-immersion mask with its own pipeline, so this is pipeline-free.
+                RenderCommand { encoder in
                     if context.isProgressive {
                         context.renderContext.drawMaskOnStencilAttachment(commandEncoder: encoder, value: context.stencilValue)
-                        encoder.setStencilReferenceValue(UInt32(context.stencilValue))
                     }
                 }
+                // Metal 4 draws set their own state, so the stencil reference reaches content through the environment
+                // rather than as sticky encoder state.
                 content
+                    .stencilReferenceValue(context.isProgressive ? UInt32(context.stencilValue) : 0)
             }
         }
     }

@@ -30,9 +30,9 @@ struct MSAAModifierEdgeTests {
         }
     }
 
-    @Test func `a colourless render pass descriptor is reported`() throws {
+    @Test(.requiresMetal4) func `a colourless render pass descriptor is reported`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let descriptor = MTLRenderPassDescriptor()
+        let descriptor = MTL4RenderPassDescriptor()
         // Deliberately no colorAttachments[0].texture.
         let system = System()
         #expect(throws: MetalSprocketsError.self) {

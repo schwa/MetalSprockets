@@ -11,14 +11,12 @@ private final class SampleBox: @unchecked Sendable {
 @Suite("GPU counters")
 struct GPUCountersTests {
     @Test(
-        "GPUCounterSampler resolves a sample for a render pass",
+        "gpuCounters reports a sample for a render pass",
+        .requiresMetal4,
         .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Counter sampling unavailable on CI runners")
     )
     @MainActor
     func gpuCountersModifierReportsSample() throws {
-        let device = try #require(MTLCreateSystemDefaultDevice())
-        try #require(GPUCounterSampler(device: device) != nil, "Device does not support stage boundary counter sampling.")
-
         let source = """
         #include <metal_stdlib>
         using namespace metal;
@@ -46,7 +44,7 @@ struct GPUCountersTests {
         let element = try RenderPass {
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                 Draw { encoder in
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
             }
         }
@@ -61,19 +59,19 @@ struct GPUCountersTests {
         #expect(sample.label == "Test")
         #expect(sample.endTimestamp >= sample.startTimestamp)
         let vertex = try #require(sample.vertex)
-        let fragment = try #require(sample.fragment)
         #expect(vertex.endTimestamp >= vertex.startTimestamp)
-        #expect(fragment.endTimestamp >= fragment.startTimestamp)
+        // Metal 4 has no start-of-fragment sample, so the fragment interval is not reported (see GPUCounterSample).
+        #expect(sample.fragment == nil)
     }
 
     @Test(
-        "GPUCounterSampler resolves a sample for a compute pass",
+        "gpuCounters reports a sample for a compute pass",
+        .requiresMetal4,
         .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Counter sampling unavailable on CI runners")
     )
     @MainActor
     func gpuCountersModifierReportsComputeSample() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        try #require(GPUCounterSampler(device: device) != nil, "Device does not support stage boundary counter sampling.")
 
         let source = """
         #include <metal_stdlib>
@@ -91,11 +89,8 @@ struct GPUCountersTests {
         let box = SampleBox()
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(threadsPerGrid: MTLSize(width: count, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 8, height: 1, depth: 1))
+                    .parameter("out", buffer: buffer)
             }
         }
         .gpuCounters(label: "Compute") { sample in
@@ -116,9 +111,8 @@ struct GPUCountersTests {
     )
     func secondsForTicks() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let sampler = try #require(GPUCounterSampler(device: device))
-        if let seconds = sampler.seconds(forTicks: 0) {
-            #expect(seconds == 0)
-        }
+        let sampler = try TimestampSampler(device: device)
+        let interval = try #require(sampler.interval(1_000, 1_000))
+        #expect(interval.duration == 0)
     }
 }

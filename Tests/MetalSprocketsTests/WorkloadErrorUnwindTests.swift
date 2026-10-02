@@ -5,7 +5,7 @@ import Testing
 
 private struct WorkloadTestError: Error {}
 
-@Test
+@Test(.requiresMetal4)
 @MainActor
 func testErrorThrownInsideRenderPassPropagates() throws {
     let source = """

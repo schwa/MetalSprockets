@@ -40,19 +40,18 @@ struct UseResourceTests {
         let vs = try VertexShader(source: Self.renderSource)
         let fs = try FragmentShader(source: Self.renderSource)
         let draw = Draw { encoder in
-            let verts: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-            encoder.setVertexBytes(verts, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
         }
         return try RenderPass {
             try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
                 decorate(draw)
+                    .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             }
             .vertexDescriptor(vs.inferredVertexDescriptor())
         }
     }
 
-    @Test("useResource with a single buffer")
+    @Test("useResource with a single buffer", .requiresMetal4)
     func testUseResource() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let buffer = try #require(device.makeBuffer(length: 32, options: .storageModeShared))
@@ -63,7 +62,7 @@ struct UseResourceTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("useResource optional: nil is a no-op")
+    @Test("useResource optional: nil is a no-op", .requiresMetal4)
     func testUseResourceOptionalNil() throws {
         let pass = try renderPassWithDraw { draw in
             draw.useResource(nil, usage: .read, stages: .vertex)
@@ -72,7 +71,7 @@ struct UseResourceTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("useResource optional: non-nil calls through")
+    @Test("useResource optional: non-nil calls through", .requiresMetal4)
     func testUseResourceOptionalSome() throws {
         let device = MTLCreateSystemDefaultDevice()!
         nonisolated(unsafe) let buffer: (any MTLResource)? = device.makeBuffer(length: 16, options: .storageModeShared)
@@ -83,7 +82,7 @@ struct UseResourceTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("useResources with multiple buffers")
+    @Test("useResources with multiple buffers", .requiresMetal4)
     func testUseResources() throws {
         let device = MTLCreateSystemDefaultDevice()!
         nonisolated(unsafe) let bufs: [any MTLResource] = [
@@ -97,7 +96,7 @@ struct UseResourceTests {
         _ = try renderer.render(pass)
     }
 
-    @Test("useComputeResource binds for compute encoder")
+    @Test("useComputeResource binds for compute encoder", .requiresMetal4)
     func testUseComputeResource() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let kernel = try ComputeKernel(source: Self.computeSource)
@@ -108,21 +107,18 @@ struct UseResourceTests {
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: count, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .useComputeResource(side, usage: .read)
             }
         }
         .run()
     }
 
-    @Test("useComputeResource optional: nil is a no-op")
+    @Test("useComputeResource optional: nil is a no-op", .requiresMetal4)
     func testUseComputeResourceOptionalNil() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let kernel = try ComputeKernel(source: Self.computeSource)
@@ -131,21 +127,18 @@ struct UseResourceTests {
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: count, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .useComputeResource(nil, usage: .read)
             }
         }
         .run()
     }
 
-    @Test("useComputeResource optional: non-nil calls through")
+    @Test("useComputeResource optional: non-nil calls through", .requiresMetal4)
     func testUseComputeResourceOptionalSome() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let kernel = try ComputeKernel(source: Self.computeSource)
@@ -155,21 +148,18 @@ struct UseResourceTests {
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: count, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .useComputeResource(side, usage: .read)
             }
         }
         .run()
     }
 
-    @Test("useComputeResources with multiple buffers")
+    @Test("useComputeResources with multiple buffers", .requiresMetal4)
     func testUseComputeResources() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let kernel = try ComputeKernel(source: Self.computeSource)
@@ -182,21 +172,18 @@ struct UseResourceTests {
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: count, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .useComputeResources(sides, usage: .read)
             }
         }
         .run()
     }
 
-    @Test("useComputeResources optional: non-nil calls through")
+    @Test("useComputeResources optional: non-nil calls through", .requiresMetal4)
     func testUseComputeResourcesOptionalSome() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let kernel = try ComputeKernel(source: Self.computeSource)
@@ -209,21 +196,18 @@ struct UseResourceTests {
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: count, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .useComputeResources(sides, usage: .read)
             }
         }
         .run()
     }
 
-    @Test("useComputeResources optional: nil is a no-op")
+    @Test("useComputeResources optional: nil is a no-op", .requiresMetal4)
     func testUseComputeResourcesOptionalNil() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let kernel = try ComputeKernel(source: Self.computeSource)
@@ -232,14 +216,11 @@ struct UseResourceTests {
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        node.environmentValues.computeCommandEncoder!.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: count, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .useComputeResources(nil, usage: .read)
             }
         }
@@ -248,10 +229,8 @@ struct UseResourceTests {
 
     @Test("missingEnvironment(keyPath) helper")
     func testMissingEnvironmentKeyPath() {
-        // The keypath overload just forwards the interpolated keypath to the string overload. We can't
-        // assert the message contains "device": keypath string interpolation drops the property name in
-        // optimized builds, so compare against the same interpolation instead of a hardcoded substring.
-        let keyPath = \MSEnvironmentValues.device
+        // Optimized builds drop key path property names, so compare against the same interpolation.
+        let keyPath: PartialKeyPath<MSEnvironmentValues> = \MSEnvironmentValues.device
         let err = MetalSprocketsError.missingEnvironment(keyPath)
         #expect("\(err)" == "\(MetalSprocketsError.missingEnvironment("\(keyPath)"))")
     }

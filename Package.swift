@@ -6,8 +6,8 @@ import PackageDescription
 public let package = Package(
     name: "MetalSprockets",
     platforms: [
-        .iOS(.v18),
-        .macOS(.v15),
+        .iOS(.v26),
+        .macOS(.v26),
         .visionOS(.v26)
     ],
     products: [

@@ -18,7 +18,7 @@ struct RunnerTests {
     }
     """
 
-    @Test("Runner runs a single element tree")
+    @Test("Runner runs a single element tree", .requiresMetal4)
     func runsSingleElementTree() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let kernel = try ComputeKernel(source: Self.kernelSource)
@@ -29,15 +29,11 @@ struct RunnerTests {
 
         let element = try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        let encoder = node.environmentValues.computeCommandEncoder!
-                        encoder.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: count / 4, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: 4, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .parameter("offset", value: Float(10.0))
             }
         }
@@ -49,7 +45,7 @@ struct RunnerTests {
         }
     }
 
-    @Test("Runner can run the same element tree repeatedly")
+    @Test("Runner can run the same element tree repeatedly", .requiresMetal4)
     func runsRepeatedly() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let kernel = try ComputeKernel(source: Self.kernelSource)
@@ -60,15 +56,11 @@ struct RunnerTests {
 
         let element = try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
-                AnyBodylessElement()
-                    .onWorkloadEnter { (node: Node) in
-                        let encoder = node.environmentValues.computeCommandEncoder!
-                        encoder.setBuffer(buffer, offset: 0, index: 0)
-                    }
                 try ComputeDispatch(
                     threadgroups: MTLSize(width: count / 4, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(width: 4, height: 1, depth: 1)
                 )
+                    .parameter("out", buffer: buffer)
                 .parameter("offset", value: Float(1.0))
             }
         }
@@ -82,10 +74,10 @@ struct RunnerTests {
         }
     }
 
-    @Test("Runner uses the supplied device and command queue")
+    @Test("Runner uses the supplied device and command queue", .requiresMetal4)
     func usesSuppliedDeviceAndQueue() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let queue = try #require(device.makeCommandQueue())
+        let queue = try #require(device.makeMTL4CommandQueue())
         let runner = try Runner(device: device, commandQueue: queue)
         #expect(runner.device === device)
         #expect(runner.commandQueue === queue)

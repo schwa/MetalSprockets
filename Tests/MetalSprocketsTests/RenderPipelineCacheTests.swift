@@ -40,17 +40,16 @@ struct RenderPipelineCacheTests {
         try RenderPass {
             try RenderPipeline(label: "cached", vertexShader: shaders.vertex, fragmentShader: shaders.fragment) {
                 Draw { encoder in
-                    let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                    encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                 }
+                .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             }
             .vertexDescriptor(shaders.vertex.inferredVertexDescriptor())
             .depthCompare(function: .less, enabled: true)
         }
     }
 
-    @Test func `a second render reuses the cached pipeline and depth stencil state`() throws {
+    @Test(.requiresMetal4) func `a second render reuses the cached pipeline and depth stencil state`() throws {
         let shaders = try makeShaders()
         let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
 
@@ -60,7 +59,7 @@ struct RenderPipelineCacheTests {
         _ = try renderer.render(try pass(shaders: shaders))
     }
 
-    @Test func `a stencil attachment contributes its pixel format to the pipeline`() throws {
+    @Test(.requiresMetal4) func `a stencil attachment contributes its pixel format to the pipeline`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let shaders = try makeShaders()
 
@@ -74,7 +73,7 @@ struct RenderPipelineCacheTests {
         let colorTexture = try makeTexture(format: .bgra8Unorm)
         let depthStencilTexture = try makeTexture(format: .depth32Float_stencil8)
 
-        let descriptor = MTLRenderPassDescriptor()
+        let descriptor = MTL4RenderPassDescriptor()
         descriptor.colorAttachments[0].texture = colorTexture
         descriptor.colorAttachments[0].loadAction = .clear
         descriptor.colorAttachments[0].storeAction = .store

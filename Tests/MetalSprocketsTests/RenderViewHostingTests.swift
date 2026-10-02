@@ -8,7 +8,7 @@ import Testing
 import ViewInspector
 
 @MainActor
-@Suite("RenderView hosting")
+@Suite("RenderView hosting", .requiresMetal4)
 struct RenderViewHostingTests {
     static let source = """
     #include <metal_stdlib>
@@ -32,10 +32,9 @@ struct RenderViewHostingTests {
             try RenderPass {
                 try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
                     Draw { encoder in
-                        let vertices: [SIMD2<Float>] = [[0, 0.5], [-0.5, -0.5], [0.5, -0.5]]
-                        encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * 3, index: 0)
-                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
                     }
+                    .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
                 }
                 .vertexDescriptor(vertexShader.inferredVertexDescriptor())
             }
@@ -60,7 +59,7 @@ struct RenderViewHostingTests {
 
     @Test func `a supplied device and command queue are used instead of the defaults`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let commandQueue = try #require(device.makeCommandQueue())
+        let commandQueue = try #require(device.makeMTL4CommandQueue())
 
         // Supplying both means the lazy fallbacks are never consulted.
         let box = ViewModelBox<EmptyElement>()

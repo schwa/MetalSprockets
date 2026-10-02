@@ -8,7 +8,7 @@ private struct StubConstantsLoader: ShaderLoader {
     var libraryID: ShaderLibrary.ID = .source("stub", nil)
     var declared: [String: FunctionConstantInfo]
 
-    func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction {
+    func shaderFunction(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> ShaderFunction {
         try _throw(MetalSprocketsError.resourceCreationFailure("unsupported"))
     }
 

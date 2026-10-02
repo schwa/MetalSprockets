@@ -8,12 +8,15 @@ public extension MetalSprocketsError {
     }
 }
 
+// Resource declarations on Metal 4 are residency and lifetime: the resource stays resident and alive until the
+// submission completes. They are not hazard tracking. `usage` and `stages` are accepted for source compatibility and
+// documentation only; order dependent work with EncoderBarrier and QueueBarrier.
+
 public extension Element {
+    /// Keeps `resource` resident and alive for the submission, for resources a shader reaches indirectly (argument
+    /// buffers, GPU addresses) or that a raw encoder closure uses.
     func useResource(_ resource: any MTLResource, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element {
-        onWorkloadEnter { environmentValues in
-            let renderCommandEncoder = environmentValues.renderCommandEncoder.orFatalError("Missing render command encoder")
-            renderCommandEncoder.useResource(resource, usage: usage, stages: stages)
-        }
+        useResources([resource], usage: usage, stages: stages)
     }
 
     @ElementBuilder
@@ -26,23 +29,20 @@ public extension Element {
         }
     }
 
-    /// Mark multiple resources as in use for argument buffer access
+    /// Keeps `resources` resident and alive for the submission.
     func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element {
-        onWorkloadEnter { environmentValues in
-            let renderCommandEncoder = environmentValues.renderCommandEncoder.orFatalError("Missing render command encoder")
+        ScopeModifier(content: self) { scope in
             for resource in resources {
-                renderCommandEncoder.useResource(resource, usage: usage, stages: stages)
+                try scope.retainAllocation(resource)
             }
         }
     }
 }
 
 public extension Element {
+    /// Keeps `resource` resident and alive for the submission. See ``useResource(_:usage:stages:)``.
     func useComputeResource(_ resource: any MTLResource, usage: MTLResourceUsage) -> some Element {
-        onWorkloadEnter { environmentValues in
-            let renderCommandEncoder = environmentValues.computeCommandEncoder.orFatalError("Missing compute command encoder")
-            renderCommandEncoder.useResource(resource, usage: usage)
-        }
+        useComputeResources([resource], usage: usage)
     }
 
     @ElementBuilder
@@ -55,12 +55,11 @@ public extension Element {
         }
     }
 
-    /// Mark multiple resources as in use for argument buffer access from a compute kernel
+    /// Keeps `resources` resident and alive for the submission.
     func useComputeResources(_ resources: [any MTLResource], usage: MTLResourceUsage) -> some Element {
-        onWorkloadEnter { environmentValues in
-            let computeCommandEncoder = environmentValues.computeCommandEncoder.orFatalError("Missing compute command encoder")
+        ScopeModifier(content: self) { scope in
             for resource in resources {
-                computeCommandEncoder.useResource(resource, usage: usage)
+                try scope.retainAllocation(resource)
             }
         }
     }

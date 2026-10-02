@@ -3,46 +3,27 @@ import MetalSprocketsSupport
 
 // MARK: - MeshRenderPipeline
 
-/// A render pipeline using mesh shaders for GPU-driven geometry generation.
+/// A render pipeline using object (optional), mesh and fragment shaders, compiled through the Metal 4 compiler.
 ///
-/// Mesh shaders replace the traditional vertex shader stage with a more flexible
-/// model where geometry is generated directly on the GPU. This enables advanced
-/// techniques like GPU culling, LOD, and procedural geometry.
-///
-/// ## Overview
-///
-/// Create a mesh pipeline with mesh and fragment shaders:
+/// Mesh shaders replace the vertex stage with GPU-driven geometry generation. Issue work with ``Draw`` and
+/// `drawMeshThreadgroups`. Parameters reach the object, mesh and fragment stages through their argument tables.
 ///
 /// ```swift
 /// RenderPass {
-///     MeshRenderPipeline(
-///         meshShader: library.myMeshShader,
-///         fragmentShader: library.myFragmentShader
-///     ) {
-///         MeshDraw { encoder in
+///     MeshRenderPipeline(objectShader: object, meshShader: mesh, fragmentShader: fragment) {
+///         Draw { encoder in
 ///             encoder.drawMeshThreadgroups(
-///                 MTLSize(width: 1, height: 1, depth: 1),
+///                 threadgroupsPerGrid: MTLSize(width: 1, height: 1, depth: 1),
 ///                 threadsPerObjectThreadgroup: MTLSize(width: 1, height: 1, depth: 1),
 ///                 threadsPerMeshThreadgroup: MTLSize(width: 32, height: 1, depth: 1)
 ///             )
 ///         }
+///         .parameter("scale", functionType: .object, value: Float(1))
 ///     }
 /// }
 /// ```
 ///
-/// ## Object Shaders
-///
-/// Optionally add an object shader for per-object processing:
-///
-/// ```swift
-/// MeshRenderPipeline(
-///     objectShader: library.myObjectShader,
-///     meshShader: library.myMeshShader,
-///     fragmentShader: library.myFragmentShader
-/// ) {
-///     // Draw commands
-/// }
-/// ```
+/// Requires mesh-shader support (Apple GPU Family 7 or Mac 2); other devices report a capability error.
 ///
 /// ## Topics
 ///
@@ -50,13 +31,8 @@ import MetalSprocketsSupport
 /// - ``MeshShader``
 /// - ``ObjectShader``
 /// - ``RenderPipeline``
-public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadElement, BodylessContentElement where Content: Element {
+public struct MeshRenderPipeline <Content>: Element, SetupElement, BodylessContentElement where Content: Element {
     public typealias Body = Never
-    @MSEnvironment(\.device)
-    var device
-
-    @MSEnvironment(\.depthStencilState)
-    var depthStencilState
 
     var label: String?
     var objectShader: ObjectShader?
@@ -64,17 +40,6 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadEleme
     var fragmentShader: FragmentShader
     var content: Content
 
-    @MSState
-    var reflection: Reflection?
-
-    /// Creates a mesh render pipeline.
-    ///
-    /// - Parameters:
-    ///   - label: An optional label for debugging.
-    ///   - objectShader: An optional object shader for per-object processing.
-    ///   - meshShader: The mesh shader that generates geometry.
-    ///   - fragmentShader: The fragment shader for pixel coloring.
-    ///   - content: Child elements (typically mesh draw commands).
     public init(label: String? = nil, objectShader: ObjectShader? = nil, meshShader: MeshShader, fragmentShader: FragmentShader, @ElementBuilder content: () throws -> Content) throws {
         self.label = label
         self.objectShader = objectShader
@@ -85,139 +50,28 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, WorkloadEleme
 
     func setupEnter(_ node: Node) throws {
         let environment = node.environmentValues
-
-        let renderPassDescriptor = try environment.renderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor)).copyWithType(MTLRenderPassDescriptor.self)
-        let device = try device.orThrow(.missingEnvironment(\.device))
-        try ShaderDeviceCheck.validate(
-            [("object", objectShader?.function), ("mesh", meshShader.function), ("fragment", fragmentShader.function)],
-            device: device,
+        let context = try environment.metalContext.orThrow(.missingEnvironment("metalContext"))
+        let pass = try environment.activeRenderPassDescriptor.orThrow(.withHint(.missingEnvironment(\.renderPassDescriptor), hint: "Place MeshRenderPipeline inside a RenderPass."))
+        let formats = PassFormats(pass)
+        let configuration = MeshRenderPipelineConfiguration(
+            object: objectShader,
+            mesh: meshShader,
+            fragment: fragmentShader,
+            colorPixelFormats: formats.color,
+            depthPixelFormat: formats.depth,
+            stencilPixelFormat: formats.stencil,
+            rasterSampleCount: formats.sampleCount,
+            linkedFunctions: environment.linkedFunctions ?? [],
             label: label
         )
-
-        let color0Texture = renderPassDescriptor.colorAttachments[0].texture
-        let depthTexture = renderPassDescriptor.depthAttachment?.texture
-        let stencilTexture = renderPassDescriptor.stencilAttachment?.texture
-
-        let key = MeshRenderPipelineCache.Key(
-            objectFunction: objectShader.map { ObjectIdentifier($0.function) },
-            meshFunction: ObjectIdentifier(meshShader.function),
-            fragmentFunction: ObjectIdentifier(fragmentShader.function),
-            linkedFunctions: environment.linkedFunctions.map { ObjectIdentifier($0) },
-            colorPixelFormat0: color0Texture?.pixelFormat ?? .invalid,
-            colorSampleCount0: color0Texture?.sampleCount ?? 1,
-            depthPixelFormat: depthTexture?.pixelFormat ?? .invalid,
-            stencilPixelFormat: stencilTexture?.pixelFormat ?? .invalid,
-            depthStencil: environment.depthStencilDescriptor.map(DepthStencilKey.init),
-            label: label
-        )
-
-        let cache = node.cache(MeshRenderPipelineCache.self) { MeshRenderPipelineCache() }
-
-        // A node's environment storage persists across frames (the parent environment is merged into it rather than
-        // replacing it), so a depth-stencil state this node wrote on an earlier frame is still visible here. Only a
-        // state inherited from an ancestor should win over the descriptor. See #358.
-        let inheritedDepthStencilState = environment.depthStencilState.flatMap { state in
-            state === cache.depthStencilState ? nil : state
-        }
-
-        if cache.key == key,
-           let cachedPSO = cache.pipelineState,
-           let cachedReflection = cache.reflection {
-            node.environmentValues.renderPipelineState = cachedPSO
-            node.environmentValues.reflection = cachedReflection
-            self.reflection = cachedReflection
-            if inheritedDepthStencilState == nil, let cachedDSS = cache.depthStencilState {
-                node.environmentValues.depthStencilState = cachedDSS
-            }
-            return
-        }
-
-        // Cache miss: build a fresh descriptor and PSO.
-        let meshRenderPipelineDescriptor = MTLMeshRenderPipelineDescriptor()
-        meshRenderPipelineDescriptor.objectFunction = objectShader?.function
-        meshRenderPipelineDescriptor.meshFunction = meshShader.function
-        meshRenderPipelineDescriptor.fragmentFunction = fragmentShader.function
-
-        if let linkedFunctions = environment.linkedFunctions {
-            meshRenderPipelineDescriptor.objectLinkedFunctions = linkedFunctions
-            meshRenderPipelineDescriptor.meshLinkedFunctions = linkedFunctions
-            meshRenderPipelineDescriptor.fragmentLinkedFunctions = linkedFunctions
-        }
-
-        if let color0Texture {
-            meshRenderPipelineDescriptor.colorAttachments[0].pixelFormat = color0Texture.pixelFormat
-            // rasterSampleCount has to match the render pass attachments for MSAA to work.
-            meshRenderPipelineDescriptor.rasterSampleCount = color0Texture.sampleCount
-        }
-        if let depthTexture {
-            meshRenderPipelineDescriptor.depthAttachmentPixelFormat = depthTexture.pixelFormat
-        }
-        if let stencilTexture {
-            meshRenderPipelineDescriptor.stencilAttachmentPixelFormat = stencilTexture.pixelFormat
-        }
-        if let label {
-            meshRenderPipelineDescriptor.label = label
-        }
-
-        let (renderPipelineState, rawReflection) = try device.makeRenderPipelineState(descriptor: meshRenderPipelineDescriptor, options: .bindingInfo)
-        let reflection = Reflection(rawReflection.orFatalError(.resourceCreationFailure("Failed to create reflection.")))
-        self.reflection = reflection
-
-        var builtDepthStencilState: MTLDepthStencilState?
-        if inheritedDepthStencilState == nil {
-            // Assign unconditionally, so that dropping the descriptor also drops the state we wrote last frame.
-            builtDepthStencilState = environment.depthStencilDescriptor.flatMap { device.makeDepthStencilState(descriptor: $0) }
-            node.environmentValues.depthStencilState = builtDepthStencilState
-        }
-
-        cache.key = key
-        cache.pipelineState = renderPipelineState
-        cache.reflection = reflection
-        cache.depthStencilState = builtDepthStencilState
-
-        node.environmentValues.renderPipelineState = renderPipelineState
-        node.environmentValues.reflection = reflection
-    }
-
-    func workloadEnter(_ node: Node) throws {
-        logger?.verbose?.info("Enter mesh render pipeline: \(label ?? "<unlabeled>") (\(node.element.debugName))")
-
-        let renderCommandEncoder = try node.environmentValues.renderCommandEncoder.orThrow(.missingEnvironment(\.renderCommandEncoder))
-        let renderPipelineState = try node.environmentValues.renderPipelineState.orThrow(.missingEnvironment(\.renderPipelineState))
-
-        if let depthStencilState {
-            renderCommandEncoder.setDepthStencilState(depthStencilState)
-        }
-
-        renderCommandEncoder.setRenderPipelineState(renderPipelineState)
-    }
-
-    func workloadExit(_ node: Node) throws {
-        logger?.verbose?.info("Exit mesh render pipeline: \(label ?? "<unlabeled>") (\(node.element.debugName))")
+        let pipeline = try context.pipelines.meshRenderPipeline(configuration)
+        node.environmentValues.renderPipeline = pipeline
+        node.environmentValues.renderPipelineState = pipeline.state
+        node.environmentValues.reflection = pipeline.reflection
     }
 
     nonisolated func requiresSetup(comparedTo old: MeshRenderPipeline<Content>) -> Bool {
-        // Always re-run setup; the per-node cache handles reuse. See #327 / #333.
+        // Always re-run setup; the context cache decides whether anything recompiles.
         true
     }
-}
-
-private final class MeshRenderPipelineCache: NodeElementCache {
-    struct Key: Hashable {
-        let objectFunction: ObjectIdentifier?
-        let meshFunction: ObjectIdentifier
-        let fragmentFunction: ObjectIdentifier
-        let linkedFunctions: ObjectIdentifier?
-        let colorPixelFormat0: MTLPixelFormat
-        let colorSampleCount0: Int
-        let depthPixelFormat: MTLPixelFormat
-        let stencilPixelFormat: MTLPixelFormat
-        let depthStencil: DepthStencilKey?
-        let label: String?
-    }
-
-    var key: Key?
-    var pipelineState: MTLRenderPipelineState?
-    var reflection: Reflection?
-    var depthStencilState: MTLDepthStencilState?
 }

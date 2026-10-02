@@ -1,165 +1,6 @@
 import Metal
 import MetalSprocketsSupport
 
-// MARK: - VisibleFunctionTableModifier
-
-/// A modifier that binds a visible function table to a shader.
-internal struct VisibleFunctionTableModifier<Content>: Element, SetupElement, WorkloadElement, BodylessContentElement where Content: Element {
-    var name: String
-    var functions: [MTLFunction]
-    var functionType: MTLFunctionType?
-    var content: Content
-
-    @MSState
-    var functionTable: MTLVisibleFunctionTable?
-
-    @MSState
-    var resolvedIndex: Int?
-
-    @MSState
-    var resolvedFunctionType: MTLFunctionType?
-
-    func setupEnter(_ node: Node) throws {
-        guard let reflection = node.environmentValues.reflection else {
-            // Not ready yet - will be set up when the enclosing pipeline runs
-            return
-        }
-        if let pipelineState = node.environmentValues.renderPipelineState {
-            try createFunctionTable(renderPipelineState: pipelineState, reflection: reflection)
-        } else if let pipelineState = node.environmentValues.computePipelineState {
-            try createFunctionTable(computePipelineState: pipelineState, reflection: reflection)
-        }
-    }
-
-    func workloadEnter(_ node: Node) throws {
-        let usage = "visibleFunctionTable('\(name)')"
-        let hint = "\(usage) must be placed inside a RenderPipeline or ComputePipeline content block, not as a modifier on the pipeline itself."
-        let reflection = try node.environmentValues.requireReflection(for: usage)
-
-        if functionTable == nil {
-            if let pipelineState = node.environmentValues.renderPipelineState {
-                try createFunctionTable(renderPipelineState: pipelineState, reflection: reflection)
-            } else if let pipelineState = node.environmentValues.computePipelineState {
-                try createFunctionTable(computePipelineState: pipelineState, reflection: reflection)
-            } else {
-                throw MetalSprocketsError.withHint(.missingEnvironment("renderPipelineState or computePipelineState"), hint: hint)
-            }
-        }
-
-        guard let table = functionTable,
-              let index = resolvedIndex,
-              let resolvedType = resolvedFunctionType else {
-            return
-        }
-
-        if let encoder = node.environmentValues.renderCommandEncoder {
-            switch resolvedType {
-            case .vertex:
-                encoder.setVertexVisibleFunctionTable(table, bufferIndex: index)
-            case .fragment:
-                encoder.setFragmentVisibleFunctionTable(table, bufferIndex: index)
-            default:
-                logger?.warning("Unsupported function type for visible function table: \(resolvedType.rawValue)")
-            }
-        } else if let encoder = node.environmentValues.computeCommandEncoder {
-            encoder.setVisibleFunctionTable(table, bufferIndex: index)
-        }
-    }
-
-    private func createFunctionTable(renderPipelineState: MTLRenderPipelineState, reflection: Reflection) throws {
-        try Self.checkFunctionPointerSupport(device: renderPipelineState.device, name: name)
-        let (index, resolvedType) = try resolveBinding(name: name, functionType: functionType, reflection: reflection, supportedTypes: [.vertex, .fragment])
-
-        resolvedIndex = index
-        resolvedFunctionType = resolvedType
-
-        let tableDescriptor = MTLVisibleFunctionTableDescriptor()
-        tableDescriptor.functionCount = functions.count
-
-        let stage: MTLRenderStages = resolvedType == .vertex ? .vertex : .fragment
-
-        guard let table = renderPipelineState.makeVisibleFunctionTable(
-            descriptor: tableDescriptor,
-            stage: stage
-        ) else {
-            throw MetalSprocketsError.resourceCreationFailure("Failed to create visible function table for '\(name)'")
-        }
-
-        for (i, function) in functions.enumerated() {
-            guard let handle = renderPipelineState.functionHandle(function: function, stage: stage) else {
-                logger?.warning("Failed to get function handle for \(function.name)")
-                continue
-            }
-            table.setFunction(handle, index: i)
-        }
-
-        functionTable = table
-    }
-
-    private func createFunctionTable(computePipelineState: MTLComputePipelineState, reflection: Reflection) throws {
-        try Self.checkFunctionPointerSupport(device: computePipelineState.device, name: name)
-        let (index, resolvedType) = try resolveBinding(name: name, functionType: functionType, reflection: reflection, supportedTypes: [.kernel])
-
-        resolvedIndex = index
-        resolvedFunctionType = resolvedType
-
-        let tableDescriptor = MTLVisibleFunctionTableDescriptor()
-        tableDescriptor.functionCount = functions.count
-
-        guard let table = computePipelineState.makeVisibleFunctionTable(descriptor: tableDescriptor) else {
-            throw MetalSprocketsError.resourceCreationFailure("Failed to create visible function table for '\(name)'")
-        }
-
-        for (i, function) in functions.enumerated() {
-            guard let handle = computePipelineState.functionHandle(function: function) else {
-                logger?.warning("Failed to get function handle for \(function.name)")
-                continue
-            }
-            table.setFunction(handle, index: i)
-        }
-
-        functionTable = table
-    }
-
-    /// Visible function tables are built from function handles, which only exist on devices that
-    /// support function pointers. Fail early with a clear message instead of a nil handle later.
-    private static func checkFunctionPointerSupport(device: MTLDevice, name: String) throws {
-        guard device.supportsFunctionPointers else {
-            throw MetalSprocketsError.deviceCababilityFailure("Visible function table '\(name)' requires function pointer support, which device '\(device.name)' does not provide")
-        }
-    }
-
-    private func resolveBinding(name: String, functionType: MTLFunctionType?, reflection: Reflection, supportedTypes: [MTLFunctionType]) throws -> (Int, MTLFunctionType) {
-        if let functionType {
-            guard supportedTypes.contains(functionType) else {
-                throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' specified functionType \(functionType) which is not valid for this pipeline")
-            }
-            guard let index = reflection.binding(forType: functionType, name: name) else {
-                throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' not found in \(functionType) bindings")
-            }
-            return (index, functionType)
-        }
-        // Auto-detect from reflection. Prefer the supported types for this pipeline.
-        let matches = supportedTypes.compactMap { type -> (Int, MTLFunctionType)? in
-            reflection.binding(forType: type, name: name).map { ($0, type) }
-        }
-        switch matches.count {
-        case 0:
-            throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' not found in reflection")
-        case 1:
-            return matches[0]
-        default:
-            throw MetalSprocketsError.resourceCreationFailure("Visible function table '\(name)' found in multiple function types (\(matches.map(\.1)))) - specify functionType explicitly")
-        }
-    }
-
-    nonisolated func requiresSetup(comparedTo old: VisibleFunctionTableModifier<Content>) -> Bool {
-        name != old.name ||
-            functions.count != old.functions.count ||
-            !zip(functions, old.functions).allSatisfy { $0 === $1 }
-    }
-}
-
 // MARK: - Element Extension
 
 public extension Element {
@@ -177,9 +18,9 @@ public extension Element {
     /// // Render pipeline
     /// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
     ///     Draw { encoder in ... }
-    ///         .visibleFunctionTable("colorFunction", functions: [stitchedFunction.function])
+    ///         .visibleFunctionTable("colorFunction", functions: [stitchedFunction])
     /// }
-    /// .linkedFunctions([stitchedFunction.function])
+    /// .linkedFunctions([stitchedFunction])
     ///
     /// // Compute pipeline
     /// ComputePipeline(computeKernel: kernel) {
@@ -197,14 +38,9 @@ public extension Element {
     func visibleFunctionTable(
         _ name: String,
         functionType: MTLFunctionType? = nil,
-        functions: [MTLFunction]
+        functions: [VisibleFunction]
     ) -> some Element {
-        VisibleFunctionTableModifier(
-            name: name,
-            functions: functions,
-            functionType: functionType,
-            content: self
-        )
+        ParameterModifier(content: self) { $0.setFunctionTable(name, stage: functionType, functions: functions) }
     }
 
     /// Binds a visible function table containing a single function.
@@ -212,12 +48,12 @@ public extension Element {
     /// Convenience method for binding a single visible function.
     ///
     /// ```swift
-    /// .visibleFunctionTable("colorFunction", function: stitchedFunction.function)
+    /// .visibleFunctionTable("colorFunction", function: stitchedFunction)
     /// ```
     func visibleFunctionTable(
         _ name: String,
         functionType: MTLFunctionType? = nil,
-        function: MTLFunction
+        function: VisibleFunction
     ) -> some Element {
         visibleFunctionTable(name, functionType: functionType, functions: [function])
     }
@@ -237,16 +73,14 @@ public extension Element {
     /// ```swift
     /// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
     ///     Draw { encoder in ... }
-    ///         .visibleFunctionTable("colorFunction", function: stitchedFunction.function)
+    ///         .visibleFunctionTable("colorFunction", function: stitchedFunction)
     /// }
-    /// .linkedFunctions([stitchedFunction.function])
+    /// .linkedFunctions([stitchedFunction])
     /// ```
     ///
     /// - Parameter functions: The Metal functions to link into the pipeline.
     /// - Returns: A modified element with the linked functions set in the environment.
-    func linkedFunctions(_ functions: [MTLFunction]) -> some Element {
-        let linked = MTLLinkedFunctions()
-        linked.functions = functions
-        return environment(\.linkedFunctions, linked)
+    func linkedFunctions(_ functions: [VisibleFunction]) -> some Element {
+        environment(\.linkedFunctions, functions)
     }
 }

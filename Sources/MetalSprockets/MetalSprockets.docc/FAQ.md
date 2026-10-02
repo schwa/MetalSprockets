@@ -1,9 +1,9 @@
 # MetalSprockets FAQ
 
-## Why isn't my Element rendering anything / Why does Metal debugger show "empty render encoder"?
+## Why is not my Element rendering anything / Why does Metal debugger show "empty render encoder"?
 
 ### Problem
-Your custom Element compiles successfully but no rendering occurs, and the Metal debugger shows "empty render encoder" with no draw commands being submitted.
+Your custom Element compiles but does not render. The Metal debugger shows "empty render encoder" because no draw commands reach it.
 
 ### Cause
 This typically happens when an Element's `body` property returns `any Element` instead of `some Element`:
@@ -25,10 +25,10 @@ public var body: some Element {
 ```
 
 ### Why This Happens
-The framework needs concrete type information to properly traverse the element tree. Using `any Element` creates a type-erased existential that prevents the framework from walking into child elements and executing their lifecycle methods (like `workloadEnter`/`workloadExit`).
+The framework needs concrete type information to traverse the element tree. `any Element` creates a type-erased existential. This prevents traversal into child elements and calls to their lifecycle methods, such as `workloadEnter`/`workloadExit`.
 
 ### Solution
-Always use `some Element` as the return type for your Element's body property. This preserves the concrete type information needed for proper element tree traversal.
+Use `some Element` as the return type for your Element's body property. This preserves the concrete type information that tree traversal needs.
 
 ### Related Issues
 - [#256](https://github.com/schwa/MetalSprockets/issues/256) - Framework should detect or warn when Element body returns 'any Element'
@@ -50,7 +50,7 @@ return RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader
 ```
 
 ### Why This Happens
-The `.parameter()` modifier needs access to shader reflection data to know where to bind the parameters. This reflection data is only available within the RenderPipeline or ComputePipeline's content closure.
+The `.parameter()` modifier uses shader reflection data to find parameter bindings. This data is available only within the RenderPipeline or ComputePipeline content closure.
 
 ### Solution
 Apply `.parameter()` modifiers to elements inside the pipeline's content closure:
@@ -63,7 +63,7 @@ return RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader
 }
 ```
 
-This ensures the parameters have access to the pipeline's reflection data for proper binding.
+Parameters can then access the pipeline's reflection data.
 
 ## Why am I getting "Ambiguous parameter" errors?
 
@@ -71,7 +71,7 @@ This ensures the parameters have access to the pipeline's reflection data for pr
 You get a fatal error like `Fatal error: Ambiguous parameter, found parameter named uniforms in both vertex (index: #1) and fragment (index: #0) shaders.`
 
 ### Cause
-This happens when a parameter with the same name exists in both vertex and fragment shaders, and you don't specify which function to bind it to:
+This occurs when vertex and fragment shaders share a parameter name, but the binding does not specify a function:
 
 ```swift
 // ❌ WRONG - Ambiguous, parameter exists in both shaders
@@ -79,7 +79,7 @@ This happens when a parameter with the same name exists in both vertex and fragm
 ```
 
 ### Why This Happens
-When shaders share parameter names across vertex and fragment functions, the framework can't determine which one you want to bind to. Metal shaders often use the same buffer indices and names in both vertex and fragment stages.
+When vertex and fragment functions share parameter names, the framework cannot determine which function the binding targets. Metal shaders often share buffer indices and names between these stages.
 
 ### Solution
 Explicitly specify the function type when binding parameters that exist in multiple shader stages:
@@ -90,11 +90,11 @@ Explicitly specify the function type when binding parameters that exist in multi
 .parameter("uniforms", functionType: .fragment, value: myUniforms)
 ```
 
-You can bind the same or different values to each stage as needed. This removes the ambiguity and ensures your parameters are bound to the correct shader stage.
+Each stage can use the same value or a different value. An explicit function type identifies the target stage.
 
 ## What is Ultraviolence
 
-MetalSprockets was originally codenamed "Ultraviolence" during its early development. The project was renamed to MetalSprockets. If you encounter references to "Ultraviolence" in old commits, documentation, or issues, they refer to the same project.
+MetalSprockets originally used the codename "Ultraviolence". References to "Ultraviolence" in old commits, documentation, or issues refer to this project.
 
 ## What is the relationship to Apple Game Sprockets?
 

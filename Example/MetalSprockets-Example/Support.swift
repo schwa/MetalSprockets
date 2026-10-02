@@ -35,6 +35,9 @@ struct Vertex {
     }()
 }
 
+// 6 faces, 2 triangles each.
+nonisolated let cubeVertexCount = 36
+
 // Generates a unit cube (-1 to 1) with RGB gradient colors based on vertex position.
 // Each face has UV coordinates for edge detection in the fragment shader.
 nonisolated func generateCubeVertices() -> [Vertex] {

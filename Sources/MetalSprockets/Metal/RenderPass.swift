@@ -1,4 +1,5 @@
 import Metal
+import MetalSprocketsSupport
 
 #if os(visionOS)
 import CompositorServices
@@ -6,118 +7,85 @@ import CompositorServices
 
 // MARK: - RenderPass
 
-/// A container element that creates a Metal render command encoder.
+internal protocol RenderPassElement {
+}
+
+/// A container that opens a Metal 4 render encoder for its content.
 ///
-/// `RenderPass` establishes the rendering context for child elements. It creates
-/// an `MTLRenderCommandEncoder` that pipelines and draw commands use to encode GPU work.
-///
-/// ## Understanding Passes vs Pipelines
-///
-/// A **render pass** represents a single set of render targets (color, depth, stencil
-/// attachments). Within a pass, you can have multiple **pipelines** with different
-/// shader configurations. Each pipeline change is relatively cheap, while starting
-/// a new pass requires potentially flushing render targets.
-///
-/// Use multiple passes when you need different render targets (e.g., shadow maps,
-/// post-processing). Use multiple pipelines within a pass for different materials
-/// or rendering techniques.
-///
-/// You can have multiple render passes in a frame, and you can also mix render passes
-/// with ``ComputePass`` for hybrid rendering and compute workflows.
-///
-/// ## Overview
-///
-/// A render pass must contain one or more ``RenderPipeline`` elements:
+/// The pass renders into the environment's ``MSEnvironmentValues/renderPassDescriptor``, which roots such as
+/// ``OffscreenRenderer`` and `RenderView` provide. Descriptor modifiers (for example ``Element/msaa(sampleCount:)``)
+/// wrap the pass and rewrite a private copy of that descriptor.
 ///
 /// ```swift
-/// RenderPass {
-///     RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+/// try RenderPass(label: "Main Scene") {
+///     try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
 ///         Draw { encoder in
-///             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+///             encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
 ///         }
 ///     }
 /// }
 /// ```
-///
-/// ## Render Pass Descriptor
-///
-/// The render pass uses the `renderPassDescriptor` from the environment, which is
-/// typically configured by `RenderView` or ``OffscreenRenderer``. You can modify
-/// it using render pass descriptor modifiers.
-///
-/// ## Labels
-///
-/// Use the `label` parameter for debugging. Labels appear in Xcode's GPU frame capture:
-///
-/// ```swift
-/// RenderPass(label: "Main Scene") {
-///     // ...
-/// }
-/// ```
-///
-/// ## Topics
-///
-/// ### Related Elements
-/// - ``RenderPipeline``
-/// - ``Draw``
-/// Marker for `RenderPass`, letting modifiers detect that they have been placed inside a pass.
-internal protocol RenderPassElement {
-}
-
-public struct RenderPass <Content>: Element, WorkloadElement, BodylessContentElement, RenderPassElement, EnvironmentModifyingElement where Content: Element {
+public struct RenderPass <Content>: Element, SetupElement, WorkloadElement, BodylessContentElement, RenderPassElement, EnvironmentModifyingElement where Content: Element {
     private let label: String?
     internal let content: Content
 
-    /// Creates a render pass with the specified content.
-    ///
-    /// - Parameters:
-    ///   - label: An optional label for debugging (visible in GPU frame capture).
-    ///   - content: A closure that returns the child elements to render.
     public init(label: String? = nil, @ElementBuilder content: () throws -> Content) throws {
         self.label = label
         self.content = try content()
     }
 
     func configureNodeBodyless(_ node: Node) throws {
-        // Create a fresh pipeline descriptor each frame. This is lightweight
-        // (just an ObjC alloc) and ensures children — including any
-        // RenderPipelineDescriptorTransformer — always start from a clean slate
-        // during the update phase. See #342.
-        let renderPipelineDescriptor = MTLRenderPipelineDescriptor()
-        node.environmentValues.renderPipelineDescriptor = renderPipelineDescriptor
+        // Children (including any RenderPipelineDescriptorTransformer) start from a clean pipeline descriptor every
+        // frame during the update phase. See #342.
+        node.environmentValues.renderPipelineDescriptor = MTL4RenderPipelineDescriptor()
+    }
+
+    // Publishes a private copy each frame, before child pipelines compile against its formats.
+    func setupEnter(_ node: Node) throws {
+        let descriptor = try node.environmentValues.renderPassDescriptor.orThrow(.withHint(.missingEnvironment(\.renderPassDescriptor), hint: "Render passes need a root that supplies a render target, such as OffscreenRenderer or RenderView."))
+        let copy = try (descriptor.copy() as? MTL4RenderPassDescriptor).orThrow(.generic("Could not copy the render pass descriptor"))
+        node.environmentValues.activeRenderPassDescriptor = copy
+        node.environmentValues.renderAttachmentFormats = RenderAttachmentFormats(copy)
     }
 
     func workloadEnter(_ node: Node) throws {
         logger?.verbose?.info("Enter render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
-        let commandBuffer = try node.environmentValues.commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
-        let renderPassDescriptor = try node.environmentValues.renderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor))
-        let renderCommandEncoder = try commandBuffer._makeRenderCommandEncoder(descriptor: renderPassDescriptor)
+        let scope = try node.environmentValues.recordingScope.orThrow(.withHint(.missingEnvironment("recordingScope"), hint: "Render passes run inside a root such as Runner, OffscreenRenderer or RenderView."))
+        let descriptor = try node.environmentValues.activeRenderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor))
+        let pass = try scope.beginRenderPass(descriptor: descriptor)
+        node.environmentValues.renderPassEncoder = pass
+        node.environmentValues.renderCommandEncoder = pass.encoder
         if let label {
-            renderCommandEncoder.label = label
+            try pass.setLabel(label)
         }
-        node.environmentValues.renderCommandEncoder = renderCommandEncoder
+        try pass.beginTimestamps(node.environmentValues.timestampRequest)
     }
 
+    // Also runs while unwinding a thrown traversal, so the encoder always ends before the recording is discarded.
     func workloadExit(_ node: Node) throws {
-        let renderCommandEncoder = try node.environmentValues.renderCommandEncoder.orThrow(.missingEnvironment(\.renderCommandEncoder))
-
+        guard let pass = node.environmentValues.renderPassEncoder, let scope = node.environmentValues.recordingScope else {
+            return
+        }
+        node.environmentValues.renderPassEncoder = nil
+        node.environmentValues.renderCommandEncoder = nil
+        try pass.endTimestamps(node.environmentValues.timestampRequest)
         #if os(visionOS)
         if let renderContext = node.environmentValues.immersiveRenderContext {
-            renderContext.endEncoding(commandEncoder: renderCommandEncoder)
-        } else {
-            renderCommandEncoder.endEncoding()
+            // The compositor ends the encoder itself, after drawing its own content. On device its Metal 4 endEncoding
+            // also leaves the command buffer ended (observed on Apple Vision Pro, #434; not documented), so nothing may
+            // be encoded after this pass and the recording must not end the buffer again.
+            try scope.endRenderPass(pass, producerBarrier: node.environmentValues.passProducerBarrier) { encoder in renderContext.endEncoding(commandEncoder: encoder) }
+            scope.markCommandBufferEndedByOwner()
+            logger?.verbose?.info("Exit render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
+            return
         }
-        #else
-        renderCommandEncoder.endEncoding()
         #endif
-
-        node.environmentValues.renderCommandEncoder = nil
+        try scope.endRenderPass(pass, producerBarrier: node.environmentValues.passProducerBarrier)
         logger?.verbose?.info("Exit render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
     }
 
     nonisolated func requiresSetup(comparedTo old: RenderPass<Content>) -> Bool {
-        // The only setup work is allocating a pipeline descriptor, which is cheap enough to redo
-        // on structure changes; encoders are created in the workload phase.
-        false
+        // Setup only copies the descriptor; always refresh it so resized targets are never stale.
+        true
     }
 }

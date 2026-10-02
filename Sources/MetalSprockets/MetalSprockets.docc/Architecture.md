@@ -2,13 +2,13 @@
 
 ## Overview
 
-MetalSprockets is a declarative Metal rendering framework for Swift, inspired by SwiftUI's architecture. It provides a high-level, composable API for building Metal rendering pipelines while maintaining the performance and flexibility of Metal.
+MetalSprockets is a declarative Metal rendering framework for Swift, based on SwiftUI's architecture. Its API composes rendering pipelines while preserving Metal's performance and flexibility.
 
 ## Core Concepts
 
 ### 1. Element Protocol
 
-The `Element` protocol is the fundamental building block of MetalSprockets, analogous to SwiftUI's `View` protocol.
+The `Element` protocol defines a unit of MetalSprockets composition, like SwiftUI's `View` protocol.
 
 ```swift
 public protocol Element {
@@ -24,8 +24,8 @@ Elements compose hierarchically to form a rendering tree. Each element can eithe
 
 ### 2. BodylessElement
 
-`BodylessElement` represents elements that perform actual Metal operations rather than composition. Which phases an
-element takes part in is expressed by conforming to `SetupElement`, `WorkloadElement`, or both:
+`BodylessElement` represents elements that perform Metal operations rather than compose children.
+An element conforms to `SetupElement`, `WorkloadElement`, or both to specify its processing phases:
 
 ```swift
 protocol BodylessElement {
@@ -102,9 +102,9 @@ The environment propagates values down the element tree:
 public struct MSEnvironmentValues {
     // Predefined environment keys
     var device: MTLDevice?
-    var commandQueue: MTLCommandQueue?
-    var commandBuffer: MTLCommandBuffer?
-    var renderPassDescriptor: MTLRenderPassDescriptor?
+    var commandQueue: (any MTL4CommandQueue)?
+    var commandBuffer: (any MTL4CommandBuffer)?
+    var renderPassDescriptor: MTL4RenderPassDescriptor?
     // ... and more
 }
 ```
@@ -166,7 +166,7 @@ Metal shader libraries:
 
 ### 1. Setup Phase
 
-The setup phase occurs once when the element tree is built. Phases are not driven individually — `System.render(root:)` runs update, setup and workload in order:
+The setup phase occurs once when the element tree is built. `System.render(root:)` runs update, setup, and workload in order, rather than driving each phase separately:
 
 ```swift
 try system.render(root: root)
@@ -220,20 +220,21 @@ RootElement (env: device, commandQueue)
 
 ### 5. Command Buffer Structure
 
-Command buffers coordinate GPU work:
+The root (``Runner``, ``OffscreenRenderer``, `RenderView`) owns a Metal 4 command buffer for each frame:
 
 ```
-CommandBuffer
-├── RenderCommandEncoder (RenderPass)
-│   ├── Draw commands
-│   └── Parameters/textures
-├── ComputeCommandEncoder (ComputePass)
-│   └── Dispatch commands
-└── BlitCommandEncoder (BlitPass)
-    └── Copy operations
+MTL4CommandBuffer
+├── MTL4RenderCommandEncoder (RenderPass)
+│   ├── Draw / RenderCommand
+│   └── Parameters, textures, samplers (argument tables)
+└── MTL4ComputeCommandEncoder (ComputePass)
+    ├── ComputeDispatch
+    └── ComputeCommand (copies and fills)
 ```
 
-Handlers can be attached for scheduling and completion events.
+Commands inside a pass are not ordered automatically.
+Use ``EncoderBarrier``, ``QueueBarrier`` or ``Element/barrierAfterPass(after:beforeQueueStages:visibility:)`` to order them.
+Attach `onSubmissionCommitted` and `onCommandBufferCompleted` to observe commit and completion.
 
 ## Key Patterns
 
@@ -263,7 +264,7 @@ element
     .renderPipelineDescriptorTransformer { descriptor in
         descriptor.isAlphaToCoverageEnabled = true
     }
-    .environment(\.cullMode, .back)
+    .depthBias(-0.001)
 ```
 
 ### Environment Injection
@@ -276,8 +277,8 @@ ContentView()
     .commandQueue(commandQueue)
 ```
 
-The supplied resources (device, command queue, command buffer, render pass / pipeline descriptors, drawable and
-drawable size) each have a convenience modifier; `environment(_:_:)` remains for custom keys.
+Each supplied resource has a convenience modifier: device, command queue, command buffer, render pass/pipeline descriptors, drawable, and drawable size.
+`environment(_:_:)` supports custom keys.
 
 ### Conditional Rendering
 
@@ -324,12 +325,12 @@ Automatic resource lifecycle management:
 
 MetalSprockets currently operates on a **single-threaded model**:
 
-- **Main Thread**: All element tree updates, setup, and command encoding happen synchronously on the thread that calls into the System (typically main thread via MTKViewDelegate)
+- **Main Thread**: Element updates, setup, and command encoding run synchronously on the thread that calls the System. This is usually the main thread through MTKViewDelegate.
 - **GPU**: Command buffer execution happens asynchronously after `commit()`/`present()`
 
 ### Current Limitations
 
-The framework is **not thread-safe**. The `System` class uses `@unchecked Sendable` as a temporary measure but does not actually provide thread safety. Key limitations:
+The framework is **not thread-safe**. The `System` class temporarily uses `@unchecked Sendable`, but this does not provide thread safety. Its limitations include:
 
 - The traversal context's node stack is mutable state without synchronization
 - All System methods must be called from the same thread
@@ -337,7 +338,7 @@ The framework is **not thread-safe**. The `System` class uses `@unchecked Sendab
 
 ### SwiftUI Integration
 
-When using `RenderView`, MetalKit's `MTKViewDelegate.draw(in:)` drives the render loop. This callback occurs on the main thread, so all MetalSprockets processing happens there.
+In `RenderView`, MetalKit's `MTKViewDelegate.draw(in:)` drives the render loop. This callback runs on the main thread, where all MetalSprockets processing occurs.
 
 _Note: Concurrency improvements are tracked in [issue #146](https://github.com/schwa/MetalSprockets/issues/146)._
 
@@ -388,10 +389,10 @@ extension MSEnvironmentValues {
 
 ## Best Practices
 
-1. **Keep Elements Small**: Each element should have a single responsibility
+1. **Keep Elements Small**: Give each element one responsibility
 2. **Use Composition**: Build complex scenes from simple, reusable elements
 3. **Minimize State**: Only use state where necessary for performance
-4. **Leverage Environment**: Use environment for cross-cutting concerns
+4. **Use the Environment**: Share values across the tree through the environment
 5. **Cache Resources**: Reuse Metal resources when possible
 6. **Profile Performance**: Use Metal System Trace to identify bottlenecks
 

@@ -7,6 +7,19 @@ import MetalSprocketsSupport
 /// construction time — by default the system default device. On a machine with more than one GPU that can differ from
 /// the device the pipeline ends up on, and Metal's own diagnostic for the mismatch is poor. See #55.
 internal enum ShaderDeviceCheck {
+    static func validateLinkedFunctions(_ functions: [VisibleFunction], device: MTLDevice, label: String?) throws {
+        try validate(functions.map { (name: $0.reference.name, function: $0.function) }, device: device, label: label)
+        var exports: [String: ShaderFunction] = [:]
+        for function in functions {
+            let reference = function.reference
+            let name = reference.specializedName ?? reference.name
+            if let existing = exports[name], existing != reference {
+                throw MetalSprocketsError.configurationError("Linked function '\(name)' has conflicting definitions. Supply distinct specializedName values.")
+            }
+            exports[name] = reference
+        }
+    }
+
     /// The name of the first stage whose device doesn't match, or `nil` when they all agree.
     static func mismatchedStage(_ stages: [(name: String, device: ObjectIdentifier)], pipelineDevice: ObjectIdentifier) -> String? {
         stages.first { $0.device != pipelineDevice }?.name

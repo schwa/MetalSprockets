@@ -92,7 +92,7 @@ struct ProcessInfoExtensionsTests {
 @Suite("CommandBufferLogging")
 struct CommandBufferLoggingTests {
     @Test(
-        "addMetalSprocketsLogging attaches a log state",
+        "addMetalSprocketsLogging attaches a log state", .requiresMetal4,
         .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Metal log state unavailable on CI runners")
     )
     func testAddMetalSprocketsLogging() throws {
@@ -108,21 +108,45 @@ struct CommandBufferLoggingTests {
 @MainActor
 @Suite("Parameter+SwiftUI")
 struct ParameterSwiftUITests {
-    struct Leaf: Element, BodylessElement { var body: Never { fatalError() } }
+    private static let source = """
+    #include <metal_stdlib>
+    using namespace metal;
+    struct VertexOut { float4 position [[position]]; };
+    [[vertex]] VertexOut vertex_main(uint id [[vertex_id]]) {
+        float2 positions[3] = { float2(-1, -1), float2(3, -1), float2(-1, 3) };
+        VertexOut out;
+        out.position = float4(positions[id], 0, 1);
+        return out;
+    }
+    [[fragment]] float4 fragment_main(constant float4 &tint [[buffer(0)]]) { return tint; }
+    """
 
-    @Test(".parameter(name:color:) returns a ParameterElementModifier")
-    func testColorParameterReturnsModifier() {
-        let e = Leaf().parameter("tint", color: Color.red)
-        #expect(e is ParameterElementModifier<Leaf>)
+    /// Renders a full-screen triangle whose fragment color is the `tint` parameter; returns the center pixel (BGRA).
+    private func render(_ tinted: (Draw) -> some Element) throws -> [UInt8] {
+        let library = try ShaderLibrary(source: Self.source)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 8, height: 8))
+        let pass = try RenderPass {
+            try RenderPipeline(vertexShader: library.function(type: VertexShader.self, named: "vertex_main"), fragmentShader: library.function(type: FragmentShader.self, named: "fragment_main")) {
+                tinted(Draw { $0.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3) })
+            }
+        }
+        let texture = try renderer.render(pass).texture
+        var pixel = [UInt8](repeating: 0, count: 4)
+        texture.getBytes(&pixel, bytesPerRow: 8 * 4, from: MTLRegionMake2D(4, 4, 1, 1), mipmapLevel: 0)
+        return pixel
     }
 
-    @Test(".parameter(name:color:functionType:) targets fragment")
-    func testColorParameterWithFunctionType() {
-        let e = Leaf().parameter("tint", color: Color.blue, functionType: .fragment)
-        guard let modifier = e as? ParameterElementModifier<Leaf> else {
-            Issue.record("Expected ParameterElementModifier")
-            return
+    @Test(".parameter(name:color:) binds the color's device RGB components", .requiresMetal4)
+    func testColorParameterRendersColor() throws {
+        #expect(try render { $0.parameter("tint", color: Color(red: 1, green: 0, blue: 0)) } == [0, 0, 255, 255])
+    }
+
+    @Test(".parameter(name:color:functionType:) binds only the fragment stage", .requiresMetal4)
+    func testColorParameterWithFunctionType() throws {
+        #expect(try render { $0.parameter("tint", color: Color(red: 0, green: 0, blue: 1), functionType: .fragment) } == [255, 0, 0, 255])
+        // The vertex stage has no `tint`, so filtering to it is a missing binding.
+        #expect(throws: (any Error).self) {
+            _ = try render { $0.parameter("tint", color: .red, functionType: .vertex) }
         }
-        #expect(modifier.parameters[name: "tint"]?.functionTypes == .fragment)
     }
 }

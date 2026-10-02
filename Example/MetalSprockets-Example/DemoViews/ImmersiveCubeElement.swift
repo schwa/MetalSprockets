@@ -43,14 +43,12 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
             return try RenderPipeline(vertexShader: shaderLibrary.vertexImmersive, fragmentShader: shaderLibrary.fragmentMain) {
                 Draw { encoder in
                     // Vertex amplification renders geometry twice (once per eye) in a single draw call.
-                    var viewMappings = (0 ..< context.viewCount).map { MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: UInt32($0), renderTargetArrayIndexOffset: UInt32($0)) }
-                    encoder.setVertexAmplificationCount(context.viewCount, viewMappings: &viewMappings)
+                    let viewMappings = (0 ..< context.viewCount).map { MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: UInt32($0), renderTargetArrayIndexOffset: UInt32($0)) }
+                    encoder.setVertexAmplificationCount(viewMappings)
                     encoder.setViewports(context.viewports)
-
-                    var vertices = generateCubeVertices()
-                    encoder.setVertexBytes(&vertices, length: MemoryLayout<Vertex>.stride * vertices.count, index: 0)
-                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: cubeVertexCount)
                 }
+                .vertexValues(generateCubeVertices(), index: 0)
                 // Bind shader uniforms by name via reflection — no hardcoded buffer indices.
                 .parameter("uniforms", value: uniforms)
                 .parameter("time", value: Float(context.time))
@@ -59,8 +57,8 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
             .depthCompare(function: .greater, enabled: true)  // visionOS uses reverse-Z depth buffer
             .renderPipelineDescriptorTransformer { descriptor in
                 descriptor.maxVertexAmplificationCount = context.viewCount
+                // Attachment formats come from the render pass; Metal 4 pipeline descriptors have no depth format.
                 descriptor.colorAttachments[0].pixelFormat = context.drawable.colorTextures[0].pixelFormat
-                descriptor.depthAttachmentPixelFormat = context.drawable.depthTextures[0].pixelFormat
             }
         }
     }

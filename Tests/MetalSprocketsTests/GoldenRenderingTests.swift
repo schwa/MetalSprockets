@@ -52,11 +52,11 @@ struct GoldenRenderingTests {
 
         @ElementBuilder
         private var draw: some Element {
+            let count = corners.count
             let geometry = Draw { encoder in
-                let vertices = corners
-                encoder.setVertexBytes(vertices, length: MemoryLayout<SIMD2<Float>>.stride * vertices.count, index: 0)
-                encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: vertices.count)
+                encoder.drawPrimitives(primitiveType: .triangleStrip, vertexStart: 0, vertexCount: count)
             }
+            .vertexValues(corners, index: 0)
             .parameter("color", functionType: .fragment, value: color)
             .parameter("depth", functionType: .vertex, value: depth)
 
@@ -100,7 +100,7 @@ struct GoldenRenderingTests {
     private static let leftQuad: [SIMD2<Float>] = [[-0.8, 0.6], [-0.8, -0.6], [0.2, 0.6], [0.2, -0.6]]
     private static let rightQuad: [SIMD2<Float>] = [[-0.2, 0.6], [-0.2, -0.6], [0.8, 0.6], [0.8, -0.6]]
 
-    @Test func `a nearer quad occludes a farther one`() throws {
+    @Test(.requiresMetal4) func `a nearer quad occludes a farther one`() throws {
         // Red is drawn first and farther away; green is nearer, so green wins where they overlap.
         let scene = try RenderPass {
             try quad(corners: Self.leftQuad, color: [1, 0, 0, 1], depth: 0.8)
@@ -109,7 +109,7 @@ struct GoldenRenderingTests {
         try Golden.verify(scene, named: "DepthNearOccludesFar")
     }
 
-    @Test func `a farther quad does not occlude a nearer one`() throws {
+    @Test(.requiresMetal4) func `a farther quad does not occlude a nearer one`() throws {
         // Same scene, drawn in the other order: depth testing, not draw order, decides the overlap.
         let scene = try RenderPass {
             try quad(corners: Self.rightQuad, color: [0, 1, 0, 1], depth: 0.2)
@@ -118,7 +118,7 @@ struct GoldenRenderingTests {
         try Golden.verify(scene, named: "DepthNearOccludesFar")
     }
 
-    @Test func `depth bias pushes coplanar geometry in front`() throws {
+    @Test(.requiresMetal4) func `depth bias pushes coplanar geometry in front`() throws {
         // Both quads sit at the same depth; without a bias the second loses the `.less` test entirely. A negative
         // bias pulls it nearer, so the overlap turns green.
         let scene = try RenderPass {
@@ -128,7 +128,7 @@ struct GoldenRenderingTests {
         try Golden.verify(scene, named: "DepthBiasWinsCoplanar")
     }
 
-    @Test func `coplanar geometry without a bias loses the depth test`() throws {
+    @Test(.requiresMetal4) func `coplanar geometry without a bias loses the depth test`() throws {
         let scene = try RenderPass {
             try quad(corners: Self.leftQuad, color: [1, 0, 0, 1], depth: 0.5)
             try quad(corners: Self.rightQuad, color: [0, 1, 0, 1], depth: 0.5)
@@ -136,7 +136,7 @@ struct GoldenRenderingTests {
         try Golden.verify(scene, named: "CoplanarNoBias")
     }
 
-    @Test func `changing the depth compare function between frames takes effect`() throws {
+    @Test(.requiresMetal4) func `changing the depth compare function between frames takes effect`() throws {
         // One renderer, so both frames share a `System` and the same nodes. The tree shape never changes — only the
         // compare function does — which is exactly the case where a depth-stencil state cached on the first frame
         // could be left in place and silently ignore the new function.
@@ -160,7 +160,7 @@ struct GoldenRenderingTests {
         try Golden.verify(try renderer.render(try scene(.always)).cgImage, named: "CoplanarDepthAlways")
     }
 
-    @Test func `a parameter binds the fragment colour`() throws {
+    @Test(.requiresMetal4) func `a parameter binds the fragment colour`() throws {
         let scene = try RenderPass {
             try quad(corners: Self.leftQuad, color: [0, 0.25, 1, 1], depth: 0.5)
         }

@@ -3,7 +3,7 @@ import Metal
 // TODO: #22 Make into actual Modifier.
 internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement, BodylessContentElement, EnvironmentModifyingElement where Content: Element {
     var content: Content
-    var modify: (MTLRenderPassDescriptor) -> Void
+    var modify: (MTL4RenderPassDescriptor) -> Void
 
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         try visit(content)
@@ -21,7 +21,7 @@ internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement,
             fatalError("RenderPassDescriptorModifier: renderPassDescriptor not available.")
         }
 
-        let copy = renderPassDescriptor.copyWithType(MTLRenderPassDescriptor.self)
+        let copy = renderPassDescriptor.copyWithType(MTL4RenderPassDescriptor.self)
         modify(copy)
         node.environmentValues.renderPassDescriptor = copy
         // Recompute after the caller's mutations so the published formats match the descriptor.
@@ -34,7 +34,7 @@ internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement,
 }
 
 public extension Element {
-    func renderPassDescriptorModifier(_ modify: @escaping (MTLRenderPassDescriptor) -> Void) -> some Element {
+    func renderPassDescriptorModifier(_ modify: @escaping (MTL4RenderPassDescriptor) -> Void) -> some Element {
         RenderPassDescriptorModifier(content: self, modify: modify)
     }
 }

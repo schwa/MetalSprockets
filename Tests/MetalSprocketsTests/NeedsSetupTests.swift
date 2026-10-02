@@ -45,7 +45,7 @@ struct NeedsSetupTests {
         }
     }
 
-    @Test("Setup called when state changes")
+    @Test("Setup called when state changes", .requiresMetal4)
     @MainActor
     func testSetupOnStateChange() throws {
         SetupTrackingElement.resetCounts()
@@ -65,7 +65,7 @@ struct NeedsSetupTests {
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
     }
 
-    @Test("Mark all nodes needing setup works")
+    @Test("Mark all nodes needing setup works", .requiresMetal4)
     @MainActor
     func testMarkAllNodesNeedingSetup() throws {
         SetupTrackingElement.resetCounts()
@@ -87,7 +87,7 @@ struct NeedsSetupTests {
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
     }
 
-    @Test("Setup not called for unchanged equivalent elements")
+    @Test("Setup not called for unchanged equivalent elements", .requiresMetal4)
     @MainActor
     func testNoSetupForEquivalentElements() throws {
         SetupTrackingElement.resetCounts()
@@ -106,7 +106,7 @@ struct NeedsSetupTests {
         #expect(SetupTrackingElement.globalSetupEnterCount == 2)
     }
 
-    @Test("Video rendering scenario - multiple frames")
+    @Test("Video rendering scenario - multiple frames", .requiresMetal4)
     @MainActor
     func testVideoRenderingEfficiency() throws {
         // Simulates OffscreenVideoRenderer calling processSetup every frame
@@ -137,7 +137,7 @@ struct NeedsSetupTests {
         #expect(largeModifier.requiresSetup(comparedTo: modifier))
     }
 
-    @Test("Unchanged .environment() value does not re-run setup across frames")
+    @Test("Unchanged .environment() value does not re-run setup across frames", .requiresMetal4)
     @MainActor
     func testEnvironmentModifierStableAcrossFrames() throws {
         SetupTrackingElement.resetCounts()

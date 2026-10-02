@@ -116,6 +116,32 @@ public struct FunctionConstants: Equatable, Hashable, Sendable {
     }
 }
 
+extension FunctionConstants {
+    func validatedMTLConstants(declared: [String: FunctionConstantInfo], functionName: String) throws -> MTLFunctionConstantValues {
+        // Shared pipeline constants can be entirely optimized out of one shader stage.
+        guard !declared.isEmpty else {
+            return MTLFunctionConstantValues()
+        }
+        var suppliedIndices: Set<Int> = []
+        for (name, value) in values {
+            let matches = declared[name].map { [$0] } ?? declared.values.filter { !name.contains("::") && $0.name.hasSuffix("::\(name)") }
+            guard matches.count == 1, let info = matches.first else {
+                throw MetalSprocketsError.configurationError("Constant '\(name)' in function '\(functionName)' is missing or ambiguous")
+            }
+            guard info.dataType == value.dataType else {
+                throw MetalSprocketsError.configurationError("Constant '\(name)' in function '\(functionName)' has type \(info.dataType), not \(value.dataType)")
+            }
+            guard suppliedIndices.insert(info.index).inserted else {
+                throw MetalSprocketsError.configurationError("Constant '\(info.name)' in function '\(functionName)' was supplied more than once")
+            }
+        }
+        for info in declared.values where info.required && !suppliedIndices.contains(info.index) {
+            throw MetalSprocketsError.configurationError("Required constant '\(info.name)' in function '\(functionName)' is missing")
+        }
+        return try buildMTLConstants(declared: declared, functionName: functionName)
+    }
+}
+
 extension FunctionConstants.Value {
     var dataType: MTLDataType {
         switch self {

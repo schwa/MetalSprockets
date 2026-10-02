@@ -38,9 +38,8 @@ public struct FrameTimingStatistics: Sendable, Equatable {
 
     /// GPU execution time of the most recent completed frame, in seconds.
     ///
-    /// This is `nil` until the first command buffer completion handler fires
-    /// (typically one frame behind). Computed from
-    /// `MTLCommandBuffer.gpuEndTime - gpuStartTime`.
+    /// This is `nil` until the first submission completes (typically one frame behind), and when Metal reports no
+    /// valid timing. Comes from ``MetalSprockets/SubmissionResult/gpuDuration``.
     public var gpuTime: TimeInterval?
 
     public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil) {

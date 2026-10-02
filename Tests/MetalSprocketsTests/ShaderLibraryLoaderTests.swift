@@ -13,7 +13,7 @@ private final class RecordingLoader: ShaderLoader {
         self.libraryID = id
     }
 
-    func function(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> MTLFunction {
+    func shaderFunction(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> ShaderFunction {
         recorded.withLock { $0.append(name) }
         try _throw(MetalSprocketsError.resourceCreationFailure("no function '\(name)'"))
     }
