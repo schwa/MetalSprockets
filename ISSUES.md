@@ -8943,3 +8943,80 @@ Maybe also add `useResidencySet(_:)` for externally owned sets.
 Done when a pipeline element can register its persistent buffers in its own `ResourceCollection`, attach it with the modifier, and the per-frame add/remove churn is gone from the trace. Callers must not need any root-level `ResidencyConfiguration` wiring.
 
 ---
+
+## 475: MSState initial values are evaluated on every element rebuild
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:metal4, area:performance
+created: 2026-10-02T22:35:16Z
++++
+
+MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure () -> Value. A default like '@MSState var mesh: MTKMesh = .teapot()', or an assignment to an @MSState in init, runs every time the element struct is rebuilt. That is usually every frame. The persisted StateBox wins and the new value is discarded, but the allocation still happens. In MetalSprocketsExamples this builds a teapot MTKMesh, a sphere, a 2048x2048 texture and a sampler every frame in BouncingTeapots, and MetalCanvas allocated 16 MB of buffers per frame (MetalSprocketsExamples #438). Proposal: add init(wrappedValue: @autoclosure @escaping () -> Value) and evaluate it only when no persisted state exists, like SwiftUI State. Assignments in init are harder to fix; at least document that they run every rebuild.
+
+- `2026-10-02T22:35:30Z`: Prior art: https://github.com/pointfreeco/swiftui-lazy-state, a lazily initialized @State for SwiftUI. Its API and behavior are a good model for a lazy @MSState.
+
+---
+
+## 476: Argument tables are rebuilt and fully re-bound for every draw on every frame
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: area:metal4, area:performance
+created: 2026-10-03T00:16:32Z
++++
+
+Potential performance issue, not measured.
+
+On the Metal 4 path, every draw gets fresh argument tables on every frame, and every parameter is bound again, even when the pipeline and its parameters have not changed since the last frame.
+
+Seen in Metal4Parameters.makeTables: for each stage it calls scope.argumentTable(sizes:label:), then binds every entry, function table, and vertex buffer.
+
+Impact is probably small for scenes with few draws. For example, SolarSystem has 2 to 8 draws per frame. It could matter for scenes with many draws or many parameters per draw.
+
+Unknown:
+- The real CPU cost per draw. It has not been profiled.
+- Whether reusing tables across draws or frames is safe while the GPU is still using an earlier submission.
+
+Found while debugging SolarSystem #36.
+
+---
+
+## 477: Content inside .debugGroup can be reused from an earlier frame
+
++++
+status: new
+priority: high
+kind: bug
+labels: area:metal4
+created: 2026-10-03T00:29:21Z
++++
+
+Metal4DebugGroupModifier is Equatable, and its == compares only `label`. It ignores `content`:
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.label == rhs.label
+    }
+
+TreeReconciler treats an element that compares equal to the previous frame's element as unchanged. If the node is not dirty, it splices in the previous subtree "wholesale: no body evaluation, no child walk". So an element inside `.debugGroup(...)` can keep an earlier frame's version even when its parameters changed, for example a different texture, buffer, or `value:`/`values:` data.
+
+Seen in SolarSystem (PinkReproView, SolarSystem #36):
+- Two render passes per frame: bodies into a pooled HDR texture, then a tone map into the drawable. Each pipeline is wrapped in `.debugGroup`. 3 frames in flight.
+- Result: every other frame is black. Every submission completes without error.
+- Removing the two `.debugGroup` modifiers stops the flicker. Nothing else changes.
+- The flicker stays when the fragment shader returns a constant colour.
+
+Not verified directly: which stale binding is used. The conclusion comes from the code path above and the before/after result.
+
+Possibly related: SolarSystem #36, random pink tile-shaped garbage, also uses `.debugGroup` around every pipeline. Not yet confirmed.
+
+Expected: content inside `.debugGroup` updates when its parameters change.
+Actual: content inside `.debugGroup` can be reused from an earlier frame.
+
+- `2026-10-03T00:30:51Z`: DepthBiasModifier has the same pattern. It wraps content, but == compares only depthBias, slopeScale and clamp. Used by MetalSprocketsAddOns GridShader and ShadowMapRenderPipeline. Removing the debugGroups did NOT fix SolarSystem #36 (pink tiles), so #36 has a different cause. This issue is confirmed only for the flicker in PinkReproView.
+
+---
