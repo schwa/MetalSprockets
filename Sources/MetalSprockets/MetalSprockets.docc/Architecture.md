@@ -396,6 +396,24 @@ extension MSEnvironmentValues {
 5. **Cache Resources**: Reuse Metal resources when possible
 6. **Profile Performance**: Use Metal System Trace to identify bottlenecks
 
+### Element and Modifier Equality
+
+The reconciler uses equality to decide whether it can reuse a previous subtree. For a clean subtree with a stable environment, equal elements can skip body evaluation and child traversal.
+
+A custom `Equatable` conformance takes precedence over structural comparison. Equality must account for all inputs that affect the element or its children, including wrapped `content`.
+
+Guidelines for element authors:
+
+- Do not compare only a modifier's label or rendering settings while ignoring its `content`.
+- For struct wrappers, prefer the default structural comparison unless a complete custom comparison is necessary.
+- Keep `requiresSetup(comparedTo:)` separate from subtree equality. It controls setup work, not whether children need updates.
+- Add regression tests that keep modifier settings constant while changing child values and resource references across updates.
+- Include nested modifiers and unchanged-content cases in those tests.
+
+In issue #477, `DebugGroupModifier` compared only its label, and `DepthBiasModifier` compared only its bias settings. Both comparisons ignored `content`, so the reconciler could reuse stale children. Removing these conformances restored structural comparison, including `content`.
+
+Regression coverage: `Tests/MetalSprocketsTests/ModifierContentReconciliationTests.swift`.
+
 ## Comparison with SwiftUI
 
 | Aspect        | SwiftUI          | MetalSprockets          |

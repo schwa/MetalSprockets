@@ -122,13 +122,9 @@ internal struct CaptureModifier<Content>: Element, WorkloadElement, BodylessCont
 }
 
 /// Pushes a debug group on the open encoder, or on the command buffer when it wraps whole passes.
-internal struct DebugGroupModifier<Content>: Element, WorkloadElement, BodylessContentElement, Equatable where Content: Element {
+internal struct DebugGroupModifier<Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     var label: String
     var content: Content
-
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.label == rhs.label
-    }
 
     func workloadEnter(_ node: Node) throws {
         let environment = node.environmentValues

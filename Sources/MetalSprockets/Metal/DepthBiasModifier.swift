@@ -1,7 +1,7 @@
 import Metal
 import MetalSprocketsSupport
 
-internal struct DepthBiasModifier<Content>: Element, WorkloadElement, BodylessContentElement, Equatable where Content: Element {
+internal struct DepthBiasModifier<Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     typealias Body = Never
     var depthBias: Float
     var slopeScale: Float
@@ -14,10 +14,6 @@ internal struct DepthBiasModifier<Content>: Element, WorkloadElement, BodylessCo
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }
-
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.depthBias == rhs.depthBias && lhs.slopeScale == rhs.slopeScale && lhs.clamp == rhs.clamp
-    }
 }
 
 public extension Element {

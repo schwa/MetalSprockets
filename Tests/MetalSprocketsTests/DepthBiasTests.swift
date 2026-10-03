@@ -66,17 +66,17 @@ struct DepthBiasTests {
         #expect(seen == DepthBias(bias: 0.5, slopeScale: 2, clamp: 1))
     }
 
-    @Test func `two modifiers are equal when their bias settings match`() throws {
+    @Test func `modifiers with identical content compare their bias settings`() throws {
         let a = try #require(EmptyElement().depthBias(-0.1, slopeScale: -1, clamp: -0.01) as? DepthBiasModifier<EmptyElement>)
         let same = try #require(EmptyElement().depthBias(-0.1, slopeScale: -1, clamp: -0.01) as? DepthBiasModifier<EmptyElement>)
         let differentBias = try #require(EmptyElement().depthBias(-0.2, slopeScale: -1, clamp: -0.01) as? DepthBiasModifier<EmptyElement>)
         let differentSlope = try #require(EmptyElement().depthBias(-0.1, slopeScale: -2, clamp: -0.01) as? DepthBiasModifier<EmptyElement>)
         let differentClamp = try #require(EmptyElement().depthBias(-0.1, slopeScale: -1, clamp: -0.02) as? DepthBiasModifier<EmptyElement>)
 
-        #expect(a == same)
-        #expect(a != differentBias)
-        #expect(a != differentSlope)
-        #expect(a != differentClamp)
+        #expect(isEqual(a, same))
+        #expect(!isEqual(a, differentBias))
+        #expect(!isEqual(a, differentSlope))
+        #expect(!isEqual(a, differentClamp))
     }
 
     @Test(.requiresMetal4) func `an unchanged biased tree reuses its nodes across renders`() throws {
@@ -96,8 +96,6 @@ struct DepthBiasTests {
             }
         }
 
-        // Equality is what lets the System keep the existing node instead of rebuilding it, which is the whole
-        // reason the modifier is Equatable.
         let renderer = try OffscreenRenderer(size: CGSize(width: 32, height: 32))
         _ = try renderer.render(try pass())
         _ = try renderer.render(try pass())

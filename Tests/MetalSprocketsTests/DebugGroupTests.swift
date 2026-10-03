@@ -92,13 +92,13 @@ struct DebugGroupTests {
         #expect(modifier.label == "Label")
     }
 
-    @Test(.requiresMetal4) func `two groups are equal when their labels match`() throws {
+    @Test(.requiresMetal4) func `groups with identical content compare their labels`() throws {
         let a = try #require(EmptyElement().debugGroup("Scene") as? DebugGroupModifier<EmptyElement>)
         let same = try #require(EmptyElement().debugGroup("Scene") as? DebugGroupModifier<EmptyElement>)
         let different = try #require(EmptyElement().debugGroup("Overlay") as? DebugGroupModifier<EmptyElement>)
 
-        #expect(a == same)
-        #expect(a != different)
+        #expect(isEqual(a, same))
+        #expect(!isEqual(a, different))
     }
 
     @Test(.requiresMetal4) func `a debug group works around a pipeline-free compute command`() throws {
