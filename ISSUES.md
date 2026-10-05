@@ -9090,16 +9090,18 @@ Evidence: a Time Profiler capture of the MetalSprocketsGLTF GLTFViewer demo (Rel
 ## 480: No way to bind several parameters with one modifier
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: area:api, area:performance, area:metal4, effort:m
 created: 2026-10-05T22:25:14Z
-updated: 2026-10-05T22:29:41Z
+updated: 2026-10-05T22:35:00Z
+closed: 2026-10-05T22:35:00Z
 +++
 
 Each .parameter(...) call adds one modifier element. A draw that binds a full PBR material (about 15 textures, 15 samplers and several buffers in MetalSprocketsGLTF) becomes a chain of about 45 nested modifiers per draw. Every one of them is an element to rebuild and reconcile each frame. The deep nesting also makes structural-equality reconciliation expensive (see the reconciliation issue filed alongside this one). There is no public modifier that takes a set of bindings at once, for example a ParameterSet or a dictionary of named values.
 
 - `2026-10-05T22:29:42Z`: Related: #479 (reconciliation cost grows with nesting depth).
+- `2026-10-05T22:35:01Z`: Added public ShaderParameters and Element.parameters { $0.set(...) }: one ParameterModifier for any number of bindings, with set overloads matching .parameter labels. Inner modifiers still override. Tests: ShaderParametersTests.
 
 ---

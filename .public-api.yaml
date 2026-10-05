@@ -59,7 +59,7 @@ modules:
             .barrierAfterPass(after: .dispatch, beforeQueueStages: .fragment)
         try RenderPass { ... }   // samples what the compute pass wrote
         ```
-      source: Sources/MetalSprockets/Metal/Metal4BarrierElements.swift:97
+      source: Sources/MetalSprockets/Metal/BarrierElements.swift:97
     - decl: |
         public func capture(_ enabled: Bool = true, target: CaptureTarget = .device, destination: MTLCaptureDestination = .developerTools, outputURL: URL? = nil) -> some Element
       doc: |-
@@ -140,7 +140,7 @@ modules:
           - clamp: The maximum (or, for negative values, minimum) bias that may be applied.
 
         - Note: Only draws inside this element are biased; siblings are not.
-      source: Sources/MetalSprockets/Metal/DepthBiasModifier.swift:42
+      source: Sources/MetalSprockets/Metal/DepthBiasModifier.swift:38
     - decl: |
         public func depthCompare(function: MTLCompareFunction, enabled: Bool) -> some Element
       doc: |-
@@ -432,31 +432,31 @@ modules:
       source: Sources/MetalSprockets/Metal/WorkloadModifier.swift:21
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, accelerationStructure: any MTLAccelerationStructure) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:96
+      source: Sources/MetalSprockets/Metal/Parameters.swift:153
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, buffer: MTLBuffer, offset: Int = 0) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:92
+      source: Sources/MetalSprockets/Metal/Parameters.swift:149
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, samplerState: MTLSamplerState) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:88
+      source: Sources/MetalSprockets/Metal/Parameters.swift:145
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, texture: MTLTexture?) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:80
+      source: Sources/MetalSprockets/Metal/Parameters.swift:137
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, textures: [MTLTexture]) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:84
+      source: Sources/MetalSprockets/Metal/Parameters.swift:141
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, value: simd_float4x4) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:76
+      source: Sources/MetalSprockets/Metal/Parameters.swift:133
     - decl: |
         public func parameter<Value>(_ name: String, functionType: MTLFunctionType?, value: Value) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:104
+      source: Sources/MetalSprockets/Metal/Parameters.swift:161
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, value: SIMD4<Float>) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:72
+      source: Sources/MetalSprockets/Metal/Parameters.swift:129
     - decl: |
         public func parameter<Value>(_ name: String, functionType: MTLFunctionType?, values: [Value]) -> some Element
-      source: Sources/MetalSprockets/Metal/Parameters.swift:100
+      source: Sources/MetalSprockets/Metal/Parameters.swift:157
     - decl: |
         public func parameter(_ name: String, functionTypes: FunctionTypes = [], accelerationStructure: any MTLAccelerationStructure) -> some Element
       doc: Binds an instance or primitive acceleration structure and keeps it resident for the submission.
@@ -501,6 +501,20 @@ modules:
         The element type must be a plain-old-data type Metal can memcpy. This is checked at runtime because C/Metal
         header structs imported through a clang module cannot statically declare `BitwiseCopyable` conformance.
       source: Sources/MetalSprockets/Metal/Parameters.swift:51
+    - decl: |
+        public func parameters(_ build: (inout ShaderParameters) -> Void) -> some Element
+      doc: |-
+        Binds several shader parameters with one modifier instead of a chain of `.parameter` calls.
+
+        ```swift
+        Draw { ... }
+            .parameters { parameters in
+                parameters.set("baseColor", texture: baseColor)
+                parameters.set("baseColorSampler", samplerState: sampler)
+                parameters.set("material", value: material)
+            }
+        ```
+      source: Sources/MetalSprockets/Metal/Parameters.swift:118
     - decl: public func printDump() throws
       source: Sources/MetalSprockets/Core/Element+Dump.swift:14
     - decl: |
@@ -586,6 +600,10 @@ modules:
       doc: Keeps `resources` resident and alive for the submission.
       source: Sources/MetalSprockets/Support/Support.swift:59
     - decl: |
+        public func useResidencySet(_ residencySet: any MTLResidencySet) -> some Element
+      doc: Attaches an externally owned residency set to every submission this subtree encodes into.
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:145
+    - decl: |
         @ElementBuilder public func useResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       source: Sources/MetalSprockets/Support/Support.swift:23
     - decl: |
@@ -594,6 +612,10 @@ modules:
         Keeps `resource` resident and alive for the submission, for resources a shader reaches indirectly (argument
         buffers, GPU addresses) or that a raw encoder closure uses.
       source: Sources/MetalSprockets/Support/Support.swift:18
+    - decl: |
+        public func useResourceCollection(_ collection: ResourceCollection) -> some Element
+      doc: Keeps `collection` resident for every submission this subtree encodes into.
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:140
     - decl: |
         public func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       doc: Keeps `resources` resident and alive for the submission.
@@ -604,7 +626,7 @@ modules:
         Binds a `[[stage_in]]` vertex buffer to the given vertex-descriptor layout (buffer) index.
 
         Replaces `setVertexBuffer(_:offset:index:)` inside `Draw` closures on Metal 4.
-      source: Sources/MetalSprockets/Metal/Parameters.swift:115
+      source: Sources/MetalSprockets/Metal/Parameters.swift:172
     - decl: |
         public func vertexBuffers(of mesh: MTKMesh) -> some Element
       doc: Binds each of `mesh`'s vertex buffers to the vertex-descriptor layout index matching its position.
@@ -631,7 +653,7 @@ modules:
         Copies small vertex data into scratch storage and binds it to the given layout (buffer) index.
 
         Replaces `setVertexBytes(_:length:index:)` inside `Draw` closures on Metal 4.
-      source: Sources/MetalSprockets/Metal/Parameters.swift:122
+      source: Sources/MetalSprockets/Metal/Parameters.swift:179
     - decl: |
         public func visibleFunctionTable(_ name: String, functionType: MTLFunctionType? = nil, function: VisibleFunction) -> some Element
       doc: |-
@@ -1152,12 +1174,12 @@ modules:
           ComputeCommand { $0.copy(sourceBuffer: source, sourceOffset: 0, destinationBuffer: destination, destinationOffset: 0, size: 16) }
       }
       ```
-    source: Sources/MetalSprockets/Metal/Metal4BarrierElements.swift:22
+    source: Sources/MetalSprockets/Metal/BarrierElements.swift:22
     members:
     - decl: public typealias Body = Never
-      source: Sources/MetalSprockets/Metal/Metal4BarrierElements.swift:23
+      source: Sources/MetalSprockets/Metal/BarrierElements.swift:23
     - decl: 'public init(after: MTLStages, before: MTLStages, visibility: MTL4VisibilityOptions = .device)'
-      source: Sources/MetalSprockets/Metal/Metal4BarrierElements.swift:28
+      source: Sources/MetalSprockets/Metal/BarrierElements.swift:28
   - decl: 'public struct EnvironmentReader<Value, Content> where Content : Element'
     source: Sources/MetalSprockets/Core/EnvironmentReader.swift:1
     members:
@@ -1869,10 +1891,10 @@ modules:
       change. The output must use private storage, and both textures need the usage MetalFX reports.
     source: Sources/MetalSprockets/Metal/MetalFXSpatial.swift:11
     members:
+    - decl: public typealias Body = Never
+      source: Sources/MetalSprockets/Metal/MetalFXSpatial.swift:12
     - decl: 'public init(inputTexture: MTLTexture, outputTexture: MTLTexture)'
-      source: Sources/MetalSprockets/Metal/MetalFXSpatial.swift:15
-    - decl: 'public var body: some Element { get }'
-      source: Sources/MetalSprockets/Metal/MetalFXSpatial.swift:20
+      source: Sources/MetalSprockets/Metal/MetalFXSpatial.swift:17
   - decl: public struct MetalFXTemporal
     doc: |-
       Temporal upscaling with the Metal 4 MetalFX temporal scaler.
@@ -1882,10 +1904,10 @@ modules:
       outside passes; ordering with earlier producers and later consumers is handled. Not available on visionOS.
     source: Sources/MetalSprockets/Metal/MetalFXTemporal.swift:11
     members:
+    - decl: public typealias Body = Never
+      source: Sources/MetalSprockets/Metal/MetalFXTemporal.swift:12
     - decl: 'public init(inputTexture: MTLTexture, depthTexture: MTLTexture, motionTexture: MTLTexture, outputTexture: MTLTexture, jitter: SIMD2<Float> = .zero, reset: Bool = false)'
-      source: Sources/MetalSprockets/Metal/MetalFXTemporal.swift:19
-    - decl: 'public var body: some Element { get }'
-      source: Sources/MetalSprockets/Metal/MetalFXTemporal.swift:35
+      source: Sources/MetalSprockets/Metal/MetalFXTemporal.swift:21
   - decl: public struct NodeSnapshot
     doc: Snapshot of a single node
     source: Sources/MetalSprockets/Core/SystemSnapshot.swift:36
@@ -1993,12 +2015,12 @@ modules:
     doc: |-
       Makes the rest of this pass wait for `after` stages of all earlier work on the queue, including earlier passes and
       earlier submissions. Use it at the start of a pass that consumes what an earlier pass produced.
-    source: Sources/MetalSprockets/Metal/Metal4BarrierElements.swift:49
+    source: Sources/MetalSprockets/Metal/BarrierElements.swift:49
     members:
     - decl: public typealias Body = Never
-      source: Sources/MetalSprockets/Metal/Metal4BarrierElements.swift:50
+      source: Sources/MetalSprockets/Metal/BarrierElements.swift:50
     - decl: 'public init(after: MTLStages, before: MTLStages, visibility: MTL4VisibilityOptions = .device)'
-      source: Sources/MetalSprockets/Metal/Metal4BarrierElements.swift:55
+      source: Sources/MetalSprockets/Metal/BarrierElements.swift:55
   - decl: public struct Reflection
     source: Sources/MetalSprockets/Metal/Reflection.swift:4
     members:
@@ -2359,20 +2381,20 @@ modules:
       Shader logging is set per root (``Runner``, ``OffscreenRenderer``, `RenderView`), because on Metal 4 a log state
       covers a whole command buffer. Shaders must be compiled with logging enabled (`MTLCompileOptions.enableLogging`).
       Logging disables GPU capture for the whole process.
-    source: Sources/MetalSprockets/Metal/Metal4Diagnostics.swift:11
+    source: Sources/MetalSprockets/Metal/Diagnostics.swift:11
     members:
     - decl: 'public static let disabled: ShaderLogging'
       doc: No shader logging.
-      source: Sources/MetalSprockets/Metal/Metal4Diagnostics.swift:15
+      source: Sources/MetalSprockets/Metal/Diagnostics.swift:15
     - decl: 'public static let logger: ShaderLogging'
       doc: Sends shader messages to the MetalSprockets logger.
-      source: Sources/MetalSprockets/Metal/Metal4Diagnostics.swift:18
+      source: Sources/MetalSprockets/Metal/Diagnostics.swift:18
     - decl: 'public static var processDefault: `Self` { get }'
       doc: '``logger`` when the process sets `MS_METAL_LOGGING=1`, otherwise ``disabled``. The default for every root.'
-      source: Sources/MetalSprockets/Metal/Metal4Diagnostics.swift:26
+      source: Sources/MetalSprockets/Metal/Diagnostics.swift:26
     - decl: 'public static func handler(bufferSize: Int = 32 * 1_024 * 1_024, _ handler: @escaping @Sendable (String) -> Void) -> ShaderLogging'
       doc: Sends shader messages to `handler`, which runs on a Metal-owned thread.
-      source: Sources/MetalSprockets/Metal/Metal4Diagnostics.swift:21
+      source: Sources/MetalSprockets/Metal/Diagnostics.swift:21
   - decl: '@dynamicMemberLookup public struct ShaderNamespace'
     source: Sources/MetalSprockets/Metal/ShaderNamespace.swift:5
     members:
@@ -2388,6 +2410,26 @@ modules:
       source: Sources/MetalSprockets/Metal/ShaderNamespace.swift:14
     - decl: 'public func requiredFunction<T>(named name: String, type: T.Type, constants: FunctionConstants = FunctionConstants()) -> T where T : ShaderProtocol'
       source: Sources/MetalSprockets/Metal/ShaderNamespace.swift:18
+  - decl: public struct ShaderParameters
+    doc: |-
+      Shader parameters collected for ``Element/parameters(_:)``. Each `set` matches the `.parameter` overload with the
+      same labels; later calls override earlier ones with the same name.
+    source: Sources/MetalSprockets/Metal/Parameters.swift:73
+    members:
+    - decl: 'public mutating func set(_ name: String, functionTypes: FunctionTypes = [], accelerationStructure: any MTLAccelerationStructure)'
+      source: Sources/MetalSprockets/Metal/Parameters.swift:92
+    - decl: 'public mutating func set(_ name: String, functionTypes: FunctionTypes = [], buffer: MTLBuffer, offset: Int = 0)'
+      source: Sources/MetalSprockets/Metal/Parameters.swift:88
+    - decl: 'public mutating func set(_ name: String, functionTypes: FunctionTypes = [], samplerState: MTLSamplerState)'
+      source: Sources/MetalSprockets/Metal/Parameters.swift:84
+    - decl: 'public mutating func set(_ name: String, functionTypes: FunctionTypes = [], texture: MTLTexture?)'
+      source: Sources/MetalSprockets/Metal/Parameters.swift:76
+    - decl: 'public mutating func set(_ name: String, functionTypes: FunctionTypes = [], textures: [MTLTexture])'
+      source: Sources/MetalSprockets/Metal/Parameters.swift:80
+    - decl: 'public mutating func set<Value>(_ name: String, functionTypes: FunctionTypes = [], value: Value)'
+      source: Sources/MetalSprockets/Metal/Parameters.swift:101
+    - decl: 'public mutating func set<Value>(_ name: String, functionTypes: FunctionTypes = [], values: [Value])'
+      source: Sources/MetalSprockets/Metal/Parameters.swift:96
   - decl: public struct StatePropertySnapshot
     doc: Snapshot of a state property
     source: Sources/MetalSprockets/Core/SystemSnapshot.swift:71

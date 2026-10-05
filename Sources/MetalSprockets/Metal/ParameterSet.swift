@@ -63,6 +63,14 @@ internal struct ParameterSet {
     private var functionTableEntries: [FunctionTableEntry] = []
     private var vertexValues: [(index: Int, store: (RecordingScope) throws -> MTLGPUAddress)] = []
 
+    /// Adds every entry of `other` after this set's own, so `other` wins where names collide.
+    mutating func append(contentsOf other: Self) {
+        entries += other.entries
+        vertexBuffers += other.vertexBuffers
+        functionTableEntries += other.functionTableEntries
+        vertexValues += other.vertexValues
+    }
+
     /// Binds a visible-function table filled with `functions`. A nil `stage` resolves from reflection and must be unique.
     mutating func setFunctionTable(_ name: String, stage: MTLFunctionType? = nil, functions: [VisibleFunction]) {
         functionTableEntries.append(FunctionTableEntry(name: name, stage: stage, functions: functions))

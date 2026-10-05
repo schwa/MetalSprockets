@@ -66,6 +66,63 @@ public extension Element {
     }
 }
 
+// MARK: - Several parameters in one modifier
+
+/// Shader parameters collected for ``Element/parameters(_:)``. Each `set` matches the `.parameter` overload with the
+/// same labels; later calls override earlier ones with the same name.
+public struct ShaderParameters {
+    internal var parameterSet = ParameterSet()
+
+    public mutating func set(_ name: String, functionTypes: FunctionTypes = [], texture: MTLTexture?) {
+        parameterSet.set(name, texture: texture, stages: functionTypes)
+    }
+
+    public mutating func set(_ name: String, functionTypes: FunctionTypes = [], textures: [MTLTexture]) {
+        parameterSet.set(name, textures: textures, stages: functionTypes)
+    }
+
+    public mutating func set(_ name: String, functionTypes: FunctionTypes = [], samplerState: MTLSamplerState) {
+        parameterSet.set(name, sampler: samplerState, stages: functionTypes)
+    }
+
+    public mutating func set(_ name: String, functionTypes: FunctionTypes = [], buffer: MTLBuffer, offset: Int = 0) {
+        parameterSet.set(name, buffer: buffer, offset: offset, stages: functionTypes)
+    }
+
+    public mutating func set(_ name: String, functionTypes: FunctionTypes = [], accelerationStructure: any MTLAccelerationStructure) {
+        parameterSet.set(name, accelerationStructure: accelerationStructure, stages: functionTypes)
+    }
+
+    public mutating func set<Value>(_ name: String, functionTypes: FunctionTypes = [], values: [Value]) {
+        assert(_isPOD(Value.self), "Parameter values must be a POD type.")
+        parameterSet.set(name, values: values, stages: functionTypes)
+    }
+
+    public mutating func set<Value>(_ name: String, functionTypes: FunctionTypes = [], value: Value) {
+        assert(_isPOD(Value.self), "Parameter value must be a POD type.")
+        parameterSet.set(name, value: value, stages: functionTypes)
+    }
+}
+
+public extension Element {
+    /// Binds several shader parameters with one modifier instead of a chain of `.parameter` calls.
+    ///
+    /// ```swift
+    /// Draw { ... }
+    ///     .parameters { parameters in
+    ///         parameters.set("baseColor", texture: baseColor)
+    ///         parameters.set("baseColorSampler", samplerState: sampler)
+    ///         parameters.set("material", value: material)
+    ///     }
+    /// ```
+    func parameters(_ build: (inout ShaderParameters) -> Void) -> some Element {
+        var parameters = ShaderParameters()
+        build(&parameters)
+        let parameterSet = parameters.parameterSet
+        return ParameterModifier(content: self) { $0.append(contentsOf: parameterSet) }
+    }
+}
+
 // MARK: - Single-stage conveniences
 
 public extension Element {
