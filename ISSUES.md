@@ -9004,12 +9004,13 @@ Found while debugging SolarSystem #36.
 ## 477: Content inside .debugGroup can be reused from an earlier frame
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: area:metal4, effort:s
 created: 2026-10-03T00:29:21Z
-updated: 2026-10-05T22:29:40Z
+updated: 2026-10-05T22:30:50Z
+closed: 2026-10-05T22:30:50Z
 +++
 
 Metal4DebugGroupModifier is Equatable, and its == compares only `label`. It ignores `content`:
@@ -9034,6 +9035,7 @@ Expected: content inside `.debugGroup` updates when its parameters change.
 Actual: content inside `.debugGroup` can be reused from an earlier frame.
 
 - `2026-10-03T00:30:51Z`: DepthBiasModifier has the same pattern. It wraps content, but == compares only depthBias, slopeScale and clamp. Used by MetalSprocketsAddOns GridShader and ShadowMapRenderPipeline. Removing the debugGroups did NOT fix SolarSystem #36 (pink tiles), so #36 has a different cause. This issue is confirmed only for the flicker in PinkReproView.
+- `2026-10-05T22:30:51Z`: Already fixed in wnusnwlx (0.2.0): removed the custom Equatable conformances from DebugGroupModifier and DepthBiasModifier so reconciliation compares content. Regression tests: ModifierContentReconciliationTests. Full suite passes.
 
 ---
 
