@@ -8999,6 +8999,8 @@ Unknown:
 
 Found while debugging SolarSystem #36.
 
+- `2026-10-05T22:35:19Z`: Looked at ArgumentTablePool/ParameterSet.makeTables. Tables are already pooled per recording slot (#465); the remaining per-draw cost is clearing slots plus setAddress/setTexture calls. Punting: skipping re-binds needs per-slot change tracking, value:/values: get new scratch addresses every frame (so they must be re-bound regardless), and cross-frame reuse safety is entangled with the unexplained in-flight race in #471. The only profile so far (#479, GLTFViewer) showed reconciliation, not binding, as the hot spot; that is now reduced (#479, #480). Unblocker: a Time Profiler capture after #479/#480 showing makeTables/acquire as significant, or a decision to drop this to Low until then.
+
 ---
 
 ## 477: Content inside .debugGroup can be reused from an earlier frame
