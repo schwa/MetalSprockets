@@ -8854,11 +8854,12 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 ## 471: Random tile-shaped corruption in a RenderView frame with a slow fragment shader
 
 +++
-status: new
-priority: high
+status: open
+priority: medium
 kind: bug
 labels: area:metal4
 created: 2026-10-02T15:19:38Z
+updated: 2026-10-05T22:25:53Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -8963,11 +8964,12 @@ MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure 
 ## 476: Argument tables are rebuilt and fully re-bound for every draw on every frame
 
 +++
-status: new
-priority: low
+status: open
+priority: high
 kind: enhancement
 labels: area:metal4, area:performance
 created: 2026-10-03T00:16:32Z
+updated: 2026-10-05T22:25:34Z
 +++
 
 Potential performance issue, not measured.
@@ -9064,11 +9066,12 @@ Evidence: a Time Profiler capture of the MetalSprocketsGLTF GLTFViewer demo (Rel
 ## 480: No way to bind several parameters with one modifier
 
 +++
-status: new
-priority: medium
+status: open
+priority: high
 kind: enhancement
 labels: area:api, area:performance, area:metal4
 created: 2026-10-05T22:25:14Z
+updated: 2026-10-05T22:25:39Z
 +++
 
 Each .parameter(...) call adds one modifier element. A draw that binds a full PBR material (about 15 textures, 15 samplers and several buffers in MetalSprocketsGLTF) becomes a chain of about 45 nested modifiers per draw. Every one of them is an element to rebuild and reconcile each frame. The deep nesting also makes structural-equality reconciliation expensive (see the reconciliation issue filed alongside this one). There is no public modifier that takes a set of bindings at once, for example a ParameterSet or a dictionary of named values.
