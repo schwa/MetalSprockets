@@ -8767,12 +8767,13 @@ SolarSystem recapture remains pending because its manifest uses the remote packa
 ## 467: visionOS simulator build fails on Metal 4 compiler descriptor types
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: effort:s, area:metal4
 created: 2026-10-02T05:22:16Z
-updated: 2026-10-05T22:29:40Z
+updated: 2026-10-05T23:14:22Z
+closed: 2026-10-05T23:14:22Z
 +++
 
 With Xcode 27.0 RC (27A266a), a visionOS simulator package build fails in unchanged Sources/MetalSprockets/Metal/ShaderFunction.swift:67–77:
@@ -8786,6 +8787,7 @@ Repro: xcb build MetalSprocketsUI -- --triple arm64-apple-xros26.0-simulator --s
 The corresponding visionOS device build succeeds. Discovered during #466 validation. The new residency collection code guards its device-only machine-learning pipeline type; the remaining failure is outside that change.
 
 - `2026-10-05T22:29:40Z`: Related: #473 (umbrella: no Metal 4 in Simulator) and #478 (iOS Simulator build).
+- `2026-10-05T23:14:22Z`: Duplicate of #473. Same root cause: the Simulator SDKs ship no Metal 4.
 
 ---
 
@@ -8866,12 +8868,13 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 ## 471: Random tile-shaped corruption in a RenderView frame with a slow fragment shader
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: area:metal4, effort:l
 created: 2026-10-02T15:19:38Z
-updated: 2026-10-05T22:29:41Z
+updated: 2026-10-05T23:14:53Z
+closed: 2026-10-05T23:14:53Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -8889,6 +8892,8 @@ Evidence:
 Looks fine on reading: scratch arenas and argument tables are reused only through retireCompletedSubmissions(), gated on completion.isRetiredSuccessfully. Not yet checked: whether isRetiredSuccessfully can become true before the GPU finishes, and whether anything handed out by a recording slot (scratch, argument tables, allocator) can be reused while an earlier submission is in flight.
 
 Suggested next steps: a RenderView stress test with a deliberately slow fragment shader over many frames, checking for frame-to-frame variation; and a debug option to force one submission in flight to separate cross-frame races from everything else.
+
+- `2026-10-05T23:14:53Z`: Closing as invalid for now. Reopen if the tile-shaped corruption reproduces again.
 
 ---
 
@@ -8925,6 +8930,7 @@ updated: 2026-10-05T22:29:40Z
 Metal 4 APIs are unavailable in the iOS/visionOS Simulator. Code paths relying on Metal 4 fail or can't be exercised there; need a fallback or to document/guard the limitation.
 
 - `2026-10-05T22:29:40Z`: Umbrella for simulator support. Concrete build failures: #467 (visionOS Simulator), #478 (iOS Simulator).
+- `2026-10-05T23:14:22Z`: Consolidated #467 (visionOS Simulator) and #478 (iOS Simulator) here as duplicates. The Simulator SDKs' MTL4*.h headers are empty stubs, so nearly all of the Metal layer fails to compile, not just the counter APIs. Decision needed: (a) document 'device/macOS only' in README + release notes, or (b) compile-only Simulator stub where elements throw 'Metal 4 unavailable' at runtime.
 
 ---
 
@@ -9050,12 +9056,13 @@ Actual: content inside `.debugGroup` can be reused from an earlier frame.
 ## 478: MetalSprockets does not compile for the iOS Simulator
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: ios, simulator, effort:s, area:metal4
 created: 2026-10-05T16:00:32Z
-updated: 2026-10-05T22:29:41Z
+updated: 2026-10-05T23:14:22Z
+closed: 2026-10-05T23:14:22Z
 +++
 
 Building any app that depends on MetalSprockets 0.2.0 for the iOS Simulator fails. The Metal 4 counter APIs are not in the simulator SDK:
@@ -9072,6 +9079,7 @@ macOS and iOS device builds succeed. Found via MetalSprocketsGLTF's GLTFViewer d
 
 - `2026-10-05T22:29:41Z`: Related: #473 (umbrella) and #467 (visionOS Simulator).
 - `2026-10-05T22:40:35Z`: Reproduced with Xcode 27.0 RC (iphonesimulator27.0 SDK): the failure is not limited to the counter APIs. The simulator SDK's MTL4*.h headers are empty stubs (e.g. MTL4CommandBuffer.h declares nothing), so MTL4CommandBuffer, MTL4ArgumentTable, MTL4CommandAllocator, MTL4VisibilityOptions, MTL4ComputeCommandEncoder, etc. are all missing; errors span ArgumentTablePool, CommandResources, BarrierElements, ComputeDispatch and more. Guarding GPUTimestampSampling alone would just surface the next 100 errors. Punting: supporting the simulator means compiling out (or stubbing) essentially the whole Metal layer behind #if !targetEnvironment(simulator), which is the #473 decision. Unblocker: decide between (a) documenting 'device/macOS only, no Simulator' in README + release notes, or (b) a compile-only simulator stub where elements throw 'Metal 4 unavailable' at runtime.
+- `2026-10-05T23:14:22Z`: Duplicate of #473. Same root cause: the Simulator SDKs ship no Metal 4 (MTL4 headers are empty stubs). Details in this issue's earlier comment.
 
 ---
 
