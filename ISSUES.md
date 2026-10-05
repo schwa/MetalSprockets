@@ -9027,7 +9027,7 @@ Actual: content inside `.debugGroup` can be reused from an earlier frame.
 status: new
 priority: medium
 kind: bug
-labels: ios,simulator
+labels: ios, simulator
 created: 2026-10-05T16:00:32Z
 +++
 
@@ -9042,5 +9042,21 @@ MetalSprockets/Metal/GPUTimestampSampling.swift:55:31: value of type 'any MTLDev
 ```
 
 macOS and iOS device builds succeed. Found via MetalSprocketsGLTF's GLTFViewer demo (Xcode 27.0, iPhone 18 Pro Max simulator, iOS 27.0). Unclear whether simulator support is intended for 0.2.0; if not, it isn't documented.
+
+---
+
+## 479: Reconciliation compares whole subtrees by reflection at every container node
+
++++
+status: new
+priority: high
+kind: bug
+labels: area:performance, area:metal4
+created: 2026-10-05T22:25:14Z
++++
+
+System.shouldUpdateNode calls isEqual(node.element, element) for every node. For non-Equatable elements, isEqualStructurally (Support/isEqual.swift) uses Mirror to compare every stored property, including a container's content, which is its entire subtree. Every container node (RenderPass, RenderPipeline, ForEach, Group, each ParameterModifier) does this again for its own subtree, so the cost grows roughly quadratically with tree depth, and each step is reflection plus Any casts.
+
+Evidence: a Time Profiler capture of the MetalSprocketsGLTF GLTFViewer demo (Release; ABeautifulGame chess scene) spends about 74% of main-thread time in isEqualStructurally / isEqualStoredProperty under TreeReconciler.processElement. Self time is mostly Swift runtime reflection: swift_conformsToProtocol, tryCast, metadata demangling, Mirror. The scene has about 28 draws, each wrapped in a chain of about 45 nested .parameter modifiers. The GPU needs only about 1.4 ms per frame. Trace: /Users/schwa/Desktop/Chess.trace (GPU trace: /Users/schwa/Desktop/Chess.gputrace). See MetalSprocketsGLTF #69.
 
 ---
