@@ -272,21 +272,22 @@ package final class System: @unchecked Sendable {
 
 internal extension System {
     /// Determine whether to reuse an existing node or create a new one
-    func processNode(currentId: StructuralIdentifier, previousId: StructuralIdentifier?, element: any Element, newNodes: inout [StructuralIdentifier: Node]) -> Node {
+    /// `isEqualToPrevious` is the caller's `isEqual` result for the previous element, so it is not computed twice.
+    func processNode(currentId: StructuralIdentifier, previousId: StructuralIdentifier?, element: any Element, isEqualToPrevious: Bool, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         if let previousId, previousId == currentId {
-            return reuseNode(currentId: currentId, element: element, newNodes: &newNodes)
+            return reuseNode(currentId: currentId, element: element, isEqualToPrevious: isEqualToPrevious, newNodes: &newNodes)
         }
         return makeNode(currentId: currentId, element: element, newNodes: &newNodes)
     }
 
     /// Reuse an existing node, updating it if its element has changed
-    func reuseNode(currentId: StructuralIdentifier, element: any Element, newNodes: inout [StructuralIdentifier: Node]) -> Node {
+    func reuseNode(currentId: StructuralIdentifier, element: any Element, isEqualToPrevious: Bool, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         guard let existingNode = nodes[currentId] else {
             fatalError("Found matching structural ID \(currentId) but no existing node - this indicates a bug in the System")
         }
         existingNode.parentIdentifier = traversalContext.currentNode?.id
 
-        if shouldUpdateNode(existingNode, with: element, id: currentId) {
+        if isDirty(currentId) || !isEqualToPrevious {
             let oldElement = existingNode.element
             existingNode.element = element
             // Setup-phase values (e.g. renderPipelineState) must survive an element change, so only
@@ -317,16 +318,6 @@ internal extension System {
         // New nodes need setup, unless the element takes no part in the setup phase. (#235)
         currentNode.needsSetup = element is any SetupElement
         return currentNode
-    }
-
-    func shouldUpdateNode(_ node: Node, with element: any Element, id: StructuralIdentifier) -> Bool {
-        if isDirty(id) {
-            return true
-        }
-
-        // requiresSetup is deliberately not consulted here: it only decides whether the setup phase
-        // has to re-run, not whether the node changed.
-        return !isEqual(node.element, element)
     }
 
     private func requiresSetupErased(old: any BodylessElement, new: any BodylessElement) -> Bool {

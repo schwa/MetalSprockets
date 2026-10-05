@@ -97,7 +97,8 @@ internal final class TreeReconciler {
         let previousNode = previousId == currentId ? system.nodes[currentId] : nil
         // Class elements never compare equal (their mutable stored properties are invisible to `isEqual`), so
         // they always re-evaluate; only their unchanged children get skipped.
-        let unchanged = previousNode.map { !system.isDirty(currentId) && isEqual($0.element, element) } ?? false
+        let isEqualToPrevious = previousNode.map { isEqual($0.element, element) } ?? false
+        let unchanged = isEqualToPrevious && !system.isDirty(currentId)
 
         // A clean, unchanged subtree under an unchanged parent can be reused wholesale: no body evaluation, no
         // child walk. Dirty marks propagate to ancestors (#367), so a clean root implies a clean subtree.
@@ -105,7 +106,7 @@ internal final class TreeReconciler {
             return
         }
 
-        let currentNode = system.processNode(currentId: currentId, previousId: previousId, element: element, newNodes: &newNodes)
+        let currentNode = system.processNode(currentId: currentId, previousId: previousId, element: element, isEqualToPrevious: isEqualToPrevious, newNodes: &newNodes)
 
         newEvents.append(.enter(currentNode))
         system.traversalContext.push(currentNode)

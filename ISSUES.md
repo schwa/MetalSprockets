@@ -9069,12 +9069,13 @@ macOS and iOS device builds succeed. Found via MetalSprocketsGLTF's GLTFViewer d
 ## 479: Reconciliation compares whole subtrees by reflection at every container node
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: area:performance, area:metal4, effort:l
 created: 2026-10-05T22:25:14Z
-updated: 2026-10-05T22:29:41Z
+updated: 2026-10-05T22:32:36Z
+closed: 2026-10-05T22:32:36Z
 +++
 
 System.shouldUpdateNode calls isEqual(node.element, element) for every node. For non-Equatable elements, isEqualStructurally (Support/isEqual.swift) uses Mirror to compare every stored property, including a container's content, which is its entire subtree. Every container node (RenderPass, RenderPipeline, ForEach, Group, each ParameterModifier) does this again for its own subtree, so the cost grows roughly quadratically with tree depth, and each step is reflection plus Any casts.
@@ -9082,6 +9083,7 @@ System.shouldUpdateNode calls isEqual(node.element, element) for every node. For
 Evidence: a Time Profiler capture of the MetalSprocketsGLTF GLTFViewer demo (Release; ABeautifulGame chess scene) spends about 74% of main-thread time in isEqualStructurally / isEqualStoredProperty under TreeReconciler.processElement. Self time is mostly Swift runtime reflection: swift_conformsToProtocol, tryCast, metadata demangling, Mirror. The scene has about 28 draws, each wrapped in a chain of about 45 nested .parameter modifiers. The GPU needs only about 1.4 ms per frame. Trace: /Users/schwa/Desktop/Chess.trace (GPU trace: /Users/schwa/Desktop/Chess.gputrace). See MetalSprocketsGLTF #69.
 
 - `2026-10-05T22:29:41Z`: Related: #480 (each .parameter adds a nesting level, which makes this worse).
+- `2026-10-05T22:32:36Z`: isEqualStructurally now compares stored Element fields last, so a cheap differing field (e.g. ParameterModifier's apply closure) short-circuits before walking the subtree; and the reconciler computes isEqual once per node instead of twice (shouldUpdateNode removed). ReconciliationCostTests: a 20-deep closure-modifier chain compares its leaf once per update (was many times). Remaining: containers whose non-content fields are all equal still compare content; not re-profiled in GLTFViewer.
 
 ---
 

@@ -75,10 +75,13 @@ private func isEqualStructurally(_ lhs: Any, _ rhs: Any) -> Bool {
     guard lhsMirror.children.count == rhsMirror.children.count else {
         return false
     }
-    return zip(lhsMirror.children, rhsMirror.children).allSatisfy { lhsChild, rhsChild in
-        guard lhsChild.label == rhsChild.label else {
-            return false
-        }
-        return isEqualStoredProperty(lhsChild.value, rhsChild.value)
+    let pairs = Array(zip(lhsMirror.children, rhsMirror.children))
+    guard pairs.allSatisfy({ $0.label == $1.label }) else {
+        return false
     }
+    // Child elements go last: they can be whole subtrees, and a cheap field (often a closure) usually decides
+    // first. Comparing content first made reconciliation quadratic in tree depth. (#479)
+    let isElement = { (pair: (Mirror.Child, Mirror.Child)) in pair.0.value is any Element }
+    return pairs.lazy.filter { !isElement($0) }.allSatisfy { isEqualStoredProperty($0.value, $1.value) }
+        && pairs.lazy.filter(isElement).allSatisfy { isEqualStoredProperty($0.value, $1.value) }
 }
