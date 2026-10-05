@@ -51,7 +51,7 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, BodylessConte
     func setupEnter(_ node: Node) throws {
         let environment = node.environmentValues
         let context = try environment.metalContext.orThrow(.missingEnvironment("metalContext"))
-        let pass = try environment.activeRenderPassDescriptor.orThrow(.withHint(.missingEnvironment(\.renderPassDescriptor), hint: "Place MeshRenderPipeline inside a RenderPass."))
+        let pass = try environment.activeRenderPassDescriptor.orThrow(.withHint(.missingEnvironment("renderPassDescriptor"), hint: "Place MeshRenderPipeline inside a RenderPass."))
         let formats = PassFormats(pass)
         let configuration = MeshRenderPipelineConfiguration(
             object: objectShader,

@@ -3,6 +3,7 @@ import MetalSprocketsSupport
 import os
 
 public extension MetalSprocketsError {
+    @available(*, deprecated, message: "Pass the property name as a string. Key path descriptions lose the name in Release builds.")
     static func missingEnvironment(_ key: PartialKeyPath<MSEnvironmentValues>) -> Self {
         missingEnvironment("\(key)")
     }

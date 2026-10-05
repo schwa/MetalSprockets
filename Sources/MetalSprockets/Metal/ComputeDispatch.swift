@@ -43,8 +43,8 @@ public struct ComputeDispatch: Element, WorkloadElement {
     }
 
     func workloadEnter(_ node: Node) throws {
-        let pass = try node.environmentValues.computePassEncoder.orThrow(.withHint(.missingEnvironment(\.computeCommandEncoder), hint: "Place ComputeDispatch inside a ComputePass."))
-        let pipeline = try node.environmentValues.computePipeline.orThrow(.withHint(.missingEnvironment(\.computePipelineState), hint: "Place ComputeDispatch inside a ComputePipeline."))
+        let pass = try node.environmentValues.computePassEncoder.orThrow(.withHint(.missingEnvironment("computeCommandEncoder"), hint: "Place ComputeDispatch inside a ComputePass."))
+        let pipeline = try node.environmentValues.computePipeline.orThrow(.withHint(.missingEnvironment("computePipelineState"), hint: "Place ComputeDispatch inside a ComputePipeline."))
         try pass.dispatch(pipeline, parameters: node.environmentValues.parameterSet ?? ParameterSet(), grid: grid, threadsPerThreadgroup: threadsPerThreadgroup)
     }
 
@@ -96,7 +96,7 @@ public struct ComputeCommand: Element, WorkloadElement {
     }
 
     func workloadEnter(_ node: Node) throws {
-        let pass = try node.environmentValues.computePassEncoder.orThrow(.withHint(.missingEnvironment(\.computeCommandEncoder), hint: "Place ComputeCommand inside a ComputePass."))
+        let pass = try node.environmentValues.computePassEncoder.orThrow(.withHint(.missingEnvironment("computeCommandEncoder"), hint: "Place ComputeCommand inside a ComputePass."))
         try pass.command(encode)
     }
 

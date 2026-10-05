@@ -42,7 +42,7 @@ public struct RenderPass <Content>: Element, SetupElement, WorkloadElement, Body
 
     // Publishes a private copy each frame, before child pipelines compile against its formats.
     func setupEnter(_ node: Node) throws {
-        let descriptor = try node.environmentValues.renderPassDescriptor.orThrow(.withHint(.missingEnvironment(\.renderPassDescriptor), hint: "Render passes need a root that supplies a render target, such as OffscreenRenderer or RenderView."))
+        let descriptor = try node.environmentValues.renderPassDescriptor.orThrow(.withHint(.missingEnvironment("renderPassDescriptor"), hint: "Render passes need a root that supplies a render target, such as OffscreenRenderer or RenderView."))
         let copy = try (descriptor.copy() as? MTL4RenderPassDescriptor).orThrow(.generic("Could not copy the render pass descriptor"))
         node.environmentValues.activeRenderPassDescriptor = copy
         node.environmentValues.renderAttachmentFormats = RenderAttachmentFormats(copy)
@@ -51,7 +51,7 @@ public struct RenderPass <Content>: Element, SetupElement, WorkloadElement, Body
     func workloadEnter(_ node: Node) throws {
         logger?.verbose?.info("Enter render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
         let scope = try node.environmentValues.recordingScope.orThrow(.withHint(.missingEnvironment("recordingScope"), hint: "Render passes run inside a root such as Runner, OffscreenRenderer or RenderView."))
-        let descriptor = try node.environmentValues.activeRenderPassDescriptor.orThrow(.missingEnvironment(\.renderPassDescriptor))
+        let descriptor = try node.environmentValues.activeRenderPassDescriptor.orThrow(.missingEnvironment("renderPassDescriptor"))
         let pass = try scope.beginRenderPass(descriptor: descriptor)
         node.environmentValues.renderPassEncoder = pass
         node.environmentValues.renderCommandEncoder = pass.encoder

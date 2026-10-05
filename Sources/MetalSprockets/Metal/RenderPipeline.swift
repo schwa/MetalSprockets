@@ -37,7 +37,7 @@ public struct RenderPipeline <Content>: Element, SetupElement, BodylessContentEl
     func setupEnter(_ node: Node) throws {
         let environment = node.environmentValues
         let context = try environment.metalContext.orThrow(.missingEnvironment("metalContext"))
-        let pass = try environment.activeRenderPassDescriptor.orThrow(.withHint(.missingEnvironment(\.renderPassDescriptor), hint: "Place RenderPipeline inside a RenderPass."))
+        let pass = try environment.activeRenderPassDescriptor.orThrow(.withHint(.missingEnvironment("renderPassDescriptor"), hint: "Place RenderPipeline inside a RenderPass."))
         let formats = PassFormats(pass)
         let configuration = RenderPipelineConfiguration(
             vertex: vertexShader,

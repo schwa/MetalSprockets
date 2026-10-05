@@ -587,31 +587,31 @@ modules:
       source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:110
     - decl: |
         @ElementBuilder public func useComputeResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage) -> some Element
-      source: Sources/MetalSprockets/Support/Support.swift:49
+      source: Sources/MetalSprockets/Support/Support.swift:50
     - decl: |
         public func useComputeResource(_ resource: any MTLResource, usage: MTLResourceUsage) -> some Element
       doc: Keeps `resource` resident and alive for the submission. See ``useResource(_:usage:stages:)``.
-      source: Sources/MetalSprockets/Support/Support.swift:44
+      source: Sources/MetalSprockets/Support/Support.swift:45
     - decl: |
         @ElementBuilder public func useComputeResources(_ resources: [any MTLResource]?, usage: MTLResourceUsage) -> some Element
-      source: Sources/MetalSprockets/Support/Support.swift:71
+      source: Sources/MetalSprockets/Support/Support.swift:72
     - decl: |
         public func useComputeResources(_ resources: [any MTLResource], usage: MTLResourceUsage) -> some Element
       doc: Keeps `resources` resident and alive for the submission.
-      source: Sources/MetalSprockets/Support/Support.swift:59
+      source: Sources/MetalSprockets/Support/Support.swift:60
     - decl: |
         public func useResidencySet(_ residencySet: any MTLResidencySet) -> some Element
       doc: Attaches an externally owned residency set to every submission this subtree encodes into.
       source: Sources/MetalSprockets/Metal/CoreElements.swift:145
     - decl: |
         @ElementBuilder public func useResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
-      source: Sources/MetalSprockets/Support/Support.swift:23
+      source: Sources/MetalSprockets/Support/Support.swift:24
     - decl: |
         public func useResource(_ resource: any MTLResource, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       doc: |-
         Keeps `resource` resident and alive for the submission, for resources a shader reaches indirectly (argument
         buffers, GPU addresses) or that a raw encoder closure uses.
-      source: Sources/MetalSprockets/Support/Support.swift:18
+      source: Sources/MetalSprockets/Support/Support.swift:19
     - decl: |
         public func useResourceCollection(_ collection: ResourceCollection) -> some Element
       doc: Keeps `collection` resident for every submission this subtree encodes into.
@@ -619,7 +619,7 @@ modules:
     - decl: |
         public func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       doc: Keeps `resources` resident and alive for the submission.
-      source: Sources/MetalSprockets/Support/Support.swift:33
+      source: Sources/MetalSprockets/Support/Support.swift:34
     - decl: |
         public func vertexBuffer(_ buffer: MTLBuffer, index: Int, offset: Int = 0) -> some Element
       doc: |-
@@ -2752,7 +2752,7 @@ modules:
         source: Sources/MetalSprockets/Support/Support.swift:5
         members:
         - decl: 'public static func missingEnvironment(_ key: PartialKeyPath<MSEnvironmentValues>) -> MetalSprocketsError'
-          source: Sources/MetalSprockets/Support/Support.swift:6
+          source: Sources/MetalSprockets/Support/Support.swift:7
   - extended_module: Swift
     symbols:
     - decl: extension Never

@@ -33,10 +33,10 @@ Use `some Element` as the return type for your Element's body property. This pre
 ### Related Issues
 - [#256](https://github.com/schwa/MetalSprockets/issues/256) - Framework should detect or warn when Element body returns 'any Element'
 
-## Why am I getting "missingEnvironment(\.reflection)" errors?
+## Why am I getting "missingEnvironment("reflection")" errors?
 
 ### Problem
-You get a fatal error like `Fatal error: missingEnvironment("\\MSEnvironmentValues.reflection")` when trying to use `.parameter()` modifiers.
+You get an error like `Missing environment value: reflection` when trying to use `.parameter()` modifiers.
 
 ### Cause
 This happens when `.parameter()` modifiers are applied outside of a RenderPipeline or ComputePipeline context:

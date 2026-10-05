@@ -40,8 +40,8 @@ public struct Draw: Element, WorkloadElement {
 
     func workloadEnter(_ node: Node) throws {
         let environment = node.environmentValues
-        let pass = try environment.renderPassEncoder.orThrow(.withHint(.missingEnvironment(\.renderCommandEncoder), hint: "Place Draw inside a RenderPass."))
-        let pipeline = try environment.renderPipeline.orThrow(.withHint(.missingEnvironment(\.renderPipelineState), hint: "Place Draw inside a RenderPipeline or MeshRenderPipeline."))
+        let pass = try environment.renderPassEncoder.orThrow(.withHint(.missingEnvironment("renderCommandEncoder"), hint: "Place Draw inside a RenderPass."))
+        let pipeline = try environment.renderPipeline.orThrow(.withHint(.missingEnvironment("renderPipelineState"), hint: "Place Draw inside a RenderPipeline or MeshRenderPipeline."))
         let context = try environment.metalContext.orThrow(.missingEnvironment("metalContext"))
         let depthStencil: any MTLDepthStencilState
         if let explicit = environment.depthStencilState {
@@ -134,7 +134,7 @@ public struct RenderCommand: Element, WorkloadElement {
     }
 
     func workloadEnter(_ node: Node) throws {
-        let pass = try node.environmentValues.renderPassEncoder.orThrow(.withHint(.missingEnvironment(\.renderCommandEncoder), hint: "Place RenderCommand inside a RenderPass."))
+        let pass = try node.environmentValues.renderPassEncoder.orThrow(.withHint(.missingEnvironment("renderCommandEncoder"), hint: "Place RenderCommand inside a RenderPass."))
         try pass.command(encode)
     }
 

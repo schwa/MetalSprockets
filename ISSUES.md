@@ -8622,15 +8622,18 @@ Expected: parameter APIs accept C header structs in all build configurations, as
 ## 461: missingEnvironment(keyPath) error messages lose the property name in Release builds
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: effort:s, area:api
 created: 2026-09-30T18:27:58Z
-updated: 2026-10-05T22:29:39Z
+updated: 2026-10-05T23:19:33Z
+closed: 2026-10-05T23:19:33Z
 +++
 
 MetalSprocketsError.missingEnvironment(_:PartialKeyPath) interpolates the KeyPath into a String (Support.swift:7). In Debug this renders as \MSEnvironmentValues.device, but in Release KeyPath interpolation degrades to <computed 0x... (Optional<MTLDevice>)>, so the property name is lost from user-facing error messages (and the FAQ examples). Surfaced when the BK matrix started running release tests (UseResourceTests.testMissingEnvironmentKeyPath, relaxed to a case-insensitive check). Consider deriving a stable name instead of relying on KeyPath reflection.
+
+- `2026-10-05T23:19:34Z`: Call sites now pass plain property names ("renderCommandEncoder" etc.) instead of key paths; the PartialKeyPath overload is deprecated. Test: Draw outside a RenderPass reports 'Missing environment value: renderCommandEncoder' (failed before; passes in Debug and Release).
 
 ---
 

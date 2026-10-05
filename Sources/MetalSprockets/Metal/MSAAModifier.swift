@@ -82,7 +82,7 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
             throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` requires a color attachment texture on the render pass descriptor.")
         }
 
-        let device = try node.environmentValues.device.orThrow(.missingEnvironment(\.device))
+        let device = try node.environmentValues.device.orThrow(.missingEnvironment("device"))
         if resources == nil {
             resources = try ResourceCollection(device: device)
         }
