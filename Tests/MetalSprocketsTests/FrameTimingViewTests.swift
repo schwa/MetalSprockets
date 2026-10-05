@@ -19,8 +19,23 @@ struct FrameTimingViewTests {
     }
 
     @Test func `below half the target is red`() {
-        #expect(FrameTimingView.fpsColor(for: 29, targetFramesPerSecond: 60) == .red)
-        #expect(FrameTimingView.fpsColor(for: 59, targetFramesPerSecond: 120) == .red)
+        #expect(FrameTimingView.fpsColor(for: 28, targetFramesPerSecond: 60) == .red)
+        #expect(FrameTimingView.fpsColor(for: 57, targetFramesPerSecond: 120) == .red)
+    }
+
+    // #397: a steady 60 FPS on a 120 Hz display jitters around the half-rate boundary and must not flash.
+    @Test func `jitter around a half-rate boundary keeps one colour`() {
+        let colours = Set(stride(from: 59.0, through: 61.0, by: 0.1).map {
+            FrameTimingView.fpsColor(for: $0, targetFramesPerSecond: 120)
+        })
+        #expect(colours == [.yellow])
+    }
+
+    @Test func `jitter around a full-rate boundary keeps one colour`() {
+        let colours = Set(stride(from: 119.0, through: 121.0, by: 0.1).map {
+            FrameTimingView.fpsColor(for: $0, targetFramesPerSecond: 120)
+        })
+        #expect(colours == [.green])
     }
 
     @Test func `a nonsensical target falls back to sixty`() {

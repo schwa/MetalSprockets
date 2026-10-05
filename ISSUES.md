@@ -6184,12 +6184,13 @@ Rename the default output to a configuration-neutral filename.
 ## 397: FrameTimingView flashes at a steady frame rate
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: area:ui, effort:s
 created: 2026-09-14T17:18:52Z
-updated: 2026-09-30T16:18:18Z
+updated: 2026-10-05T22:38:03Z
+closed: 2026-10-05T22:38:03Z
 +++
 
 FrameTimingView (MetalSprocketsUI) visibly flashes even when the frame rate is steady (reported at a stable 60 FPS on iPad).
@@ -6204,6 +6205,8 @@ Expected: the readout updates smoothly without the whole badge flashing.
 Actual: the badge visibly flashes while values tick.
 
 Reported downstream in MetalSprocketsGaussianSplats. Device: iPad (model/OS not specified).
+
+- `2026-10-05T22:38:04Z`: Likely cause: on a 120 Hz iPad the default target is 120, so the yellow/red boundary is exactly 60 FPS; a steady ~60 FPS jitters across it and the colour flips each tick. Added a 3% tolerance below each threshold. Test: jitter 59–61 FPS at a 120 Hz target stays one colour (failed before). Layout: .monospacedDigit keeps widths stable, so I left it alone. Not verified on device; reopen if the badge still flashes.
 
 ---
 

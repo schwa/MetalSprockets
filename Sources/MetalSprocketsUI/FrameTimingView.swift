@@ -128,12 +128,16 @@ public struct FrameTimingView: View {
     }
 
     /// Green from 90% of the target frame rate, yellow from 50%, red below that.
+    ///
+    /// Each threshold allows a small tolerance. Half the refresh rate (60 FPS on a 120 Hz display) is a common steady
+    /// state, and its measured value jitters around the exact boundary, which made the colour flash. (#397)
     internal static func fpsColor(for fps: Double, targetFramesPerSecond: Double) -> Color {
         let target = targetFramesPerSecond > 0 ? targetFramesPerSecond : fallbackFramesPerSecond
-        if fps >= target * 0.9 {
+        let tolerance = 0.97
+        if fps >= target * 0.9 * tolerance {
             return .green
         }
-        if fps >= target * 0.5 {
+        if fps >= target * 0.5 * tolerance {
             return .yellow
         }
         return .red
