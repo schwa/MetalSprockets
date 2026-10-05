@@ -8206,12 +8206,13 @@ From #436. With warm compiler caches, initial setup is compute 1.0-1.2 ms (legac
 ## 443: CI still pins Xcode 26.4; Metal 4 port only built with Xcode 27
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: effort:s, area:ci
 created: 2026-09-30T00:37:10Z
-updated: 2026-09-30T16:18:19Z
+updated: 2026-10-05T22:36:42Z
+closed: 2026-10-05T22:36:42Z
 +++
 
 From #435. .github/workflows/swift.yml and docc.yml use Xcode 26.4. The Metal 4 port was only built and tested with Xcode 27.0 (no Xcode 26 installed locally). Either confirm that Xcode 26.4 builds the package and example (all three platforms, -warnings-as-errors), or move CI to Xcode 27 and document the toolchain requirement. Verify by pushing a branch or running with a local Xcode 26.4.
@@ -8220,6 +8221,7 @@ From #435. .github/workflows/swift.yml and docc.yml use Xcode 26.4. The Metal 4 
 - `2026-09-30T01:00:35Z`: Reopened: first CI run failed; macos-26 image only has Xcode 26.0.1-26.6. Switched Xcode jobs to runs-on macos-27 (availability unverified until pushed).
 - `2026-09-30T01:03:59Z`: macos-27 label has no hosted runner (job stayed queued). Switched to macos-26 + Xcode 26.6, the newest hosted Xcode. The port has never been built with Xcode 26; the next run will show whether it compiles.
 - `2026-09-30T01:12:59Z`: Run 36653335857 (Xcode 26.6): library, example (mac/iOS/visionOS) and swiftlint pass. Failures: 4 test warnings under -warnings-as-errors (deprecated renderPipelineDescriptorModifier; 3 redundant #require), fixed; api-check snapshot mismatch caused by tool/Xcode differences (see #445), snapshot replaced with CI's own output.
+- `2026-10-05T22:36:42Z`: Last straggler fixed: docc.yml moved from Xcode 26.4 to 26.6, matching swift.yml/xcode.yml (macos-26 hosted runners top out at 26.6; run 36653335857 verified the build there). README/RELEASENOTES already document the toolchain. The docc job itself is unverified until the next push.
 
 ---
 
