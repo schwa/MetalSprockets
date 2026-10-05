@@ -9060,3 +9060,17 @@ System.shouldUpdateNode calls isEqual(node.element, element) for every node. For
 Evidence: a Time Profiler capture of the MetalSprocketsGLTF GLTFViewer demo (Release; ABeautifulGame chess scene) spends about 74% of main-thread time in isEqualStructurally / isEqualStoredProperty under TreeReconciler.processElement. Self time is mostly Swift runtime reflection: swift_conformsToProtocol, tryCast, metadata demangling, Mirror. The scene has about 28 draws, each wrapped in a chain of about 45 nested .parameter modifiers. The GPU needs only about 1.4 ms per frame. Trace: /Users/schwa/Desktop/Chess.trace (GPU trace: /Users/schwa/Desktop/Chess.gputrace). See MetalSprocketsGLTF #69.
 
 ---
+
+## 480: No way to bind several parameters with one modifier
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:api, area:performance, area:metal4
+created: 2026-10-05T22:25:14Z
++++
+
+Each .parameter(...) call adds one modifier element. A draw that binds a full PBR material (about 15 textures, 15 samplers and several buffers in MetalSprocketsGLTF) becomes a chain of about 45 nested modifiers per draw. Every one of them is an element to rebuild and reconcile each frame. The deep nesting also makes structural-equality reconciliation expensive (see the reconciliation issue filed alongside this one). There is no public modifier that takes a set of bindings at once, for example a ParameterSet or a dictionary of named values.
+
+---
