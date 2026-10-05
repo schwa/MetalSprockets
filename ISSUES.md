@@ -8497,11 +8497,12 @@ Found while porting MetalSprocketsAddOns. Not covered in Documentation/Porting-t
 ## 457: Investigate optional-value parameter overloads (nil skips the binding)
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
 labels: area:api, area:metal4, effort:s
 created: 2026-09-30T16:32:51Z
+updated: 2026-10-05T22:29:39Z
 +++
 
 Follow-up to #454 (closed will not-fix; the isOptional flag was reverted).
@@ -8616,10 +8617,12 @@ Expected: parameter APIs accept C header structs in all build configurations, as
 ## 461: missingEnvironment(keyPath) error messages lose the property name in Release builds
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
+labels: effort:s, area:api
 created: 2026-09-30T18:27:58Z
+updated: 2026-10-05T22:29:39Z
 +++
 
 MetalSprocketsError.missingEnvironment(_:PartialKeyPath) interpolates the KeyPath into a String (Support.swift:7). In Debug this renders as \MSEnvironmentValues.device, but in Release KeyPath interpolation degrades to <computed 0x... (Optional<MTLDevice>)>, so the property name is lost from user-facing error messages (and the FAQ examples). Surfaced when the BK matrix started running release tests (UseResourceTests.testMissingEnvironmentKeyPath, relaxed to a case-insensitive check). Consider deriving a stable name instead of relying on KeyPath reflection.
@@ -8759,10 +8762,12 @@ SolarSystem recapture remains pending because its manifest uses the remote packa
 ## 467: visionOS simulator build fails on Metal 4 compiler descriptor types
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
+labels: effort:s, area:metal4
 created: 2026-10-02T05:22:16Z
+updated: 2026-10-05T22:29:40Z
 +++
 
 With Xcode 27.0 RC (27A266a), a visionOS simulator package build fails in unchanged Sources/MetalSprockets/Metal/ShaderFunction.swift:67–77:
@@ -8774,6 +8779,8 @@ cannot find 'MTL4SpecializedFunctionDescriptor' in scope
 Repro: xcb build MetalSprocketsUI -- --triple arm64-apple-xros26.0-simulator --sdk /Applications/Xcode-27.0.0-Release.Candidate.app/Contents/Developer/Platforms/XRSimulator.platform/Developer/SDKs/XRSimulator.sdk
 
 The corresponding visionOS device build succeeds. Discovered during #466 validation. The new residency collection code guards its device-only machine-learning pipeline type; the remaining failure is outside that change.
+
+- `2026-10-05T22:29:40Z`: Related: #473 (umbrella: no Metal 4 in Simulator) and #478 (iOS Simulator build).
 
 ---
 
@@ -8857,9 +8864,9 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 status: open
 priority: medium
 kind: bug
-labels: area:metal4
+labels: area:metal4, effort:l
 created: 2026-10-02T15:19:38Z
-updated: 2026-10-05T22:25:53Z
+updated: 2026-10-05T22:29:41Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -8883,11 +8890,12 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 ## 472: Draw resets rasterizer state unconditionally, flooding API validation with redundant-call warnings
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
-labels: area:metal4
+labels: area:metal4, effort:s
 created: 2026-10-02T15:54:58Z
+updated: 2026-10-05T22:29:40Z
 +++
 
 Draw.swift (around line 75) calls setCullMode(.none), setTriangleFillMode(.fill), setFrontFacing(.clockwise) and setVertexAmplificationCount(1) before every draw, so state set inside one Draw closure does not leak to the next.
@@ -8901,13 +8909,17 @@ Fix: track the encoder's rasterizer state on the pass and only reset values that
 ## 473: No Metal 4 support in Simulator
 
 +++
-status: new
+status: open
 priority: medium
-kind: none
+kind: task
+labels: effort:m, area:metal4
 created: 2026-10-02T16:32:33Z
+updated: 2026-10-05T22:29:40Z
 +++
 
 Metal 4 APIs are unavailable in the iOS/visionOS Simulator. Code paths relying on Metal 4 fail or can't be exercised there; need a fallback or to document/guard the limitation.
+
+- `2026-10-05T22:29:40Z`: Umbrella for simulator support. Concrete build failures: #467 (visionOS Simulator), #478 (iOS Simulator).
 
 ---
 
@@ -8948,11 +8960,12 @@ Done when a pipeline element can register its persistent buffers in its own `Res
 ## 475: MSState initial values are evaluated on every element rebuild
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: area:metal4, area:performance
+labels: area:metal4, area:performance, effort:s
 created: 2026-10-02T22:35:16Z
+updated: 2026-10-05T22:29:40Z
 +++
 
 MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure () -> Value. A default like '@MSState var mesh: MTKMesh = .teapot()', or an assignment to an @MSState in init, runs every time the element struct is rebuilt. That is usually every frame. The persisted StateBox wins and the new value is discarded, but the allocation still happens. In MetalSprocketsExamples this builds a teapot MTKMesh, a sphere, a 2048x2048 texture and a sampler every frame in BouncingTeapots, and MetalCanvas allocated 16 MB of buffers per frame (MetalSprocketsExamples #438). Proposal: add init(wrappedValue: @autoclosure @escaping () -> Value) and evaluate it only when no persisted state exists, like SwiftUI State. Assignments in init are harder to fix; at least document that they run every rebuild.
@@ -8967,9 +8980,9 @@ MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure 
 status: open
 priority: high
 kind: enhancement
-labels: area:metal4, area:performance
+labels: area:metal4, area:performance, effort:l
 created: 2026-10-03T00:16:32Z
-updated: 2026-10-05T22:25:34Z
+updated: 2026-10-05T22:29:41Z
 +++
 
 Potential performance issue, not measured.
@@ -8991,11 +9004,12 @@ Found while debugging SolarSystem #36.
 ## 477: Content inside .debugGroup can be reused from an earlier frame
 
 +++
-status: new
+status: open
 priority: high
 kind: bug
-labels: area:metal4
+labels: area:metal4, effort:s
 created: 2026-10-03T00:29:21Z
+updated: 2026-10-05T22:29:40Z
 +++
 
 Metal4DebugGroupModifier is Equatable, and its == compares only `label`. It ignores `content`:
@@ -9026,11 +9040,12 @@ Actual: content inside `.debugGroup` can be reused from an earlier frame.
 ## 478: MetalSprockets does not compile for the iOS Simulator
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
-labels: ios, simulator
+labels: ios, simulator, effort:s, area:metal4
 created: 2026-10-05T16:00:32Z
+updated: 2026-10-05T22:29:41Z
 +++
 
 Building any app that depends on MetalSprockets 0.2.0 for the iOS Simulator fails. The Metal 4 counter APIs are not in the simulator SDK:
@@ -9045,21 +9060,26 @@ MetalSprockets/Metal/GPUTimestampSampling.swift:55:31: value of type 'any MTLDev
 
 macOS and iOS device builds succeed. Found via MetalSprocketsGLTF's GLTFViewer demo (Xcode 27.0, iPhone 18 Pro Max simulator, iOS 27.0). Unclear whether simulator support is intended for 0.2.0; if not, it isn't documented.
 
+- `2026-10-05T22:29:41Z`: Related: #473 (umbrella) and #467 (visionOS Simulator).
+
 ---
 
 ## 479: Reconciliation compares whole subtrees by reflection at every container node
 
 +++
-status: new
+status: open
 priority: high
 kind: bug
-labels: area:performance, area:metal4
+labels: area:performance, area:metal4, effort:l
 created: 2026-10-05T22:25:14Z
+updated: 2026-10-05T22:29:41Z
 +++
 
 System.shouldUpdateNode calls isEqual(node.element, element) for every node. For non-Equatable elements, isEqualStructurally (Support/isEqual.swift) uses Mirror to compare every stored property, including a container's content, which is its entire subtree. Every container node (RenderPass, RenderPipeline, ForEach, Group, each ParameterModifier) does this again for its own subtree, so the cost grows roughly quadratically with tree depth, and each step is reflection plus Any casts.
 
 Evidence: a Time Profiler capture of the MetalSprocketsGLTF GLTFViewer demo (Release; ABeautifulGame chess scene) spends about 74% of main-thread time in isEqualStructurally / isEqualStoredProperty under TreeReconciler.processElement. Self time is mostly Swift runtime reflection: swift_conformsToProtocol, tryCast, metadata demangling, Mirror. The scene has about 28 draws, each wrapped in a chain of about 45 nested .parameter modifiers. The GPU needs only about 1.4 ms per frame. Trace: /Users/schwa/Desktop/Chess.trace (GPU trace: /Users/schwa/Desktop/Chess.gputrace). See MetalSprocketsGLTF #69.
+
+- `2026-10-05T22:29:41Z`: Related: #480 (each .parameter adds a nesting level, which makes this worse).
 
 ---
 
@@ -9069,11 +9089,13 @@ Evidence: a Time Profiler capture of the MetalSprocketsGLTF GLTFViewer demo (Rel
 status: open
 priority: high
 kind: enhancement
-labels: area:api, area:performance, area:metal4
+labels: area:api, area:performance, area:metal4, effort:m
 created: 2026-10-05T22:25:14Z
-updated: 2026-10-05T22:25:39Z
+updated: 2026-10-05T22:29:41Z
 +++
 
 Each .parameter(...) call adds one modifier element. A draw that binds a full PBR material (about 15 textures, 15 samplers and several buffers in MetalSprocketsGLTF) becomes a chain of about 45 nested modifiers per draw. Every one of them is an element to rebuild and reconcile each frame. The deep nesting also makes structural-equality reconciliation expensive (see the reconciliation issue filed alongside this one). There is no public modifier that takes a set of bindings at once, for example a ParameterSet or a dictionary of named values.
+
+- `2026-10-05T22:29:42Z`: Related: #479 (reconciliation cost grows with nesting depth).
 
 ---
