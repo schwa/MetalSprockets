@@ -9020,3 +9020,27 @@ Actual: content inside `.debugGroup` can be reused from an earlier frame.
 - `2026-10-03T00:30:51Z`: DepthBiasModifier has the same pattern. It wraps content, but == compares only depthBias, slopeScale and clamp. Used by MetalSprocketsAddOns GridShader and ShadowMapRenderPipeline. Removing the debugGroups did NOT fix SolarSystem #36 (pink tiles), so #36 has a different cause. This issue is confirmed only for the flicker in PinkReproView.
 
 ---
+
+## 478: MetalSprockets does not compile for the iOS Simulator
+
++++
+status: new
+priority: medium
+kind: bug
+labels: ios,simulator
+created: 2026-10-05T16:00:32Z
++++
+
+Building any app that depends on MetalSprockets 0.2.0 for the iOS Simulator fails. The Metal 4 counter APIs are not in the simulator SDK:
+
+```
+MetalSprockets/Metal/GPUTimestampSampling.swift:24:23: cannot find type 'MTL4CounterHeap' in scope
+MetalSprockets/Metal/GPUTimestampSampling.swift:34:38: type 'MTLGPUFamily' has no member 'metal4'
+MetalSprockets/Metal/GPUTimestampSampling.swift:37:32: value of type 'any MTLDevice' has no member 'queryTimestampFrequency'
+MetalSprockets/Metal/GPUTimestampSampling.swift:52:26: cannot find 'MTL4CounterHeapDescriptor' in scope
+MetalSprockets/Metal/GPUTimestampSampling.swift:55:31: value of type 'any MTLDevice' has no member 'makeCounterHeap'
+```
+
+macOS and iOS device builds succeed. Found via MetalSprocketsGLTF's GLTFViewer demo (Xcode 27.0, iPhone 18 Pro Max simulator, iOS 27.0). Unclear whether simulator support is intended for 0.2.0; if not, it isn't documented.
+
+---
