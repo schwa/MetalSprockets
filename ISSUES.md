@@ -9070,6 +9070,7 @@ MetalSprockets/Metal/GPUTimestampSampling.swift:55:31: value of type 'any MTLDev
 macOS and iOS device builds succeed. Found via MetalSprocketsGLTF's GLTFViewer demo (Xcode 27.0, iPhone 18 Pro Max simulator, iOS 27.0). Unclear whether simulator support is intended for 0.2.0; if not, it isn't documented.
 
 - `2026-10-05T22:29:41Z`: Related: #473 (umbrella) and #467 (visionOS Simulator).
+- `2026-10-05T22:40:35Z`: Reproduced with Xcode 27.0 RC (iphonesimulator27.0 SDK): the failure is not limited to the counter APIs. The simulator SDK's MTL4*.h headers are empty stubs (e.g. MTL4CommandBuffer.h declares nothing), so MTL4CommandBuffer, MTL4ArgumentTable, MTL4CommandAllocator, MTL4VisibilityOptions, MTL4ComputeCommandEncoder, etc. are all missing; errors span ArgumentTablePool, CommandResources, BarrierElements, ComputeDispatch and more. Guarding GPUTimestampSampling alone would just surface the next 100 errors. Punting: supporting the simulator means compiling out (or stubbing) essentially the whole Metal layer behind #if !targetEnvironment(simulator), which is the #473 decision. Unblocker: decide between (a) documenting 'device/macOS only, no Simulator' in README + release notes, or (b) a compile-only simulator stub where elements throw 'Metal 4 unavailable' at runtime.
 
 ---
 
