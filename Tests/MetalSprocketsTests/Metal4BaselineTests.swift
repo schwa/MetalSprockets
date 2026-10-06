@@ -81,6 +81,95 @@ struct Metal4BaselineTests {
             .write(to: URL(filePath: outputPath), options: .atomic)
     }
 
+    // #449: cost of `.gpuCounters` on every frame. Blocks with and without it alternate so drift hits both equally.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["METALSPROCKETS_GPU_COUNTERS_OUTPUT"] != nil))
+    func recordGPUCountersOverhead() throws {
+        let outputPath = try #require(ProcessInfo.processInfo.environment["METALSPROCKETS_GPU_COUNTERS_OUTPUT"])
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let kernel = try ComputeKernel(source: Self.source)
+        let vertex = try VertexShader(source: Self.source)
+        let fragment = try FragmentShader(source: Self.source)
+        let elementCount = 65_536
+        let buffer = try #require(device.makeBuffer(length: elementCount * MemoryLayout<UInt32>.stride, options: .storageModeShared))
+        let compute = try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                try ComputeDispatch(threadgroups: MTLSize(width: elementCount / 256, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+                    .parameter("output", buffer: buffer)
+            }
+        }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: 512, height: 512, mipmapped: false)
+        descriptor.storageMode = .shared
+        descriptor.usage = [.renderTarget]
+        let texture = try #require(device.makeTexture(descriptor: descriptor))
+        let pass = MTL4RenderPassDescriptor()
+        pass.colorAttachments[0].texture = texture
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        let render = try RenderPass {
+            try RenderPipeline(vertexShader: vertex, fragmentShader: fragment) {
+                Draw { encoder in
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+            }
+        }
+        .renderPassDescriptor(pass)
+
+        let samples = Counter()
+        let result: [String: Any] = [
+            "device": device.name,
+            "os": ProcessInfo.processInfo.operatingSystemVersionString,
+            "rounds": 10,
+            "framesPerBlock": 500,
+            "compute": try compareCounters(plain: compute, counted: compute.gpuCounters(label: "Compute") { _ in samples.received += 1 }, device: device),
+            "render": try compareCounters(plain: render, counted: render.gpuCounters(label: "Render") { _ in samples.received += 1 }, device: device)
+        ]
+        #expect(samples.received > 0)
+        try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
+            .write(to: URL(filePath: outputPath), options: .atomic)
+    }
+
+    private final class Counter: @unchecked Sendable {
+        var received = 0
+    }
+
+    private func compareCounters(plain: some Element, counted: some Element, device: MTLDevice) throws -> [String: Any] {
+        let plainRunner = try Runner(device: device)
+        let countedRunner = try Runner(device: device)
+
+        func frame(_ runner: Runner, _ content: some Element) throws -> (cpu: Double, gpu: Double) {
+            try autoreleasepool {
+                let submission = try runner.submit(content)
+                let timings = try #require(runner.system.lastPhaseTimings)
+                let result = try submission.waitUntilCompleted()
+                try runner.context.retireCompletedSubmissions()
+                try #require(result.outcome == .completed)
+                return (timings.total, try #require(result.gpuDuration))
+            }
+        }
+
+        for _ in 0..<200 {
+            _ = try frame(plainRunner, plain)
+            _ = try frame(countedRunner, counted)
+        }
+        var plainCPU: [Double] = [], plainGPU: [Double] = [], countedCPU: [Double] = [], countedGPU: [Double] = []
+        for _ in 0..<10 {
+            for _ in 0..<500 {
+                let sample = try frame(plainRunner, plain)
+                plainCPU.append(sample.cpu)
+                plainGPU.append(sample.gpu)
+            }
+            for _ in 0..<500 {
+                let sample = try frame(countedRunner, counted)
+                countedCPU.append(sample.cpu)
+                countedGPU.append(sample.gpu)
+            }
+        }
+        return [
+            "withoutCounters": ["cpuFrameSeconds": summary(plainCPU), "gpuSeconds": summary(plainGPU)],
+            "withCounters": ["cpuFrameSeconds": summary(countedCPU), "gpuSeconds": summary(countedGPU)]
+        ]
+    }
+
     // Ported from the legacy `CommandBufferElement(.none)` + manual commit to the recorded-submission token API, with
     // the same per-frame checks (completed, positive GPU time). Archived legacy measurements are not re-recorded.
     private func measure(_ content: some Element, device: MTLDevice) throws -> [String: Any] {
