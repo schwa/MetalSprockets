@@ -4920,9 +4920,9 @@ Easy to demonstrate with a `Runner` test: run the same element tree N times, cou
 status: open
 priority: low
 kind: enhancement
-labels: effort:m
+labels: effort:m, deferred
 created: 2026-05-18T04:25:45Z
-updated: 2026-08-08T22:00:16Z
+updated: 2026-10-06T06:21:09Z
 +++
 
 Swift 6's `BitwiseCopyable` protocol covers most of what our `isPOD`/`_isPOD` helper checks (trivially copyable, no refs, no ARC), but as a compile-time constraint rather than a runtime check.
@@ -5976,7 +5976,14 @@ Consequences: any code can reach into the whole `System` (not just the node it i
 
 Wanted: pass the traversal context (or just the current node/environment) explicitly to the places that need it, and shrink or remove `System.current`.
 
-- `2026-09-30T16:18:18Z`: Related: #390 (the god-object half of #292). This issue is the side-channel half.
+\- `2026-09-30T16:18:18Z`: Related: #390 (the god-object half of #292). This issue is the side-channel half.
+\- `2026-10-06T06:18:06Z`: Audited all 10 System.current uses. Punting: needs a design decision and has core-wide blast radius.
+
+Easy group (4): Element.configureNode, RenderPassDescriptorModifier, RenderPipelineDescriptorTransformer, MSAAModifier only need the parent node / ancestor walk. A weak Node.parent set in TreeReconciler would remove these with no API change.
+
+Structural group (5): MSEnvironment.wrappedValue, StateBox read-tracking (resolveSystem + currentNode), Element.trackedBody, EnvironmentReader (#212, deferred), ShaderLibrary ambient ShaderStore. These run inside parameterless property-wrapper getters or body, so there is no explicit channel. Removing them means changing the dynamic-property model: e.g. resolve @MSEnvironment values and bind StateBox to its node in update(in:) before body runs (SwiftUI-style), and pass the node into trackedBody from the reconciler.
+
+Decision needed: (a) split this: file the easy group as a subtask (effort:s) and keep the structural group as the design issue; or (b) commit to the SwiftUI-style dynamic-property injection redesign (effort:l, touches State/Environment/Element core).
 
 ---
 
@@ -8508,9 +8515,9 @@ Found while porting MetalSprocketsAddOns. Not covered in Documentation/Porting-t
 status: open
 priority: low
 kind: enhancement
-labels: area:api, area:metal4, effort:s
+labels: area:api, area:metal4, effort:s, deferred
 created: 2026-09-30T16:32:51Z
-updated: 2026-10-05T22:29:39Z
+updated: 2026-10-06T06:28:54Z
 +++
 
 Follow-up to #454 (closed will not-fix; the isOptional flag was reverted).
@@ -8909,9 +8916,9 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 status: open
 priority: low
 kind: bug
-labels: area:metal4, effort:s
+labels: area:metal4, effort:s, deferred
 created: 2026-10-02T15:54:58Z
-updated: 2026-10-05T22:29:40Z
+updated: 2026-10-06T06:28:54Z
 +++
 
 Draw.swift (around line 75) calls setCullMode(.none), setTriangleFillMode(.fill), setFrontFacing(.clockwise) and setVertexAmplificationCount(1) before every draw, so state set inside one Draw closure does not leak to the next.
@@ -8948,9 +8955,9 @@ Recommendation: A (possibly with B as a stopgap). Needs a decision on the leak b
 status: open
 priority: medium
 kind: task
-labels: effort:m, area:metal4
+labels: effort:m, area:metal4, deferred
 created: 2026-10-02T16:32:33Z
-updated: 2026-10-05T22:29:40Z
+updated: 2026-10-06T06:28:54Z
 +++
 
 Metal 4 APIs are unavailable in the iOS/visionOS Simulator. Code paths relying on Metal 4 fail or can't be exercised there; need a fallback or to document/guard the limitation.
@@ -9146,5 +9153,25 @@ Each .parameter(...) call adds one modifier element. A draw that binds a full PB
 
 - `2026-10-05T22:29:42Z`: Related: #479 (reconciliation cost grows with nesting depth).
 - `2026-10-05T22:35:01Z`: Added public ShaderParameters and Element.parameters { $0.set(...) }: one ParameterModifier for any number of bindings, with set overloads matching .parameter labels. Inner modifiers still override. Tests: ShaderParametersTests.
+
+---
+
+## 481: Residency set removes and re-adds the same allocations every frame
+
++++
+status: new
+priority: low
+kind: bug
+labels: effort:s
+created: 2026-10-06T19:20:22Z
++++
+
+When a frame's previous submission has already completed (the usual case for a light scene at display rate), every frame removes all of its allocations from the context residency set, commits, re-adds the same allocations and commits again. Seen in a GPU capture of MetalSprocketsGLTF's GLTFViewer: per frame, removeAllocation x6 (environment maps, BRDF lookup, transmission targets), commit, MTL4CommandAllocator reset, addAllocation x6 (the same textures), commit.
+
+Cause: MetalContext.submit calls retireCompletedSubmissions() before residency.acquire(...) (MetalContext.swift ~160-234). Retiring releases the previous frame's allocations; ResidencyTracker.release drops each to zero uses, removes it and commits; acquire then adds them back and commits. The set is correct, but a steady scene makes 2 residency commits and 2N add/remove calls per frame instead of none.
+
+Cost: unmeasured on the CPU. #436 (2026-09-30) tested this churn as a cause of GPU frame time and rejected it (no GPU change with removals disabled); CPU time and the commits themselves were not measured. Apple's residency-set guidance is to avoid frequent commits.
+
+Possible fixes: acquire the new frame's allocations before retiring completed submissions; or defer removals (collect zero-use allocations and remove only those not re-acquired by the next submit, committing once); or keep a small grace period. Acceptance: a steady scene rendered repeatedly makes no residency-set changes or commits after the first frame (testable by counting calls in ResidencyTracker); allocations still leave the set once no live submission uses them.
 
 ---
