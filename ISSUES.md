@@ -8881,13 +8881,12 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 ## 471: Random tile-shaped corruption in a RenderView frame with a slow fragment shader
 
 +++
-status: closed
+status: open
 priority: medium
 kind: bug
 labels: area:metal4, effort:l
 created: 2026-10-02T15:19:38Z
-updated: 2026-10-05T23:14:53Z
-closed: 2026-10-05T23:14:53Z
+updated: 2026-10-06T21:27:26Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -8907,6 +8906,7 @@ Looks fine on reading: scratch arenas and argument tables are reused only throug
 Suggested next steps: a RenderView stress test with a deliberately slow fragment shader over many frames, checking for frame-to-frame variation; and a debug option to force one submission in flight to separate cross-frame races from everything else.
 
 - `2026-10-05T23:14:53Z`: Closing as invalid for now. Reopen if the tile-shaped corruption reproduces again.
+- `2026-10-06T21:27:26Z`: Reopening: pink/garbage output in RenderView is reported again, now also in MetalSprocketsGLTF's GLTFViewer (Metal 4). Workaround found by the user: set the MTKView's framebufferOnly to false (RenderView: .metalFramebufferOnly(false)), so the drawable's texture has usage beyond render target; with that the pink output goes away. GLTFViewer now has a 'Framebuffer Only' toggle in its Display tab for A/B testing (MetalSprocketsGLTF 191f1610). Guess, unverified: framebufferOnly drawables can use a different memory/compression (lossless or framebuffer-only) path, so this may be an interaction between Metal 4 drawable textures and how they are written or resolved (MSAA resolve, store actions, or reads of the drawable), rather than the fragment shader timing suspected above. Next: reproduce with framebufferOnly true vs false in the same app, with and without MSAA, and check a GPU capture for the drawable's usage and store/resolve actions.
 
 ---
 
