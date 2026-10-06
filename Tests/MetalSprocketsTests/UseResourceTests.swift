@@ -227,6 +227,7 @@ struct UseResourceTests {
         .run()
     }
 
+    @available(*, deprecated, message: "Exercises the deprecated keyPath overload on purpose.")
     @Test("missingEnvironment(keyPath) helper")
     func testMissingEnvironmentKeyPath() {
         // Optimized builds drop key path property names, so compare against the same interpolation.

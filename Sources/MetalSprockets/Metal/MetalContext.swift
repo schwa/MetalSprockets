@@ -339,7 +339,9 @@ internal final class MetalContext {
     }
 
     private func flushPendingResidencyRelease() {
-        guard !pendingResidencyRelease.isEmpty else { return }
+        guard !pendingResidencyRelease.isEmpty else {
+            return
+        }
         residency.release(pendingResidencyRelease)
         pendingResidencyRelease.removeAll(keepingCapacity: true)
     }
