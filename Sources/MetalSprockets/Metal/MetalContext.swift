@@ -22,6 +22,10 @@ internal final class MetalContext {
     private let completionListener = MTLSharedEventListener()
     private var inFlight: [UInt64: InFlightSubmission] = [:]
     private let residency: ResidencyTracker
+    // Allocations of retired submissions whose residency release is deferred until the next commit, so a steady scene
+    // re-acquires the same allocations before releasing them and makes no residency-set change. Flushed on commit, on
+    // any immediate-flush retire, and on drain.
+    private var pendingResidencyRelease: [any MTLAllocation] = []
     let pipelines: PipelineCache
     var residencyConfiguration = ResidencyConfiguration()
     private var depthStencilStates: [DepthState: any MTLDepthStencilState] = [:]
@@ -31,6 +35,7 @@ internal final class MetalContext {
     /// The context-owned residency set, attached to the queue. It contains only allocations used by live recordings.
     var residencySet: any MTLResidencySet { residency.residencySet }
     var residentAllocationCount: Int { residency.trackedCount }
+    var residencyCommitCount: Int { residency.commitCount }
     private var lastSubmissionIdentifier: UInt64 = 0
     private var submissionCommitted: (@Sendable (UInt64, String?) -> Void)?
     // Faulted from off-isolation completion callbacks, so it needs its own lock.
@@ -157,23 +162,23 @@ internal final class MetalContext {
     }
 
     func waitForSubmissionCapacity() throws {
-        try retireCompletedSubmissions()
+        try retireCompletedSubmissions(flushResidency: false)
         while !canSubmit, let identifier = inFlight.keys.min(), let submission = inFlight[identifier], !isFaulted {
             try waitForResult(Submission(identifier: identifier, completion: submission.completion))
-            try retireCompletedSubmissions()
+            try retireCompletedSubmissions(flushResidency: false)
         }
         try checkFault()
     }
 
     nonisolated(nonsending) func awaitSubmissionCapacity() async throws {
         try Task.checkCancellation()
-        try retireCompletedSubmissions()
+        try retireCompletedSubmissions(flushResidency: false)
         while !canSubmit, !isFaulted {
             guard let identifier = inFlight.keys.min(), let submission = inFlight[identifier] else {
                 break
             }
             try await awaitResult(Submission(identifier: identifier, completion: submission.completion))
-            try retireCompletedSubmissions()
+            try retireCompletedSubmissions(flushResidency: false)
         }
         try Task.checkCancellation()
         try checkFault()
@@ -232,6 +237,7 @@ internal final class MetalContext {
         let commandBuffer = commands.commandBuffer
         var resources = resources
         resources.allocations = residency.acquire(resources.allocations)
+        flushPendingResidencyRelease()
         resources.owners.append(commandQueue)
         resources.owners.append(completionEvent)
         resources.owners.append(completionListener)
@@ -316,14 +322,26 @@ internal final class MetalContext {
         commandQueue.waitForEvent(event, value: value)
     }
 
-    func retireCompletedSubmissions() throws {
+    /// Retires completed submissions. By default it releases their residency immediately; `flushResidency: false` defers
+    /// the release into `pendingResidencyRelease`, which the next `commit` flushes right after acquiring the new frame's
+    /// allocations. Deferring keeps a steady scene from removing and re-adding the same allocations every frame.
+    func retireCompletedSubmissions(flushResidency: Bool = true) throws {
         for (identifier, submission) in inFlight where submission.completion.isRetiredSuccessfully {
-            residency.release(submission.allocations)
+            pendingResidencyRelease.append(contentsOf: submission.allocations)
             if reusableCommands.count < maximumInFlightSubmissions {
                 reusableCommands.append(submission.commands)
             }
             inFlight.removeValue(forKey: identifier)
         }
+        if flushResidency {
+            flushPendingResidencyRelease()
+        }
+    }
+
+    private func flushPendingResidencyRelease() {
+        guard !pendingResidencyRelease.isEmpty else { return }
+        residency.release(pendingResidencyRelease)
+        pendingResidencyRelease.removeAll(keepingCapacity: true)
     }
 
     static func validateDevice(supportsMetal4: Bool, deviceIdentifier: ObjectIdentifier, queueDeviceIdentifier: ObjectIdentifier?, deviceName: String) throws {

@@ -25,7 +25,7 @@ package final class FrameRunner {
 
     /// Reports whether the in-flight limit permits another frame without waiting.
     package func prepareFrame() throws -> Bool {
-        try context.retireCompletedSubmissions()
+        try context.retireCompletedSubmissions(flushResidency: false)
         try context.checkFault()
         return context.canSubmit
     }
@@ -67,7 +67,7 @@ package final class FrameRunner {
     /// Records and commits `content` synchronously, presenting `presentable` in the required order. For per-frame
     /// view drivers that call `prepareFrame` first to skip frames at the in-flight limit.
     func submitFrame(_ content: some Element, presenting presentable: (any Presentable)?, residencySets: [any MTLResidencySet]) throws -> Submission {
-        try context.retireCompletedSubmissions()
+        try context.retireCompletedSubmissions(flushResidency: false)
         return try context.submit(content, system: system, residencySets: residencySets, presenting: presentable)
     }
 

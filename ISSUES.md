@@ -9159,11 +9159,13 @@ Each .parameter(...) call adds one modifier element. A draw that binds a full PB
 ## 481: Residency set removes and re-adds the same allocations every frame
 
 +++
-status: new
+status: closed
 priority: low
 kind: bug
 labels: effort:s
 created: 2026-10-06T19:20:22Z
+updated: 2026-10-06T19:40:39Z
+closed: 2026-10-06T19:40:39Z
 +++
 
 When a frame's previous submission has already completed (the usual case for a light scene at display rate), every frame removes all of its allocations from the context residency set, commits, re-adds the same allocations and commits again. Seen in a GPU capture of MetalSprocketsGLTF's GLTFViewer: per frame, removeAllocation x6 (environment maps, BRDF lookup, transmission targets), commit, MTL4CommandAllocator reset, addAllocation x6 (the same textures), commit.
@@ -9173,5 +9175,7 @@ Cause: MetalContext.submit calls retireCompletedSubmissions() before residency.a
 Cost: unmeasured on the CPU. #436 (2026-09-30) tested this churn as a cause of GPU frame time and rejected it (no GPU change with removals disabled); CPU time and the commits themselves were not measured. Apple's residency-set guidance is to avoid frequent commits.
 
 Possible fixes: acquire the new frame's allocations before retiring completed submissions; or defer removals (collect zero-use allocations and remove only those not re-acquired by the next submit, committing once); or keep a small grace period. Acceptance: a steady scene rendered repeatedly makes no residency-set changes or commits after the first frame (testable by counting calls in ResidencyTracker); allocations still leave the set once no live submission uses them.
+
+- `2026-10-06T19:40:39Z`: Fixed by deferring residency release so a steady scene makes no residency-set churn.
 
 ---

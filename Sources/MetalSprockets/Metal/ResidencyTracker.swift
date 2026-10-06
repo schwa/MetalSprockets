@@ -15,6 +15,11 @@ internal final class ResidencyTracker {
 
     var trackedCount: Int { entries.count }
 
+    // Diagnostics for verifying steady scenes make no residency-set churn.
+    private(set) var commitCount = 0
+    private(set) var addCount = 0
+    private(set) var removeCount = 0
+
     init(device: any MTLDevice) throws {
         let descriptor = MTLResidencySetDescriptor()
         descriptor.label = "MetalSprockets context residency"
@@ -32,12 +37,14 @@ internal final class ResidencyTracker {
             if entries[identifier] == nil {
                 entries[identifier] = Entry(allocation: allocation, uses: 0)
                 residencySet.addAllocation(allocation)
+                addCount += 1
                 added = true
             }
             entries[identifier]?.uses += 1
         }
         if added {
             residencySet.commit()
+            commitCount += 1
         }
         return Array(distinct.values)
     }
@@ -53,6 +60,7 @@ internal final class ResidencyTracker {
             if entry.uses <= 0 {
                 entries.removeValue(forKey: identifier)
                 residencySet.removeAllocation(entry.allocation)
+                removeCount += 1
                 removed = true
             } else {
                 entries[identifier] = entry
@@ -60,6 +68,7 @@ internal final class ResidencyTracker {
         }
         if removed {
             residencySet.commit()
+            commitCount += 1
         }
     }
 }

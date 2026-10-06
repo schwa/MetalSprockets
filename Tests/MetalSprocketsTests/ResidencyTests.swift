@@ -88,6 +88,28 @@ struct ResidencyTests {
     }
 
     @Test(.timeLimit(.minutes(1)))
+    func steadySceneMakesNoResidencyChurn() async throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let context = try MetalContext(device: device, maximumInFlightSubmissions: 3)
+        // The same persistent allocation reused every frame, as a steady scene reuses its textures.
+        let persistent = try buffer(device)
+        var baselineCommits = 0
+        for frame in 1...20 {
+            let recording = try context.submit { scope in
+                try scope.retainAllocation(persistent)
+                try scope.withComputeEncoder { $0.fill(buffer: persistent, range: 0..<4, value: UInt8(frame)) }
+            }
+            try await context.awaitResult(recording)
+            // After the first frame settles, no further residency-set commits should occur.
+            if frame == 1 { baselineCommits = context.residencyCommitCount }
+        }
+        #expect(context.residencyCommitCount == baselineCommits)
+        #expect(context.residencySet.containsAllocation(persistent))
+        try await context.drain()
+        #expect(context.residentAllocationCount == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func timedOutWorkKeepsItsAllocationsResident() async throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let context = try MetalContext(device: device, maximumInFlightSubmissions: 1, submissionTimeout: .milliseconds(50))
