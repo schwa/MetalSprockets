@@ -8917,6 +8917,26 @@ Because the resets are unconditional, Metal API validation reports 'Redundant ca
 
 Fix: track the encoder's rasterizer state on the pass and only reset values that differ from the defaults, as applyDrawState already does for depth/stencil state and as viewportOverridden/scissorOverridden do for viewport and scissor. A Draw closure that changes the state directly is not visible to the pass, so either mark the state dirty after any Draw closure runs, or offer rasterizer modifiers (.cullMode, .fillMode, .frontFacing) that the pass tracks.
 
+- `2026-10-06T00:59:56Z`: Investigated. A Draw closure gets the raw MTL4RenderCommandEncoder and can call setCullMode etc. directly; the pass cannot observe that, so the unconditional reset is the only thing preventing leaks to sibling draws. Wrapping the encoder in a recording proxy is impractical (huge protocol surface).
+
+Option A: rasterizer modifiers (.cullMode, .triangleFillMode, .frontFacing, .vertexAmplificationCount), tracked by the pass like applyDrawState; set only on change; drop the unconditional reset.
+  + No redundant-call validation noise; declarative, matches depth/stencil modifiers.
+  - Behaviour change: state set directly in a Draw closure leaks to later draws in the pass. Needs docs + migration of existing closures.
+
+Option B: keep the reset, but skip it on the first draw of each pass (encoder starts at defaults).
+  + No API or behaviour change; small.
+  - Only removes noise for 1 draw per pass; multi-draw passes still warn.
+
+Option C: modifiers as in A, but keep resetting after any Draw whose closure ran (pass marks rasterizer state dirty).
+  + Leak protection kept.
+  - Every Draw has a closure, so this resets every time: no reduction in noise. Not useful unless Draw grows a closure-free form.
+
+Option D: leave as is; document that the warnings are expected.
+  + Zero cost.
+  - Real validation warnings stay buried.
+
+Recommendation: A (possibly with B as a stopgap). Needs a decision on the leak behaviour change.
+
 ---
 
 ## 473: No Metal 4 support in Simulator
