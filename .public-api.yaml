@@ -290,6 +290,12 @@ modules:
         - Returns: A modified element with the linked functions set in the environment.
       source: Sources/MetalSprockets/Metal/VisibleFunctionTableModifier.swift:83
     - decl: |
+        public func linkedFunctions(_ functions: [VisibleFunction], functionType: MTLFunctionType) -> some Element
+      doc: |-
+        Links functions into one stage of a ``RenderPipeline``, in addition to any linked into all stages with
+        ``linkedFunctions(_:)``. Function types other than `.vertex` and `.fragment` link into all stages.
+      source: Sources/MetalSprockets/Metal/VisibleFunctionTableModifier.swift:89
+    - decl: |
         public func msaa(sampleCount: Int) -> some Element
       doc: |-
         Enables multisample anti-aliasing (MSAA) for render-to-texture rendering.
@@ -866,8 +872,9 @@ modules:
   - decl: public final class OffscreenVideoRenderer
     source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:9
     members:
-    - decl: 'public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, shaderLogging: ShaderLogging = .processDefault) throws'
-      source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:27
+    - decl: 'public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault) throws'
+      doc: '`clearDepth` is the depth each frame starts from: 1 for the usual depth convention, 0 for reverse-Z.'
+      source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:28
     - decl: 'public let frameRate: Double'
       source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:11
     - decl: 'public let outputURL: URL'
@@ -879,10 +886,10 @@ modules:
     - decl: 'public let videoCodec: AVVideoCodecType'
       source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:14
     - decl: nonisolated public (nonsending) func finalize() async throws
-      source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:101
+      source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:102
     - decl: 'nonisolated public (nonsending) func render<Content>(_ element: Content) async throws where Content : Element'
       doc: Renders one frame and appends it. An encoding error throws before anything is appended.
-      source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:87
+      source: Sources/MetalSprockets/Roots/OffscreenVideoRenderer.swift:88
   - decl: public final class ResourceCollection
     source: Sources/MetalSprockets/Metal/ResourceCollection.swift:4
     members:
@@ -1978,19 +1985,22 @@ modules:
     source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:31
     members:
     - decl: public struct Rendering
-      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:96
+      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:99
       members:
       - decl: 'public var cgImage: CGImage { get throws }'
-        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:120
+        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:123
       - decl: 'public var gpuTime: TimeInterval?'
         doc: GPU time for the whole submission, or `nil` when Metal reported no valid timing.
-        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:99
+        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:102
       - decl: 'public var texture: MTLTexture'
-        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:97
-    - decl: 'public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture, shaderLogging: ShaderLogging = .processDefault) throws'
-      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:53
-    - decl: 'public init(size: CGSize, device: MTLDevice? = nil, colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead], depthUsage: MTLTextureUsage = [.renderTarget], shaderLogging: ShaderLogging = .processDefault) throws'
-      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:72
+        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:100
+    - decl: 'public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault) throws'
+      doc: |-
+        `clearDepth` is the depth each frame starts from: 1 for the usual depth convention, 0 for reverse-Z (where nearer
+        is greater).
+      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:55
+    - decl: 'public init(size: CGSize, device: MTLDevice? = nil, colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead], depthUsage: MTLTextureUsage = [.renderTarget], clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault) throws'
+      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:74
     - decl: 'public var colorTexture: MTLTexture { get set }'
       source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:34
     - decl: 'public var commandQueue: any MTL4CommandQueue'
@@ -2005,7 +2015,7 @@ modules:
       source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:33
     - decl: 'public func render<Content>(_ content: Content) throws -> Rendering where Content : Element'
       doc: Renders `content` and waits for the GPU. Earlier renderings keep their textures; reading them is safe.
-      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:105
+      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:108
   - decl: '@dynamicMemberLookup public struct ProjectedValue<ObjectType> where ObjectType : ObservableObject'
     source: Sources/MetalSprockets/Core/ObservedObject.swift:58
     members:

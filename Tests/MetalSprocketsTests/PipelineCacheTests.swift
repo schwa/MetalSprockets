@@ -84,6 +84,27 @@ struct PipelineCacheTests {
     }
 
     @Test
+    func renderPipelineIdentityCoversLinkedFunctionStage() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        guard device.supportsFamily(.apple7) else { return }
+        let context = try MetalContext(device: device)
+        let library = try device.makeLibrary(source: VisibleFunctionTableTests.fragmentTableSource, options: nil)
+        let vertex = try VertexShader(library: library, name: "vertex_main")
+        let fragment = try FragmentShader(library: library, name: "fragment_main")
+        let red = try VisibleFunction(library: library, name: "red_visible")
+        func configuration(vertexLinked: [VisibleFunction] = [], fragmentLinked: [VisibleFunction] = []) -> RenderPipelineConfiguration {
+            RenderPipelineConfiguration(vertex: vertex, fragment: fragment, colorPixelFormats: [.bgra8Unorm], vertexDescriptor: vertex.inferredVertexDescriptor(), vertexLinkedFunctions: vertexLinked, fragmentLinkedFunctions: fragmentLinked)
+        }
+        let fragmentOnly = try context.pipelines.renderPipeline(configuration(fragmentLinked: [red]))
+        let vertexOnly = try context.pipelines.renderPipeline(configuration(vertexLinked: [red]))
+        #expect(fragmentOnly.state !== vertexOnly.state)
+        #expect(context.pipelines.compilationCount == 2)
+        #expect(fragmentOnly.state.functionHandle(withName: "red_visible", stage: .fragment) != nil)
+        #expect(fragmentOnly.state.functionHandle(withName: "red_visible", stage: .vertex) == nil)
+        #expect(vertexOnly.state.functionHandle(withName: "red_visible", stage: .fragment) == nil)
+    }
+
+    @Test
     func mismatchedDevicesAreRejectedBeforeCompilation() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let context = try MetalContext(device: device)

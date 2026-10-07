@@ -123,6 +123,56 @@ struct VisibleFunctionTableTests {
         try Golden.verify(element, named: "VisibleFunctionTableRed")
     }
 
+    @Test("Linked functions scoped to the fragment stage render", .requiresMetal4)
+    func testFragmentStageLinkedFunctions() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7) else { return }
+
+        let library = try device.makeLibrary(source: Self.fragmentTableSource, options: nil)
+        let redVisible = try VisibleFunction(library: library, name: "red_visible")
+
+        let element = try RenderPass {
+            let vs = try VertexShader(library: library, name: "vertex_main")
+            let fs = try FragmentShader(library: library, name: "fragment_main")
+            try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                Draw { encoder in
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+                .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
+                .visibleFunctionTable("colorTable", function: redVisible)
+            }
+            .vertexDescriptor(vs.inferredVertexDescriptor())
+            .linkedFunctions([redVisible], functionType: .fragment)
+        }
+        try Golden.verify(element, named: "VisibleFunctionTableRed")
+    }
+
+    @Test("Linked functions scoped to the vertex stage are not linked into the fragment stage", .requiresMetal4)
+    func testVertexStageLinkedFunctionsDoNotReachFragment() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        guard device.supportsFamily(.apple7) else { return }
+
+        let library = try device.makeLibrary(source: Self.fragmentTableSource, options: nil)
+        let redVisible = try VisibleFunction(library: library, name: "red_visible")
+
+        let pass = try RenderPass {
+            let vs = try VertexShader(library: library, name: "vertex_main")
+            let fs = try FragmentShader(library: library, name: "fragment_main")
+            try RenderPipeline(vertexShader: vs, fragmentShader: fs) {
+                Draw { encoder in
+                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
+                }
+                .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
+                .visibleFunctionTable("colorTable", functionType: .fragment, function: redVisible)
+            }
+            .vertexDescriptor(vs.inferredVertexDescriptor())
+            .linkedFunctions([redVisible], functionType: .vertex)
+        }
+
+        let message = try setupError(pass)
+        #expect(message.contains("not linked"), "Unexpected error: \(message)")
+    }
+
     @Test("Explicit .fragment functionType resolves", .requiresMetal4)
     func testExplicitFragmentFunctionType() throws {
         let device = MTLCreateSystemDefaultDevice()!

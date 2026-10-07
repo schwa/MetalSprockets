@@ -80,13 +80,16 @@ internal struct RenderPipelineConfiguration {
     var stencilPixelFormat: MTLPixelFormat = .invalid
     var rasterSampleCount = 1
     var vertexDescriptor: MTLVertexDescriptor?
+    /// Linked into both stages.
     var linkedFunctions: [VisibleFunction] = []
+    var vertexLinkedFunctions: [VisibleFunction] = []
+    var fragmentLinkedFunctions: [VisibleFunction] = []
     /// Caller-configured pipeline state (for example blending from `renderPipelineDescriptorTransformer`). Shaders,
     /// layout and sample count are filled in; color formats only where the base leaves them `.invalid`.
     var baseDescriptor: MTL4RenderPipelineDescriptor?
     var label: String?
 
-    init(vertex: VertexShader, fragment: FragmentShader, colorPixelFormats: [MTLPixelFormat], depthPixelFormat: MTLPixelFormat = .invalid, stencilPixelFormat: MTLPixelFormat = .invalid, rasterSampleCount: Int = 1, vertexDescriptor: MTLVertexDescriptor? = nil, linkedFunctions: [VisibleFunction] = [], baseDescriptor: MTL4RenderPipelineDescriptor? = nil, label: String? = nil) {
+    init(vertex: VertexShader, fragment: FragmentShader, colorPixelFormats: [MTLPixelFormat], depthPixelFormat: MTLPixelFormat = .invalid, stencilPixelFormat: MTLPixelFormat = .invalid, rasterSampleCount: Int = 1, vertexDescriptor: MTLVertexDescriptor? = nil, linkedFunctions: [VisibleFunction] = [], vertexLinkedFunctions: [VisibleFunction] = [], fragmentLinkedFunctions: [VisibleFunction] = [], baseDescriptor: MTL4RenderPipelineDescriptor? = nil, label: String? = nil) {
         self.baseDescriptor = baseDescriptor
         self.vertex = vertex
         self.fragment = fragment
@@ -96,6 +99,8 @@ internal struct RenderPipelineConfiguration {
         self.rasterSampleCount = rasterSampleCount
         self.vertexDescriptor = vertexDescriptor
         self.linkedFunctions = linkedFunctions
+        self.vertexLinkedFunctions = vertexLinkedFunctions
+        self.fragmentLinkedFunctions = fragmentLinkedFunctions
         self.label = label
     }
 }
@@ -159,7 +164,8 @@ internal final class PipelineCache {
     private struct RenderKey: Hashable {
         let vertex: ShaderFunction
         let fragment: ShaderFunction
-        let linked: [ShaderFunction]
+        let vertexLinked: [ShaderFunction]
+        let fragmentLinked: [ShaderFunction]
         let colorPixelFormats: [MTLPixelFormat]
         let depthPixelFormat: MTLPixelFormat
         let stencilPixelFormat: MTLPixelFormat
@@ -201,10 +207,13 @@ internal final class PipelineCache {
     func renderPipeline(_ configuration: RenderPipelineConfiguration) throws -> RenderPipeline {
         // Vertex descriptors are mutable; copy so later caller mutation cannot change a cached identity.
         let layout = (configuration.vertexDescriptor?.copy() as? MTLVertexDescriptor).map(VertexLayoutKey.init)
+        let vertexLinked = Self.uniqued(configuration.linkedFunctions + configuration.vertexLinkedFunctions)
+        let fragmentLinked = Self.uniqued(configuration.linkedFunctions + configuration.fragmentLinkedFunctions)
         let key = RenderKey(
             vertex: configuration.vertex.reference,
             fragment: configuration.fragment.reference,
-            linked: configuration.linkedFunctions.map(\.reference),
+            vertexLinked: vertexLinked.map(\.reference),
+            fragmentLinked: fragmentLinked.map(\.reference),
             colorPixelFormats: configuration.colorPixelFormats,
             depthPixelFormat: configuration.depthPixelFormat,
             stencilPixelFormat: configuration.stencilPixelFormat,
@@ -216,9 +225,11 @@ internal final class PipelineCache {
         if let cached = renderPipelines[key] {
             return cached
         }
-        try validate([key.vertex, key.fragment] + key.linked, label: configuration.label)
-        try Self.validateExportNames(key.linked, label: configuration.label)
-        try ShaderDeviceCheck.validateLinkedFunctions(configuration.linkedFunctions, device: device, label: configuration.label)
+        let allLinked = Self.uniqued(vertexLinked + fragmentLinked)
+        try validate([key.vertex, key.fragment] + allLinked.map(\.reference), label: configuration.label)
+        try Self.validateExportNames(key.vertexLinked, label: configuration.label)
+        try Self.validateExportNames(key.fragmentLinked, label: configuration.label)
+        try ShaderDeviceCheck.validateLinkedFunctions(allLinked, device: device, label: configuration.label)
         let descriptor = (key.base?.descriptor.copy() as? MTL4RenderPipelineDescriptor) ?? MTL4RenderPipelineDescriptor()
         descriptor.label = configuration.label ?? descriptor.label
         descriptor.vertexFunctionDescriptor = try key.vertex.makeFunctionDescriptor()
@@ -231,11 +242,11 @@ internal final class PipelineCache {
         }
         descriptor.rasterSampleCount = configuration.rasterSampleCount
         descriptor.vertexDescriptor = layout?.descriptor
-        if !key.linked.isEmpty {
-            let linking = MTL4StaticLinkingDescriptor()
-            linking.functionDescriptors = try key.linked.map { try $0.makeFunctionDescriptor() }
-            descriptor.vertexStaticLinkingDescriptor = linking
-            descriptor.fragmentStaticLinkingDescriptor = linking
+        if !key.vertexLinked.isEmpty {
+            descriptor.vertexStaticLinkingDescriptor = try Self.staticLinking(key.vertexLinked)
+        }
+        if !key.fragmentLinked.isEmpty {
+            descriptor.fragmentStaticLinkingDescriptor = try Self.staticLinking(key.fragmentLinked)
         }
         descriptor.options = Self.reflectingOptions()
         // Depth and stencil formats are not MTL4RenderPipelineDescriptor state; they key the cache so pipelines built
@@ -298,6 +309,18 @@ internal final class PipelineCache {
         let pipeline = RenderPipeline(state: state, bindings: PipelineBindings(stageBindings), stages: stageBindings.map(\.0))
         meshPipelines[key] = pipeline
         return pipeline
+    }
+
+    private static func staticLinking(_ functions: [ShaderFunction]) throws -> MTL4StaticLinkingDescriptor {
+        let linking = MTL4StaticLinkingDescriptor()
+        linking.functionDescriptors = try functions.map { try $0.makeFunctionDescriptor() }
+        return linking
+    }
+
+    /// Shared and stage-specific lists can name the same function; link it once.
+    private static func uniqued(_ functions: [VisibleFunction]) -> [VisibleFunction] {
+        var seen: Set<ShaderFunction> = []
+        return functions.filter { seen.insert($0.reference).inserted }
     }
 
     private static func configure(_ attachment: MTL4RenderPipelineColorAttachmentDescriptor?, format: MTLPixelFormat) {

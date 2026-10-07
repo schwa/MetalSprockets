@@ -5873,17 +5873,20 @@ Regression from #54 (collapse chained .parameter() modifiers into one node). Fix
 ## 383: Support separate linked functions for vertex and fragment stages
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:s, area:api
 created: 2026-08-08T22:39:01Z
-updated: 2026-09-30T16:18:17Z
+updated: 2026-10-07T14:36:56Z
+closed: 2026-10-07T14:36:56Z
 +++
 
 `RenderPipeline` assigns `environment.linkedFunctions` to both `vertexLinkedFunctions` and `fragmentLinkedFunctions` (Sources/MetalSprockets/Metal/RenderPipeline.swift). There is no way to supply a different set per stage.
 
 Decide whether the environment key should become stage-keyed (like `Parameters`) or whether a second key is added.
+
+- `2026-10-07T14:36:56Z`: Fixed: added .linkedFunctions(_:functionType:). .vertex/.fragment link into that stage only; .linkedFunctions(_:) still links into both. PipelineCache now builds separate vertex/fragment static linking descriptors and keys the cache on each stage's list. Tests: fragment-only linking renders red (golden); vertex-only linking is not visible to a fragment table (unlinkedFunction); cache distinguishes stage and per-stage function handles. Mesh pipelines unchanged (still share one list across object/mesh/fragment).
 
 ---
 

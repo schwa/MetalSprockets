@@ -48,6 +48,8 @@ public struct RenderPipeline <Content>: Element, SetupElement, BodylessContentEl
             rasterSampleCount: formats.sampleCount,
             vertexDescriptor: environment.vertexDescriptor,
             linkedFunctions: environment.linkedFunctions ?? [],
+            vertexLinkedFunctions: environment.vertexLinkedFunctions ?? [],
+            fragmentLinkedFunctions: environment.fragmentLinkedFunctions ?? [],
             baseDescriptor: environment.renderPipelineDescriptor,
             label: label
         )

@@ -83,4 +83,23 @@ public extension Element {
     func linkedFunctions(_ functions: [VisibleFunction]) -> some Element {
         environment(\.linkedFunctions, functions)
     }
+
+    /// Links functions into one stage of a ``RenderPipeline``, in addition to any linked into all stages with
+    /// ``linkedFunctions(_:)``. Function types other than `.vertex` and `.fragment` link into all stages.
+    func linkedFunctions(_ functions: [VisibleFunction], functionType: MTLFunctionType) -> some Element {
+        // swiftlint:disable:next discouraged_optional_collection
+        let keyPath: WritableKeyPath<MSEnvironmentValues, [VisibleFunction]?> = switch functionType {
+        case .vertex: \.vertexLinkedFunctions
+        case .fragment: \.fragmentLinkedFunctions
+        default: \.linkedFunctions
+        }
+        return environment(keyPath, functions)
+    }
+}
+
+internal extension MSEnvironmentValues {
+    // swiftlint:disable discouraged_optional_collection
+    @MSEntry var vertexLinkedFunctions: [VisibleFunction]?
+    @MSEntry var fragmentLinkedFunctions: [VisibleFunction]?
+    // swiftlint:enable discouraged_optional_collection
 }
