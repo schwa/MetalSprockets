@@ -9290,11 +9290,13 @@ Investigate ways to avoid it, e.g. raising the QoS of the completion/notificatio
 ## 485: No per-frame index for elements to pick per-frame resources
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 labels: area:metal4
 created: 2026-10-07T21:19:06Z
+updated: 2026-10-07T21:37:36Z
+closed: 2026-10-07T21:37:36Z
 +++
 
 Elements that rewrite a shared GPU resource every frame race with earlier frames still on the GPU (up to `maximumInFlightSubmissions`, default 3). The usual fix is a ring of N resources indexed by frame, but elements cannot do that today:

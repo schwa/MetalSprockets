@@ -39,6 +39,9 @@ internal final class MetalContext {
     var residentAllocationCount: Int { residency.trackedCount }
     var residencyCommitCount: Int { residency.commitCount }
     private var lastSubmissionIdentifier: UInt64 = 0
+    /// The identifier the recording in progress will commit with. Submission is not reentrant, so this is stable
+    /// for the whole recording.
+    var nextSubmissionIdentifier: UInt64 { lastSubmissionIdentifier + 1 }
     private var submissionCommitted: (@Sendable (UInt64, String?) -> Void)?
     // Faulted from off-isolation completion callbacks, so it needs its own lock.
     private let faultState = OSAllocatedUnfairLock(initialState: false)

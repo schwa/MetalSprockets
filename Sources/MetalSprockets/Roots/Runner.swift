@@ -23,7 +23,8 @@ import MetalSupport
 /// ```
 ///
 /// ``run(_:)`` submits and waits. ``submit(_:)`` returns after submission, allowing CPU/GPU overlap.
-/// When `maximumInFlightSubmissions` is reached, submission waits for the oldest outstanding work.
+/// When `maximumInFlightSubmissions` is reached, submission waits for the oldest outstanding work before recording
+/// starts. Elements can index per-frame resources with ``MSEnvironmentValues/submissionIndex``.
 ///
 /// `Runner` is not thread-safe; use it from one isolation domain.
 public final class Runner {
