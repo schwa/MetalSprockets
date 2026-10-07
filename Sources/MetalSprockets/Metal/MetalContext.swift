@@ -19,7 +19,9 @@ internal final class MetalContext {
     private let scratchCapacity: Int
     private(set) var maximumInFlightSubmissions: Int
     private var isEncoding = false
-    private let completionListener = MTLSharedEventListener()
+    // Completion callbacks are delivered on a user-interactive queue so a UI-interactive caller blocking in
+    // waitForResult does not wait on a lower-QoS signaling thread (priority inversion).
+    private let completionListener = MTLSharedEventListener(dispatchQueue: DispatchQueue(label: "MetalSprockets.completion", qos: .userInteractive))
     private var inFlight: [UInt64: InFlightSubmission] = [:]
     private let residency: ResidencyTracker
     // Allocations of retired submissions whose residency release is deferred until the next commit, so a steady scene

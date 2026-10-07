@@ -9263,3 +9263,26 @@ Constraint: the EnvironmentValues keys live in MetalSprocketsUI and import Swift
 Next step: decide between option 1 and option 2 before implementing.
 
 ---
+
+## 484: Priority inversion in MetalContext.waitForResult
+
++++
+status: closed
+priority: medium
+kind: bug
+created: 2026-10-07T15:12:15Z
+updated: 2026-10-07T16:08:06Z
+closed: 2026-10-07T16:08:06Z
++++
+
+Xcode runtime/thread warning on the semaphore wait in `MetalContext.waitForResult(_:timeout:)` (Sources/MetalSprockets/Metal/MetalContext.swift):
+
+> Thread running at User-interactive quality-of-service class waiting on a lower QoS thread running at Default quality-of-service class. Investigate ways to avoid priority inversions.
+
+The function blocks a UI-interactive caller on a `DispatchSemaphore` that is signaled from a lower-QoS (Default) thread via `submission.onTerminated`, creating a priority inversion.
+
+Investigate ways to avoid it, e.g. raising the QoS of the completion/notification path, or restructuring so the high-QoS caller doesn't block on a lower-QoS worker.
+
+- `2026-10-07T16:08:06Z`: Fixed: completion callbacks now delivered on a user-interactive queue.
+
+---
