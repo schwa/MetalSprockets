@@ -9286,3 +9286,32 @@ Investigate ways to avoid it, e.g. raising the QoS of the completion/notificatio
 - `2026-10-07T16:08:06Z`: Fixed: completion callbacks now delivered on a user-interactive queue.
 
 ---
+
+## 485: No per-frame index for elements to pick per-frame resources
+
++++
+status: new
+priority: medium
+kind: feature
+labels: area:metal4
+created: 2026-10-07T21:19:06Z
++++
+
+Elements that rewrite a shared GPU resource every frame race with earlier frames still on the GPU (up to `maximumInFlightSubmissions`, default 3). The usual fix is a ring of N resources indexed by frame, but elements cannot do that today:
+
+- Nothing in the environment says which submission an element is being encoded for, or how many can be in flight.
+- Counters advanced in `body` are unreliable: the reconciler may skip `body` when an element's inputs are unchanged (the counter stalls), and a `body` evaluated twice in a frame advances it twice.
+- Sibling passes must agree on the same slot within a frame: for example a depth pass writes a texture, a later compute pass in the same frame reads it, and the next frame's depth pass must not clear the slot the previous frame is still reading.
+
+Seen in MetalSprocketsAddOns:
+- `ShadowMap` (AddOns #78): one depth texture is cleared and rewritten each frame while earlier frames' `ShadowMaskPass` may still sample it. Whether an in-pass `QueueBarrier` covers the attachment clear (load action) is unverified; the Metal 4 docs do not say.
+- `PointCloudFramebuffer`: one per-pixel buffer cleared each frame, currently serialized with a `QueueBarrier` at the start of the pass.
+- `PointCloudPointFunction.userData` (AddOns #83): per-frame values cannot be updated safely.
+- Possibly related: #471 (a cleared pooled texture read by the next pass, with a barrier, still shows corruption).
+
+## Proposed approach (per schwa)
+Expose read-only environment values, e.g. `\.submissionIndex: UInt64` and `\.maximumInFlightSubmissions: Int`, set once per recording before any `body` is evaluated and identical for every element in that submission. Elements then use `slots[submissionIndex % maximumInFlightSubmissions]`.
+
+This needs a guarantee that recording frame N+k (k = maximumInFlightSubmissions) only starts after frame N completes. RenderView skips frames at the limit, so it records only with a free slot. Runner docs say "submission waits for the oldest"; confirm the wait happens before recording, not only before commit.
+
+---
