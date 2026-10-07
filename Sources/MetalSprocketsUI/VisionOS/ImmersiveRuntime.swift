@@ -100,6 +100,12 @@ internal final class ImmersiveRuntime<Content: Element> {
             return
         }
 
+        // World tracking is not running for the first frames after the immersive space opens. Querying the device
+        // anchor or presenting without one is wasted work and logs once per frame. Skip until it is running. (#482)
+        guard worldTracking.state == .running else {
+            return
+        }
+
         // Await the in-flight limit before entering the compositor's submission interval.
         try await runner.waitForSubmissionCapacity()
 
@@ -113,7 +119,12 @@ internal final class ImmersiveRuntime<Content: Element> {
         }
 
         let presentationTime = LayerRenderer.Clock.Instant.epoch.duration(to: drawable.frameTiming.presentationTime)
-        let deviceAnchor = worldTracking.queryDeviceAnchor(atTimestamp: presentationTime.toTimeInterval)
+        guard let deviceAnchor = worldTracking.queryDeviceAnchor(atTimestamp: presentationTime.toTimeInterval) else {
+            // No anchor this frame: the drawable would not be presented. End the started submission without
+            // encoding or presenting rather than submitting a frame that gets dropped. (#482)
+            frame.endSubmission()
+            return
+        }
         drawable.deviceAnchor = deviceAnchor
 
         let currentTime = CACurrentMediaTime()

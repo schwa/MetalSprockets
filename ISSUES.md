@@ -9211,15 +9211,18 @@ Possible fixes: acquire the new frame's allocations before retiring completed su
 ## 482: Immersive runtime presents frames before world tracking runs
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: area:visionos, effort:s
 created: 2026-10-07T01:37:37Z
-updated: 2026-10-07T14:14:54Z
+updated: 2026-10-07T14:27:13Z
+closed: 2026-10-07T14:27:13Z
 +++
 
 On device, the first frames after opening an immersive space (ImmersiveRenderContent) log, once per frame: 'ar_world_tracking_provider_query_device_anchor_at_timestamp: The device_anchor can only be queried when the world tracking provider is running.' followed by 'Presenting a drawable without a device anchor. This drawable won't be presented.' Seen from MetalSprocketsGLTF's GLTFViewer on Vision Pro (visionOS 27). The runtime queries the device anchor and encodes/presents before the WorldTrackingProvider reaches .running; those frames are wasted and the log is noisy. Wanted: skip rendering (or wait) until world tracking is running, and only present drawables that have a device anchor.
+
+- `2026-10-07T14:27:13Z`: Fixed: renderFrame now skips frames until worldTracking.state == .running, and bails (frame.endSubmission) when queryDeviceAnchor returns nil instead of presenting an anchorless drawable. Eliminates the per-frame 'device_anchor can only be queried when world tracking is running' and 'presenting a drawable without a device anchor' logs on device startup. No unit test: this is visionOS device-only code (#if os(visionOS), simulator throws, requires a live WorldTrackingProvider), not reachable from the macOS unit suite. Verified by compiling for visionOS device (xcb build --destination vision).
 
 ---
 
