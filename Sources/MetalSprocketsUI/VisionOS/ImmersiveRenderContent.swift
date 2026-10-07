@@ -3,6 +3,7 @@ import ARKit
 @preconcurrency import CompositorServices
 import Metal
 import MetalSprockets
+internal import os
 import simd
 import SwiftUI
 
@@ -112,7 +113,8 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
                 } catch is CancellationError {
                     logger?.info("ImmersiveRuntime render loop cancelled.")
                 } catch {
-                    logger?.error("ImmersiveRuntime failed: \(error)")
+                    // Always logged: the loop has stopped and the space shows nothing, which is otherwise silent.
+                    Logger(subsystem: "io.schwa.metal-sprockets-ui", category: "immersive").error("ImmersiveRuntime failed: \(String(describing: error), privacy: .public)")
                 }
             }
         }
