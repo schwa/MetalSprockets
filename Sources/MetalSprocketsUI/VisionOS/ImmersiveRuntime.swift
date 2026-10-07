@@ -112,23 +112,12 @@ internal final class ImmersiveRuntime<Content: Element> {
             return
         }
 
-        // World tracking is not running for the first frames after the immersive space opens. Querying the device
-        // anchor or presenting without one is wasted work and logs once per frame, so skip until it is running (#482).
-        // The frame must still end its submission, as the no-anchor case below does: a queried frame that never does
-        // stays in flight, and the fourth aborts in cp_layer_renderer_query_next_frame ("more than 3 frames in
-        // flight").
-        guard worldTracking.state == .running else {
-            frame.endSubmission()
-            return
-        }
 
         let presentationTime = LayerRenderer.Clock.Instant.epoch.duration(to: drawable.frameTiming.presentationTime)
-        guard let deviceAnchor = worldTracking.queryDeviceAnchor(atTimestamp: presentationTime.toTimeInterval) else {
-            // No anchor this frame: the drawable would not be presented. End the started submission without
-            // encoding or presenting rather than submitting a frame that gets dropped. (#482)
-            frame.endSubmission()
-            return
-        }
+        // Render even without a device anchor (world tracking is still starting when the space opens): once drawables
+        // are queried, ending the submission without presenting aborts ("called cp_frame_end_submission() before
+        // calling cp_drawable_encode_present()"), and skipping it leaves the frame in flight until the fourth aborts.
+        let deviceAnchor = worldTracking.queryDeviceAnchor(atTimestamp: presentationTime.toTimeInterval)
         drawable.deviceAnchor = deviceAnchor
 
         let currentTime = CACurrentMediaTime()
