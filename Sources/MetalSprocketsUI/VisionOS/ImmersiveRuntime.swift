@@ -112,7 +112,6 @@ internal final class ImmersiveRuntime<Content: Element> {
             return
         }
 
-
         let presentationTime = LayerRenderer.Clock.Instant.epoch.duration(to: drawable.frameTiming.presentationTime)
         // Render even without a device anchor (world tracking is still starting when the space opens): once drawables
         // are queried, ending the submission without presenting aborts ("called cp_frame_end_submission() before
