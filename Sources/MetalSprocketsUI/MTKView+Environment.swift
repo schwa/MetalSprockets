@@ -34,6 +34,7 @@ internal extension EnvironmentValues {
     #if os(macOS)
     @Entry var metalColorspace: CGColorSpace?
     #endif
+    @Entry var metalWantsExtendedDynamicRangeContent: Bool?
     // swiftlint:enable discouraged_optional_boolean
 }
 
@@ -166,6 +167,12 @@ public extension View {
         self.environment(\.metalColorspace, value)
     }
     #endif
+
+    /// Sets `CAMetalLayer.wantsExtendedDynamicRangeContent`, so values above 1 in a float drawable (e.g.
+    /// `.rgba16Float` with an extended linear color space) use the display's EDR headroom.
+    func metalWantsExtendedDynamicRangeContent(_ value: Bool) -> some View {
+        self.environment(\.metalWantsExtendedDynamicRangeContent, value)
+    }
 }
 
 extension MTKView {
@@ -204,6 +211,9 @@ extension MTKView {
             self.colorspace = value
         }
         #endif
+        if let value = environment.metalWantsExtendedDynamicRangeContent, let layer = layer as? CAMetalLayer {
+            layer.wantsExtendedDynamicRangeContent = value
+        }
     }
 
     private func configureClearValues(from environment: EnvironmentValues) {

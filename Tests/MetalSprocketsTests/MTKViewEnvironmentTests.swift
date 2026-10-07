@@ -33,6 +33,17 @@ struct MTKViewEnvironmentTests {
         #expect(view.colorPixelFormat == .rgba16Float)
     }
 
+    @Test("metalWantsExtendedDynamicRangeContent is applied to the layer")
+    func testWantsExtendedDynamicRangeContent() throws {
+        let view = makeView()
+        let layer = try #require(view.layer as? CAMetalLayer)
+        #expect(layer.wantsExtendedDynamicRangeContent == false)
+        var env = EnvironmentValues()
+        env.metalWantsExtendedDynamicRangeContent = true
+        view.configure(from: env)
+        #expect(layer.wantsExtendedDynamicRangeContent)
+    }
+
     @Test("metalDepthStencilPixelFormat is applied")
     func testDepthStencilPixelFormat() {
         let view = makeView()
