@@ -17,6 +17,7 @@
 - Custom `ShaderLoader` implementations now provide `shaderFunction(named:type:constants:)`.
 - Linked and visible-function table modifiers now take `VisibleFunction` values, not raw `MTLFunction` objects.
 - See [Porting to Metal 4](Documentation/Porting-to-Metal4.md#shaders-and-gpu-timing).
+- New `.linkedFunctions(_:functionType:)` links functions into only the vertex or fragment stage of a `RenderPipeline`. `.linkedFunctions(_:)` still links into both (#383).
 
 ### Metal 4 backend (breaking)
 

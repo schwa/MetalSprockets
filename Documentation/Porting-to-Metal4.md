@@ -349,7 +349,8 @@ Use `gpuDuration`, or measure CPU time around `submit` yourself.
 - `GPUCounterSample.fragment` is always `nil`. Use `duration` and `vertex` instead.
 - `.depthBias` and `.stencilReferenceValue` are per-draw state. They can wrap a whole pass.
 - `ComputeDispatch(threadgroups:)` without a threadgroup size uses one SIMD group per threadgroup.
-- A visible-function table that names a function not passed to `.linkedFunctions` is an error.
+- A visible-function table that names a function not passed to `.linkedFunctions` is an error. The function must be
+  linked into the table's stage: use `.linkedFunctions(_:functionType:)` to link into only the vertex or fragment stage.
 - `YCbCrBillboardRenderPass(frameData:)` (iOS) keeps ARKit's `CVMetalTexture`s alive until the GPU is done. Pass
   `owners:` when you supply camera textures yourself.
 
