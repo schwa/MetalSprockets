@@ -23,7 +23,7 @@ struct SubmissionIndexTests {
                     recorder.record(index, limit)
                 }
             }
-            try runner.submit(element)
+            _ = try runner.submit(element)
         }
         #expect(recorder.values.map(\.0) == [1, 2, 3, 4, 5])
         #expect(recorder.values.allSatisfy { $0.1 == 2 })
