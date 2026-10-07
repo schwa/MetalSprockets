@@ -100,12 +100,6 @@ internal final class ImmersiveRuntime<Content: Element> {
             return
         }
 
-        // World tracking is not running for the first frames after the immersive space opens. Querying the device
-        // anchor or presenting without one is wasted work and logs once per frame. Skip until it is running. (#482)
-        guard worldTracking.state == .running else {
-            return
-        }
-
         // Await the in-flight limit before entering the compositor's submission interval.
         try await runner.waitForSubmissionCapacity()
 
@@ -115,6 +109,16 @@ internal final class ImmersiveRuntime<Content: Element> {
             // The frame was invalidated (for example the immersive space was
             // dismissed during the pre-submit sleep). Ending submission on an
             // invalid frame trips cp_frame_end_submission(). Bail without it.
+            return
+        }
+
+        // World tracking is not running for the first frames after the immersive space opens. Querying the device
+        // anchor or presenting without one is wasted work and logs once per frame, so skip until it is running (#482).
+        // The frame must still end its submission, as the no-anchor case below does: a queried frame that never does
+        // stays in flight, and the fourth aborts in cp_layer_renderer_query_next_frame ("more than 3 frames in
+        // flight").
+        guard worldTracking.state == .running else {
+            frame.endSubmission()
             return
         }
 
