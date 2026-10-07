@@ -71,6 +71,7 @@ import SwiftUI
 /// - ``ImmersiveRenderPass``
 public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
     let progressive: Bool
+    let foveation: Bool
     let maximumInFlightSubmissions: Int
     let content: @Sendable (ImmersiveContext) throws -> Content
     var frameTimingChange: (@Sendable (FrameTimingStatistics) -> Void)?
@@ -80,15 +81,18 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
     /// - Parameters:
     ///   - progressive: Enable progressive rendering for complex scenes.
     ///   - maximumInFlightSubmissions: A positive limit. The render loop awaits capacity before submitting.
+    ///   - foveation: Render the periphery of the view at lower resolution when the device supports it. Turn it off
+    ///     to rule out foveation artifacts (blocky edges, especially on blended content); it costs GPU time.
     ///   - content: A closure that returns the elements to render each frame.
-    public init(progressive: Bool = false, maximumInFlightSubmissions: Int = 3, @ElementBuilder content: @Sendable @escaping (ImmersiveContext) throws -> Content) {
+    public init(progressive: Bool = false, maximumInFlightSubmissions: Int = 3, foveation: Bool = true, @ElementBuilder content: @Sendable @escaping (ImmersiveContext) throws -> Content) {
         self.progressive = progressive
+        self.foveation = foveation
         self.maximumInFlightSubmissions = maximumInFlightSubmissions
         self.content = content
     }
 
     public var body: some ImmersiveSpaceContent {
-        CompositorLayer(configuration: ImmersiveLayerConfiguration(progressive: progressive)) { layerRenderer in
+        CompositorLayer(configuration: ImmersiveLayerConfiguration(progressive: progressive, foveation: foveation)) { layerRenderer in
             // Fire-and-forget: the loop exits when `layerRenderer.state` becomes `.invalidated`, and it also honours
             // cancellation so a cancelled enclosing task can stop it. See #386.
             Task(priority: .high) { @ImmersiveRendererActor in
@@ -211,6 +215,7 @@ public struct ImmersiveContext: Sendable {
 
 internal struct ImmersiveLayerConfiguration: CompositorLayerConfiguration {
     let progressive: Bool
+    var foveation = true
 
     func makeConfiguration(capabilities: LayerRenderer.Capabilities, configuration: inout LayerRenderer.Configuration) {
         configuration.colorFormat = .rgba16Float
@@ -218,7 +223,7 @@ internal struct ImmersiveLayerConfiguration: CompositorLayerConfiguration {
         // MetalSprockets renders only with Metal 4, through the compositor's Metal 4 queue.
         configuration.supportsMTL4 = true
 
-        if capabilities.supportsFoveation {
+        if foveation, capabilities.supportsFoveation {
             configuration.isFoveationEnabled = true
         }
 
