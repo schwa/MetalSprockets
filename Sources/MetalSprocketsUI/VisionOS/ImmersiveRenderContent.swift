@@ -75,6 +75,7 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
     let maximumInFlightSubmissions: Int
     let content: @Sendable (ImmersiveContext) throws -> Content
     var frameTimingChange: (@Sendable (FrameTimingStatistics) -> Void)?
+    var renderLoopChange: (@Sendable (Bool) -> Void)?
 
     /// Creates immersive render content.
     ///
@@ -92,10 +93,13 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
     }
 
     public var body: some ImmersiveSpaceContent {
-        CompositorLayer(configuration: ImmersiveLayerConfiguration(progressive: progressive, foveation: foveation)) { layerRenderer in
+        let renderLoopChange = renderLoopChange
+        return CompositorLayer(configuration: ImmersiveLayerConfiguration(progressive: progressive, foveation: foveation)) { layerRenderer in
             // Fire-and-forget: the loop exits when `layerRenderer.state` becomes `.invalidated`, and it also honours
             // cancellation so a cancelled enclosing task can stop it. See #386.
             Task(priority: .high) { @ImmersiveRendererActor in
+                renderLoopChange?(true)
+                defer { renderLoopChange?(false) }
                 do {
                     let runtime = try ImmersiveRuntime(
                         layerRenderer: layerRenderer,
@@ -131,6 +135,14 @@ public extension ImmersiveRenderContent {
     func onFrameTimingChange(perform action: @Sendable @escaping (FrameTimingStatistics) -> Void) -> Self {
         var copy = self
         copy.frameTimingChange = action
+        return copy
+    }
+
+    /// Registers a callback for the render loop's lifetime: `true` when it starts, `false` when it ends (the layer was
+    /// invalidated, e.g. the immersive space closed, however it closed). Called on the render loop's actor.
+    func onRenderLoopChange(perform action: @Sendable @escaping (_ isRunning: Bool) -> Void) -> Self {
+        var copy = self
+        copy.renderLoopChange = action
         return copy
     }
 }
