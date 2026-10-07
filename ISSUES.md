@@ -30,12 +30,13 @@ Investigate equivalent constraints in MetalSprockets. One option is additional e
 ## 13: Improve ParameterValues
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l, deferred, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:56Z
+updated: 2026-10-07T14:19:23Z
+closed: 2026-10-07T14:19:23Z
 +++
 
 The `ParameterValues` constructors do not identify the second `.buffer(…, …)` parameter as a buffer offset.
@@ -46,6 +47,7 @@ Consider a struct that accepts closures to call the corresponding `MTLXXXCommand
 *Imported from #5*
 
 - `2026-04-03T17:33:50Z`: Related: #54 (consolidate parameter nodes)
+- `2026-10-07T14:19:23Z`: Closing as obsolete: ParameterValues no longer exists in the codebase, and the proposal (setXXXX encoder closures, .buffer offset) predates the Metal 4 argument-table model. Parameter binding is now handled via the Metal4Parameters path; file a fresh issue if the current API needs work.
 
 ---
 
@@ -92,12 +94,13 @@ closed: 2026-03-31T18:19:42Z
 ## 22: Improve modifier architecture
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l, deferred, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:56Z
+updated: 2026-10-07T14:21:15Z
+closed: 2026-10-07T14:21:15Z
 +++
 
 Consolidate modifier architecture improvements:
@@ -111,6 +114,7 @@ Related issues:
 - `2026-02-19T00:00:00Z`: #186 notes closures make element comparison impossible
 - `2026-02-19T00:00:00Z`: Need to decide if modifiers should be true Elements or a separate concept
 - `2026-04-03T17:33:50Z`: Related: #31 (shaders as modifiers)
+- `2026-10-07T14:21:15Z`: Closing as addressed: modifiers are now true Elements (conforming to Element + BodylessContentElement/EnvironmentModifyingElement); no ElementModifier type remains. Sub-items #184 and #186 are already closed. Remaining shader-as-modifier idea tracked separately in #31.
 
 ---
 
@@ -135,12 +139,13 @@ closed: 2026-03-31T18:19:43Z
 ## 31: Make shaders/kernels modifiers
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:l, deferred, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:56Z
+updated: 2026-10-07T14:22:55Z
+closed: 2026-10-07T14:22:55Z
 +++
 
 By default a vertex and fragment shader should be a modifier instead of a parameter
@@ -156,6 +161,7 @@ Also make this change on compute shaders.
 *Imported from #23*
 
 - `2026-04-03T17:33:50Z`: Related: #22 (modifier architecture)
+- `2026-10-07T14:22:55Z`: Closing for now: speculative (shaders-as-modifiers), uncertain value even in its own description. Reopen if environment-propagated/overridable shaders prove worthwhile.
 
 ---
 
@@ -512,18 +518,21 @@ closed: 2026-03-31T18:36:08Z
 ## 61: Make API match SwiftUI shader API a little better (parameter vs argument etc)
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m, deferred, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:56Z
+updated: 2026-10-07T14:17:58Z
+closed: 2026-10-07T14:17:58Z
 +++
 
 Align MetalSprockets API terminology with SwiftUI's shader API where it makes sense:
 - SwiftUI uses "argument", MetalSprockets uses "parameter"
 - Review other naming differences
 - Goal: make the API feel familiar to SwiftUI developers
+
+- `2026-10-07T14:17:58Z`: Closing wontfix: cosmetic terminology alignment with no concrete scope. Reopen with specific renames if worth doing.
 
 ---
 
@@ -548,12 +557,13 @@ closed: 2026-03-31T18:36:54Z
 ## 67: Formalize element Input and Output
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l, deferred, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:56Z
+updated: 2026-10-07T14:20:03Z
+closed: 2026-10-07T14:20:03Z
 +++
 
 Formalize which environment keys each element reads (inputs) and writes (outputs).
@@ -568,18 +578,20 @@ Use an extension on Node (possibly with parameter packs) to explicitly declare i
 - `2026-02-19T00:00:00Z`: Catch missing dependencies at compile time or with clear runtime errors
 - `2026-02-19T00:00:00Z`: Document what each element needs and provides
 - `2026-04-03T17:33:50Z`: Related: #235 (split BodylessElement protocols)
+- `2026-10-07T14:20:04Z`: Closing.
 
 ---
 
 ## 70: Improve Attachment flow
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T20:35:23Z
+updated: 2026-10-07T14:17:58Z
+closed: 2026-10-07T14:17:58Z
 +++
 
 We need a nice clean way to allow the user to customise attachments incl (but not limited to) color, depth, stencil etc.
@@ -587,6 +599,7 @@ We need a nice clean way to allow the user to customise attachments incl (but no
 *Imported from #62*
 
 - `2026-04-02T18:39:04Z`: Needs concrete examples of what's painful today before addressing this.
+- `2026-10-07T14:17:58Z`: Closing: vague, no concrete pain points ever supplied despite the standing request for examples. Reopen with specific attachment-customization use cases if needed.
 
 ---
 
@@ -732,13 +745,14 @@ Clean up shader function lookup logic in ShaderLibrary.swift:
 ## 89: Improve environment/descriptor modification in CommandBufferElement and RenderPipeline
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l, source:todo, has-subtasks, deferred
 depends: 358, 359, 360, 361
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T20:35:23Z
+updated: 2026-10-07T14:20:17Z
+closed: 2026-10-07T14:20:17Z
 +++
 
 Consolidate issues about environment and descriptor access:
@@ -757,6 +771,8 @@ The goal is a consistent pattern for environment-based configuration throughout 
 - #361 — Make RenderPipeline read attachment formats from the environment (effort:m, depends on #360)
 
 #358 and #359 are independent; #360 must land before #361.
+
+- `2026-10-07T14:20:18Z`: All subtasks (#358, #359, #360, #361) are closed; umbrella complete.
 
 ---
 
@@ -1343,15 +1359,18 @@ The custom implementation manually iterates through attributes and layouts, conv
 ## 171: Might as well make vertex descriptor a parameter to Render
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: enhancement, effort:m, deferred, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:56Z
+updated: 2026-10-07T14:17:58Z
+closed: 2026-10-07T14:17:58Z
 +++
 
 Make vertex descriptor a parameter on Render and RenderPipeline instead of requiring environment setup or modifiers. This would make common cases simpler.
+
+- `2026-10-07T14:17:58Z`: Closing: folded into #259 (unify transform/amplification/uniforms), which covers per-vertex data configuration.
 
 ---
 
@@ -2021,7 +2040,7 @@ priority: low
 kind: enhancement
 labels: effort:m, deferred
 created: 2026-02-19T00:00:00Z
-updated: 2026-08-08T20:35:23Z
+updated: 2026-10-07T14:21:52Z
 +++
 
 EnvironmentReader should ideally be passed a Node as a parameter as noted in the TODO.
@@ -2029,6 +2048,8 @@ EnvironmentReader should ideally be passed a Node as a parameter as noted in the
 File: Sources/MetalSprockets/Core/EnvironmentReader.swift
 
 *Imported from #204*
+
+- `2026-10-07T14:21:52Z`: Specific instance of #389 (System.current global side-channel): visitChildrenBodyless reaches into System.current.traversalContext.currentNode instead of being handed the Node. Best addressed alongside the broader #389 refactor.
 
 ---
 
@@ -2711,7 +2732,7 @@ priority: low
 kind: enhancement
 labels: enhancement, effort:l, deferred, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:57Z
+updated: 2026-10-07T14:17:51Z
 +++
 
 We currently pass data to shaders through three different mechanisms, each with a distinct API:
@@ -2723,6 +2744,8 @@ We currently pass data to shaders through three different mechanisms, each with 
 Conceptually these are all just 'data bound to shaders', differing only in granularity (per-draw, per-amplification, per-vertex). The current APIs evolved independently and do not share a common vocabulary.
 
 Investigate whether these can be unified (or at least aligned) behind a more consistent API — making it easier to reason about what's varying at what rate, and to move data between granularities without rewriting call sites.
+
+- `2026-10-07T14:17:51Z`: Folded in #171 (make vertex descriptor a parameter to Render): per-vertex/descriptor configuration is part of this unification.
 
 ---
 
@@ -5985,6 +6008,8 @@ Structural group (5): MSEnvironment.wrappedValue, StateBox read-tracking (resolv
 
 Decision needed: (a) split this: file the easy group as a subtask (effort:s) and keep the structural group as the design issue; or (b) commit to the SwiftUI-style dynamic-property injection redesign (effort:l, touches State/Environment/Element core).
 
+- `2026-10-07T14:25:42Z`: Auto-fixer punt: decision-gated and core-wide. The issue's own audit lays out the choice \u2014 (a) carve off the easy group (Element.configureNode + the 3 descriptor/MSAA modifiers) via a weak Node.parent in TreeReconciler as an effort:s subtask, or (b) commit to the SwiftUI-style dynamic-property injection redesign (effort:l, touches State/Environment/Element core). Not inferable from code. Recommend (a): file the easy group as a subtask and keep this as the structural design issue. Say the word and I'll split it.
+
 ---
 
 ## 390: System still owns the node dictionary, phases, dirty set and snapshotting
@@ -8884,9 +8909,9 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 status: open
 priority: medium
 kind: bug
-labels: area:metal4, effort:l
+labels: area:metal4, effort:l, deferred
 created: 2026-10-02T15:19:38Z
-updated: 2026-10-06T21:27:26Z
+updated: 2026-10-07T14:23:11Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -8907,6 +8932,7 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 
 - `2026-10-05T23:14:53Z`: Closing as invalid for now. Reopen if the tile-shaped corruption reproduces again.
 - `2026-10-06T21:27:26Z`: Reopening: pink/garbage output in RenderView is reported again, now also in MetalSprocketsGLTF's GLTFViewer (Metal 4). Workaround found by the user: set the MTKView's framebufferOnly to false (RenderView: .metalFramebufferOnly(false)), so the drawable's texture has usage beyond render target; with that the pink output goes away. GLTFViewer now has a 'Framebuffer Only' toggle in its Display tab for A/B testing (MetalSprocketsGLTF 191f1610). Guess, unverified: framebufferOnly drawables can use a different memory/compression (lossless or framebuffer-only) path, so this may be an interaction between Metal 4 drawable textures and how they are written or resolved (MSAA resolve, store actions, or reads of the drawable), rather than the fragment shader timing suspected above. Next: reproduce with framebufferOnly true vs false in the same app, with and without MSAA, and check a GPU capture for the drawable's usage and store/resolve actions.
+- `2026-10-07T14:23:11Z`: Deferring for now.
 
 ---
 
@@ -9016,6 +9042,7 @@ MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure 
 
 - `2026-10-02T22:35:30Z`: Prior art: https://github.com/pointfreeco/swiftui-lazy-state, a lazily initialized @State for SwiftUI. Its API and behavior are a good model for a lazy @MSState.
 - `2026-10-05T22:42:35Z`: Tried the proposed init(wrappedValue: @autoclosure @escaping () -> Value) with a lazy StateBox (pending initializer evaluated on first read, outside the lock; snapshot shows '<not yet evaluated>'). Lazy evaluation works: a test counting evaluations across 5 rebuilds went 5 -> 1. Punting: an autoclosure-only init(wrappedValue:) breaks assigning the property in an initializer (e.g. OnChange: self.hasInitialized = false fails with 'used before being initialized'), which is a public source break for users who do the same. Keeping both init(wrappedValue: Value) and the autoclosure overload is ambiguous at every '@MSState var x = ...' site. Decision needed: (a) autoclosure-only, accept the source break and migrate in-init assignments to _x = MSState(wrappedValue:); or (b) keep init(wrappedValue:) as is and add a separate lazy API, e.g. @MSState(lazy: .teapot()) var mesh: MTKMesh. Either is ~1h once chosen; the StateBox change and test are ready to redo.
+- `2026-10-07T14:25:00Z`: Auto-fixer punt: the StateBox lazy change + test are ready, but shipping requires choosing a public API shape: (a) autoclosure-only init(wrappedValue:) \u2014 fixes it cleanly but is a source break for users who assign @MSState in an initializer; or (b) additive, non-breaking @MSState(lazy: .teapot()). This is a maintainer API decision, not inferable from code. Recommend (b) (non-breaking, ~1h to land). Tell me which and I'll implement.
 
 ---
 
@@ -9045,6 +9072,7 @@ Unknown:
 Found while debugging SolarSystem #36.
 
 - `2026-10-05T22:35:19Z`: Looked at ArgumentTablePool/ParameterSet.makeTables. Tables are already pooled per recording slot (#465); the remaining per-draw cost is clearing slots plus setAddress/setTexture calls. Punting: skipping re-binds needs per-slot change tracking, value:/values: get new scratch addresses every frame (so they must be re-bound regardless), and cross-frame reuse safety is entangled with the unexplained in-flight race in #471. The only profile so far (#479, GLTFViewer) showed reconciliation, not binding, as the hot spot; that is now reduced (#479, #480). Unblocker: a Time Profiler capture after #479/#480 showing makeTables/acquire as significant, or a decision to drop this to Low until then.
+- `2026-10-07T14:24:29Z`: Auto-fixer punt: no actionable code change without evidence. Per the prior analysis, tables are already pooled (#465) and the remaining re-binds are required because value:/values: get fresh scratch addresses each frame; cross-frame reuse safety is entangled with #471 (now deferred). Unblocker: a Time Profiler capture showing makeTables/acquire as a real hot spot, or a decision to drop this to Low until then.
 
 ---
 
@@ -9183,13 +9211,47 @@ Possible fixes: acquire the new frame's allocations before retiring completed su
 ## 482: Immersive runtime presents frames before world tracking runs
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
-labels: area:visionos
+labels: area:visionos, effort:s
 created: 2026-10-07T01:37:37Z
+updated: 2026-10-07T14:14:54Z
 +++
 
 On device, the first frames after opening an immersive space (ImmersiveRenderContent) log, once per frame: 'ar_world_tracking_provider_query_device_anchor_at_timestamp: The device_anchor can only be queried when the world tracking provider is running.' followed by 'Presenting a drawable without a device anchor. This drawable won't be presented.' Seen from MetalSprocketsGLTF's GLTFViewer on Vision Pro (visionOS 27). The runtime queries the device anchor and encodes/presents before the WorldTrackingProvider reaches .running; those frames are wasted and the log is noisy. Wanted: skip rendering (or wait) until world tracking is running, and only present drawables that have a device anchor.
+
+---
+
+## 483: Unify RenderView modifiers and Runner/OffscreenRenderer config
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: effort:m, area:api
+created: 2026-10-07T01:51:42Z
+updated: 2026-10-07T14:14:55Z
++++
+
+RenderView configures its Metal context through SwiftUI view modifiers backed by EnvironmentValues (`.device`, `.commandQueue`, `.shaderStore`, `.metalShaderLogging`, `.renderViewLogFrame`, `.renderViewFatalErrorOnError`). Runner and OffscreenRenderer configure the same underlying context through init parameters (device, commandQueue, shaderLogging, residency, maximumInFlightSubmissions; plus size/colorUsage/depthUsage/clearDepth for OffscreenRenderer).
+
+These are two parallel configuration APIs for the same MetalContext knobs. We should unify.
+
+Two sketched options:
+
+1. Chainable modifier methods on the structs (cheap, no SwiftUI). Keep a minimal init and add copy-returning methods so you get the modifier feel:
+
+    let renderer = try OffscreenRenderer(size: size)
+        .shaderLogging(.off)
+        .commandQueue(queue)
+
+   Mirrors the ergonomics but stays a parallel API.
+
+2. Shared config struct (deeper, preferred). Introduce one non-SwiftUI configuration value in the core MetalSprockets module (e.g. MetalContextConfiguration: device, commandQueue, shaderLogging, shaderStore, residency, diagnostics). Runner and OffscreenRenderer take it directly; RenderView\u2019s SwiftUI modifiers populate the same struct from the environment at setup time.
+
+Constraint: the EnvironmentValues keys live in MetalSprocketsUI and import SwiftUI, while Runner/OffscreenRenderer live in MetalSprockets (no SwiftUI dependency). The modifiers themselves cannot be literally shared across modules \u2014 only the config value can. The modifiers stay as thin SwiftUI wrappers that feed the shared struct.
+
+Next step: decide between option 1 and option 2 before implementing.
 
 ---
