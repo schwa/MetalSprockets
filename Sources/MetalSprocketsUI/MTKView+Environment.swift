@@ -234,6 +234,9 @@ extension MTKView {
         }
         if let value = environment.metalPreferredFramesPerSecond {
             self.preferredFramesPerSecond = value
+        } else if let value = screenMaximumFramesPerSecond {
+            // MTKView defaults to 60; match the display instead (e.g. 120 on ProMotion).
+            self.preferredFramesPerSecond = value
         }
         if let value = environment.metalEnableSetNeedsDisplay {
             self.enableSetNeedsDisplay = value
@@ -244,6 +247,19 @@ extension MTKView {
         if let value = environment.metalIsPaused {
             self.isPaused = value
         }
+    }
+
+    private var screenMaximumFramesPerSecond: Int? {
+        #if os(macOS)
+        let value = (window?.screen ?? NSScreen.main)?.maximumFramesPerSecond ?? 0
+        #elseif os(iOS) || os(tvOS)
+        let screen = window?.windowScene?.screen
+            ?? UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.screen }.first
+        let value = screen?.maximumFramesPerSecond ?? 0
+        #else
+        let value = 0
+        #endif
+        return value > 0 ? value : nil
     }
 
     /// Makes MTKView's internal depth/stencil texture memoryless when it is a pure transient render target.
