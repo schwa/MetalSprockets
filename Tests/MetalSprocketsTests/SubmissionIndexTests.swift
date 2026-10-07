@@ -6,6 +6,11 @@ import Testing
 struct SubmissionIndexTests {
     private final class Recorder {
         var values: [(UInt64, Int)] = []
+
+        func record(_ index: UInt64, _ limit: Int) -> EmptyElement {
+            values.append((index, limit))
+            return EmptyElement()
+        }
     }
 
     @Test("Each recording sees its own submission index and the in-flight limit", .requiresMetal4)
@@ -15,8 +20,7 @@ struct SubmissionIndexTests {
         for _ in 0..<5 {
             let element = EnvironmentReader(keyPath: \.submissionIndex) { index in
                 EnvironmentReader(keyPath: \.maximumInFlightSubmissions) { limit in
-                    let _ = recorder.values.append((index, limit))
-                    EmptyElement()
+                    recorder.record(index, limit)
                 }
             }
             try runner.submit(element)
