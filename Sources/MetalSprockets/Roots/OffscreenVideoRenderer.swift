@@ -24,14 +24,15 @@ public final class OffscreenVideoRenderer {
     var writtenFrameCount: Int { writer.frameNumber }
     var residentAllocationCount: Int { runner.context.residentAllocationCount }
 
-    public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, shaderLogging: ShaderLogging = .processDefault) throws {
-        try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, shaderLogging: shaderLogging, waitUntilReady: nil)
+    /// `clearDepth` is the depth each frame starts from: 1 for the usual depth convention, 0 for reverse-Z.
+    public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault) throws {
+        try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, clearDepth: clearDepth, shaderLogging: shaderLogging, waitUntilReady: nil)
     }
 
     /// Designated init. `waitUntilReady` is the back-pressure strategy; when
     /// `nil`, the default KVO-based implementation is used against the
     /// writer's own `AVAssetWriterInput`.
-    internal init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, shaderLogging: ShaderLogging = .processDefault, waitUntilReady: (() async -> Void)?) throws {
+    internal init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault, waitUntilReady: (() async -> Void)?) throws {
         self.size = size
         self.frameRate = frameRate
         self.outputURL = outputURL
@@ -77,7 +78,7 @@ public final class OffscreenVideoRenderer {
         renderPassDescriptor.colorAttachments[0].storeAction = .store
         renderPassDescriptor.depthAttachment.texture = depthTexture
         renderPassDescriptor.depthAttachment.loadAction = .clear
-        renderPassDescriptor.depthAttachment.clearDepth = 1
+        renderPassDescriptor.depthAttachment.clearDepth = clearDepth
         renderPassDescriptor.depthAttachment.storeAction = .dontCare
 
         writer = try VideoFrameWriter(size: size, frameRate: frameRate, outputURL: outputURL, videoCodec: videoCodec, waitUntilReady: waitUntilReady)

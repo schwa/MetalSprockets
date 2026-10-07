@@ -50,7 +50,9 @@ public struct OffscreenRenderer {
     private let runner: Runner
     private var ownedResources: ResourceCollection?
 
-    public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture, shaderLogging: ShaderLogging = .processDefault) throws {
+    /// `clearDepth` is the depth each frame starts from: 1 for the usual depth convention, 0 for reverse-Z (where nearer
+    /// is greater).
+    public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault) throws {
         self.device = colorTexture.device
         self.size = size
         self.colorTexture = colorTexture
@@ -62,7 +64,7 @@ public struct OffscreenRenderer {
         renderPassDescriptor.colorAttachments[0].storeAction = .store
         renderPassDescriptor.depthAttachment.texture = depthTexture
         renderPassDescriptor.depthAttachment.loadAction = .clear
-        renderPassDescriptor.depthAttachment.clearDepth = 1
+        renderPassDescriptor.depthAttachment.clearDepth = clearDepth
         renderPassDescriptor.depthAttachment.storeAction = .store // TODO: #25 This is hardcoded. Should usually be .dontCare but we need to read back in some examples.
         self.renderPassDescriptor = renderPassDescriptor
         self.runner = try Runner(device: device, shaderLogging: shaderLogging)
@@ -74,6 +76,7 @@ public struct OffscreenRenderer {
         device: MTLDevice? = nil,
         colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead],
         depthUsage: MTLTextureUsage = [.renderTarget],
+        clearDepth: Double = 1,
         shaderLogging: ShaderLogging = .processDefault
     ) throws {
         let device = device ?? _MTLCreateSystemDefaultDevice()
@@ -85,7 +88,7 @@ public struct OffscreenRenderer {
         depthTextureDescriptor.usage = depthUsage
         let depthTexture = try device.makeTexture(descriptor: depthTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create depth texture"))
         depthTexture.label = "Depth Texture"
-        try self.init(size: size, colorTexture: colorTexture, depthTexture: depthTexture, shaderLogging: shaderLogging)
+        try self.init(size: size, colorTexture: colorTexture, depthTexture: depthTexture, clearDepth: clearDepth, shaderLogging: shaderLogging)
         let resources = try ResourceCollection(device: device)
         try resources.register(colorTexture)
         try resources.register(depthTexture)
