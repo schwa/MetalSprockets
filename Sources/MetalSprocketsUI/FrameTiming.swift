@@ -46,8 +46,12 @@ public struct FrameTimingStatistics: Sendable, Equatable {
     /// The ``MetalSprockets/GPUTiming`` intervals from `gpuTimed` elements in the most recent completed frame.
     public var gpuTimings: [GPUTiming]
 
-    public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil, gpuTimings: [GPUTiming] = []) {
+    /// CPU time of each phase of the previous frame. `nil` until one frame has rendered.
+    public var cpuPhaseTimings: CPUPhaseTimings?
+
+    public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil, gpuTimings: [GPUTiming] = [], cpuPhaseTimings: CPUPhaseTimings? = nil) {
         self.gpuTimings = gpuTimings
+        self.cpuPhaseTimings = cpuPhaseTimings
         self.currentFPS = currentFPS
         self.deltaTime = deltaTime
         self.averageDeltaTime = averageDeltaTime
@@ -88,6 +92,9 @@ internal struct FrameTimingTracker: Sendable {
     /// GPU timings from the most recently completed command buffer.
     var lastGPUTimings: [GPUTiming] = []
 
+    /// CPU phase timings of the previous frame.
+    var lastCPUPhaseTimings: CPUPhaseTimings?
+
     /// Record a new frame at the given timestamp and return updated statistics.
     @discardableResult
     mutating func recordFrame(timestamp: CFTimeInterval) -> FrameTimingStatistics {
@@ -123,7 +130,8 @@ internal struct FrameTimingTracker: Sendable {
                 maxDeltaTime: 0,
                 frameCount: frameCount,
                 gpuTime: lastGPUTime,
-                gpuTimings: lastGPUTimings
+                gpuTimings: lastGPUTimings,
+                cpuPhaseTimings: lastCPUPhaseTimings
             )
         }
 
@@ -161,7 +169,8 @@ internal struct FrameTimingTracker: Sendable {
             maxDeltaTime: maxDelta,
             frameCount: frameCount,
             gpuTime: lastGPUTime,
-            gpuTimings: lastGPUTimings
+            gpuTimings: lastGPUTimings,
+            cpuPhaseTimings: lastCPUPhaseTimings
         )
     }
 }

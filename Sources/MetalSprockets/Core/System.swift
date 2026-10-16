@@ -27,15 +27,7 @@ internal enum TraversalEvent {
 ///   isolation domains.
 package final class System: @unchecked Sendable {
     /// How long each phase of a frame took.
-    package struct PhaseTimings {
-        package var update: TimeInterval
-        package var setup: TimeInterval
-        package var workload: TimeInterval
-
-        package var total: TimeInterval {
-            update + setup + workload
-        }
-    }
+    package typealias PhaseTimings = CPUPhaseTimings
 
     private(set) var traversalEvents: [TraversalEvent] = []
     private(set) var nodes: [StructuralIdentifier: Node] = [:]
@@ -213,12 +205,18 @@ package final class System: @unchecked Sendable {
     @discardableResult
     package func render(root: some Element) throws -> PhaseTimings {
         let updateStart = CACurrentMediaTime()
-        try update(root: root)
+        try phaseSignposter.withIntervalSignpost("Update") {
+            try update(root: root)
+        }
         let setupStart = CACurrentMediaTime()
         let timings = try withCurrentSystem {
-            try processSetup()
+            try phaseSignposter.withIntervalSignpost("Setup") {
+                try processSetup()
+            }
             let workloadStart = CACurrentMediaTime()
-            try processWorkload()
+            try phaseSignposter.withIntervalSignpost("Workload") {
+                try processWorkload()
+            }
             let end = CACurrentMediaTime()
             return PhaseTimings(update: setupStart - updateStart, setup: workloadStart - setupStart, workload: end - workloadStart)
         }

@@ -112,6 +112,17 @@ struct FrameTimingViewRenderingTests {
         #expect(self.rows([.fps], statistics: statistics).map(\.label) == ["FPS"])
     }
 
+    @Test func `cpu phases show a total and one row per phase, before the gpu row`() {
+        var statistics = Self.statistics
+        statistics.cpuPhaseTimings = CPUPhaseTimings(content: 0.001, update: 0.002, setup: 0.0005, workload: 0.003)
+        let rows = rows(.all, statistics: statistics)
+        #expect(rows.map(\.label) == ["FPS", "Frame", "1s Range", "CPU", "Content", "Update", "Setup", "Workload", "GPU", "Frame #"])
+        #expect(rows[3].value.contains("6.5"))
+
+        statistics.cpuPhaseTimings?.content = nil
+        #expect(self.rows([.cpuPhases], statistics: statistics).map(\.label) == ["CPU", "Update", "Setup", "Workload"])
+    }
+
     @Test func `only the fps row is coloured`() {
         let rows = rows(.all)
         #expect(rows.filter { $0.valueColor != nil }.map(\.label) == ["FPS"])

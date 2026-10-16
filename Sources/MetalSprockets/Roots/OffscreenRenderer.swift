@@ -100,6 +100,8 @@ public struct OffscreenRenderer {
         public var texture: MTLTexture
         /// GPU time for the whole submission, or `nil` when Metal reported no valid timing.
         public var gpuTime: TimeInterval?
+        /// CPU time of each phase of this render. `content` is always `nil`: the caller builds the element.
+        public var cpuPhaseTimings: CPUPhaseTimings?
     }
 }
 
@@ -115,7 +117,7 @@ public extension OffscreenRenderer {
         guard result.outcome == .completed else {
             throw MetalSprocketsError.validationError("Offscreen render did not complete: \(result.outcome)")
         }
-        return .init(texture: colorTexture, gpuTime: result.gpuDuration)
+        return .init(texture: colorTexture, gpuTime: result.gpuDuration, cpuPhaseTimings: runner.system.lastPhaseTimings)
     }
 }
 

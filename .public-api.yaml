@@ -1060,6 +1060,31 @@ modules:
       source: Sources/MetalSprockets/Core/IdentifiedElement.swift:8
     - decl: 'public var description: String { get }'
       source: Sources/MetalSprockets/Core/IdentifiedElement.swift:14
+  - decl: public struct CPUPhaseTimings
+    doc: |-
+      CPU time spent in each phase of one frame, in seconds.
+
+      - `content`: building the element tree in the caller's content closure. Only drivers that run that closure (such as
+        `RenderView`) report it; it is `nil` otherwise.
+      - `update`: reconciling the new element tree against the previous frame's nodes.
+      - `setup`: setup work for nodes that need it, such as pipeline creation.
+      - `workload`: encoding GPU commands.
+
+      Submitting the command buffer and waiting for a drawable are not included.
+    source: Sources/MetalSprockets/Core/CPUPhaseTimings.swift:12
+    members:
+    - decl: 'public init(content: TimeInterval? = nil, update: TimeInterval, setup: TimeInterval, workload: TimeInterval)'
+      source: Sources/MetalSprockets/Core/CPUPhaseTimings.swift:18
+    - decl: 'public var content: TimeInterval?'
+      source: Sources/MetalSprockets/Core/CPUPhaseTimings.swift:13
+    - decl: 'public var setup: TimeInterval'
+      source: Sources/MetalSprockets/Core/CPUPhaseTimings.swift:15
+    - decl: 'public var total: TimeInterval { get }'
+      source: Sources/MetalSprockets/Core/CPUPhaseTimings.swift:25
+    - decl: 'public var update: TimeInterval'
+      source: Sources/MetalSprockets/Core/CPUPhaseTimings.swift:14
+    - decl: 'public var workload: TimeInterval'
+      source: Sources/MetalSprockets/Core/CPUPhaseTimings.swift:16
   - decl: public struct ComputeCommand
     doc: |-
       Raw access to the Metal 4 compute encoder inside a ``ComputePass``, without a pipeline.
@@ -2046,7 +2071,10 @@ modules:
       source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:99
       members:
       - decl: 'public var cgImage: CGImage { get throws }'
-        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:123
+        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:125
+      - decl: 'public var cpuPhaseTimings: CPUPhaseTimings?'
+        doc: 'CPU time of each phase of this render. `content` is always `nil`: the caller builds the element.'
+        source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:104
       - decl: 'public var gpuTime: TimeInterval?'
         doc: GPU time for the whole submission, or `nil` when Metal reported no valid timing.
         source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:102
@@ -2073,7 +2101,7 @@ modules:
       source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:33
     - decl: 'public func render<Content>(_ content: Content) throws -> Rendering where Content : Element'
       doc: Renders `content` and waits for the GPU. Earlier renderings keep their textures; reading them is safe.
-      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:108
+      source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:110
   - decl: '@dynamicMemberLookup public struct ProjectedValue<ObjectType> where ObjectType : ObservableObject'
     source: Sources/MetalSprockets/Core/ObservedObject.swift:58
     members:
@@ -2980,10 +3008,13 @@ modules:
       source: Sources/MetalSprocketsUI/FrameTimingView.swift:6
     - decl: 'public static let all: FrameTimingDisplayOptions'
       doc: Show everything.
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:34
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:37
+    - decl: 'public static let cpuPhases: FrameTimingDisplayOptions'
+      doc: Show the previous frame's CPU time per phase (content, update, setup, workload) and in total.
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:31
     - decl: 'public static let `default`: FrameTimingDisplayOptions'
       doc: 'The default display: FPS only.'
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:31
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:34
     - decl: 'public static let fps: FrameTimingDisplayOptions'
       doc: Show the current FPS (e.g., "60 FPS").
       source: Sources/MetalSprocketsUI/FrameTimingView.swift:13
@@ -3021,11 +3052,14 @@ modules:
       ```
     source: Sources/MetalSprocketsUI/FrameTiming.swift:21
     members:
-    - decl: 'public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil, gpuTimings: [GPUTiming] = [])'
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:49
+    - decl: 'public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil, gpuTimings: [GPUTiming] = [], cpuPhaseTimings: CPUPhaseTimings? = nil)'
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:52
     - decl: 'public var averageDeltaTime: TimeInterval'
       doc: The average delta time over the rolling window, in seconds.
       source: Sources/MetalSprocketsUI/FrameTiming.swift:29
+    - decl: 'public var cpuPhaseTimings: CPUPhaseTimings?'
+      doc: CPU time of each phase of the previous frame. `nil` until one frame has rendered.
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:50
     - decl: 'public var currentFPS: Double'
       doc: Smoothed frames per second, computed over the rolling window.
       source: Sources/MetalSprocketsUI/FrameTiming.swift:23
@@ -3075,15 +3109,15 @@ modules:
           }
       }
       ```
-    source: Sources/MetalSprocketsUI/FrameTimingView.swift:59
+    source: Sources/MetalSprocketsUI/FrameTimingView.swift:62
     members:
     - decl: '@MainActor public init(statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions = .default, targetFramesPerSecond: Double? = nil)'
       doc: |-
         - Parameter targetFramesPerSecond: The frame rate the FPS readout is colour-coded against. Defaults to the
           display's maximum refresh rate, so a 120 Hz display isn't marked green at 60 FPS.
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:70
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:73
     - decl: '@MainActor public var body: some View { get }'
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:76
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:79
   - decl: public struct FrameUniforms
     doc: |-
       Per-frame timing and viewport information.
@@ -3108,23 +3142,23 @@ modules:
       }
       .parameter("time", value: context.frameUniforms.time)
       ```
-    source: Sources/MetalSprocketsUI/RenderView.swift:856
+    source: Sources/MetalSprocketsUI/RenderView.swift:862
     members:
     - decl: 'public init(index: UInt32, time: Float, deltaTime: Float, viewportSize: SIMD2<UInt32>)'
       doc: Creates frame uniforms with the specified values.
-      source: Sources/MetalSprocketsUI/RenderView.swift:870
+      source: Sources/MetalSprocketsUI/RenderView.swift:876
     - decl: 'public var deltaTime: Float'
       doc: Time in seconds since the previous frame (useful for frame-rate independent animation).
-      source: Sources/MetalSprocketsUI/RenderView.swift:864
+      source: Sources/MetalSprocketsUI/RenderView.swift:870
     - decl: 'public var index: UInt32'
       doc: The zero-based frame number, incrementing each frame.
-      source: Sources/MetalSprocketsUI/RenderView.swift:858
+      source: Sources/MetalSprocketsUI/RenderView.swift:864
     - decl: 'public var time: Float'
       doc: Elapsed time in seconds since rendering started.
-      source: Sources/MetalSprocketsUI/RenderView.swift:861
+      source: Sources/MetalSprocketsUI/RenderView.swift:867
     - decl: 'public var viewportSize: SIMD2<UInt32>'
       doc: The drawable size in pixels as `[width, height]`.
-      source: Sources/MetalSprocketsUI/RenderView.swift:867
+      source: Sources/MetalSprocketsUI/RenderView.swift:873
   - decl: '@MainActor public struct OverlayBadgeModifier'
     doc: |-
       Styles a small floating readout that sits on top of rendered content.
@@ -3245,14 +3279,14 @@ modules:
           // Use rotation in your rendering...
       }
       ```
-    source: Sources/MetalSprocketsUI/RenderView.swift:824
+    source: Sources/MetalSprocketsUI/RenderView.swift:830
     members:
     - decl: 'public var frameTimingStatistics: FrameTimingStatistics { get }'
       doc: Frame timing statistics computed over a rolling window.
-      source: Sources/MetalSprocketsUI/RenderView.swift:829
+      source: Sources/MetalSprocketsUI/RenderView.swift:835
     - decl: 'public var frameUniforms: FrameUniforms { get }'
       doc: Per-frame timing and viewport information.
-      source: Sources/MetalSprocketsUI/RenderView.swift:826
+      source: Sources/MetalSprocketsUI/RenderView.swift:832
   - decl: public struct YCbCrBillboardRenderPass
     doc: |-
       Renders YCbCr video textures as a full-screen billboard.
@@ -3305,12 +3339,12 @@ modules:
 
       These are the fallbacks used when a view has not set the equivalent environment value with
       ``SwiftUI/View/renderViewLogFrame(_:)`` or ``SwiftUI/View/renderViewFatalErrorOnError(_:)``.
-    source: Sources/MetalSprocketsUI/RenderView.swift:799
+    source: Sources/MetalSprocketsUI/RenderView.swift:805
     members:
     - decl: 'public static var fatalErrorOnCatch: Bool { get }'
-      source: Sources/MetalSprocketsUI/RenderView.swift:804
+      source: Sources/MetalSprocketsUI/RenderView.swift:810
     - decl: 'public static var logFrame: Bool { get }'
-      source: Sources/MetalSprocketsUI/RenderView.swift:800
+      source: Sources/MetalSprocketsUI/RenderView.swift:806
   extensions:
   - extended_module: MetalSprockets
     symbols:

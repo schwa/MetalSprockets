@@ -137,7 +137,9 @@ internal final class ImmersiveRuntime<Content: Element> {
 
         let context = ImmersiveContext(device: device, time: time, drawable: drawable, deviceAnchor: deviceAnchor, renderContext: renderContext, isProgressive: progressive, stencilValue: stencilValue, stencilFormat: stencilFormat, frameTimingStatistics: frameTimingStatistics)
 
+        let contentStart = CACurrentMediaTime()
         let userContent = try contentBuilder(context)
+        let contentDuration = CACurrentMediaTime() - contentStart
 
         let root = userContent
             .renderPassDescriptor(renderPassDescriptor)
@@ -151,6 +153,12 @@ internal final class ImmersiveRuntime<Content: Element> {
 
         runner.residency.collections = [stencilResources]
         try runner.submitFrame(root)
+        // Read by the next frame's statistics.
+        frameTimingTracker.lastCPUPhaseTimings = runner.system.lastPhaseTimings.map { timings in
+            var timings = timings
+            timings.content = contentDuration
+            return timings
+        }
         // UNVERIFIED ORDER (#404/#434): the Metal 4 header says to commit to the layer queue before presenting; the
         // inherited note says to encode presentation before commit. This follows the Metal 4 note until a device run
         // settles it.

@@ -731,6 +731,12 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     frameResidency.collections.append(try updateAttachmentResidency(for: currentRenderPassDescriptor, drawableTexture: currentDrawable.texture))
                     runner.residency = frameResidency
                     try runner.submitFrame(rootElement, presenting: currentDrawable, residencySets: residencySets)
+                    // Read by the next frame's statistics.
+                    frameTimingTracker.lastCPUPhaseTimings = runner.system.lastPhaseTimings.map { timings in
+                        var timings = timings
+                        timings.content = contentDuration
+                        return timings
+                    }
 
                     if diagnostics.logFrame, let timings = runner.system.lastPhaseTimings {
                         let contentMs = contentDuration * 1_000

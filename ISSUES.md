@@ -9438,12 +9438,13 @@ Current numbers (release, Apple silicon, 2 passes, 1280x800)
 ## 488: Client code cannot read per-phase CPU timings (update, setup, workload)
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: area:performance, effort:m, area:timing
 created: 2026-10-16T12:54:57Z
-updated: 2026-10-16T13:30:53Z
+updated: 2026-10-16T13:35:32Z
+closed: 2026-10-16T13:35:32Z
 +++
 
 Follow-up to #486.
