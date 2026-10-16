@@ -8321,17 +8321,26 @@ RELEASENOTES.md lists GPUCounterSampler as removed on Metal 4 but not GPUCounter
 ## 447: Verify and document custom counter-heap timestamps from raw encoder closures
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: area:metal4, area:timing, effort:m
 created: 2026-09-30T04:33:40Z
-updated: 2026-09-30T16:18:18Z
+updated: 2026-10-16T13:00:18Z
+closed: 2026-10-16T13:00:18Z
 +++
 
 Timing inside a pass (per draw or per dispatch) has no built-in API on Metal 4. In principle a caller can create an MTL4CounterHeap, call writeTimestamp(granularity:counterHeap:index:) (or the render encoder's after-stage variant) inside RenderCommand, ComputeCommand or Draw, and resolve the heap after .onCommandBufferCompleted. This is untested through MetalSprockets.
 
 Done when: a test records and resolves timestamps this way for a render and a compute pass under MTL_DEBUG_LAYER=1; it is known whether the heap needs a residency or lifetime declaration; and Documentation/Porting-to-Metal4.md has a short example. If this route does not work, say why here.
+
+- `2026-10-16T13:00:03Z`: Verified with Tests/MetalSprocketsTests/CustomCounterHeapTests.swift (public API only, no @testable), passing under MTL_DEBUG_LAYER=1.
+- `2026-10-16T13:00:03Z`: Render: timestamps written from RenderCommand (before and after a pipeline) and from inside two Draw closures resolve non-zero, in tree order, and within the submission's gpuDuration.
+- `2026-10-16T13:00:03Z`: Compute: ComputeCommand timestamps around a ComputeDispatch resolve the same way.
+- `2026-10-16T13:00:03Z`: Resolving inside .onCommandBufferCompleted works.
+- `2026-10-16T13:00:03Z`: Residency: MTL4CounterHeap conforms only to NSObject, not MTLAllocation, so there is nothing to make resident. The debug layer reports nothing.
+- `2026-10-16T13:00:03Z`: Lifetime: MetalSprockets does not retain the heap. The caller must keep it alive until completion; capturing it in the .onCommandBufferCompleted closure does this.
+- `2026-10-16T13:00:03Z`: Docs: dropped, per Jonathan.
 
 ---
 
