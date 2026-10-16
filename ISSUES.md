@@ -9917,10 +9917,12 @@ Repro
 ## 502: Improve layout of default FPS HUD
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 created: 2026-10-16T14:05:08Z
+updated: 2026-10-16T14:57:08Z
+closed: 2026-10-16T14:57:08Z
 +++
 
 The default FPS HUD is one flat list of label/value rows (FPS, Frame, 1s Range, CPU, Content, Update, Setup, Workload, GPU, per-pass timings, Frame #). It is hard to scan.
@@ -9970,10 +9972,12 @@ Notes
 ## 504: Demo viewer: toggle between instanced cubes and ForEach cubes
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-10-16T14:20:54Z
+updated: 2026-10-16T14:57:08Z
+closed: 2026-10-16T14:57:08Z
 +++
 
 Add a toggle in the demo viewer to switch between rendering cubes with instancing and rendering them with a per-cube ForEach (the slow approach), for side-by-side performance comparison.

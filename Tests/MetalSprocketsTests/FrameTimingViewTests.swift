@@ -73,7 +73,7 @@ struct FrameTimingViewRenderingTests {
     }
 
     @Test func `every option renders its own row, in display order`() {
-        #expect(rows(.all).map(\.label) == ["FPS", "Frame", "1s Range", "GPU", "Frame #"])
+        #expect(rows(.all).map(\.label) == ["FPS", "Frame", "Range", "Frame #", "GPU"])
     }
 
     @Test func `frame times are shown in milliseconds`() {
@@ -106,9 +106,10 @@ struct FrameTimingViewRenderingTests {
             GPUTiming(label: "Main", startTimestamp: 0, endTimestamp: 0, duration: 0.0034)
         ]
         let rows = rows(.all, statistics: statistics)
-        #expect(rows.map(\.label) == ["FPS", "Frame", "1s Range", "GPU", "GPU", "Main", "Frame #"])
+        #expect(rows.map(\.label) == ["FPS", "Frame", "Range", "Frame #", "GPU", "GPU", "Main"])
         #expect(Set(rows.map(\.id)).count == rows.count)
-        #expect(rows[5].value.contains("3.4"))
+        #expect(rows[6].value.contains("3.4"))
+        #expect(rows[6].section == .gpu && rows[6].isIndented)
         #expect(self.rows([.fps], statistics: statistics).map(\.label) == ["FPS"])
     }
 
@@ -116,8 +117,9 @@ struct FrameTimingViewRenderingTests {
         var statistics = Self.statistics
         statistics.cpuPhaseTimings = CPUPhaseTimings(content: 0.001, update: 0.002, setup: 0.0005, workload: 0.003)
         let rows = rows(.all, statistics: statistics)
-        #expect(rows.map(\.label) == ["FPS", "Frame", "1s Range", "CPU", "Content", "Update", "Setup", "Workload", "GPU", "Frame #"])
-        #expect(rows[3].value.contains("6.5"))
+        #expect(rows.map(\.label) == ["FPS", "Frame", "Range", "Frame #", "CPU", "Content", "Update", "Setup", "Workload", "GPU"])
+        #expect(rows[4].value.contains("6.5"))
+        #expect(rows[5...8].allSatisfy { $0.section == .cpu && $0.isIndented })
 
         statistics.cpuPhaseTimings?.content = nil
         #expect(self.rows([.cpuPhases], statistics: statistics).map(\.label) == ["CPU", "Update", "Setup", "Workload"])

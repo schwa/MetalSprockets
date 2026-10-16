@@ -88,6 +88,14 @@ public struct FrameTimingView: View {
         }
     }
 
+    /// The group a row belongs to. Groups are separated by a divider.
+    internal enum Section: Equatable {
+        case fps
+        case frame
+        case cpu
+        case gpu
+    }
+
     /// One labelled line of the readout.
     internal struct Row: Identifiable, Equatable {
         var label: String
@@ -95,6 +103,9 @@ public struct FrameTimingView: View {
         var valueColor: Color?
         // Set when the label is not unique, such as a user-chosen gpuTimed label.
         var key: String?
+        var section: Section = .frame
+        // Sub-rows (CPU phases, GPU passes) are indented under their section's total.
+        var isIndented = false
 
         var id: String {
             key ?? label
@@ -106,36 +117,42 @@ public struct FrameTimingView: View {
         var rows: [Row] = []
         if options.contains(.fps) {
             let color = fpsColor(for: statistics.currentFPS, targetFramesPerSecond: targetFramesPerSecond)
-            rows.append(Row(label: "FPS", value: "\(Int(statistics.currentFPS.rounded()))", valueColor: color))
+            rows.append(Row(label: "FPS", value: "\(Int(statistics.currentFPS.rounded()))", valueColor: color, section: .fps))
         }
         if options.contains(.frameTime) {
             rows.append(Row(label: "Frame", value: formattedMilliseconds(statistics.deltaTime)))
         }
         if options.contains(.range) {
-            let range = formattedMilliseconds(statistics.minDeltaTime) + "–" + formattedMilliseconds(statistics.maxDeltaTime)
-            rows.append(Row(label: "1s Range", value: range))
+            let range = formattedMillisecondRange(statistics.minDeltaTime, statistics.maxDeltaTime)
+            rows.append(Row(label: "Range", value: range, isIndented: options.contains(.frameTime)))
+        }
+        if options.contains(.frameCount) {
+            rows.append(Row(label: "Frame #", value: "\(statistics.frameCount)", isIndented: options.contains(.frameTime)))
         }
         if options.contains(.cpuPhases), let phases = statistics.cpuPhaseTimings {
-            rows.append(Row(label: "CPU", value: formattedMilliseconds(phases.total)))
+            rows.append(Row(label: "CPU", value: formattedMilliseconds(phases.total), section: .cpu))
             if let content = phases.content {
-                rows.append(Row(label: "Content", value: formattedMilliseconds(content)))
+                rows.append(Row(label: "Content", value: formattedMilliseconds(content), section: .cpu, isIndented: true))
             }
-            rows.append(Row(label: "Update", value: formattedMilliseconds(phases.update)))
-            rows.append(Row(label: "Setup", value: formattedMilliseconds(phases.setup)))
-            rows.append(Row(label: "Workload", value: formattedMilliseconds(phases.workload)))
+            rows.append(Row(label: "Update", value: formattedMilliseconds(phases.update), section: .cpu, isIndented: true))
+            rows.append(Row(label: "Setup", value: formattedMilliseconds(phases.setup), section: .cpu, isIndented: true))
+            rows.append(Row(label: "Workload", value: formattedMilliseconds(phases.workload), section: .cpu, isIndented: true))
         }
-        if options.contains(.gpuTime), let gpuTime = statistics.gpuTime {
-            rows.append(Row(label: "GPU", value: formattedMilliseconds(gpuTime)))
+        let showsGPUTotal = options.contains(.gpuTime) && statistics.gpuTime != nil
+        if showsGPUTotal, let gpuTime = statistics.gpuTime {
+            rows.append(Row(label: "GPU", value: formattedMilliseconds(gpuTime), section: .gpu))
         }
         if options.contains(.gpuTimings) {
             for (index, timing) in statistics.gpuTimings.enumerated() {
-                rows.append(Row(label: timing.label, value: formattedMilliseconds(timing.duration), key: "gpuTiming.\(index)"))
+                rows.append(Row(label: timing.label, value: formattedMilliseconds(timing.duration), key: "gpuTiming.\(index)", section: .gpu, isIndented: showsGPUTotal))
             }
         }
-        if options.contains(.frameCount) {
-            rows.append(Row(label: "Frame #", value: "\(statistics.frameCount)"))
-        }
         return rows
+    }
+
+    /// "14.5–20.1 ms": one unit for both ends keeps the row narrow.
+    internal static func formattedMillisecondRange(_ minimum: TimeInterval, _ maximum: TimeInterval) -> String {
+        (minimum * 1_000).formatted(.number.precision(.fractionLength(1))) + "–" + formattedMilliseconds(maximum)
     }
 
     private static let millisecondFormat: Measurement<UnitDuration>.FormatStyle = .measurement(
@@ -200,13 +217,33 @@ internal struct FrameTimingRowsView: View {
     var rows: [FrameTimingView.Row]
 
     var body: some View {
-        Grid(alignment: .leading) {
-            ForEach(rows) { row in
-                GridRow {
-                    Text(row.label)
-                    Text(row.value)
-                        .foregroundStyle(row.valueColor ?? .primary)
-                        .gridColumnAlignment(.trailing)
+        let fpsRow = rows.first { $0.section == .fps }
+        let gridRows = rows.filter { $0.section != .fps }
+        VStack(alignment: .leading, spacing: 4) {
+            if let fpsRow {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(fpsRow.value)
+                        .font(.title.bold())
+                        .foregroundStyle(fpsRow.valueColor ?? .primary)
+                    Text(fpsRow.label)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if !gridRows.isEmpty {
+                Grid(alignment: .leading, verticalSpacing: 2) {
+                    ForEach(Array(gridRows.enumerated()), id: \.element.id) { index, row in
+                        if index > 0 && gridRows[index - 1].section != row.section || index == 0 && fpsRow != nil {
+                            Divider()
+                        }
+                        GridRow {
+                            Text(row.label)
+                                .foregroundStyle(row.isIndented ? .secondary : .primary)
+                                .padding(.leading, row.isIndented ? 10 : 0)
+                            Text(row.value)
+                                .foregroundStyle(row.valueColor ?? (row.isIndented ? .secondary : .primary))
+                                .gridColumnAlignment(.trailing)
+                        }
+                    }
                 }
             }
         }

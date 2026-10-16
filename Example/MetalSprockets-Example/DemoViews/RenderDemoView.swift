@@ -11,9 +11,10 @@ struct RenderDemoView: View {
     @State private var isPaused = false
     @State private var pausedTime: Float = 0
     @State private var frameTimingStatistics: FrameTimingStatistics?
-    // More than one cube is a stress test: one non-instanced draw per cube.
+    // More than one cube is a stress test: one draw per cube, unless instancing is on.
     // `-cubeCount 1000` on the command line starts the stress test directly, for profiling.
     @State private var cubeCount = UserDefaults.standard.object(forKey: "cubeCount") as? Int ?? 1
+    @State private var instanced = false
 
     private static let cubeCounts = [1, 100, 500, 1_000, 2_000, 5_000]
 
@@ -41,7 +42,7 @@ struct RenderDemoView: View {
 
             // RenderPass creates a render command encoder, contains one or more pipelines
             try RenderPass(label: "Cube") {
-                try DemoCubeRenderPipeline(transforms: transforms, time: time)
+                try DemoCubeRenderPipeline(transforms: transforms, time: time, instanced: instanced)
             }
             // Shown as its own row in the FrameTimingView HUD.
             .gpuTimed("Cube pass")
@@ -76,6 +77,10 @@ struct RenderDemoView: View {
                     }
                 }
                 .pickerStyle(.menu)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Toggle("Instanced", systemImage: "square.stack.3d.up", isOn: $instanced)
+                    .help("Draw all cubes in one instanced draw instead of one draw per cube")
             }
             ToolbarItem(placement: .primaryAction) {
                 Menu {

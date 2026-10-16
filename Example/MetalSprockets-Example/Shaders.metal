@@ -42,6 +42,20 @@ vertex VertexOut vertexMain(
     return out;
 }
 
+// Instanced variant of vertexMain: one transform per instance.
+vertex VertexOut vertexInstanced(
+    VertexIn in [[stage_in]],
+    uint instanceID [[instance_id]],
+    constant float4x4 *transforms [[buffer(1)]]
+) {
+    VertexOut out;
+    out.position = transforms[instanceID] * float4(in.position, 1.0);
+    out.localPos = in.position;
+    out.color = in.color;
+    out.uv = in.uv;
+    return out;
+}
+
 // Immersive vertex shader for visionOS stereo rendering.
 // Uses vertex amplification to render both eyes in a single draw call.
 // The amplification ID (0 or 1) selects which eye's camera matrices to use.
