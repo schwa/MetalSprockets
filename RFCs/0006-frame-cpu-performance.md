@@ -240,6 +240,12 @@ Each row is measured with `Experiments/ReconciliationBenchmark` (30 frames, medi
 | #496: skip dynamic-property reflection for types that have none | cubes 1000, Release | 51.56 → 40.63 (−21%) | 59.09 → 48.22 (−18%) |
 | | cubes 1000, Debug | 89.67 → 77.13 (−14%) | 111.79 → 98.91 (−12%) |
 | | draws 100/pass, Release | 44.60 → 39.03 (−12%) | 48.68 → 43.48 (−11%) |
+| #495: cache Equatable/class facts and "never equal" per type | cubes 1000, Release | 40.63 → 23.61 (−42%) | 48.22 → 31.35 (−35%) |
+| | cubes 1000, Debug | 77.13 → 52.50 (−32%) | 98.91 → 74.78 (−24%) |
+| | draws 100/pass, Release | 39.03 → 22.19 (−43%) | 43.48 → 26.35 (−39%) |
+
+After #495 the largest Update cost is `StructuralIdentifier` equality in `processNode` / `reuseNode` (~22% of samples)
+and `Hasher._combine` (~10% self): #497.
 
 Follow-up: #503 (detect dynamic properties stored behind `Any` or an existential).
 

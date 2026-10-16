@@ -1,3 +1,5 @@
+import Synchronization
+
 internal func isEqual<LHS: Equatable, RHS: Equatable>(_ lhs: LHS, _ rhs: RHS) -> Bool {
     if let lhs = lhs as? RHS, lhs == rhs {
         return true
@@ -10,10 +12,11 @@ internal func isEqual<LHS: Equatable, RHS: Equatable>(_ lhs: LHS, _ rhs: RHS) ->
 /// Class elements are never equal, even when they are the same instance: their mutable stored properties are
 /// invisible here, so `System` has to re-evaluate them.
 internal func isEqual(_ lhs: Any, _ rhs: Any) -> Bool {
-    if let equatableLHS = lhs as? any Equatable, let equatableRHS = rhs as? any Equatable {
+    let info = ComparisonCache.info(for: lhs)
+    if info.isEquatable, let equatableLHS = lhs as? any Equatable, let equatableRHS = rhs as? any Equatable {
         return isEqual(equatableLHS, equatableRHS)
     }
-    guard !(type(of: lhs) is AnyClass), !(type(of: rhs) is AnyClass) else {
+    guard !info.isClass, !(type(of: rhs) is AnyClass) else {
         return false
     }
     return isEqualStructurally(lhs, rhs)
@@ -24,7 +27,7 @@ internal func isEqual(_ lhs: Any, _ rhs: Any) -> Bool {
 /// Unlike an element, a class-typed property is compared by identity: an element holding the same model instance
 /// (for example an `@Observable`) has not changed. (#352)
 private func isEqualStoredProperty(_ lhs: Any, _ rhs: Any) -> Bool {
-    if let equatableLHS = lhs as? any Equatable, let equatableRHS = rhs as? any Equatable {
+    if ComparisonCache.info(for: lhs).isEquatable, let equatableLHS = lhs as? any Equatable, let equatableRHS = rhs as? any Equatable {
         return isEqual(equatableLHS, equatableRHS)
     }
     // A non-Equatable dynamic property (e.g. `@MSState`) owns mutable storage that reflection cannot see through,
@@ -58,6 +61,9 @@ private func isEqualStructurally(_ lhs: Any, _ rhs: Any) -> Bool {
     guard type(of: lhs) == type(of: rhs) else {
         return false
     }
+    if ComparisonCache.isNeverEqual(lhs) {
+        return false
+    }
     let lhsMirror = Mirror(reflecting: lhs)
     let rhsMirror = Mirror(reflecting: rhs)
     // Only structs are compared field by field. A closure (or anything else without a struct display style)
@@ -72,16 +78,69 @@ private func isEqualStructurally(_ lhs: Any, _ rhs: Any) -> Bool {
     }
     // A non-Equatable struct is equal when every stored property is. This lets elements holding non-Equatable
     // payloads (e.g. an unused `@MSBinding`) still compare equal and be skipped. (#197)
-    guard lhsMirror.children.count == rhsMirror.children.count else {
-        return false
-    }
+    // Same type, so the field count and labels match.
     let pairs = Array(zip(lhsMirror.children, rhsMirror.children))
-    guard pairs.allSatisfy({ $0.label == $1.label }) else {
-        return false
-    }
     // Child elements go last: they can be whole subtrees, and a cheap field (often a closure) usually decides
     // first. Comparing content first made reconciliation quadratic in tree depth. (#479)
     let isElement = { (pair: (Mirror.Child, Mirror.Child)) in pair.0.value is any Element }
     return pairs.lazy.filter { !isElement($0) }.allSatisfy { isEqualStoredProperty($0.value, $1.value) }
         && pairs.lazy.filter(isElement).allSatisfy { isEqualStoredProperty($0.value, $1.value) }
+}
+
+/// Per-type facts used by `isEqual`, computed once per type instead of on every comparison (#495).
+internal enum ComparisonCache {
+    struct Info {
+        var isEquatable: Bool
+        var isClass: Bool
+    }
+
+    private static let infos = Mutex<[ObjectIdentifier: Info]>([:])
+    private static let neverEqual = Mutex<[ObjectIdentifier: Bool]>([:])
+
+    static func info(for value: Any) -> Info {
+        let key = ObjectIdentifier(type(of: value))
+        if let info = infos.withLock({ $0[key] }) {
+            return info
+        }
+        let info = Info(isEquatable: value is any Equatable, isClass: type(of: value) is AnyClass)
+        infos.withLock { $0[key] = info }
+        return info
+    }
+
+    /// True when a struct has a stored property that can never compare equal (a closure, a non-Equatable dynamic
+    /// property, or another non-Equatable value that is not a struct, optional or class). Such values always rebuild.
+    ///
+    /// Decided from the first value seen. If a field declared as `Any` or another existential later holds something
+    /// comparable, the cached answer only causes an extra rebuild, never a missed change.
+    static func isNeverEqual(_ value: Any) -> Bool {
+        let key = ObjectIdentifier(type(of: value))
+        if let cached = neverEqual.withLock({ $0[key] }) {
+            return cached
+        }
+        let mirror = Mirror(reflecting: value)
+        let result = mirror.displayStyle == .struct && mirror.children.contains { child in
+            isAlwaysUnequal(child.value)
+        }
+        neverEqual.withLock { $0[key] = result }
+        return result
+    }
+
+    // Mirrors the cases where isEqualStoredProperty returns false whatever the other value is.
+    private static func isAlwaysUnequal(_ value: Any) -> Bool {
+        if info(for: value).isEquatable {
+            return false
+        }
+        if value is any MSDynamicProperty || value is any EnvironmentDependentProperty {
+            return true
+        }
+        if info(for: value).isClass {
+            return false
+        }
+        switch Mirror(reflecting: value).displayStyle {
+        case .struct, .optional:
+            return false
+        default:
+            return true
+        }
+    }
 }

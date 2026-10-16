@@ -9674,12 +9674,13 @@ Expected
 ## 495: isEqualStructurally uses runtime reflection for every element on every frame
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: area:performance, effort:l
 created: 2026-10-16T13:52:10Z
-updated: 2026-10-16T13:52:18Z
+updated: 2026-10-16T14:15:58Z
+closed: 2026-10-16T14:15:58Z
 +++
 
 From the #489 profile (Release, 1000 cubes, Experiments/ReconciliationBenchmark).
@@ -9695,8 +9696,16 @@ Repro
 Expected
 - Comparing an element with the previous frame does not need reflection or dynamic casts per stored property per frame.
 
-- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Macros (MetalSprocketsMacros already exists) are an option for generating comparison code instead of reflecting at runtime.
-- `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+\- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Macros (MetalSprocketsMacros already exists) are an option for generating comparison code instead of reflecting at runtime.
+\- `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+\- `2026-10-16T14:15:58Z`: Fixed: ComparisonCache (Support/isEqual.swift) caches per type whether it is Equatable or a class, and whether a struct has a field that can never compare equal (closure, non-Equatable dynamic property, or other non-Equatable value that is not a struct, optional or class). Never-equal types return false without Mirror. The per-call label/count check is removed (same type implies same fields). Semantics unchanged; a wrong never-equal answer (Any field) only causes an extra rebuild.
+
+Benchmark (30 frames, medians, ms), after #496 -> after #495:
+- cubes 1000 Release: update 40.63 -> 23.61 (-42%), cpu 48.22 -> 31.35
+- cubes 1000 Debug: update 77.13 -> 52.50 (-32%), cpu 98.91 -> 74.78
+- draws 100/pass Release: update 39.03 -> 22.19 (-43%), cpu 43.48 -> 26.35
+
+Reflection is still used for types that are compared field by field; removing it fully (macros) is not done. Next largest cost: #497.
 
 ---
 
