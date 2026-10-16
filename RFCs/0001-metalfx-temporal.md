@@ -1,6 +1,6 @@
 # RFC 0001 — MetalFX Temporal Upscaling
 
-**Status:** Draft
+**Status:** Implemented (`Sources/MetalSprockets/Metal/MetalFXTemporal.swift`)
 **Author:** schwa
 **Date:** 2026-04-17
 

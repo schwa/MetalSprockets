@@ -1,10 +1,11 @@
 # RFC 0003 — Parameter Bindings via `.bindings(...)`
 
-**Status:** Draft
+**Status:** Superseded by [RFC 0004](0004-metal-4.md). Never implemented: Metal 4 binds shader inputs through
+`.parameter(...)` and `ParameterSet`, resolved against reflected bindings into per-draw argument tables; there is no
+`.bindings(...)` modifier. Kept for history.
 **Author:** schwa
 **Date:** 2026-04-18
-**Depends on:** RFC 0002 (Metal 4) — Steps 0–2 landed; this is the
-deferred "Step 2d" from that RFC.
+**Depends on:** the Metal 4 RFC (now RFC 0004) — Steps 0–2 landed; this was the deferred "Step 2d" from that RFC.
 
 ## Summary
 

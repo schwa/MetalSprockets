@@ -1,6 +1,6 @@
 # RFC 0002 — ShaderStore
 
-**Status:** Draft
+**Status:** Implemented (#339)
 **Author:** schwa
 **Date:** 2026-04-21
 **Tracking issue:** #339

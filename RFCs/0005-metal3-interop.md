@@ -1,6 +1,8 @@
 # RFC 0005 — Metal 3 / MPS work inside a Metal 4 submission
 
-**Status:** Draft
+**Status:** Deferred. #451 was resolved by documentation: MPSNDArray kernels work inside `ComputeCommand`, MPS image
+kernels are unsupported (port them to compute), MPSGraph runs outside the element tree. This RFC describes interop for
+image kernels if it is needed later.
 **Author:** schwa
 **Date:** 2026-09-30
 **Issue:** #451

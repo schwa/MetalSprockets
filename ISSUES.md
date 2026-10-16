@@ -10308,13 +10308,17 @@ Expected
 ## 517: Clean up outdated RFCs, experiments, and scripts
 
 +++
-status: new
+status: closed
 priority: medium
 kind: task
 created: 2026-10-16T15:45:13Z
+updated: 2026-10-16T18:15:09Z
+closed: 2026-10-16T18:15:09Z
 +++
 
 Review RFCs, experiments, and scripts in the repo. Remove or archive anything that is outdated or no longer used.
+
+- `2026-10-16T18:15:09Z`: Removed Experiments/Metal4HelloTriangle and the untracked Experiments/Metal4HelloTriangleSprockets leftovers. RFC statuses: 0001 Implemented, 0002 Implemented, 0003 Superseded by 0004 (never implemented), 0005 Deferred (#451 resolved by documentation). Kept: RFC 0004, 0006, Experiments/ReconciliationBenchmark, all Scripts.
 
 ---
 
