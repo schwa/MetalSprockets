@@ -192,6 +192,9 @@ Every idea raised so far, unfiltered. Some conflict. None are verified.
 - `borrowing` / `consuming` on hot paths to cut hidden copies and retain/release.
 - `Span` to walk atoms without copying arrays.
 - `StructuralIdentifier` cannot be `~Copyable` while it is a `Dictionary` key.
+- Left after #497 was closed: each node still builds its identifier by copying the whole atom stack
+  (`StructuralIdentifier(atoms: atomStack)`), O(depth) time and memory per node. Small in current profiles (atom
+  copy/destroy); interning or parent node + one atom would remove it if deep trees make it matter.
 
 ### Environment (#498)
 

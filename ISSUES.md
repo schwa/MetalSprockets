@@ -9757,12 +9757,13 @@ Known gap: a dynamic property stored behind Any or an existential field can be m
 ## 497: StructuralIdentifier hashing and equality cost grows with tree depth
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: area:performance, effort:m
 created: 2026-10-16T13:52:10Z
-updated: 2026-10-16T13:52:19Z
+updated: 2026-10-16T18:05:49Z
+closed: 2026-10-16T18:05:49Z
 +++
 
 From the #489 profile (Release, 1000 cubes).
@@ -9793,6 +9794,7 @@ Expected
 Remaining: identifier equality is still ~23% of Update samples, mostly Atom comparison including the AnyHashable box for ForEach IDs. Next step is interned or per-parent identity (overlaps #501). Keeping open.
 
 - `2026-10-16T17:51:27Z`: Autoresearch session: a reused node is now matched by parent node identity plus its last atom (full path equality only as fallback), and AnyElementID stores Int ids directly (no AnyHashable). Identifier comparison is no longer a notable cost in profiles. Interning not done; leaving open in case it shows up again.
+- `2026-10-16T18:05:49Z`: Closing as done. Fixed: cached path hash (built from the parent's); leaf-first equality with hash check; reused nodes matched by parent node + last atom (full comparison almost never runs); no dictionary lookups per node; Int ids stored directly; no IdentifiedElement node per ForEach item. Identifier work went from about 25% of Update to a few percent of scattered self time. Left over: identifiers still copy the whole atom stack per node (O(depth)); noted in RFC 0006's brainstorm (Identity and node lookup) rather than kept open here.
 
 ---
 
