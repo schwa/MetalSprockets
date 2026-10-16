@@ -1,6 +1,50 @@
 # Release Notes
 
-## Unreleased
+## 0.2.3
+
+### Performance
+
+Per-frame CPU cost is much lower for scenes with many draw elements. See [RFC 0006](RFCs/0006-frame-cpu-performance.md).
+
+- Cheaper reconciliation: cached structural-identifier hashes, reuse of previous nodes without lookups, and no removed-node diff when every node is reused (#497).
+- Element equality uses cached per-type `Equatable` facts. Elements that can never be equal skip reflection (#495, #506).
+- Dynamic-property reflection is skipped for element types that have none (#496).
+- Chained `.parameter()` modifiers and mixed chains of workload-only modifiers (parameters, draw state, depth bias, scope) collapse into one node.
+- Environment `setValue` updates one key in place (#498). Typed environment boxes (#515).
+- Argument tables no longer allocate per-draw dictionaries or arrays. Table labels are precomputed (#514).
+
+### Profiling and timing
+
+- New `.gpuTimed(_:)` and `.onGPUTimings(_:)` for pass-level GPU timings. The FPS HUD shows them (#448).
+- New `CPUPhaseTimings` exposes per-phase CPU timings (on `FrameTiming` and `OffscreenRenderer.Rendering`). The FPS HUD shows them (#488).
+- Shared signposter with Frame/Drawable/Content/Commit/pass intervals and skipped-frame events (#508–#512).
+
+### Other
+
+- Removed the deprecated `MetalSprocketsError.missingEnvironment(_: PartialKeyPath)` (#494).
+- Dependencies pinned to the latest versions. Non-swiftlang packages use `upToNextMinor`.
+- Example: instanced-cubes vs `ForEach` toggle, cube-count picker, grouped FPS HUD layout (#502, #504).
+
+## 0.2.2
+
+- New `submissionIndex` and `maximumInFlightSubmissions` environment values, so elements can pick per-frame resources (#485).
+- `RenderView` defaults `preferredFramesPerSecond` to the screen maximum.
+
+## 0.2.1
+
+- New `.linkedFunctions(_:functionType:)` links functions into only the vertex or fragment stage of a `RenderPipeline`. `.linkedFunctions(_:)` still links into both (#383).
+- New `.parameters { }` binds several shader parameters with one modifier (#480).
+- New `RenderView.metalWantsExtendedDynamicRangeContent(_:)` modifier.
+- `ImmersiveRenderContent`: `foveation` option (default on) and `onRenderLoopChange` callback. Render loop failures are always logged.
+- `OffscreenRenderer` and `OffscreenVideoRenderer`: `clearDepth` option (use 0 for reverse-Z).
+- Residency release is deferred, which removes per-frame residency-set churn.
+- Reconciliation no longer re-compares whole subtrees at each container (#479).
+- Missing environment values are named with stable strings (#461).
+- Fixed a priority inversion in `MetalContext.waitForResult`.
+- Fixed immersive frames skipped during world-tracking startup not ending their submission.
+- `FrameTimingView`: FPS colour no longer flashes at half refresh rate (#397).
+
+## 0.2.0
 
 ### Deployment requirements
 
@@ -17,7 +61,6 @@
 - Custom `ShaderLoader` implementations now provide `shaderFunction(named:type:constants:)`.
 - Linked and visible-function table modifiers now take `VisibleFunction` values, not raw `MTLFunction` objects.
 - See [Porting to Metal 4](Documentation/Porting-to-Metal4.md#shaders-and-gpu-timing).
-- New `.linkedFunctions(_:functionType:)` links functions into only the vertex or fragment stage of a `RenderPipeline`. `.linkedFunctions(_:)` still links into both (#383).
 
 ### Metal 4 backend (breaking)
 
@@ -36,6 +79,103 @@ All rendering now uses Metal 4. There is no Metal 3 fallback. Devices must suppo
 - Visible-function tables that name an unlinked function are an error.
 - `YCbCrBillboardRenderPass` takes `owners` (and `init(frameData:)` on iOS) so camera textures outlive GPU use.
 - visionOS immersive rendering uses the compositor's Metal 4 queue and requires a device. The simulator reports an error.
+- New `.useResourceCollection(_:)` and `.useResidencySet(_:)` attach persistent residency (#474).
+- Automatic threadgroup sizing defaults to 1D.
+
+## 0.1.15
+
+- Updated MetalCompilerPlugin to 0.3.0.
+- Fixed `endSubmission` on an invalidated frame when leaving an immersive space.
+
+## 0.1.14
+
+- Updated MetalCompilerPlugin to 0.2.0.
+
+## 0.1.13
+
+- Release builds no longer embed development-only Metal shader source (#395).
+
+## 0.1.12
+
+- `.gpuCounters` adds a vertex/fragment stage breakdown and supports compute passes (#393).
+- `OffscreenRenderer.Rendering` exposes command-buffer GPU time (#394).
+- Fixed a crash when setting `@MSState` from `onCommandBufferCompleted` (#392).
+- Updated MetalSupport to 1.0.5.
+
+## 0.1.11
+
+### New
+
+- `.gpuCounters` modifier for GPU counter sampling (#50).
+- `.depthBias()`, `.debugGroup()`, `.id()` (#187) and `.transformEnvironment()` (#282) element modifiers.
+- `useComputeResources` array variant (#350).
+- Indirect dispatch in `ComputeDispatch` (#351). `threadsPerThreadgroup` is derived automatically (#328).
+- `FunctionTypes` option set for multi-stage parameter binding.
+- Public `MSDynamicProperty` protocol (#42).
+- `RenderView` takes `colorPixelFormat`, `depthStencilPixelFormat` and `sampleCount`. Render attachment formats are published in the environment, and `RenderPipeline` reads them (#362, #363).
+- Metal logging and the command buffer descriptor are per-subtree environment values (#360, #361).
+- `ShaderLoader` port for shader function lookup. Shader libraries can choose their device and catch mismatches.
+- `@Observable` reads during body evaluation are tracked.
+- FPS is colour-coded against the target frame rate.
+
+### Changes
+
+- `renderPipelineDescriptorModifier` renamed to `renderPipelineDescriptorTransformer` (#260).
+- `BodylessElement` split into `SetupElement` and `WorkloadElement`.
+- The environment is now a value type, not a parent chain.
+- Clean subtrees are skipped during update (#367–#371). `ForEach` children get identity from their data ids (#209).
+- `System.render(root:)` is the single phase-ordered entry point (#374).
+- `MTKView` depth/stencil textures default to memoryless storage.
+- `RenderView` pauses and detaches its `MTKView` when dismantled.
+
+### Fixes
+
+- `.msaa()` now anti-aliases, and misplacement is diagnosed (#354, #355).
+- `.capture()` can write a `.gputrace` document (#356).
+- Workload encoders unwind when an error is thrown mid-pass (#357).
+- Stale depth-stencil state after the first frame (#358). PSO cache key includes the configured descriptor (#359).
+- `Optional` nodes no longer run the wrapped element's phases twice (#381). Collapsed parameters are keyed by name and stage (#382).
+- Concurrency and invalidation fixes (#364–#366, #380, #384–#388).
+- `RenderView` no longer creates an `MTLCommandQueue` during body evaluation (#344), and resyncs drawable size (#311).
+- Visible function tables check `supportsFunctionPointers` (#268).
+- Specific error cases in `OffscreenVideoRenderer` (#177).
+
+## 0.1.10
+
+- New `Runner` type for amortized element-tree execution (#345).
+- Updated swift-syntax to 602.0.0.
+
+## 0.1.9
+
+### New
+
+- `ShaderStore` replaces the process-global `LibraryRegistry`, with `shaderStore` environment/view modifier API (#339).
+- `MetalFXTemporal` element.
+- `.capture()` element and `RenderView` modifiers wrapping `MTLCaptureManager`.
+- `.linkedFunctions(_:)`, `.workloadEnabled()` (#53) and `.onDisappear` (#214) element modifiers.
+- Shader uniforms bind by name via reflection, not hardcoded indices.
+
+### Changes
+
+- Duplicated Metal utilities replaced by the MetalSupport dependency. `MTKMesh+Extensions` moved there (#322).
+- `ViewAdaptor` is internal (#104). Less public `System` API.
+- Pipelines and MetalFXSpatial use a per-node cache (#319, #327, #333).
+- Asserts when an element body returns `any Element` (#248).
+
+### Fixes
+
+- PSO cache never hitting, or rebuilding every frame (#341, #342).
+- Depth-stencil state keyed on descriptor contents (#314).
+- `ComputePipeline` ignored changes to kernel/linked functions (#327). `visibleFunctionTable` for `ComputePipeline` (#324).
+- Data race on `System.dirtyIdentifiers` (#330). Dangling `MSBinding` reference (#331).
+- Back-pressure uses an async KVO wait instead of `Thread.sleep` polling (#321).
+
+## 0.1.8
+
+- `ImmersiveRuntime` exposes frame timing statistics (#313).
+- Fixed `BlitPass` environment access (#306).
+- Demo app UI fixes on iOS/iPad.
+- Added Cross-Environment Shader Headers documentation.
 
 ## 0.1.7
 
