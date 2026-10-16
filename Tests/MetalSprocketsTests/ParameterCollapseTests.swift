@@ -3,8 +3,8 @@ import Metal
 import simd
 import Testing
 
-// Parameter scoping on Metal 4, checked on the GPU. (Legacy collapsed chained modifiers into one node; Metal 4
-// rebuilds the parameter scope per draw instead, so these assert the observable results.)
+// Parameter scoping on Metal 4, mostly checked on the GPU. Chained parameter modifiers collapse into one node (#54,
+// restored in RFC 0006).
 @MainActor
 @Suite("Parameter modifier scoping")
 struct ParameterCollapseTests {
@@ -36,6 +36,17 @@ struct ParameterCollapseTests {
         var pixel = [UInt8](repeating: 0, count: 4)
         texture.getBytes(&pixel, bytesPerRow: 8 * 4, from: MTLRegionMake2D(4, 4, 1, 1), mipmapLevel: 0)
         return pixel
+    }
+
+    @Test func `a chain of parameter modifiers produces a single node`() throws {
+        let element = EmptyElement()
+            .vertexValues([SIMD2<Float>(0, 0)], index: 0)
+            .parameter("a", value: SIMD4<Float>(1, 0, 0, 1))
+            .parameter("b", value: simd_float4x4(diagonal: [1, 1, 1, 1]))
+        let system = System()
+        try system.update(root: element)
+        #expect(system.nodes.values.filter { $0.element is any ParameterApplying }.count == 1)
+        #expect(system.nodes.values.contains { $0.element is EmptyElement })
     }
 
     @Test(.requiresMetal4) func `the binding nearest the content wins for a repeated name in the same stage`() throws {

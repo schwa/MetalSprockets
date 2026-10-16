@@ -259,6 +259,10 @@ From here on, Release only.
 | Per-type conformance flags on `Node` (`ElementTypeInfo`); skip casts that would fail | cubes 1000 | 12.24 → 9.9–10.8 (setup 1.76 → 0.9–1.0) | 20.2 → 16.2–17.7 |
 | | draws 100/pass | 13.19 → 10.56 | 17.77 → 14.03 |
 | #498: environment `setValue` updates one key in place; no copy when a node has no own values | cubes 1000 | ~10.0 (setup 0.95 → 0.80, workload 5.5 → 4.7) | 16.2–17.7 → 15.5–15.6 |
+| Collapse chained parameter modifiers into one node (restores #54 for Metal 4) | cubes 1000 | 10.0 → 7.25 (setup 0.80 → 0.31, workload 4.7 → 3.5) | 15.5 → 11.1 |
+| | draws 100/pass | 10.89 → 8.26 | 14.12 → 10.21 |
+
+Example app (reported, Debug): 1000 cubes 25 fps; 5000 cubes 5 fps, up from about 1 fps.
 
 Tried and reverted: `TreeDictionary` for the environment (#498). Environments hold a few dozen keys, which fit in one
 hash-tree node, so copy-on-write still copies the whole node, and lookups are slower. No net gain.

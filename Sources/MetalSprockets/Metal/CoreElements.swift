@@ -98,13 +98,41 @@ internal struct PassFormats {
 
 /// Adds parameters during workload, rebuilding from the parent's current parameters every frame. Reading the
 /// inherited value (not this node's own earlier write) keeps skipped, reused nodes from pinning stale parameters.
-internal struct ParameterModifier<Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
+/// A parameter modifier whose bindings can be folded into an enclosing one.
+internal protocol ParameterApplying {
+    var parameterApply: (inout ParameterSet) -> Void { get }
+    var parameterContent: any Element { get }
+}
+
+/// Binds parameters for its subtree.
+///
+/// A chain of directly nested parameter modifiers (`.vertexValues(...).parameter(...).parameter(...)`) becomes one node:
+/// the outermost applies every binding in the chain and visits the first element that is not a parameter modifier.
+/// Bindings apply outermost first, so the one nearest the content wins, as with separate nodes. Restores #54 for
+/// Metal 4 (RFC 0006).
+internal struct ParameterModifier<Content>: Element, WorkloadElement, BodylessContentElement, ParameterApplying where Content: Element {
     var content: Content
     var apply: (inout ParameterSet) -> Void
+
+    var parameterApply: (inout ParameterSet) -> Void { apply }
+    var parameterContent: any Element { content }
+
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        var innermost: any Element = content
+        while let next = innermost as? any ParameterApplying {
+            innermost = next.parameterContent
+        }
+        try visit(innermost)
+    }
 
     func workloadEnter(_ node: Node) throws {
         var parameters = node.environmentValues.inheritedValue(ParameterSetKey.self) ?? ParameterSet()
         apply(&parameters)
+        var inner: any Element = content
+        while let next = inner as? any ParameterApplying {
+            next.parameterApply(&parameters)
+            inner = next.parameterContent
+        }
         node.environmentValues.parameterSet = parameters
     }
 
