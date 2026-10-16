@@ -10380,12 +10380,13 @@ Expected
 ## 520: No benchmark scene where the element tree is unchanged between frames
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:performance, area:tooling, effort:s
 created: 2026-10-16T18:03:37Z
-updated: 2026-10-16T18:04:00Z
+updated: 2026-10-16T18:18:49Z
+closed: 2026-10-16T18:18:49Z
 +++
 
 Prerequisite for #519.
@@ -10395,6 +10396,8 @@ What is missing
 
 Expected
 - A scenario where most of the tree is the same every frame (for example 1000 static cubes and a few moving ones), measured like the others.
+
+- `2026-10-16T18:18:49Z`: Done: ReconciliationBenchmark --scenario static [--moving N] (default 10). Same 1000-cube scene; only the first N cubes animate, the rest (and the shared time parameter) are identical every frame. Baseline (Release, 60 frames): cubes update 2.05 / workload 1.66 / cpu 3.86 ms; static update 2.06 / workload 1.68 / cpu 3.88 ms; static --moving 0: cpu 4.03 ms. No reuse yet, as expected; target for #521-#523.
 
 ---
 

@@ -75,18 +75,24 @@ struct CubeResources {
     }
 }
 
-func cubeTransforms(count: Int, frame: Int) -> [simd_float4x4] {
+/// `moving`: how many cubes (the first ones) animate with `frame`. The rest use frame 0, so their transforms are the
+/// same every frame. `nil` animates them all.
+func cubeTransforms(count: Int, frame: Int, moving: Int? = nil) -> [simd_float4x4] {
     let side = Int(ceil(cbrt(Double(count))))
     let center = Float(side - 1) / 2
-    let angle = Float(frame) * 0.01
-    let rotation = simd_float4x4(simd_quatf(angle: angle, axis: simd_normalize([1, 1, 0])))
     var view = matrix_identity_float4x4
     view.columns.3.z = -8 * Float(side)
     let projection = perspective(fovY: .pi / 4, aspect: 1.6, near: 0.1, far: 100 * Float(side))
+    func rotation(_ frame: Int) -> simd_float4x4 {
+        simd_float4x4(simd_quatf(angle: Float(frame) * 0.01, axis: simd_normalize([1, 1, 0])))
+    }
+    let animated = rotation(frame)
+    let still = rotation(0)
     return (0..<count).map { index in
         var model = matrix_identity_float4x4
         model.columns.3 = SIMD4(SIMD3(Float(index % side) - center, Float((index / side) % side) - center, Float(index / (side * side)) - center) * 3, 1)
-        return projection * view * rotation * model
+        let isMoving = moving.map { index < $0 } ?? true
+        return projection * view * (isMoving ? animated : still) * model
     }
 }
 
@@ -97,9 +103,11 @@ func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> simd_fl
     return simd_float4x4(columns: ([x, 0, 0, 0], [0, y, 0, 0], [0, 0, z, -1], [0, 0, z * near, 0]))
 }
 
-func cubesRoot(count: Int, frame: Int, resources: CubeResources) throws -> some Element {
-    let transforms = cubeTransforms(count: count, frame: frame)
-    let time = Float(frame) / 60
+/// `moving`: see `cubeTransforms`. With a value, the shared `time` parameter is also fixed, so unchanged cubes are
+/// identical to the previous frame (the static scene, #520).
+func cubesRoot(count: Int, frame: Int, resources: CubeResources, moving: Int? = nil) throws -> some Element {
+    let transforms = cubeTransforms(count: count, frame: frame, moving: moving)
+    let time: Float = moving == nil ? Float(frame) / 60 : 0
     let vertices = resources.vertices
     return try RenderPass(label: "Cubes") {
         try RenderPipeline(vertexShader: resources.vertexShader, fragmentShader: resources.fragmentShader) {
