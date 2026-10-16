@@ -5989,9 +5989,9 @@ It is also the only thing that makes the class look internally synchronized, whi
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l, area:architecture, needs-decision
+labels: effort:l, area:architecture, needs-decision, deferred
 created: 2026-08-08T23:14:01Z
-updated: 2026-10-07T14:28:22Z
+updated: 2026-10-16T12:56:04Z
 +++
 
 Ten call sites reach traversal state through the `@TaskLocal System.current` rather than being handed the context they need: `MSEnvironment` (EnvironmentValues.swift:170), `EnvironmentReader`, `Element` body evaluation (Element.swift:82), `StateBox.resolveSystem()`, `Element+SystemExtensions`, and the modifiers in `RenderPipelineDescriptorTransformer`, `RenderPassDescriptorModifier`, `MSAAModifier`, `GPUCounters`, plus ambient `ShaderStore` lookup in `ShaderLibrary`.
@@ -6021,9 +6021,9 @@ Decision needed: (a) split this: file the easy group as a subtask (effort:s) and
 status: open
 priority: low
 kind: enhancement
-labels: effort:l, area:architecture
+labels: effort:l, area:architecture, deferred
 created: 2026-08-08T23:14:01Z
-updated: 2026-09-30T16:18:18Z
+updated: 2026-10-16T12:56:04Z
 +++
 
 #292 proposed splitting `System` into a `TreeReconciler` (done, #372), a `PhaseRunner` that drives setup/workload over a frozen traversal event list, and a thin `System` facade composing the two.
@@ -9038,9 +9038,9 @@ Done when a pipeline element can register its persistent buffers in its own `Res
 status: open
 priority: medium
 kind: enhancement
-labels: area:metal4, area:performance, effort:s, needs-decision
+labels: area:metal4, area:performance, effort:s, needs-decision, deferred
 created: 2026-10-02T22:35:16Z
-updated: 2026-10-07T14:28:22Z
+updated: 2026-10-16T12:56:05Z
 +++
 
 MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure () -> Value. A default like '@MSState var mesh: MTKMesh = .teapot()', or an assignment to an @MSState in init, runs every time the element struct is rebuilt. That is usually every frame. The persisted StateBox wins and the new value is discarded, but the allocation still happens. In MetalSprocketsExamples this builds a teapot MTKMesh, a sphere, a 2048x2048 texture and a sampler every frame in BouncingTeapots, and MetalCanvas allocated 16 MB of buffers per frame (MetalSprocketsExamples #438). Proposal: add init(wrappedValue: @autoclosure @escaping () -> Value) and evaluate it only when no persisted state exists, like SwiftUI State. Assignments in init are harder to fix; at least document that they run every rebuild.
@@ -9057,9 +9057,9 @@ MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure 
 status: open
 priority: high
 kind: enhancement
-labels: area:metal4, area:performance, effort:l, needs-decision
+labels: area:metal4, area:performance, effort:l, needs-decision, deferred
 created: 2026-10-03T00:16:32Z
-updated: 2026-10-07T14:28:22Z
+updated: 2026-10-16T12:56:05Z
 +++
 
 Potential performance issue, not measured.
