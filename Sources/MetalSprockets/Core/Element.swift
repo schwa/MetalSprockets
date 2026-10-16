@@ -64,8 +64,12 @@ public extension Element where Body == Never {
 
 internal extension Element {
     func visitChildren(_ visit: (any Element) throws -> Void) throws {
-        if let bodyless = self as? any BodylessElement {
-            try bodyless.visitChildrenBodyless(visit)
+        try visitChildren(typeInfo: ElementTypeInfo.of(self), visit)
+    }
+
+    func visitChildren(typeInfo: ElementTypeInfo, _ visit: (any Element) throws -> Void) throws {
+        if let bodylessType = typeInfo.bodylessType {
+            try bodylessType.visitChildrenBodyless(of: self, visit)
         } else if Body.self != Never.self {
             // See #248. Writing `var body: any Element` satisfies the protocol but
             // silently breaks traversal because the existential never matches the

@@ -17,9 +17,7 @@ internal extension Element {
             try updateDynamicProperties(node)
         }
 
-        if node.typeInfo.isBodyless, let bodylessElement = self as? any BodylessElement {
-            try bodylessElement.configureNodeBodyless(node)
-        }
+        try node.typeInfo.bodylessType?.configureNodeBodyless(of: self, node: node)
         if hasDynamicProperties {
             try persistDynamicProperties(node)
         }

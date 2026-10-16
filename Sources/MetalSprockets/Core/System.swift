@@ -305,6 +305,7 @@ internal extension System {
 
     /// Reuse an existing node, updating it if its element has changed
     func reuseNode(_ existingNode: Node, currentId: StructuralIdentifier, element: any Element, isEqualToPrevious: Bool, newNodes: inout [StructuralIdentifier: Node]) -> Node {
+        existingNode.parentNode = traversalContext.currentNode
         existingNode.parentIdentifier = traversalContext.currentNode?.id
 
         if isDirty(currentId) || !isEqualToPrevious {
@@ -334,6 +335,7 @@ internal extension System {
     func makeNode(currentId: StructuralIdentifier, element: any Element, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         let parentId = traversalContext.currentNode?.id
         let currentNode = Node(system: self, id: currentId, parentIdentifier: parentId, element: element)
+        currentNode.parentNode = traversalContext.currentNode
         newNodes[currentId] = currentNode
         // New nodes need setup, unless the element takes no part in the setup phase. (#235)
         currentNode.needsSetup = currentNode.typeInfo.isSetup

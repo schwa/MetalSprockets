@@ -28,8 +28,11 @@ internal final class TreeReconciler {
     private var atomStack: [StructuralIdentifier.Atom] = []
     /// Path hashes matching `atomStack`, so each identifier's hash extends its parent's instead of rehashing the path.
     private var hashStack: [Int] = [StructuralIdentifier.rootHash]
-    /// Per-level sibling counts, used to give same-typed siblings distinct identities.
-    private var siblingIndices: [[ElementTypeIdentifier: Int]] = [[:]]
+    /// Sibling counts per element type, used to give same-typed siblings distinct identities. One flat stack for all
+    /// levels (`levelStarts` marks where each level begins), so entering a node allocates nothing. Siblings have few
+    /// distinct types, so a linear search within the level is cheap.
+    private var siblingCounts: [(type: ElementTypeIdentifier, count: Int)] = []
+    private var levelStarts: [Int] = [0]
 
     init(system: System) {
         self.system = system
@@ -40,6 +43,9 @@ internal final class TreeReconciler {
             return node
         }
         self.previousIterator = previousNodes.makeIterator()
+        // The new tree is usually the same size as the previous one; avoid rehashing as it grows.
+        newNodes.reserveCapacity(previousNodes.count)
+        newEvents.reserveCapacity(system.traversalEvents.count)
     }
 
     /// Walk `root`, reconciling it against the previous tree.
@@ -52,10 +58,17 @@ internal final class TreeReconciler {
     }
 
     private func nextIndex(for typeIdentifier: ElementTypeIdentifier) -> Int {
-        let currentLevel = siblingIndices.count - 1
-        let index = siblingIndices[currentLevel][typeIdentifier] ?? 0
-        siblingIndices[currentLevel][typeIdentifier] = index + 1
-        return index
+        var position = levelStarts[levelStarts.count - 1]
+        while position < siblingCounts.count {
+            if siblingCounts[position].type == typeIdentifier {
+                let index = siblingCounts[position].count
+                siblingCounts[position].count = index + 1
+                return index
+            }
+            position += 1
+        }
+        siblingCounts.append((typeIdentifier, 1))
+        return 0
     }
 
     /// Splice a whole unchanged subtree from the previous traversal, reusing its nodes and events verbatim.
@@ -81,19 +94,41 @@ internal final class TreeReconciler {
         return true
     }
 
+    /// Whether `candidate`, the previous traversal's node at this position, has identifier `currentId`.
+    ///
+    /// A node's identifier is its parent node's identifier plus its own last atom, and identifiers never change. So when
+    /// the candidate's parent is the very node now being visited as the parent, the paths are equal exactly when the last
+    /// atoms are, and the shared prefix need not be compared atom by atom (#497). Otherwise compare in full.
+    private func matches(_ candidate: Node, currentId: StructuralIdentifier, atom: StructuralIdentifier.Atom) -> Bool {
+        if let parent = system.traversalContext.currentNode, candidate.parentNode === parent {
+            return candidate.id.atoms.count == currentId.atoms.count && candidate.id.atoms.last == atom
+        }
+        return candidate.id == currentId
+    }
+
     /// Process a single element.
     ///
     /// `environmentStable` says no ancestor changed the environment this update. Only then may a subtree be
     /// skipped: its elements read the environment while their bodies run, so a changed ancestor environment has
     /// to force re-evaluation even when the elements themselves compare equal.
-    private func processElement(_ element: any Element, environmentStable: Bool = true) throws {
-        let typeIdentifier = ElementTypeIdentifier(type(of: element))
-        let index = nextIndex(for: typeIdentifier)
-        // An explicit .id() replaces sibling position, so the element keeps its identity
-        // when it moves within its parent.
+    private func processElement(_ element: any Element, environmentStable: Bool = true, explicitID inheritedExplicitID: AnyElementID? = nil) throws {
         let typeInfo = ElementTypeInfo.of(element)
-        let explicitID = typeInfo.isExplicitlyIdentified ? (element as? any ExplicitlyIdentifiedElement)?.explicitID : nil
-        let atom = StructuralIdentifier.Atom(typeIdentifier: typeIdentifier, index: explicitID == nil ? index : 0, explicitID: explicitID)
+        // `.id()` and ForEach wrap content in an IdentifiedElement. It has no behaviour of its own, so it gets no node:
+        // its identity goes on its content's atom instead, saving one node per ForEach item. A wrapper around
+        // already-identified content keeps its node, so both identities stay in the path.
+        if inheritedExplicitID == nil, let wrapperType = typeInfo.identityWrapperType {
+            let content = wrapperType.wrappedContent(of: element)
+            if ElementTypeInfo.of(content).explicitlyIdentifiedType == nil {
+                try processElement(content, environmentStable: environmentStable, explicitID: wrapperType.explicitID(of: element))
+                return
+            }
+        }
+        let typeIdentifier = ElementTypeIdentifier(type(of: element))
+        // An explicit .id() replaces sibling position, so the element keeps its identity
+        // when it moves within its parent. Identified elements do not take a sibling index, as before.
+        let explicitID = inheritedExplicitID ?? typeInfo.explicitlyIdentifiedType?.explicitID(of: element)
+        let index = explicitID == nil ? nextIndex(for: typeIdentifier) : 0
+        let atom = StructuralIdentifier.Atom(typeIdentifier: typeIdentifier, index: index, explicitID: explicitID)
 
         atomStack.append(atom)
         let pathHash = StructuralIdentifier.extend(hashStack[hashStack.count - 1], with: atom)
@@ -107,7 +142,7 @@ internal final class TreeReconciler {
         // The previous traversal's node at this position is reused when its identifier matches. One comparison, no
         // dictionary lookup (#497).
         let candidate = previousIterator.next()
-        let previousNode = candidate?.id == currentId ? candidate : nil
+        let previousNode = candidate.flatMap { matches($0, currentId: currentId, atom: atom) ? $0 : nil }
         // Class elements never compare equal (their mutable stored properties are invisible to `isEqual`), so
         // they always re-evaluate; only their unchanged children get skipped.
         let isEqualToPrevious = previousNode.map { isEqual($0.element, element) } ?? false
@@ -133,12 +168,14 @@ internal final class TreeReconciler {
 
         try element.configureNode(currentNode)
 
-        siblingIndices.append([:])
-        defer { siblingIndices.removeLast() }
+        levelStarts.append(siblingCounts.count)
+        defer {
+            siblingCounts.removeSubrange(levelStarts.removeLast()...)
+        }
 
         let childEnvironmentStable = environmentStable && (unchanged || !typeInfo.isEnvironmentModifying)
 
-        try element.visitChildren { child in
+        try element.visitChildren(typeInfo: typeInfo) { child in
             try processElement(child, environmentStable: childEnvironmentStable)
         }
     }

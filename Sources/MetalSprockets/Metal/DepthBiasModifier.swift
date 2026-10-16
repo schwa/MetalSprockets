@@ -9,8 +9,6 @@ internal struct DepthBiasModifier<Content>: Element, WorkloadElement, BodylessCo
     var content: Content
 
     // Written every frame; each Draw sets bias explicitly, so it never leaks to siblings.
-    var collapsedContent: any Element { content }
-
     func applyCollapsed(to node: Node, state: inout CollapseState) throws {
         node.environmentValues.depthBias = DepthBias(bias: depthBias, slopeScale: slopeScale, clamp: clamp)
     }

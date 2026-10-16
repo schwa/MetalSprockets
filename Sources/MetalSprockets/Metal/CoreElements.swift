@@ -1,10 +1,6 @@
 import Metal
 import MetalSprocketsSupport
 
-internal struct ParameterSetKey: MSEnvironmentKey {
-    static var defaultValue: ParameterSet? { nil }
-}
-
 package struct StencilFace: Hashable, Sendable {
     package var compare: MTLCompareFunction = .always
     package var stencilFailure: MTLStencilOperation = .keep
@@ -66,11 +62,6 @@ internal extension MSEnvironmentValues {
     @MSEntry var viewport: MTLViewport?
     @MSEntry var scissor: MTLScissorRect?
 
-    var parameterSet: ParameterSet? {
-        get { self[ParameterSetKey.self] }
-        set { self[ParameterSetKey.self] = newValue }
-    }
-
     @MSEntry var activeRenderPassDescriptor: MTL4RenderPassDescriptor?
     @MSEntry var renderPipeline: PipelineCache.RenderPipeline?
     @MSEntry var computePipeline: PipelineCache.ComputePipeline?
@@ -108,43 +99,49 @@ internal struct CollapseState {
 /// .useResource(...)`) becomes one node: the outermost applies every modifier in the chain to its own node, outermost
 /// first, and visits the first element that is not collapsible. Writes nearer the content still win, as with separate
 /// nodes. Restores and extends #54 for Metal 4 (RFC 0006).
-internal protocol CollapsibleWorkloadModifier {
-    var collapsedContent: any Element { get }
+internal protocol CollapsibleWorkloadModifier: BodylessContentElement {
     func applyCollapsed(to node: Node, state: inout CollapseState) throws
 
-    // Called through a metatype cached per type (`ElementTypeInfo.collapsibleType`). `as! Self` is a cast to a concrete
-    // type, which avoids the protocol-conformance lookup of `as? any CollapsibleWorkloadModifier` on every element of
-    // every chain, every frame.
-    static func collapsedContent(of element: any Element) -> any Element
-    static func applyCollapsed(_ element: any Element, to node: Node, state: inout CollapseState) throws
+    // Walk the rest of the chain in place. A chain is one nested value (`A<B<C<Draw>>>`), so taking each level out as
+    // `any Element` would copy the whole remaining chain at every level. These read `Self` through a pointer to the
+    // caller's storage instead, and are called through the metatype of `Content` cached in `ElementTypeInfo`.
+    static func visitInnermost(at pointer: UnsafeRawPointer, _ visit: (any Element) throws -> Void) throws
+    static func applyChain(at pointer: UnsafeRawPointer, to node: Node, state: inout CollapseState) throws
 }
 
 extension CollapsibleWorkloadModifier {
-    static func collapsedContent(of element: any Element) -> any Element {
-        // swiftlint:disable:next force_cast
-        (element as! Self).collapsedContent
+    static func visitInnermost(at pointer: UnsafeRawPointer, _ visit: (any Element) throws -> Void) throws {
+        let modifier = pointer.assumingMemoryBound(to: Self.self)
+        guard let next = ElementTypeInfo.of(type: Content.self).collapsibleType else {
+            try visit(modifier.pointee.content)
+            return
+        }
+        try withUnsafePointer(to: modifier.pointee.content) { content in
+            try next.visitInnermost(at: UnsafeRawPointer(content), visit)
+        }
     }
 
-    static func applyCollapsed(_ element: any Element, to node: Node, state: inout CollapseState) throws {
-        // swiftlint:disable:next force_cast
-        try (element as! Self).applyCollapsed(to: node, state: &state)
+    static func applyChain(at pointer: UnsafeRawPointer, to node: Node, state: inout CollapseState) throws {
+        let modifier = pointer.assumingMemoryBound(to: Self.self)
+        try modifier.pointee.applyCollapsed(to: node, state: &state)
+        guard let next = ElementTypeInfo.of(type: Content.self).collapsibleType else {
+            return
+        }
+        try withUnsafePointer(to: modifier.pointee.content) { content in
+            try next.applyChain(at: UnsafeRawPointer(content), to: node, state: &state)
+        }
     }
 
     func visitInnermost(_ visit: (any Element) throws -> Void) throws {
-        var innermost = collapsedContent
-        while let collapsible = ElementTypeInfo.of(innermost).collapsibleType {
-            innermost = collapsible.collapsedContent(of: innermost)
+        try withUnsafePointer(to: self) { modifier in
+            try Self.visitInnermost(at: UnsafeRawPointer(modifier), visit)
         }
-        try visit(innermost)
     }
 
     func applyChain(to node: Node) throws {
         var state = CollapseState()
-        try applyCollapsed(to: node, state: &state)
-        var inner = collapsedContent
-        while let collapsible = ElementTypeInfo.of(inner).collapsibleType {
-            try collapsible.applyCollapsed(inner, to: node, state: &state)
-            inner = collapsible.collapsedContent(of: inner)
+        try withUnsafePointer(to: self) { modifier in
+            try Self.applyChain(at: UnsafeRawPointer(modifier), to: node, state: &state)
         }
         if let parameters = state.parameters {
             node.environmentValues.parameterSet = parameters
@@ -157,10 +154,8 @@ internal struct ParameterModifier<Content>: Element, WorkloadElement, BodylessCo
     var content: Content
     var apply: (inout ParameterSet) -> Void
 
-    var collapsedContent: any Element { content }
-
     func applyCollapsed(to node: Node, state: inout CollapseState) throws {
-        var parameters = state.parameters ?? node.environmentValues.inheritedValue(ParameterSetKey.self) ?? ParameterSet()
+        var parameters = state.parameters ?? node.environmentValues.inheritedParameterSet ?? ParameterSet()
         apply(&parameters)
         state.parameters = parameters
     }
@@ -181,8 +176,6 @@ internal struct DrawStateModifier<Content>: Element, WorkloadElement, BodylessCo
     var content: Content
     var apply: (inout MSEnvironmentValues) -> Void
 
-    var collapsedContent: any Element { content }
-
     func applyCollapsed(to node: Node, state: inout CollapseState) throws {
         apply(&node.environmentValues)
     }
@@ -202,8 +195,6 @@ internal struct DrawStateModifier<Content>: Element, WorkloadElement, BodylessCo
 internal struct ScopeModifier<Content>: Element, WorkloadElement, BodylessContentElement, CollapsibleWorkloadModifier where Content: Element {
     var content: Content
     var action: (RecordingScope) throws -> Void
-
-    var collapsedContent: any Element { content }
 
     func applyCollapsed(to node: Node, state: inout CollapseState) throws {
         try action(try node.environmentValues.recordingScope.orThrow(.missingEnvironment("recordingScope")))

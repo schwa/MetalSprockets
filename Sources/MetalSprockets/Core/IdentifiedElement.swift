@@ -2,17 +2,34 @@
 ///
 /// `@unchecked Sendable` because the underlying value is only ever read as a hashable
 /// key, matching how `ShaderLibrary.ID` erases its payload.
+///
+/// `Int` identities (for example `ForEach(..., id: \.offset)`) are stored directly, so building, hashing and comparing
+/// them every frame does not go through `AnyHashable`. An `Int` identity never equals one of another type.
 public struct AnyElementID: Hashable, @unchecked Sendable {
-    private let base: AnyHashable
+    private enum Storage: Hashable {
+        case int(Int)
+        case other(AnyHashable)
+    }
+
+    private let storage: Storage
 
     public init<ID>(_ id: ID) where ID: Hashable {
-        self.base = AnyHashable(id)
+        if ID.self == Int.self {
+            storage = .int(unsafeBitCast(id, to: Int.self))
+        } else {
+            storage = .other(AnyHashable(id))
+        }
     }
 }
 
 extension AnyElementID: CustomStringConvertible {
     public var description: String {
-        String(describing: base.base)
+        switch storage {
+        case .int(let value):
+            String(describing: value)
+        case .other(let value):
+            String(describing: value.base)
+        }
     }
 }
 
@@ -22,7 +39,16 @@ internal protocol ExplicitlyIdentifiedElement {
 }
 
 /// Wrapper produced by ``Element/id(_:)``.
-internal struct IdentifiedElement<Content, ID>: Element, ExplicitlyIdentifiedElement where Content: Element, ID: Hashable {
+///
+/// Bodyless, so visiting its content needs no body evaluation or observation tracking: one per `ForEach` item.
+/// An identity-only wrapper: the reconciler gives its content the wrapper's identity and skips the wrapper's node.
+internal protocol IdentityWrapperElement: ExplicitlyIdentifiedElement {
+    var wrappedContent: any Element { get }
+}
+
+internal struct IdentifiedElement<Content, ID>: Element, BodylessContentElement, IdentityWrapperElement where Content: Element, ID: Hashable {
+    typealias Body = Never
+
     var content: Content
     var id: ID
 
@@ -30,9 +56,7 @@ internal struct IdentifiedElement<Content, ID>: Element, ExplicitlyIdentifiedEle
         AnyElementID(id)
     }
 
-    var body: some Element {
-        content
-    }
+    var wrappedContent: any Element { content }
 }
 
 public extension Element {

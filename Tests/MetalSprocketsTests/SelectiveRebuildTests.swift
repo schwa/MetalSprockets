@@ -172,6 +172,40 @@ struct SelectiveRebuildTests {
         #expect(Set(system.nodes.keys) == identifiersWithExtra)
     }
 
+    struct OptionalIdentifiedSibling: Element {
+        var includesIdentified: Bool
+
+        var body: some Element {
+            if includesIdentified {
+                NamedChild(name: "identified").id("x")
+            }
+            NamedChild(name: "plain")
+        }
+    }
+
+    @Test("An unidentified sibling keeps its identity when an identified sibling of its type comes and goes")
+    func identifiedSiblingDoesNotShiftIndices() throws {
+        let system = System()
+        try system.update(root: OptionalIdentifiedSibling(includesIdentified: false))
+        let plain = try #require(system.nodes.first { ($0.value.element as? NamedChild)?.name == "plain" }?.key)
+        try system.update(root: OptionalIdentifiedSibling(includesIdentified: true))
+        #expect(system.nodes.contains { $0.key == plain && ($0.value.element as? NamedChild)?.name == "plain" })
+    }
+
+    @Test("Nested .id() keeps both identities, and a single .id() gives its content the identity")
+    func nestedExplicitIDs() throws {
+        let system = System()
+        try system.update(root: NamedChild(name: "n").id("inner").id("outer"))
+        let child = try #require(system.nodes.values.first { $0.element is NamedChild })
+        let ids = child.id.atoms.compactMap(\.explicitID).map(\.description)
+        #expect(ids == ["outer", "inner"])
+
+        let single = System()
+        try single.update(root: NamedChild(name: "n").id("only"))
+        let node = try #require(single.nodes.values.first { $0.element is NamedChild })
+        #expect(node.id.atoms.last?.explicitID?.description == "only")
+    }
+
     struct Reordering: Element {
         var reversed: Bool
 

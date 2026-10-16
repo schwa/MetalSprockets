@@ -3,10 +3,10 @@ import MetalSprocketsSupport
 package extension System {
     // Signposted as Setup and Workload by `render(root:)`.
     func processSetup() throws {
-        try process(needsSetup: true) { element, node in
-            try element.setupEnter(node)
-        } exit: { element, node in
-            try element.setupExit(node)
+        try process(needsSetup: true) { setupType, node in
+            try setupType.setupEnter(of: node.element, node: node)
+        } exit: { setupType, node in
+            try setupType.setupExit(of: node.element, node: node)
             node.needsSetup = false
         }
     }
@@ -61,15 +61,15 @@ internal extension System {
             state.skipDepth += 1
             return
         }
-        guard node.typeInfo.isBodyless, let bodylessElement = node.element as? any BodylessElement else {
+        guard let bodylessType = node.typeInfo.bodylessType else {
             return
         }
-        if bodylessElement.skipsWorkload(node) {
+        if bodylessType.skipsWorkload(of: node.element, node: node) {
             state.skipDepth = 1
             return
         }
-        if node.typeInfo.isWorkload, let workloadElement = bodylessElement as? any WorkloadElement {
-            try workloadElement.workloadEnter(node)
+        if let workloadType = node.typeInfo.workloadType {
+            try workloadType.workloadEnter(of: node.element, node: node)
             state.enteredNodes.append(node)
         }
     }
@@ -80,23 +80,23 @@ internal extension System {
             state.skipDepth -= 1
             return
         }
-        guard node.typeInfo.isWorkload, let workloadElement = node.element as? any WorkloadElement else {
+        guard let workloadType = node.typeInfo.workloadType else {
             return
         }
         if state.enteredNodes.last === node {
             state.enteredNodes.removeLast()
         }
-        try workloadElement.workloadExit(node)
+        try workloadType.workloadExit(of: node.element, node: node)
     }
 
     /// Runs `workloadExit` for every still-entered node, innermost first.
     private func unwindWorkload(_ state: inout WorkloadTraversalState) {
         for node in state.enteredNodes.reversed() {
-            guard let workloadElement = node.element as? any WorkloadElement else {
+            guard let workloadType = node.typeInfo.workloadType else {
                 continue
             }
             do {
-                try workloadElement.workloadExit(node)
+                try workloadType.workloadExit(of: node.element, node: node)
             } catch {
                 logger?.error("workloadExit failed while unwinding after an error: \(error)")
             }
@@ -117,7 +117,7 @@ internal extension System {
         node.environmentValues.inherit(from: parentNode.environmentValues)
     }
 
-    func process(needsSetup: Bool = false, enter: (any SetupElement, Node) throws -> Void, exit: (any SetupElement, Node) throws -> Void) throws {
+    func process(needsSetup: Bool = false, enter: (any SetupElement.Type, Node) throws -> Void, exit: (any SetupElement.Type, Node) throws -> Void) throws {
         try withCurrentSystem {
             assert(traversalContext.isEmpty)
             defer { traversalContext.clear() }
@@ -126,12 +126,12 @@ internal extension System {
                 case .enter(let node):
                     traversalContext.push(node)
                     inheritEnvironmentFromActiveParent(node)
-                    if node.typeInfo.isSetup, !needsSetup || node.needsSetup, let bodylessElement = node.element as? any SetupElement {
-                        try enter(bodylessElement, node)
+                    if let setupType = node.typeInfo.setupType, !needsSetup || node.needsSetup {
+                        try enter(setupType, node)
                     }
                 case .exit(let node):
-                    if node.typeInfo.isSetup, !needsSetup || node.needsSetup, let bodylessElement = node.element as? any SetupElement {
-                        try exit(bodylessElement, node)
+                    if let setupType = node.typeInfo.setupType, !needsSetup || node.needsSetup {
+                        try exit(setupType, node)
                     }
                     traversalContext.pop()
                 }

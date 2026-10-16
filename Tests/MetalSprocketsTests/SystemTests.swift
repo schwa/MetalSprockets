@@ -145,19 +145,19 @@ struct SystemTests {
         let container1 = MultiChildContainer(children: [1, 2])
         try system.render(root: container1)
 
-        // Should have: container + ForEach + 2 * (IdentifiedElement + TestElement) = 6 nodes.
-        // ForEach wraps each child in an IdentifiedElement so identity follows the data (#209).
-        #expect(system.orderedIdentifiers.count == 6)
+        // Should have: container + ForEach + 2 * TestElement = 4 nodes. ForEach wraps each child in an
+        // IdentifiedElement so identity follows the data (#209); the wrapper's identity goes on the child's own node.
+        #expect(system.orderedIdentifiers.count == 4)
         Self.expectConsistentIdentifiers(system)
 
         let container2 = MultiChildContainer(children: [1, 2, 3])
         try system.render(root: container2)
 
-        // Should now have: container + ForEach + 3 * (IdentifiedElement + TestElement) = 8 nodes
-        #expect(system.orderedIdentifiers.count == 8)
+        // Should now have: container + ForEach + 3 * TestElement = 5 nodes
+        #expect(system.orderedIdentifiers.count == 5)
         Self.expectConsistentIdentifiers(system)
 
-        let newChildId = system.orderedIdentifiers[7]
+        let newChildId = system.orderedIdentifiers[4]
         let newChildNode = system.nodes[newChildId]
         #expect((newChildNode?.element as? TestElement)?.value == 3)
     }

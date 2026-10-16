@@ -1,7 +1,12 @@
 internal final class Node: Identifiable {
     weak var system: System?
-    var id: StructuralIdentifier
+    // Fixed for the node's life. A node's identifier is always its parent node's identifier plus one atom, which lets
+    // the reconciler match a reused node by its parent node and last atom (see `TreeReconciler`).
+    let id: StructuralIdentifier
     var parentIdentifier: StructuralIdentifier?
+    /// The parent node in the most recent traversal that reached this node. Children do not own parents' lifetimes in
+    /// any cycle: parents never reference children.
+    var parentNode: Node?
     var element: (any Element)
 
     var stateProperties: [String: Any] = [:]

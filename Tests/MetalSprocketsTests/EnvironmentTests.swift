@@ -25,6 +25,25 @@ struct EnvironmentTests {
         #expect(child.exampleOptional == nil)
     }
 
+    @Test func `the parameter set inherits like any other value`() {
+        var parent = MSEnvironmentValues()
+        var set = ParameterSet()
+        set.set("a", value: Float(1))
+        parent.parameterSet = set
+        var child = MSEnvironmentValues()
+        child.inherit(from: parent)
+        #expect(child.parameterSet != nil)
+        #expect(child.inheritedParameterSet != nil)
+        child.parameterSet = nil
+        #expect(child.parameterSet == nil)
+        #expect(child.inheritedParameterSet != nil)
+        child.removeInheritedValues()
+        #expect(child.inheritedParameterSet == nil)
+        var grandchild = MSEnvironmentValues()
+        grandchild.inherit(from: child)
+        #expect(grandchild.parameterSet == nil)
+    }
+
     @Test func `values of every kind round-trip through storage`() {
         var values = MSEnvironmentValues()
         values.exampleValue = "set"

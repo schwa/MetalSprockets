@@ -90,14 +90,29 @@ public struct MSEnvironmentValues {
         inheritedValues[.init(key)].map { unsafeDowncast($0, to: TypedBox<Key.Value>.self).value } ?? Key.defaultValue
     }
 
+    /// The parameter set, stored outside the dictionaries. Parameter modifiers write it on every draw every frame, and a
+    /// dictionary value of its own would make every such node copy and merge the whole environment each phase.
+    private var ownParameterSet: ParameterSet??
+    private var inheritedParameterSetStorage: ParameterSet?
+
+    internal var parameterSet: ParameterSet? {
+        get { ownParameterSet ?? inheritedParameterSetStorage }
+        set { ownParameterSet = .some(newValue) }
+    }
+
+    /// The parameter set as inherited from the parent, ignoring this environment's own write.
+    internal var inheritedParameterSet: ParameterSet? { inheritedParameterSetStorage }
+
     internal mutating func inherit(from parent: Self) {
         inheritedValues = parent.effectiveValues
+        inheritedParameterSetStorage = parent.parameterSet
         recomputeEffectiveValues()
     }
 
     /// Drops inherited values, keeping the values written directly on this environment.
     internal mutating func removeInheritedValues() {
         inheritedValues = [:]
+        inheritedParameterSetStorage = nil
         recomputeEffectiveValues()
     }
 
