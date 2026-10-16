@@ -8348,15 +8348,42 @@ Done when: a test records and resolves timestamps this way for a render and a co
 
 +++
 status: open
-priority: low
+priority: medium
 kind: enhancement
-labels: area:metal4, area:api, area:timing, effort:s
+labels: area:metal4, area:api, area:timing, effort:m
 depends: 447
 created: 2026-09-30T04:33:40Z
-updated: 2026-09-30T16:18:18Z
+updated: 2026-10-16T13:02:01Z
 +++
 
-GPUCounterSampler and GPUCounterSampleIndex gave callers direct control of counter sampling. On Metal 4 the only public route is .gpuCounters(label:_:), one sample per pass; the counter heap inside Metal4TimestampSampler is internal. Possible APIs: a .timestamp(into:index:) modifier, or access to the heap behind .gpuCounters. Decide after the do-it-yourself route is verified (see the counter-heap documentation issue); if that route is enough, close this.
+GPUCounterSampler and GPUCounterSampleIndex gave callers direct control of counter sampling. On Metal 4 the only public route is .gpuCounters(label:_:), one sample per pass; the counter heap inside Metal4TimestampSampler is internal.
+
+#447 verified the do-it-yourself route (client-owned MTL4CounterHeap written from RenderCommand, ComputeCommand and Draw closures). It works, but the caller must create, invalidate, keep alive and resolve the heap, convert ticks, and handle several frames in flight. Per-draw and per-subtree GPU timing is wanted for the #486 / #487 / #489 performance work.
+
+## Proposed design (per Jonathan)
+
+```swift
+RenderPass {
+    RenderPipeline(...) {
+        ForEach(items) { item in
+            Draw { ... }
+                .gpuTimed("draw \(item.id)")      // brackets this subtree
+        }
+    }
+    .gpuTimed("opaque")
+}
+.onGPUTimings { timings in                         // once per submission, after completion
+    // [GPUTiming(label:, start:, end:, duration:)] in tree order
+}
+```
+
+- The library leases a heap per submission, sized to the number of .gpuTimed markers, from a pool (as .gpuCounters does now), and returns it on completion. No raw heap, tick conversion or nonisolated(unsafe) for callers. Several frames in flight are safe.
+- Inside a pass: timestamp before and after the subtree on that encoder (render: after .vertex for start, after .fragment for end, as .gpuCounters does).
+- On or above a pass: times the whole pass, like .gpuCounters today.
+- Not in v1: one bracket spanning several passes.
+- .gpuCounters may become a special case of this, or stay as is; decide later.
+- The raw-heap route from #447 stays available for anything this does not cover.
+- Open question: feed .onGPUTimings results into the per-frame timing info from #488, so RenderView clients see CPU phases and GPU timings together.
 
 - `2026-09-30T04:33:46Z`: Depends on #447.
 
