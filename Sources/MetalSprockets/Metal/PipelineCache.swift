@@ -118,6 +118,7 @@ internal final class PipelineCache {
         let functionTables: FunctionTables
         /// Built once per compiled pipeline; setup publishes it every frame.
         let reflection: Reflection?
+        let tableLabels: [MTLFunctionType: String]
 
         init(state: any MTLRenderPipelineState, bindings: PipelineBindings, stages: [MTLFunctionType] = [.vertex, .fragment]) {
             self.state = state
@@ -125,6 +126,7 @@ internal final class PipelineCache {
             self.stages = stages
             functionTables = FunctionTables(render: state)
             reflection = state.reflection.map(Reflection.init)
+            tableLabels = ParameterSet.tableLabels(pipelineLabel: state.label, stages: stages)
         }
     }
 
@@ -145,12 +147,14 @@ internal final class PipelineCache {
         let bindings: PipelineBindings
         let functionTables: FunctionTables
         let reflection: Reflection?
+        let tableLabels: [MTLFunctionType: String]
 
         init(state: any MTLComputePipelineState, bindings: PipelineBindings) {
             self.state = state
             self.bindings = bindings
             functionTables = FunctionTables(compute: state)
             reflection = state.reflection.map(Reflection.init)
+            tableLabels = ParameterSet.tableLabels(pipelineLabel: state.label, stages: [.kernel])
         }
     }
 

@@ -96,8 +96,6 @@ internal struct PassFormats {
     }
 }
 
-/// Adds parameters during workload, rebuilding from the parent's current parameters every frame. Reading the
-/// inherited value (not this node's own earlier write) keeps skipped, reused nodes from pinning stale parameters.
 /// State carried through a collapsed chain of workload modifiers.
 internal struct CollapseState {
     /// The parameter set being built, started from the inherited one by the first parameter modifier in the chain.
@@ -113,13 +111,29 @@ internal struct CollapseState {
 internal protocol CollapsibleWorkloadModifier {
     var collapsedContent: any Element { get }
     func applyCollapsed(to node: Node, state: inout CollapseState) throws
+
+    // Called through a metatype cached per type (`ElementTypeInfo.collapsibleType`). `as! Self` is a cast to a concrete
+    // type, which avoids the protocol-conformance lookup of `as? any CollapsibleWorkloadModifier` on every element of
+    // every chain, every frame.
+    static func collapsedContent(of element: any Element) -> any Element
+    static func applyCollapsed(_ element: any Element, to node: Node, state: inout CollapseState) throws
 }
 
 extension CollapsibleWorkloadModifier {
+    static func collapsedContent(of element: any Element) -> any Element {
+        // swiftlint:disable:next force_cast
+        (element as! Self).collapsedContent
+    }
+
+    static func applyCollapsed(_ element: any Element, to node: Node, state: inout CollapseState) throws {
+        // swiftlint:disable:next force_cast
+        try (element as! Self).applyCollapsed(to: node, state: &state)
+    }
+
     func visitInnermost(_ visit: (any Element) throws -> Void) throws {
         var innermost = collapsedContent
-        while let next = innermost as? any CollapsibleWorkloadModifier {
-            innermost = next.collapsedContent
+        while let collapsible = ElementTypeInfo.of(innermost).collapsibleType {
+            innermost = collapsible.collapsedContent(of: innermost)
         }
         try visit(innermost)
     }
@@ -128,9 +142,9 @@ extension CollapsibleWorkloadModifier {
         var state = CollapseState()
         try applyCollapsed(to: node, state: &state)
         var inner = collapsedContent
-        while let next = inner as? any CollapsibleWorkloadModifier {
-            try next.applyCollapsed(to: node, state: &state)
-            inner = next.collapsedContent
+        while let collapsible = ElementTypeInfo.of(inner).collapsibleType {
+            try collapsible.applyCollapsed(inner, to: node, state: &state)
+            inner = collapsible.collapsedContent(of: inner)
         }
         if let parameters = state.parameters {
             node.environmentValues.parameterSet = parameters

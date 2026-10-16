@@ -64,12 +64,20 @@ internal extension Element {
 /// A type is recorded only when one reflection found no dynamic property and no optional field. An optional field could
 /// hold a dynamic property in a later value, so such types are always reflected. A field declared as `Any` or another
 /// existential is not detected and is assumed to keep the kind of value it first held.
+/// Library elements that never hold a dynamic property, even behind an optional or `Any` field, so they are cached
+/// without the optional-field caution (#516).
+internal protocol WithoutDynamicProperties {}
+
 internal enum DynamicPropertyCache {
     private static let typesWithout = Mutex<Set<ObjectIdentifier>>([])
 
     static func mayHaveDynamicProperties(_ element: some Element) -> Bool {
         let key = ObjectIdentifier(type(of: element))
         if typesWithout.withLock({ $0.contains(key) }) {
+            return false
+        }
+        if element is any WithoutDynamicProperties {
+            typesWithout.withLock { _ = $0.insert(key) }
             return false
         }
         var canCache = true

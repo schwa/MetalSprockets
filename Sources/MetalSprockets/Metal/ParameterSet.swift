@@ -116,7 +116,25 @@ internal struct ParameterSet {
         vertexValues.append((layoutIndex, { try $0.scratch(values).gpuAddress }))
     }
 
-    func makeTables(for bindings: PipelineBindings, stages: [MTLFunctionType], functionTables: FunctionTables? = nil, pipelineLabel: String? = nil, scope: RecordingScope) throws -> [MTLFunctionType: any MTL4ArgumentTable] {
+    /// Argument table label for one stage of a pipeline. Pipelines precompute these (`tableLabels`) so draws do not build
+    /// strings (#514).
+    static func tableLabel(pipelineLabel: String?, stage: MTLFunctionType) -> String {
+        let stageName = switch stage {
+        case .vertex: "Vertex"
+        case .fragment: "Fragment"
+        case .kernel: "Compute"
+        case .object: "Object"
+        case .mesh: "Mesh"
+        default: "Stage \(stage.rawValue)"
+        }
+        return "\(pipelineLabel ?? "MetalSprockets"): \(stageName) Arguments"
+    }
+
+    static func tableLabels(pipelineLabel: String?, stages: [MTLFunctionType]) -> [MTLFunctionType: String] {
+        Dictionary(uniqueKeysWithValues: stages.map { ($0, tableLabel(pipelineLabel: pipelineLabel, stage: $0)) })
+    }
+
+    func makeTables(for bindings: PipelineBindings, stages: [MTLFunctionType], functionTables: FunctionTables? = nil, pipelineLabel: String? = nil, tableLabels: [MTLFunctionType: String] = [:], scope: RecordingScope) throws -> [MTLFunctionType: any MTL4ArgumentTable] {
         try validateVertexInputs()
         var tables: [MTLFunctionType: any MTL4ArgumentTable] = [:]
         for stage in stages {
@@ -127,15 +145,7 @@ internal struct ParameterSet {
             guard sizes.buffers + sizes.textures + sizes.samplers > 0 else {
                 continue
             }
-            let stageName = switch stage {
-            case .vertex: "Vertex"
-            case .fragment: "Fragment"
-            case .kernel: "Compute"
-            case .object: "Object"
-            case .mesh: "Mesh"
-            default: "Stage \(stage.rawValue)"
-            }
-            let label = "\(pipelineLabel ?? "MetalSprockets"): \(stageName) Arguments"
+            let label = tableLabels[stage] ?? Self.tableLabel(pipelineLabel: pipelineLabel, stage: stage)
             tables[stage] = try scope.argumentTable(sizes: sizes, label: label)
         }
         for entry in entries {

@@ -57,14 +57,26 @@ public struct MSEnvironmentValues {
         var value: Any.Type
     }
 
+    /// A stored value. Boxed with its static type so reads use `unsafeDowncast` instead of a dynamic cast from `Any`:
+    /// a key's value type is fixed, so the box for a key always has that key's `Value` type (#515).
+    class Box: CustomStringConvertible {
+        var description: String { "" }
+    }
+
+    final class TypedBox<Value>: Box {
+        let value: Value
+        init(_ value: Value) { self.value = value }
+        override var description: String { "\(value)" }
+    }
+
     /// Values written directly on this environment.
-    private(set) var values: [Key: Any] = [:]
+    private(set) var values: [Key: Box] = [:]
 
     /// The parent environment's effective values, captured when ``inherit(from:)`` was last called.
-    private(set) var inheritedValues: [Key: Any] = [:]
+    private(set) var inheritedValues: [Key: Box] = [:]
 
     /// ``values`` layered over ``inheritedValues``, maintained eagerly so lookups stay O(1).
-    private(set) var effectiveValues: [Key: Any] = [:]
+    private(set) var effectiveValues: [Key: Box] = [:]
 
     /// Re-reads the parent's effective values, leaving this environment's own values in place.
     ///
@@ -75,7 +87,7 @@ public struct MSEnvironmentValues {
     /// Accumulating modifiers use this so they rebuild from the parent's current value each frame instead of reading
     /// their own stale write back.
     internal func inheritedValue<Key: MSEnvironmentKey>(_ key: Key.Type) -> Key.Value {
-        (inheritedValues[.init(key)] as? Key.Value) ?? Key.defaultValue
+        inheritedValues[.init(key)].map { unsafeDowncast($0, to: TypedBox<Key.Value>.self).value } ?? Key.defaultValue
     }
 
     internal mutating func inherit(from parent: Self) {
@@ -90,9 +102,9 @@ public struct MSEnvironmentValues {
     }
 
     // Updates the one key in place instead of re-merging the whole environment (#498).
-    internal mutating func setValue(_ value: Any?, forKey key: Key) {
-        values[key] = value
-        effectiveValues[key] = value ?? inheritedValues[key]
+    internal mutating func setValue(_ box: Box?, forKey key: Key) {
+        values[key] = box
+        effectiveValues[key] = box ?? inheritedValues[key]
     }
 
     private mutating func recomputeEffectiveValues() {
@@ -138,13 +150,13 @@ public protocol MSEnvironmentKey {
 public extension MSEnvironmentValues {
     subscript<Key: MSEnvironmentKey>(key: Key.Type) -> Key.Value {
         get {
-            if let value = effectiveValues[.init(key)] as? Key.Value {
-                return value
+            guard let box = effectiveValues[.init(key)] else {
+                return Key.defaultValue
             }
-            return Key.defaultValue
+            return unsafeDowncast(box, to: TypedBox<Key.Value>.self).value
         }
         set {
-            setValue(newValue, forKey: .init(key))
+            setValue(TypedBox(newValue), forKey: .init(key))
         }
     }
 }

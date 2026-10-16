@@ -9826,6 +9826,7 @@ Expected
 Remaining: inherit still copies the parent's effective dictionary for every node that has own values (every ParameterModifier), once per phase; reads still cast Any back (swift_dynamicCast ~14% of frame samples). Ideas not tried: immutable layered environments (O(1) inherit, lookups walk only ancestors with own values); typed slots per @MSEntry key; writing parameterSet once per draw. Keeping open.
 
 - `2026-10-16T15:41:25Z`: From the real-app trace in #507: inheritEnvironmentFromActiveParent is about 12.5% of Workload. Per-draw environment reads are split out as #515.
+- `2026-10-16T15:56:09Z`: Casts on read are gone (#515: typed boxes). Remaining: inherit/recompute still copy the parent's effective dictionary for nodes with own values.
 
 ---
 
@@ -10194,17 +10195,20 @@ What is wrong
 Expected
 - Binding unchanged parameters costs little per draw.
 
+- `2026-10-16T15:56:09Z`: Partly addressed: collapsed chains are walked via a metatype cached in ElementTypeInfo (static requirements cast to the concrete type) instead of as? any CollapsibleWorkloadModifier; that cast was ~58% of ParameterModifier.workloadEnter in the benchmark. Cubes cpu 7.2 -> 6.8-6.9 ms. Still open: the ParameterSet is rebuilt every frame (a few allocations per draw), now a few percent.
+
 ---
 
 ## 514: Argument table labels are built as strings for every draw and stage
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:performance, area:metal4, effort:xs
 created: 2026-10-16T15:41:08Z
-updated: 2026-10-16T15:41:24Z
+updated: 2026-10-16T15:56:09Z
+closed: 2026-10-16T15:56:09Z
 +++
 
 Part of RFC 0006.
@@ -10215,17 +10219,20 @@ What is wrong
 Expected
 - No string is built per draw when the label has not changed.
 
+- `2026-10-16T15:56:08Z`: Fixed: render and compute pipelines precompute their per-stage argument-table labels (ParameterSet.tableLabels); makeTables looks them up by stage. No measurable change in the benchmark (string building was ~3% of Workload in the app trace).
+
 ---
 
 ## 515: Draw reads 13 separate environment values per draw
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:metal4, effort:m
 created: 2026-10-16T15:41:09Z
-updated: 2026-10-16T15:41:24Z
+updated: 2026-10-16T15:56:09Z
+closed: 2026-10-16T15:56:09Z
 +++
 
 Part of RFC 0006.
@@ -10239,17 +10246,20 @@ What is wrong
 Expected
 - A draw reads its state with a few cheap accesses, not 13 dictionary lookups and casts.
 
+- `2026-10-16T15:56:09Z`: Fixed by making every environment read cheaper rather than special-casing Draw: MSEnvironmentValues stores TypedBox<Value> per key and reads with unsafeDowncast (a key's value type is fixed), so no dynamic cast from Any. Writing nil still stores nil over the inherited value (unchanged; now tested). Cubes 1000 Release: cpu 8.3 -> 7.2 ms (workload 3.6 -> 2.8); draws 100/pass: 4.6 -> 4.0 ms.
+
 ---
 
 ## 516: DynamicPropertyCache never caches EnvironmentWritingModifier, so it is reflected every frame
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:performance, effort:xs
 created: 2026-10-16T15:41:09Z
-updated: 2026-10-16T15:41:24Z
+updated: 2026-10-16T15:56:10Z
+closed: 2026-10-16T15:56:10Z
 +++
 
 Part of RFC 0006.
@@ -10260,6 +10270,8 @@ What is wrong
 
 Expected
 - Library elements known to have no dynamic properties are never reflected for them.
+
+- `2026-10-16T15:56:09Z`: Fixed: internal WithoutDynamicProperties marker; DynamicPropertyCache records such types on first sight. EnvironmentWritingModifier adopts it. Draws scenario (100/pass, Release): update -> 2.9 ms, cpu 7.5-9.0 -> 4.6 ms.
 
 ---
 

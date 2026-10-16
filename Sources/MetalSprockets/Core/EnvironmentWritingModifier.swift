@@ -1,5 +1,5 @@
 // TODO: #22 Make into actual modifier.
-internal struct EnvironmentWritingModifier<Content: Element>: Element, BodylessElement, EnvironmentModifyingElement {
+internal struct EnvironmentWritingModifier<Content: Element>: Element, BodylessElement, EnvironmentModifyingElement, WithoutDynamicProperties {
     var content: Content
     var modify: (inout MSEnvironmentValues) -> Void
 

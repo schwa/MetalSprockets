@@ -265,6 +265,12 @@ From here on, Release only.
 | | draws 100/pass | 8.26 → 7.69–8.16 | 10.21 → 9.3–9.9 |
 | #506: never-equal propagates through nested struct fields (ForEach's `IdentifiedElement`) | cubes 1000 | 7.35–7.64 → 4.1–4.6 | 11.2–11.7 → 8.0–8.8 |
 | | draws 100/pass | 7.69–8.16 → 5.9–7.0 | 9.3–9.9 → 7.5–9.0 |
+| #516: `EnvironmentWritingModifier` never reflected for dynamic properties | draws 100/pass | → 2.9 | 7.5–9.0 → 4.6 |
+| #514: argument-table labels built once per pipeline | cubes 1000 | no measurable change | |
+| #515: environment values in typed boxes; reads use `unsafeDowncast`, no cast from `Any` | cubes 1000 | 4.4 → 4.0 (workload 3.6 → 2.8) | 8.3 → 7.2 |
+| | draws 100/pass | 2.9 → 2.6 | 4.6 → 4.0 |
+| Collapsed chains walked via a cached metatype, no protocol casts (#513, partly) | cubes 1000 | 4.0 → 3.9 | 7.2 → 6.8–6.9 |
+| | draws 100/pass | 2.6 → 2.5 | 4.0 → 3.9 |
 
 Example app, Release, 1000 cubes (reported): 51 fps; CPU 17.4 ms, of which Workload 11.3 ms, versus 3.5 ms in the
 benchmark. Not yet explained: #507.

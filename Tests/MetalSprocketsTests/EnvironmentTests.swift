@@ -5,11 +5,35 @@ import Testing
 extension MSEnvironmentValues {
     @MSEntry
     var exampleValue: String = "<default>"
+
+    @MSEntry
+    var exampleOptional: Int?
 }
 
 @MainActor
 @Suite
 struct EnvironmentTests {
+    // Existing behaviour, kept by the boxed storage (#515): nil is a value and hides the inherited one.
+    @Test func `writing nil to an optional key stores nil over the inherited value`() {
+        var parent = MSEnvironmentValues()
+        parent.exampleOptional = 1
+        var child = MSEnvironmentValues()
+        child.inherit(from: parent)
+        child.exampleOptional = 2
+        #expect(child.exampleOptional == 2)
+        child.exampleOptional = nil
+        #expect(child.exampleOptional == nil)
+    }
+
+    @Test func `values of every kind round-trip through storage`() {
+        var values = MSEnvironmentValues()
+        values.exampleValue = "set"
+        values.exampleOptional = 3
+        #expect(values.exampleValue == "set")
+        #expect(values.exampleOptional == 3)
+        #expect(MSEnvironmentValues().exampleValue == "<default>")
+    }
+
     @Test
     func testEnvironment1() throws {
         struct Example1: Element {

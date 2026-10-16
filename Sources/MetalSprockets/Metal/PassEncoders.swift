@@ -85,7 +85,7 @@ internal final class ComputePassEncoder {
 
     func dispatch(_ pipeline: PipelineCache.ComputePipeline, parameters: ParameterSet, grid: Grid, threadsPerThreadgroup: MTLSize? = nil) throws {
         let encoder = try activeEncoder()
-        let tables = try parameters.makeTables(for: pipeline.bindings, stages: [.kernel], functionTables: pipeline.functionTables, pipelineLabel: pipeline.state.label, scope: scope)
+        let tables = try parameters.makeTables(for: pipeline.bindings, stages: [.kernel], functionTables: pipeline.functionTables, pipelineLabel: pipeline.state.label, tableLabels: pipeline.tableLabels, scope: scope)
         let pipelineID = ObjectIdentifier(pipeline.state)
         if boundPipeline != pipelineID {
             encoder.setComputePipelineState(pipeline.state)
@@ -303,7 +303,7 @@ internal final class RenderPassEncoder {
 
     private func bind(_ pipeline: PipelineCache.RenderPipeline, parameters: ParameterSet) throws -> any MTL4RenderCommandEncoder {
         let encoder = try activeEncoder()
-        let tables = try parameters.makeTables(for: pipeline.bindings, stages: pipeline.stages, functionTables: pipeline.functionTables, pipelineLabel: pipeline.state.label, scope: scope)
+        let tables = try parameters.makeTables(for: pipeline.bindings, stages: pipeline.stages, functionTables: pipeline.functionTables, pipelineLabel: pipeline.state.label, tableLabels: pipeline.tableLabels, scope: scope)
         let pipelineID = ObjectIdentifier(pipeline.state)
         if boundPipeline != pipelineID {
             encoder.setRenderPipelineState(pipeline.state)

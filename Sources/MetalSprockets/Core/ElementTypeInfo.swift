@@ -11,6 +11,8 @@ internal struct ElementTypeInfo: Sendable {
     let isWorkload: Bool
     let isEnvironmentModifying: Bool
     let isExplicitlyIdentified: Bool
+    /// Set for collapsible workload modifiers, so their chains are walked without protocol casts.
+    let collapsibleType: (any CollapsibleWorkloadModifier.Type)?
 
     private static let cache = Mutex<[ObjectIdentifier: Self]>([:])
 
@@ -24,7 +26,8 @@ internal struct ElementTypeInfo: Sendable {
             isSetup: element is any SetupElement,
             isWorkload: element is any WorkloadElement,
             isEnvironmentModifying: element is any EnvironmentModifyingElement,
-            isExplicitlyIdentified: element is any ExplicitlyIdentifiedElement
+            isExplicitlyIdentified: element is any ExplicitlyIdentifiedElement,
+            collapsibleType: type(of: element) as? any CollapsibleWorkloadModifier.Type
         )
         cache.withLock { $0[key] = info }
         return info
