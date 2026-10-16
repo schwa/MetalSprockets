@@ -9361,3 +9361,105 @@ Ideas, not verified
 Related: #476 (argument tables rebuilt for every draw).
 
 ---
+
+## 487: No representative benchmark for per-frame CPU cost with many draw elements
+
++++
+status: new
+priority: high
+kind: enhancement
+labels: area:performance
+created: 2026-10-16T12:54:57Z
++++
+
+Follow-up to #486.
+
+What is missing
+- The only CPU benchmark is Metal4BaselineTests. It renders a fixed, tiny tree and is not a sweep over element count, modifier count or nesting.
+- Experiments/ReconciliationBenchmark (added while looking at #486, not committed yet) is a first attempt. It is not trusted yet:
+  - It measures whole-frame wall time, including tree construction, the GPU wait and submission, not individual phases.
+  - It rebuilds the full element tree every frame. We do not know how much of the time is building elements (closures, AnyElement boxes, Array(enumerated())) and how much is the framework.
+  - Release is only about 1.7x faster than debug (0.45 vs 0.26 ms per draw). That does not match what we see in real apps, where release makes a large difference. Either the benchmark is not representative or it hits a cost that optimization cannot remove. Unknown which.
+  - It is not run in CI and has no recorded baseline, so regressions and improvements are not tracked.
+
+Expected
+- A benchmark we trust, which sweeps draw count, modifier count and nesting. It reports per-phase CPU time (see the phase-timing issue) for debug and release, and has recorded baseline numbers.
+
+Current numbers (release, Apple silicon, 2 passes, 1280x800)
+- full modifiers, nested: about 0.26 ms per draw, linear in N
+- half modifiers: about 0.19 ms per draw
+- flat (no nesting): about 0.24 ms per draw
+
+---
+
+## 488: Client code cannot read per-phase CPU timings (update, setup, workload)
+
++++
+status: new
+priority: high
+kind: enhancement
+labels: area:performance
+created: 2026-10-16T12:54:57Z
++++
+
+Follow-up to #486.
+
+What is missing
+- System.render(root:) already measures update, setup and workload (System.PhaseTimings, System.lastPhaseTimings), but both are package-only. Client code cannot read them.
+- OffscreenRenderer.Rendering exposes gpuTime only.
+- FrameTimingStatistics (RenderView) exposes delta time, FPS and gpuTime, but no CPU phase breakdown.
+- Phases are not visible in Instruments: there are no signposts around update, setup or workload. The only signpost is RenderViewViewModel.draw().
+- There is no timing for work outside System, for example submission or waiting for a drawable.
+
+Expected
+- Client code can read CPU time per phase for each frame, from both RenderView and OffscreenRenderer, without @testable import.
+- Each phase appears as a named interval in Instruments.
+
+---
+
+## 489: Profile per-frame CPU cost with Instruments to find where the time goes
+
++++
+status: new
+priority: high
+kind: task
+labels: area:performance
+created: 2026-10-16T12:54:58Z
++++
+
+Follow-up to #486.
+
+What is missing
+- We do not know why one draw element costs about 0.26 ms of CPU in release. The client profile in #486 (debug only) points at StructuralIdentifier hash/==, isEqualStructurally, memmove and Array copies, but nobody has reproduced it with our own code.
+- We do not know why release is only about 1.7x faster than debug in the benchmark.
+
+Expected
+- Time Profiler (and Allocations if needed) traces of the benchmark in debug and release, at a fixed N.
+- A written breakdown of the top costs per phase, with the traces kept or summarised in the issue.
+
+Depends on having a trusted benchmark and phase timings (the other #486 follow-ups) so results can be read per phase.
+
+---
+
+## 490: Unknown whether ForEach defeats node reuse or equality checks in large trees
+
++++
+status: new
+priority: medium
+kind: task
+labels: area:performance
+created: 2026-10-16T12:54:58Z
++++
+
+Follow-up to #486.
+
+What is unknown
+- The slow trees in #486 and in Experiments/ReconciliationBenchmark put every draw inside a ForEach, often ForEach(Array(x.enumerated()), id: \.offset), sometimes nested, and erase each draw to AnyElement.
+- ForEach.visitChildrenBodyless was about 69% inclusive in the client profile.
+- We do not know whether ForEach (its closures, its ID handling, or how it builds structural identifiers for children) makes isEqualStructurally always fail, forces children to be rebuilt instead of reused, or makes identifiers long and costly to hash.
+- We do not know whether AnyElement erasure has the same effect.
+
+Expected
+- A measured comparison of the same draws as a ForEach, as an unrolled list, with and without AnyElement, showing per-phase cost and how many nodes are reused vs rebuilt per frame.
+
+---
