@@ -9770,14 +9770,14 @@ Repro
 Expected
 - Node lookup cost does not depend on the depth of the node.
 
-- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: InlineArray or interned identifiers instead of [Atom] paths; Span for traversal without copying.
-- `2026-10-16T13:57:32Z`: Notes on ~Copyable / borrowing / Span (discussion, not verified):
-- `2026-10-16T13:57:32Z`: StructuralIdentifier cannot be ~Copyable while it is a Dictionary key (Hashable requires Copyable). Interned identifiers (small integer or handle) would make copying irrelevant.
-- `2026-10-16T13:57:32Z`: borrowing / consuming parameters on hot paths (processElement, isEqual, appending, identifier passing) work on copyable types and may remove hidden copies and retain/release pairs. The #489 profile shows memmove, Atom initializeWithCopy and retain/release at roughly 10-15% self time.
-- `2026-10-16T13:57:32Z`: Span for walking atoms without copying arrays.
-- `2026-10-16T13:57:32Z`: These address copy cost, not the larger reflection costs in #495 and #496.
-- `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
-- `2026-10-16T14:22:55Z`: Partial fix (Release, cubes 1000, 30 frames, medians, ms):
+\- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: InlineArray or interned identifiers instead of [Atom] paths; Span for traversal without copying.
+\- `2026-10-16T13:57:32Z`: Notes on ~Copyable / borrowing / Span (discussion, not verified):
+\- `2026-10-16T13:57:32Z`: StructuralIdentifier cannot be ~Copyable while it is a Dictionary key (Hashable requires Copyable). Interned identifiers (small integer or handle) would make copying irrelevant.
+\- `2026-10-16T13:57:32Z`: borrowing / consuming parameters on hot paths (processElement, isEqual, appending, identifier passing) work on copyable types and may remove hidden copies and retain/release pairs. The #489 profile shows memmove, Atom initializeWithCopy and retain/release at roughly 10-15% self time.
+\- `2026-10-16T13:57:32Z`: Span for walking atoms without copying arrays.
+\- `2026-10-16T13:57:32Z`: These address copy cost, not the larger reflection costs in #495 and #496.
+\- `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+\- `2026-10-16T14:22:55Z`: Partial fix (Release, cubes 1000, 30 frames, medians, ms):
 - Step 1: StructuralIdentifier caches its path hash (extended from the parent's by the reconciler and by appending); == checks hash and length, then atoms leaf-first. Update 23.61 -> 17.06.
 - Step 2: the reconciler walks the previous traversal's nodes and reuses the node at the same position when its identifier matches: one comparison, no System.nodes lookups (processNode/reuseNode take the node). Update 17.06 -> 13.23.
 - draws 100/pass: update 22.19 -> 13.10.
@@ -9966,5 +9966,18 @@ created: 2026-10-16T14:20:54Z
 +++
 
 Add a toggle in the demo viewer to switch between rendering cubes with instancing and rendering them with a per-cube ForEach (the slow approach), for side-by-side performance comparison.
+
+---
+
+## 505: Add warmup frames to benchmarking
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-10-16T14:29:17Z
++++
+
+Benchmarks should render a configurable number of warmup frames before measuring, so pipeline compilation, resource allocation, and caching don't skew results.
 
 ---
