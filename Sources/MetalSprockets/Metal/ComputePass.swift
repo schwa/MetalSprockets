@@ -26,6 +26,7 @@ public struct ComputePass <Content>: Element, WorkloadElement, BodylessContentEl
             try pass.setLabel(label)
         }
         try pass.beginTimestamps(node.environmentValues.timestampRequest)
+        try pass.beginGPUTimings(node.environmentValues.gpuTimingPassRequests)
     }
 
     // Also runs while unwinding a thrown traversal, so the encoder always ends before the recording is discarded.
@@ -36,6 +37,7 @@ public struct ComputePass <Content>: Element, WorkloadElement, BodylessContentEl
         node.environmentValues.computePassEncoder = nil
         node.environmentValues.computeCommandEncoder = nil
         try pass.endTimestamps(node.environmentValues.timestampRequest)
+        try pass.endGPUTimings(node.environmentValues.gpuTimingPassRequests)
         try scope.endComputePass(pass, producerBarrier: node.environmentValues.passProducerBarrier)
         logger?.verbose?.info("Exit compute pass: \(label ?? "<unlabeled>") (\(node.element.internalDescription))")
     }

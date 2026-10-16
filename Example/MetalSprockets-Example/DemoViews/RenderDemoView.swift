@@ -35,6 +35,8 @@ struct RenderDemoView: View {
             try RenderPass(label: "Cube") {
                 try DemoCubeRenderPipeline(transform: transform, time: time)
             }
+            // Shown as its own row in the FrameTimingView HUD.
+            .gpuTimed("Cube pass")
             .onWorkloadEnter { environment in
                 let commandBuffer = try environment.commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
                 commandBuffer.label = "Cube Frame"

@@ -8347,13 +8347,14 @@ Done when: a test records and resolves timestamps this way for a render and a co
 ## 448: Decide whether to expose GPU timestamp heaps or a timestamp modifier publicly
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:metal4, area:api, area:timing, effort:m
 depends: 447
 created: 2026-09-30T04:33:40Z
-updated: 2026-10-16T13:02:01Z
+updated: 2026-10-16T13:26:28Z
+closed: 2026-10-16T13:26:28Z
 +++
 
 GPUCounterSampler and GPUCounterSampleIndex gave callers direct control of counter sampling. On Metal 4 the only public route is .gpuCounters(label:_:), one sample per pass; the counter heap inside Metal4TimestampSampler is internal.
@@ -9497,5 +9498,80 @@ What is unknown
 
 Expected
 - A measured comparison of the same draws as a ForEach, as an unrolled list, with and without AnyElement, showing per-phase cost and how many nodes are reused vs rebuilt per frame.
+
+---
+
+## 491: Unknown whether per-dispatch GPU timestamps on Metal 4 compute encoders are accurate
+
++++
+status: new
+priority: medium
+kind: task
+labels: area:timing, area:metal4
+created: 2026-10-16T13:23:23Z
++++
+
+Follow-up to #448.
+
+What is unknown
+- .gpuTimed is limited to pass level (#448). Inside a pass it measures nothing.
+- On Apple M5 Max, supportsCounterSampling(.atDispatchBoundary) is false. That enum is documented for the older MTLCounterSampleBuffer API (sampleCountersInBuffer), not for MTL4CounterHeap / writeTimestamp.
+- With Metal 4, writeTimestamp(granularity: .precise) around 32 dispatches in one compute encoder returned 64 of 64 non-zero, increasing timestamps. It is not known if those values are accurate per dispatch.
+- Two back-to-back precise timestamps on a compute encoder with no work between them: only the first is recorded, the second reads 0. .relaxed records both but merges separate dispatches into one value.
+
+Expected
+- Per-dispatch timestamps compared against Instruments (Metal System Trace) for dispatches of very different sizes.
+- A decision on whether .gpuTimed can be allowed inside compute passes.
+
+---
+
+## 492: Render-encoder timestamps between draws read 0 after the first few
+
++++
+status: new
+priority: low
+kind: task
+labels: area:timing, area:metal4
+created: 2026-10-16T13:23:23Z
++++
+
+Follow-up to #448.
+
+Observed (Apple M5 Max, Xcode 27 RC, one run, debug layer off)
+- 64 draws in one render pass, writeTimestamp(granularity: .precise, after: .vertex) before each draw and after: .fragment after each draw.
+- Only the first 9 writes (start0, end0 ... end3, start4) were non-zero. All later writes read 0.
+- All 4 recorded end timestamps were the same tick. start1 to start4 were the same tick.
+- The Metal 4 header says a render timestamp 'may also include subsequent operations'. No limit is documented.
+- supportsCounterSampling(.atDrawBoundary) is false on this device (older API).
+
+Unknown
+- Whether the cap is per encoder, per heap or per command buffer, and whether it depends on stage, granularity, draw count or the debug layer.
+- Whether per-draw GPU time on Apple GPUs is available at runtime at all, or only through Xcode GPU capture.
+
+Expected
+- A probe that varies those factors, with results recorded here.
+
+---
+
+## 493: Metal allows only 32 counter heaps per process; GPU timing fails hard when they run out
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: area:timing, area:metal4
+created: 2026-10-16T13:23:24Z
++++
+
+Found while adding .gpuTimed (#448).
+
+What is wrong
+- makeCounterHeap fails after 32 live counter heaps in a process (MTLTimestampCounterHeapDomain Code=1, 'too many heaps already allocated in this process or on the system'). AGX also logs 'MTLCounterHeap: Invalid heap size requested.'
+- .gpuCounters (TimestampSampler) and .onGPUTimings (GPUTimingHeapPool) each keep their own pool per node. Many such nodes, many frames in flight, or a leak can reach the limit.
+- When heap creation fails the error is thrown from the workload, so the whole frame fails, not only the timing.
+
+Expected
+- Running out of counter heaps does not fail rendering. Timing is skipped with a warning.
+- Ideally one shared heap pool per device.
 
 ---

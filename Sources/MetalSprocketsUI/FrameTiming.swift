@@ -1,4 +1,5 @@
 import Foundation
+import MetalSprockets
 
 // MARK: - FrameTimingStatistics
 
@@ -42,7 +43,11 @@ public struct FrameTimingStatistics: Sendable, Equatable {
     /// valid timing. Comes from ``MetalSprockets/SubmissionResult/gpuDuration``.
     public var gpuTime: TimeInterval?
 
-    public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil) {
+    /// The ``MetalSprockets/GPUTiming`` intervals from `gpuTimed` elements in the most recent completed frame.
+    public var gpuTimings: [GPUTiming]
+
+    public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil, gpuTimings: [GPUTiming] = []) {
+        self.gpuTimings = gpuTimings
         self.currentFPS = currentFPS
         self.deltaTime = deltaTime
         self.averageDeltaTime = averageDeltaTime
@@ -80,6 +85,9 @@ internal struct FrameTimingTracker: Sendable {
     /// GPU execution time from the most recently completed command buffer.
     var lastGPUTime: TimeInterval?
 
+    /// GPU timings from the most recently completed command buffer.
+    var lastGPUTimings: [GPUTiming] = []
+
     /// Record a new frame at the given timestamp and return updated statistics.
     @discardableResult
     mutating func recordFrame(timestamp: CFTimeInterval) -> FrameTimingStatistics {
@@ -114,7 +122,8 @@ internal struct FrameTimingTracker: Sendable {
                 minDeltaTime: 0,
                 maxDeltaTime: 0,
                 frameCount: frameCount,
-                gpuTime: lastGPUTime
+                gpuTime: lastGPUTime,
+                gpuTimings: lastGPUTimings
             )
         }
 
@@ -151,7 +160,8 @@ internal struct FrameTimingTracker: Sendable {
             minDeltaTime: windowCount > 0 ? minDelta : 0,
             maxDeltaTime: maxDelta,
             frameCount: frameCount,
-            gpuTime: lastGPUTime
+            gpuTime: lastGPUTime,
+            gpuTimings: lastGPUTimings
         )
     }
 }

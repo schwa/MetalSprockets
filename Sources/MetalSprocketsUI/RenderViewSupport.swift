@@ -51,11 +51,13 @@ internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable
     renderPassDescriptor: MTL4RenderPassDescriptor,
     currentDrawable: CAMetalDrawable?,
     drawableSize: CGSize,
-    onCompleted: @escaping @Sendable (SubmissionResult) -> Void
+    onCompleted: @escaping @Sendable (SubmissionResult) -> Void,
+    onGPUTimings: @escaping @Sendable ([GPUTiming]) -> Void = { _ in /* Timings are optional for callers. */ }
 ) throws -> some Element {
     try Group {
         content
     }
+    .onGPUTimings(onGPUTimings)
     .onCommandBufferCompleted(onCompleted)
     .capture(
         captureConfiguration?.enabled ?? false,

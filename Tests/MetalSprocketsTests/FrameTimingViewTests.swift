@@ -1,3 +1,4 @@
+import MetalSprockets
 @testable import MetalSprocketsUI
 import SwiftUI
 import Testing
@@ -96,6 +97,19 @@ struct FrameTimingViewRenderingTests {
         var statistics = Self.statistics
         statistics.gpuTime = nil
         #expect(rows(.all, statistics: statistics).map(\.label).contains("GPU") == false)
+    }
+
+    @Test func `gpu timings show one row each after the gpu row, with unique ids`() {
+        var statistics = Self.statistics
+        statistics.gpuTimings = [
+            GPUTiming(label: "GPU", startTimestamp: 0, endTimestamp: 0, duration: 0.0012),
+            GPUTiming(label: "Main", startTimestamp: 0, endTimestamp: 0, duration: 0.0034)
+        ]
+        let rows = rows(.all, statistics: statistics)
+        #expect(rows.map(\.label) == ["FPS", "Frame", "1s Range", "GPU", "GPU", "Main", "Frame #"])
+        #expect(Set(rows.map(\.id)).count == rows.count)
+        #expect(rows[5].value.contains("3.4"))
+        #expect(self.rows([.fps], statistics: statistics).map(\.label) == ["FPS"])
     }
 
     @Test func `only the fps row is coloured`() {

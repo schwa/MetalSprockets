@@ -699,6 +699,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     viewportSize: [UInt32(view.drawableSize.width), UInt32(view.drawableSize.height)]
                 )
                 frameTimingTracker.lastGPUTime = frameRenderer.lastGPUTime
+                frameTimingTracker.lastGPUTimings = frameRenderer.lastGPUTimings
                 let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
                 let context = RenderViewContext(frameUniforms: frameUniforms, frameTimingStatistics: frameTimingStatistics)
                 frameTimingChange?(frameTimingStatistics)
@@ -713,10 +714,14 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     shaderStore: shaderStore ?? fallbackShaderStore,
                     renderPassDescriptor: currentRenderPassDescriptor,
                     currentDrawable: currentDrawable,
-                    drawableSize: view.drawableSize
-                ) { [frameRenderer] result in
-                    frameRenderer.lastGPUTime = result.gpuDuration
-                }
+                    drawableSize: view.drawableSize,
+                    onCompleted: { [frameRenderer] result in
+                        frameRenderer.lastGPUTime = result.gpuDuration
+                    },
+                    onGPUTimings: { [frameRenderer] timings in
+                        frameRenderer.lastGPUTimings = timings
+                    }
+                )
                 let contentDuration = CACurrentMediaTime() - t0
 
                 do {

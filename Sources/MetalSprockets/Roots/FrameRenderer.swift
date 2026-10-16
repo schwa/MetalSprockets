@@ -27,6 +27,14 @@ package final class FrameRenderer: @unchecked Sendable {
         set { _lastGPUTime.withLock { $0 = newValue } }
     }
 
+    private let _lastGPUTimings = OSAllocatedUnfairLock<[GPUTiming]>(initialState: [])
+
+    /// The ``GPUTiming`` intervals of the most recently completed frame. Safe to write from a completion handler.
+    package var lastGPUTimings: [GPUTiming] {
+        get { _lastGPUTimings.withLock { $0 } }
+        set { _lastGPUTimings.withLock { $0 = newValue } }
+    }
+
     package init(system: System = System()) {
         self.system = system
     }

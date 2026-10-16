@@ -121,6 +121,7 @@ internal final class ImmersiveRuntime<Content: Element> {
 
         let currentTime = CACurrentMediaTime()
         frameTimingTracker.lastGPUTime = frameRenderer.lastGPUTime
+        frameTimingTracker.lastGPUTimings = frameRenderer.lastGPUTimings
         let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
         frameTimingChange?(frameTimingStatistics)
 
@@ -141,6 +142,9 @@ internal final class ImmersiveRuntime<Content: Element> {
         let root = userContent
             .renderPassDescriptor(renderPassDescriptor)
             .immersiveRenderContext(renderContext)
+            .onGPUTimings { [frameRenderer] timings in
+                frameRenderer.lastGPUTimings = timings
+            }
             .onCommandBufferCompleted { [frameRenderer] result in
                 frameRenderer.lastGPUTime = result.gpuDuration
             }

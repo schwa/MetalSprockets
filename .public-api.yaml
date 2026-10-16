@@ -245,6 +245,25 @@ modules:
         interval is always `nil`. Failed or discarded work reports nothing. `handler` runs on the completion executor.
       source: Sources/MetalSprockets/Metal/GPUCounters.swift:83
     - decl: |
+        public func gpuTimed(_ label: String) -> some Element
+      doc: |-
+        Measures the GPU time of the passes in this subtree, from the start of the first ``RenderPass`` or
+        ``ComputePass`` to the end of the last. Results are delivered by the nearest enclosing ``onGPUTimings(_:)``;
+        with none, this does nothing.
+
+        Apple GPUs time at pass boundaries only, so place this on or above a pass. Inside a pass it measures nothing and
+        logs a warning. To time a smaller piece of work, put it in its own pass.
+
+        ```swift
+        Group {
+            RenderPass { ... }.gpuTimed("shadows")
+            RenderPass { ... }.gpuTimed("main")
+        }
+        .gpuTimed("frame")
+        .onGPUTimings { timings in ... }
+        ```
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:41
+    - decl: |
         public func id<ID>(_ id: ID) -> some Element where ID : Hashable
       doc: |-
         Binds an explicit identity to this element.
@@ -409,6 +428,15 @@ modules:
 
         - Parameter action: Closure invoked when the element is torn down.
       source: Sources/MetalSprockets/Core/OnDisappearModifier.swift:35
+    - decl: |
+        public func onGPUTimings(_ handler: @escaping @Sendable ([GPUTiming]) -> Void) -> some Element
+      doc: |-
+        Delivers the ``GPUTiming`` intervals from every ``gpuTimed(_:)`` in this subtree, in traversal order, once per
+        submission after the GPU completes it.
+
+        Failed or discarded work reports nothing. Intervals the GPU did not record (for example a `gpuTimed` subtree that
+        encoded no pass) are left out. `handler` runs on the completion executor.
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:50
     - decl: |
         public func onSetupEnter(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element
       source: Sources/MetalSprockets/Metal/SetupModifier.swift:20
@@ -933,10 +961,11 @@ modules:
       ```
 
       ``run(_:)`` submits and waits. ``submit(_:)`` returns after submission, allowing CPU/GPU overlap.
-      When `maximumInFlightSubmissions` is reached, submission waits for the oldest outstanding work.
+      When `maximumInFlightSubmissions` is reached, submission waits for the oldest outstanding work before recording
+      starts. Elements can index per-frame resources with ``MSEnvironmentValues/submissionIndex``.
 
       `Runner` is not thread-safe; use it from one isolation domain.
-    source: Sources/MetalSprockets/Roots/Runner.swift:29
+    source: Sources/MetalSprockets/Roots/Runner.swift:30
     members:
     - decl: 'public init(device: MTLDevice? = nil, commandQueue: (any MTL4CommandQueue)? = nil, shaderLogging: ShaderLogging = .processDefault, residency: ResidencyConfiguration = ResidencyConfiguration(), maximumInFlightSubmissions: Int = 3) throws'
       doc: |-
@@ -946,24 +975,24 @@ modules:
           - device: The device to use. Defaults to the system default device, which must support Metal 4.
           - commandQueue: A Metal 4 queue on `device`. Defaults to a new queue.
           - shaderLogging: Where shader `os_log` messages go. Defaults to ``ShaderLogging/processDefault``.
-      source: Sources/MetalSprockets/Roots/Runner.swift:47
+      source: Sources/MetalSprockets/Roots/Runner.swift:48
     - decl: 'public let commandQueue: any MTL4CommandQueue'
-      source: Sources/MetalSprockets/Roots/Runner.swift:31
+      source: Sources/MetalSprockets/Roots/Runner.swift:32
     - decl: 'public let device: MTLDevice'
-      source: Sources/MetalSprockets/Roots/Runner.swift:30
+      source: Sources/MetalSprockets/Roots/Runner.swift:31
     - decl: 'public let maximumInFlightSubmissions: Int'
-      source: Sources/MetalSprockets/Roots/Runner.swift:34
+      source: Sources/MetalSprockets/Roots/Runner.swift:35
     - decl: 'public var residency: ResidencyConfiguration { get set }'
-      source: Sources/MetalSprockets/Roots/Runner.swift:36
+      source: Sources/MetalSprockets/Roots/Runner.swift:37
     - decl: 'public func run<Content>(_ content: Content) throws where Content : Element'
       doc: |-
         Encodes `content`, commits it, and waits for the GPU to finish.
 
         Throws if encoding fails, or if the GPU reports a failure or does not finish within the deadline.
-      source: Sources/MetalSprockets/Roots/Runner.swift:59
+      source: Sources/MetalSprockets/Roots/Runner.swift:60
     - decl: 'public func submit<Content>(_ content: Content) throws -> Submission where Content : Element'
       doc: Submits `content` without waiting for its completion; waits for earlier work if the in-flight limit is reached.
-      source: Sources/MetalSprockets/Roots/Runner.swift:69
+      source: Sources/MetalSprockets/Roots/Runner.swift:70
   - decl: public final class ShaderCache
     source: Sources/MetalSprockets/Metal/ShaderCache.swift:5
     members:
@@ -1117,10 +1146,10 @@ modules:
       source: Sources/MetalSprockets/Metal/ComputePass.swift:14
   - decl: 'public struct ComputePipeline<Content> where Content : Element'
     doc: A compute pipeline compiled through the Metal 4 compiler. Linked functions come from ``Element/linkedFunctions(_:)``.
-    source: Sources/MetalSprockets/Metal/ComputePass.swift:49
+    source: Sources/MetalSprockets/Metal/ComputePass.swift:51
     members:
     - decl: 'public init(label: String? = nil, computeKernel: ComputeKernel, @ElementBuilder content: () throws -> Content) throws'
-      source: Sources/MetalSprockets/Metal/ComputePass.swift:54
+      source: Sources/MetalSprockets/Metal/ComputePass.swift:56
   - decl: public struct Draw
     doc: |-
       Issues draw calls with the enclosing ``RenderPipeline``.
@@ -1457,6 +1486,22 @@ modules:
         - Note: On tile-based deferred renderers (Apple GPUs) the vertex and fragment
           stages overlap, so `vertex.duration + fragment.duration` can exceed ``duration``.
       source: Sources/MetalSprockets/Metal/GPUCounters.swift:50
+  - decl: public struct GPUTiming
+    doc: A GPU interval measured by ``Element/gpuTimed(_:)`` and reported by ``Element/onGPUTimings(_:)``.
+    source: Sources/MetalSprockets/Metal/GPUTiming.swift:9
+    members:
+    - decl: 'public init(label: String, startTimestamp: MTLTimestamp, endTimestamp: MTLTimestamp, duration: TimeInterval)'
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:17
+    - decl: 'public var duration: TimeInterval'
+      doc: Elapsed GPU time in seconds.
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:15
+    - decl: 'public var endTimestamp: MTLTimestamp'
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:13
+    - decl: 'public var label: String'
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:10
+    - decl: 'public var startTimestamp: MTLTimestamp'
+      doc: Raw GPU timestamps, in GPU ticks.
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:12
   - decl: 'public struct Group<Content> where Content : Element'
     doc: |-
       A container that groups multiple elements for organizational purposes.
@@ -1725,6 +1770,9 @@ modules:
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:34
     - decl: 'public var linkedFunctions: [VisibleFunction]? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:37
+    - decl: 'public var maximumInFlightSubmissions: Int { get }'
+      doc: The in-flight limit of the root recording this tree. One outside a recording.
+      source: Sources/MetalSprockets/Metal/Recording.swift:23
     - decl: 'public var metalLoggingEnabled: Bool { get set }'
       doc: |-
         The process-wide `MS_METAL_LOGGING` setting. On Metal 4 a log state covers a whole command buffer, so roots
@@ -1748,6 +1796,16 @@ modules:
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:38
     - decl: 'public var stencilAttachment: MTLTexture? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:32
+    - decl: 'public var submissionIndex: UInt64 { get }'
+      doc: |-
+        The identifier of the submission being recorded. Every element in one recording sees the same value, and it
+        increases by one per committed submission. Zero outside a recording.
+
+        Use it with ``maximumInFlightSubmissions`` to pick a per-frame resource from a ring:
+        `slots[Int(submissionIndex % UInt64(maximumInFlightSubmissions))]`. Recording only starts when fewer than
+        `maximumInFlightSubmissions` submissions are in flight, so the GPU has finished with the slot. Changing the
+        limit at runtime breaks this pairing for the frames in flight.
+      source: Sources/MetalSprockets/Metal/Recording.swift:20
     - decl: 'public var vertexDescriptor: MTLVertexDescriptor? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:23
     - decl: 'public subscript<Key>(key: Key.Type) -> Key.Value where Key : MSEnvironmentKey { get set }'
@@ -2914,33 +2972,36 @@ modules:
   symbols:
   - decl: public struct FrameTimingDisplayOptions
     doc: Options controlling what information ``FrameTimingView`` displays.
-    source: Sources/MetalSprocketsUI/FrameTimingView.swift:4
+    source: Sources/MetalSprocketsUI/FrameTimingView.swift:5
     members:
     - decl: 'public init(rawValue: Int)'
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:7
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:8
     - decl: 'public let rawValue: Int'
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:5
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:6
     - decl: 'public static let all: FrameTimingDisplayOptions'
       doc: Show everything.
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:30
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:34
     - decl: 'public static let `default`: FrameTimingDisplayOptions'
       doc: 'The default display: FPS only.'
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:27
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:31
     - decl: 'public static let fps: FrameTimingDisplayOptions'
       doc: Show the current FPS (e.g., "60 FPS").
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:12
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:13
     - decl: 'public static let frameCount: FrameTimingDisplayOptions'
       doc: Show the total frame count.
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:21
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:22
     - decl: 'public static let frameTime: FrameTimingDisplayOptions'
       doc: Show the frame time in milliseconds (e.g., "16.7 ms").
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:15
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:16
     - decl: 'public static let gpuTime: FrameTimingDisplayOptions'
       doc: Show GPU execution time in milliseconds (e.g., "GPU 2.1 ms").
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:24
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:25
+    - decl: 'public static let gpuTimings: FrameTimingDisplayOptions'
+      doc: Show each `gpuTimed` interval from the last completed frame, by label, in milliseconds.
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:28
     - decl: 'public static let range: FrameTimingDisplayOptions'
       doc: Show the min/max frame time range (e.g., "8.3–33.2 ms").
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:18
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:19
   - decl: public struct FrameTimingStatistics
     doc: |-
       Per-frame timing statistics computed from recent frame history.
@@ -2958,35 +3019,38 @@ modules:
           self.statistics = statistics
       }
       ```
-    source: Sources/MetalSprocketsUI/FrameTiming.swift:20
+    source: Sources/MetalSprocketsUI/FrameTiming.swift:21
     members:
-    - decl: 'public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil)'
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:45
+    - decl: 'public init(currentFPS: Double, deltaTime: TimeInterval, averageDeltaTime: TimeInterval, minDeltaTime: TimeInterval, maxDeltaTime: TimeInterval, frameCount: Int, gpuTime: TimeInterval? = nil, gpuTimings: [GPUTiming] = [])'
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:49
     - decl: 'public var averageDeltaTime: TimeInterval'
       doc: The average delta time over the rolling window, in seconds.
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:28
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:29
     - decl: 'public var currentFPS: Double'
       doc: Smoothed frames per second, computed over the rolling window.
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:22
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:23
     - decl: 'public var deltaTime: TimeInterval'
       doc: The raw delta time of the most recent frame, in seconds.
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:25
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:26
     - decl: 'public var frameCount: Int'
       doc: Total number of frames rendered since the render view started.
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:37
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:38
     - decl: 'public var gpuTime: TimeInterval?'
       doc: |-
         GPU execution time of the most recent completed frame, in seconds.
 
         This is `nil` until the first submission completes (typically one frame behind), and when Metal reports no
         valid timing. Comes from ``MetalSprockets/SubmissionResult/gpuDuration``.
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:43
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:44
+    - decl: 'public var gpuTimings: [GPUTiming]'
+      doc: The ``MetalSprockets/GPUTiming`` intervals from `gpuTimed` elements in the most recent completed frame.
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:47
     - decl: 'public var maxDeltaTime: TimeInterval'
       doc: The maximum delta time over the rolling window, in seconds.
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:34
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:35
     - decl: 'public var minDeltaTime: TimeInterval'
       doc: The minimum delta time over the rolling window, in seconds.
-      source: Sources/MetalSprocketsUI/FrameTiming.swift:31
+      source: Sources/MetalSprocketsUI/FrameTiming.swift:32
   - decl: '@MainActor public struct FrameTimingView'
     doc: |-
       A compact view that displays frame timing statistics.
@@ -3011,15 +3075,15 @@ modules:
           }
       }
       ```
-    source: Sources/MetalSprocketsUI/FrameTimingView.swift:55
+    source: Sources/MetalSprocketsUI/FrameTimingView.swift:59
     members:
     - decl: '@MainActor public init(statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions = .default, targetFramesPerSecond: Double? = nil)'
       doc: |-
         - Parameter targetFramesPerSecond: The frame rate the FPS readout is colour-coded against. Defaults to the
           display's maximum refresh rate, so a 120 Hz display isn't marked green at 60 FPS.
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:66
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:70
     - decl: '@MainActor public var body: some View { get }'
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:72
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:76
   - decl: public struct FrameUniforms
     doc: |-
       Per-frame timing and viewport information.
@@ -3044,23 +3108,23 @@ modules:
       }
       .parameter("time", value: context.frameUniforms.time)
       ```
-    source: Sources/MetalSprocketsUI/RenderView.swift:851
+    source: Sources/MetalSprocketsUI/RenderView.swift:856
     members:
     - decl: 'public init(index: UInt32, time: Float, deltaTime: Float, viewportSize: SIMD2<UInt32>)'
       doc: Creates frame uniforms with the specified values.
-      source: Sources/MetalSprocketsUI/RenderView.swift:865
+      source: Sources/MetalSprocketsUI/RenderView.swift:870
     - decl: 'public var deltaTime: Float'
       doc: Time in seconds since the previous frame (useful for frame-rate independent animation).
-      source: Sources/MetalSprocketsUI/RenderView.swift:859
+      source: Sources/MetalSprocketsUI/RenderView.swift:864
     - decl: 'public var index: UInt32'
       doc: The zero-based frame number, incrementing each frame.
-      source: Sources/MetalSprocketsUI/RenderView.swift:853
+      source: Sources/MetalSprocketsUI/RenderView.swift:858
     - decl: 'public var time: Float'
       doc: Elapsed time in seconds since rendering started.
-      source: Sources/MetalSprocketsUI/RenderView.swift:856
+      source: Sources/MetalSprocketsUI/RenderView.swift:861
     - decl: 'public var viewportSize: SIMD2<UInt32>'
       doc: The drawable size in pixels as `[width, height]`.
-      source: Sources/MetalSprocketsUI/RenderView.swift:862
+      source: Sources/MetalSprocketsUI/RenderView.swift:867
   - decl: '@MainActor public struct OverlayBadgeModifier'
     doc: |-
       Styles a small floating readout that sits on top of rendered content.
@@ -3181,14 +3245,14 @@ modules:
           // Use rotation in your rendering...
       }
       ```
-    source: Sources/MetalSprocketsUI/RenderView.swift:819
+    source: Sources/MetalSprocketsUI/RenderView.swift:824
     members:
     - decl: 'public var frameTimingStatistics: FrameTimingStatistics { get }'
       doc: Frame timing statistics computed over a rolling window.
-      source: Sources/MetalSprocketsUI/RenderView.swift:824
+      source: Sources/MetalSprocketsUI/RenderView.swift:829
     - decl: 'public var frameUniforms: FrameUniforms { get }'
       doc: Per-frame timing and viewport information.
-      source: Sources/MetalSprocketsUI/RenderView.swift:821
+      source: Sources/MetalSprocketsUI/RenderView.swift:826
   - decl: public struct YCbCrBillboardRenderPass
     doc: |-
       Renders YCbCr video textures as a full-screen billboard.
@@ -3241,12 +3305,12 @@ modules:
 
       These are the fallbacks used when a view has not set the equivalent environment value with
       ``SwiftUI/View/renderViewLogFrame(_:)`` or ``SwiftUI/View/renderViewFatalErrorOnError(_:)``.
-    source: Sources/MetalSprocketsUI/RenderView.swift:794
+    source: Sources/MetalSprocketsUI/RenderView.swift:799
     members:
     - decl: 'public static var fatalErrorOnCatch: Bool { get }'
-      source: Sources/MetalSprocketsUI/RenderView.swift:799
+      source: Sources/MetalSprocketsUI/RenderView.swift:804
     - decl: 'public static var logFrame: Bool { get }'
-      source: Sources/MetalSprocketsUI/RenderView.swift:795
+      source: Sources/MetalSprocketsUI/RenderView.swift:800
   extensions:
   - extended_module: MetalSprockets
     symbols:
@@ -3353,12 +3417,12 @@ modules:
             scoped to its own lifetime.
           source: Sources/MetalSprocketsUI/RenderView.swift:113
       - decl: public extension View
-        source: Sources/MetalSprocketsUI/MTKView+Environment.swift:42
+        source: Sources/MetalSprocketsUI/MTKView+Environment.swift:43
         members:
         - decl: |
             @MainActor public func metalAutoResizeDrawable(_ value: Bool) -> some View
           doc: Sets whether the drawable automatically resizes with the view.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:152
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:153
         - decl: |
             @MainActor public func metalClearColor(_ value: MTLClearColor) -> some View
           doc: |-
@@ -3368,15 +3432,15 @@ modules:
             RenderView { ... }
                 .metalClearColor(MTLClearColor(red: 0.1, green: 0.1, blue: 0.2, alpha: 1.0))
             ```
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:121
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:122
         - decl: |
             @MainActor public func metalClearDepth(_ value: Double) -> some View
           doc: 'Sets the value used to clear the depth buffer (default: 1.0).'
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:126
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:127
         - decl: |
             @MainActor public func metalClearStencil(_ value: UInt32) -> some View
           doc: Sets the value used to clear the stencil buffer.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:131
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:132
         - decl: |
             @MainActor public func metalColorPixelFormat(_ value: MTLPixelFormat) -> some View
           doc: |-
@@ -3393,15 +3457,15 @@ modules:
             ```
 
             - Note: `RenderView(colorPixelFormat:)` sets the same thing and takes precedence over this modifier.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:79
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:80
         - decl: |
             @MainActor public func metalColorspace(_ value: CGColorSpace?) -> some View
           doc: Sets the color space for the drawable (macOS only).
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:165
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:166
         - decl: |
             @MainActor public func metalDepthStencilAttachmentTextureUsage(_ value: MTLTextureUsage) -> some View
           doc: Sets the texture usage for depth/stencil attachments.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:52
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:53
         - decl: |
             @MainActor public func metalDepthStencilPixelFormat(_ value: MTLPixelFormat) -> some View
           doc: |-
@@ -3419,11 +3483,11 @@ modules:
             ```
 
             - Note: `RenderView(depthStencilPixelFormat:)` sets the same thing and takes precedence over this modifier.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:97
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:98
         - decl: |
             @MainActor public func metalDepthStencilStorageMode(_ value: MTLStorageMode) -> some View
           doc: Sets the storage mode for depth/stencil textures.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:102
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:103
         - decl: |
             @MainActor public func metalEnableSetNeedsDisplay(_ value: Bool) -> some View
           doc: |-
@@ -3431,7 +3495,7 @@ modules:
 
             When `true`, you must call `setNeedsDisplay()` to trigger redraws.
             When `false` (default), the view redraws continuously.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:147
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:148
         - decl: |
             @MainActor public func metalFramebufferOnly(_ value: Bool) -> some View
           doc: |-
@@ -3439,18 +3503,18 @@ modules:
 
             When `true`, Metal can optimize the textures for rendering only.
             Set to `false` if you need to sample from the drawable.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:47
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:48
         - decl: |
             @MainActor public func metalIsPaused(_ value: Bool) -> some View
           doc: |-
             Pauses or resumes rendering.
 
             When `true`, the render loop stops and no frames are drawn.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:159
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:160
         - decl: |
             @MainActor public func metalMultisampleColorAttachmentTextureUsage(_ value: MTLTextureUsage) -> some View
           doc: Sets the texture usage for multisample color attachments.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:57
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:58
         - decl: |
             @MainActor public func metalPreferredFramesPerSecond(_ value: Int) -> some View
           doc: |-
@@ -3458,11 +3522,11 @@ modules:
 
             The system will attempt to render at this rate but may throttle
             based on device capabilities and power state.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:139
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:140
         - decl: |
             @MainActor public func metalPresentsWithTransaction(_ value: Bool) -> some View
           doc: Sets whether drawable presentation is synchronized with Core Animation transactions.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:62
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:63
         - decl: |
             @MainActor public func metalSampleCount(_ value: Int) -> some View
           doc: |-
@@ -3471,7 +3535,13 @@ modules:
             Common values: 1 (no MSAA), 2, 4, 8
 
             - Note: `RenderView(sampleCount:)` sets the same thing and takes precedence over this modifier.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:111
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:112
+        - decl: |
+            @MainActor public func metalWantsExtendedDynamicRangeContent(_ value: Bool) -> some View
+          doc: |-
+            Sets `CAMetalLayer.wantsExtendedDynamicRangeContent`, so values above 1 in a float drawable (e.g.
+            `.rgba16Float` with an extended linear color space) use the display's EDR headroom.
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:173
       - decl: public extension View
         source: Sources/MetalSprocketsUI/RenderView.swift:196
         members:

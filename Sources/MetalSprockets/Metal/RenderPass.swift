@@ -59,6 +59,7 @@ public struct RenderPass <Content>: Element, SetupElement, WorkloadElement, Body
             try pass.setLabel(label)
         }
         try pass.beginTimestamps(node.environmentValues.timestampRequest)
+        try pass.beginGPUTimings(node.environmentValues.gpuTimingPassRequests)
     }
 
     // Also runs while unwinding a thrown traversal, so the encoder always ends before the recording is discarded.
@@ -69,6 +70,7 @@ public struct RenderPass <Content>: Element, SetupElement, WorkloadElement, Body
         node.environmentValues.renderPassEncoder = nil
         node.environmentValues.renderCommandEncoder = nil
         try pass.endTimestamps(node.environmentValues.timestampRequest)
+        try pass.endGPUTimings(node.environmentValues.gpuTimingPassRequests)
         #if os(visionOS)
         if let renderContext = node.environmentValues.immersiveRenderContext {
             // The compositor ends the encoder itself, after drawing its own content. On device its Metal 4 endEncoding

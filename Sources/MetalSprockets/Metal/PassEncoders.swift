@@ -76,6 +76,7 @@ internal final class ComputePassEncoder {
     private(set) var operations: [Operation] = []
     // Last pipeline bound on the encoder, to skip redundant setComputePipelineState. nil forces the next set.
     private var boundPipeline: ObjectIdentifier?
+    private var lastSharedTimestamp: (owner: ObjectIdentifier, location: GPUTimingLocation)?
 
     fileprivate init(encoder: any MTL4ComputeCommandEncoder, scope: RecordingScope) {
         self.encoder = encoder
@@ -173,14 +174,27 @@ internal final class ComputePassEncoder {
         try activeEncoder().writeTimestamp(granularity: .precise, counterHeap: heap, index: index)
     }
 
+    /// Writes a precise timestamp, or returns the location of the previous one if `owner` wrote it and nothing has been
+    /// encoded since. A compute encoder records only the first of two back-to-back precise timestamps; the rest read 0.
+    func writeSharedTimestamp(owner: AnyObject, location: GPUTimingLocation, into heap: any MTL4CounterHeap) throws -> GPUTimingLocation {
+        if let last = lastSharedTimestamp, last.owner == ObjectIdentifier(owner), isActive {
+            return last.location
+        }
+        try activeEncoder().writeTimestamp(granularity: .precise, counterHeap: heap, index: location.index)
+        lastSharedTimestamp = (ObjectIdentifier(owner), location)
+        return location
+    }
+
     func pushDebugGroup(_ label: String) throws { try activeEncoder().pushDebugGroup(label) }
     func popDebugGroup() throws { try activeEncoder().popDebugGroup() }
     func setLabel(_ label: String) throws { try activeEncoder().label = label }
 
+    // Any encoder use, including another timestamp, ends sharing.
     private func activeEncoder() throws -> any MTL4ComputeCommandEncoder {
         guard isActive else {
             throw EncodingFailure.passEnded
         }
+        lastSharedTimestamp = nil
         return encoder
     }
 }

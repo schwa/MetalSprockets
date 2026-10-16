@@ -36,6 +36,7 @@ struct MetalSprockets_ExampleApp: App {
                 try ImmersiveRenderPass(context: context, label: "Cube") {
                     try ImmersiveCubeContent(context: context)
                 }
+                .gpuTimed("Cube pass")
             }
             .onFrameTimingChange { [immersiveFrameTiming] statistics in
                 Task { @MainActor in

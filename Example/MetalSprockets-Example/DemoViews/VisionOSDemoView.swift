@@ -30,6 +30,7 @@ struct VisionOSDemoView: View {
                     try RenderPass(label: "Cube Window") {
                         try DemoCubeRenderPipeline(transform: transform, time: time)
                     }
+                    .gpuTimed("Cube pass")
                 }
                 .metalDepthStencilPixelFormat(.depth32Float)
             }

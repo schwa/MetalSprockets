@@ -1,3 +1,4 @@
+import MetalSprockets
 import SwiftUI
 
 /// Options controlling what information ``FrameTimingView`` displays.
@@ -23,11 +24,14 @@ public struct FrameTimingDisplayOptions: OptionSet, Sendable {
     /// Show GPU execution time in milliseconds (e.g., "GPU 2.1 ms").
     public static let gpuTime = Self(rawValue: 1 << 4)
 
+    /// Show each `gpuTimed` interval from the last completed frame, by label, in milliseconds.
+    public static let gpuTimings = Self(rawValue: 1 << 5)
+
     /// The default display: FPS only.
     public static let `default`: FrameTimingDisplayOptions = [.fps]
 
     /// Show everything.
-    public static let all: FrameTimingDisplayOptions = [.fps, .frameTime, .range, .frameCount, .gpuTime]
+    public static let all: FrameTimingDisplayOptions = [.fps, .frameTime, .range, .frameCount, .gpuTime, .gpuTimings]
 }
 
 /// A compact view that displays frame timing statistics.
@@ -86,9 +90,11 @@ public struct FrameTimingView: View {
         var label: String
         var value: String
         var valueColor: Color?
+        // Set when the label is not unique, such as a user-chosen gpuTimed label.
+        var key: String?
 
         var id: String {
-            label
+            key ?? label
         }
     }
 
@@ -108,6 +114,11 @@ public struct FrameTimingView: View {
         }
         if options.contains(.gpuTime), let gpuTime = statistics.gpuTime {
             rows.append(Row(label: "GPU", value: formattedMilliseconds(gpuTime)))
+        }
+        if options.contains(.gpuTimings) {
+            for (index, timing) in statistics.gpuTimings.enumerated() {
+                rows.append(Row(label: timing.label, value: formattedMilliseconds(timing.duration), key: "gpuTiming.\(index)"))
+            }
         }
         if options.contains(.frameCount) {
             rows.append(Row(label: "Frame #", value: "\(statistics.frameCount)"))
@@ -197,7 +208,10 @@ internal struct FrameTimingRowsView: View {
 private extension FrameTimingStatistics {
     static func preview(currentFPS: Double) -> Self {
         let deltaTime = 1 / currentFPS
-        return Self(currentFPS: currentFPS, deltaTime: deltaTime, averageDeltaTime: deltaTime, minDeltaTime: deltaTime * 0.9, maxDeltaTime: deltaTime * 1.2, frameCount: 4_827, gpuTime: deltaTime * 0.125)
+        return Self(currentFPS: currentFPS, deltaTime: deltaTime, averageDeltaTime: deltaTime, minDeltaTime: deltaTime * 0.9, maxDeltaTime: deltaTime * 1.2, frameCount: 4_827, gpuTime: deltaTime * 0.125, gpuTimings: [
+            GPUTiming(label: "Shadows", startTimestamp: 0, endTimestamp: 0, duration: deltaTime * 0.03),
+            GPUTiming(label: "Main", startTimestamp: 0, endTimestamp: 0, duration: deltaTime * 0.09)
+        ])
     }
 }
 
