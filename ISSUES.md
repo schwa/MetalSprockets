@@ -9601,3 +9601,23 @@ Expected
 - Running out of counter heaps does not fail rendering.
 
 ---
+
+## 494: Deprecated API is still public: MetalSprocketsError.missingEnvironment(_: PartialKeyPath)
+
++++
+status: new
+priority: low
+kind: task
+labels: area:api,effort:xs,deferred
+created: 2026-10-16T13:44:31Z
++++
+
+What is still there
+- Sources/MetalSprockets/Support/Support.swift: MetalSprocketsError.missingEnvironment(_ key: PartialKeyPath<MSEnvironmentValues>) is marked @available(*, deprecated). Its message: key path descriptions lose the property name in Release builds.
+- The Example app still calls it: RenderDemoView.swift, .missingEnvironment(\.commandBuffer).
+- This is the only @available(..., deprecated) declaration in Sources (checked with rg).
+
+Expected
+- No deprecated public API remains, and no callers in the Example app or tests use it. .public-api.yaml updated.
+
+---
