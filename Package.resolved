@@ -1,5 +1,5 @@
 {
-  "originHash" : "7ec7fb3ae8ab994ee9ad810cb0a6118b08a40304690e8ff8be422c334f8c21a1",
+  "originHash" : "019cdb7b043bdbe546d0303fb8255b393c607773a566f9cde6476898ccbb73cc",
   "pins" : [
     {
       "identity" : "geometrylite3d",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/GoldenImage",
       "state" : {
-        "branch" : "0.1.5",
-        "revision" : "3701668a0d306bcb618fa5a39e66d252babcc723"
+        "revision" : "03b4d1557869ebb2161551edf97f7a27630dc7a7",
+        "version" : "0.1.6"
       }
     },
     {
@@ -87,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax.git",
       "state" : {
-        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
-        "version" : "602.0.0"
+        "revision" : "050f1a346fbbac0ca2cfb15a95274f7bd1cf0ccf",
+        "version" : "604.0.0"
       }
     },
     {

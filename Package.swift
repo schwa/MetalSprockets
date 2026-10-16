@@ -18,13 +18,13 @@ public let package = Package(
         .library(name: "MetalSprocketsSupport", targets: ["MetalSprocketsSupport"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0"),
-        .package(url: "https://github.com/schwa/MetalCompilerPlugin", from: "0.2.0"),
-        .package(url: "https://github.com/schwa/MetalSupport", from: "1.0.5"),
-        .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
-        .package(url: "https://github.com/schwa/GoldenImage", branch: "0.1.5"),
-        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.1.0"),
-        .package(url: "https://github.com/nalexn/ViewInspector", from: "0.10.0"),
+        .package(url: "https://github.com/schwa/GeometryLite3D", .upToNextMinor(from: "0.2.4")),
+        .package(url: "https://github.com/schwa/GoldenImage", .upToNextMinor(from: "0.1.6")),
+        .package(url: "https://github.com/schwa/MetalCompilerPlugin", .upToNextMinor(from: "0.4.1")),
+        .package(url: "https://github.com/schwa/MetalSupport", .upToNextMinor(from: "1.0.7")),
+        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.5.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "604.0.0"),
+        .package(url: "https://github.com/nalexn/ViewInspector", .upToNextMinor(from: "0.10.5")),
     ],
     targets: [
         .target(
