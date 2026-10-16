@@ -140,7 +140,7 @@ modules:
           - clamp: The maximum (or, for negative values, minimum) bias that may be applied.
 
         - Note: Only draws inside this element are biased; siblings are not.
-      source: Sources/MetalSprockets/Metal/DepthBiasModifier.swift:38
+      source: Sources/MetalSprockets/Metal/DepthBiasModifier.swift:46
     - decl: |
         public func depthCompare(function: MTLCompareFunction, enabled: Bool) -> some Element
       doc: |-
@@ -281,7 +281,7 @@ modules:
 
         - Parameter id: A hashable value identifying this element.
         - Returns: An element with the explicit identity applied.
-      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:54
+      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:78
     - decl: |
         public func linkedFunctions(_ functions: [VisibleFunction]) -> some Element
       doc: |-
@@ -621,39 +621,39 @@ modules:
       source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:110
     - decl: |
         @ElementBuilder public func useComputeResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage) -> some Element
-      source: Sources/MetalSprockets/Support/Support.swift:50
+      source: Sources/MetalSprockets/Support/Support.swift:43
     - decl: |
         public func useComputeResource(_ resource: any MTLResource, usage: MTLResourceUsage) -> some Element
       doc: Keeps `resource` resident and alive for the submission. See ``useResource(_:usage:stages:)``.
-      source: Sources/MetalSprockets/Support/Support.swift:45
+      source: Sources/MetalSprockets/Support/Support.swift:38
     - decl: |
         @ElementBuilder public func useComputeResources(_ resources: [any MTLResource]?, usage: MTLResourceUsage) -> some Element
-      source: Sources/MetalSprockets/Support/Support.swift:72
+      source: Sources/MetalSprockets/Support/Support.swift:65
     - decl: |
         public func useComputeResources(_ resources: [any MTLResource], usage: MTLResourceUsage) -> some Element
       doc: Keeps `resources` resident and alive for the submission.
-      source: Sources/MetalSprockets/Support/Support.swift:60
+      source: Sources/MetalSprockets/Support/Support.swift:53
     - decl: |
         public func useResidencySet(_ residencySet: any MTLResidencySet) -> some Element
       doc: Attaches an externally owned residency set to every submission this subtree encodes into.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:145
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:221
     - decl: |
         @ElementBuilder public func useResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
-      source: Sources/MetalSprockets/Support/Support.swift:24
+      source: Sources/MetalSprockets/Support/Support.swift:17
     - decl: |
         public func useResource(_ resource: any MTLResource, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       doc: |-
         Keeps `resource` resident and alive for the submission, for resources a shader reaches indirectly (argument
         buffers, GPU addresses) or that a raw encoder closure uses.
-      source: Sources/MetalSprockets/Support/Support.swift:19
+      source: Sources/MetalSprockets/Support/Support.swift:12
     - decl: |
         public func useResourceCollection(_ collection: ResourceCollection) -> some Element
       doc: Keeps `collection` resident for every submission this subtree encodes into.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:140
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:216
     - decl: |
         public func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       doc: Keeps `resources` resident and alive for the submission.
-      source: Sources/MetalSprockets/Support/Support.swift:34
+      source: Sources/MetalSprockets/Support/Support.swift:27
     - decl: |
         public func vertexBuffer(_ buffer: MTLBuffer, index: Int, offset: Int = 0) -> some Element
       doc: |-
@@ -817,7 +817,7 @@ modules:
           }
       }
       ```
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:121
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:157
   - decl: 'public protocol ShaderLoader : Sendable'
     doc: |-
       The port through which ``ShaderLibrary`` obtains provenance-bearing functions.
@@ -1054,12 +1054,15 @@ modules:
 
       `@unchecked Sendable` because the underlying value is only ever read as a hashable
       key, matching how `ShaderLibrary.ID` erases its payload.
-    source: Sources/MetalSprockets/Core/IdentifiedElement.swift:5
+
+      `Int` identities (for example `ForEach(..., id: \.offset)`) are stored directly, so building, hashing and comparing
+      them every frame does not go through `AnyHashable`. An `Int` identity never equals one of another type.
+    source: Sources/MetalSprockets/Core/IdentifiedElement.swift:8
     members:
     - decl: 'public init<ID>(_ id: ID) where ID : Hashable'
-      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:8
+      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:16
     - decl: 'public var description: String { get }'
-      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:14
+      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:26
   - decl: public struct CPUPhaseTimings
     doc: |-
       CPU time spent in each phase of one frame, in seconds.
@@ -1171,10 +1174,10 @@ modules:
       source: Sources/MetalSprockets/Metal/ComputePass.swift:14
   - decl: 'public struct ComputePipeline<Content> where Content : Element'
     doc: A compute pipeline compiled through the Metal 4 compiler. Linked functions come from ``Element/linkedFunctions(_:)``.
-    source: Sources/MetalSprockets/Metal/ComputePass.swift:51
+    source: Sources/MetalSprockets/Metal/ComputePass.swift:57
     members:
     - decl: 'public init(label: String? = nil, computeKernel: ComputeKernel, @ElementBuilder content: () throws -> Content) throws'
-      source: Sources/MetalSprockets/Metal/ComputePass.swift:56
+      source: Sources/MetalSprockets/Metal/ComputePass.swift:62
   - decl: public struct Draw
     doc: |-
       Issues draw calls with the enclosing ``RenderPipeline``.
@@ -1700,17 +1703,17 @@ modules:
           - key: The storage key. Use ``label`` unless the property needs several slots.
       source: Sources/MetalSprockets/Core/DynamicProperty.swift:97
   - decl: '@propertyWrapper public struct MSEnvironment<Value>'
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:175
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:211
     members:
     - decl: 'public init(_ keyPath: KeyPath<MSEnvironmentValues, Value>)'
       doc: |-
         Creates an environment property wrapper for the specified key path.
 
         - Parameter keyPath: A key path to the environment value to read.
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:192
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:228
     - decl: 'public var wrappedValue: Value { get }'
       doc: The current value from the environment.
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:177
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:213
   - decl: public struct MSEnvironmentValues
     doc: |-
       A collection of environment values propagated through the element tree.
@@ -1782,7 +1785,7 @@ modules:
     - decl: 'public var currentDrawable: CAMetalDrawable? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:33
     - decl: 'public var debugDescription: String { get }'
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:217
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:253
     - decl: 'public var depthAttachment: MTLTexture? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:31
     - decl: 'public var depthStencilDescriptor: MTLDepthStencilDescriptor? { get set }'
@@ -1834,7 +1837,7 @@ modules:
     - decl: 'public var vertexDescriptor: MTLVertexDescriptor? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:23
     - decl: 'public subscript<Key>(key: Key.Type) -> Key.Value where Key : MSEnvironmentKey { get set }'
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:130
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:166
   - decl: '@propertyWrapper public struct MSObservedObject<ObjectType> where ObjectType : ObservableObject'
     source: Sources/MetalSprockets/Core/ObservedObject.swift:4
     members:
@@ -2769,7 +2772,7 @@ modules:
     source: Sources/MetalSprockets/Core/Element.swift:46
   - decl: public associatedtype Value
     doc: The type of value stored by this key.
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:123
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:159
   - decl: 'public init(_ reference: ShaderFunction) throws'
     doc: Creates a shader from a function with explicit library provenance.
     source: Sources/MetalSprockets/Metal/Shaders.swift:41
@@ -2794,7 +2797,7 @@ modules:
     source: Sources/MetalSprockets/Metal/Shaders.swift:38
   - decl: 'public static var defaultValue: Value { get }'
     doc: The default value used when no explicit value has been set.
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:126
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:162
   - decl: 'public static var functionType: MTLFunctionType { get }'
     doc: The Metal function type this shader represents.
     source: Sources/MetalSprockets/Metal/Shaders.swift:33
@@ -2844,15 +2847,6 @@ modules:
         members:
         - decl: 'public var debugDescription: String { get }'
           source: Sources/MetalSprockets/Metal/Reflection.swift:73
-  - extended_module: MetalSprocketsSupport
-    symbols:
-    - decl: extension MetalSprocketsError
-      members:
-      - decl: public extension MetalSprocketsError
-        source: Sources/MetalSprockets/Support/Support.swift:5
-        members:
-        - decl: 'public static func missingEnvironment(_ key: PartialKeyPath<MSEnvironmentValues>) -> MetalSprocketsError'
-          source: Sources/MetalSprockets/Support/Support.swift:7
   - extended_module: Swift
     symbols:
     - decl: extension Never
@@ -2931,7 +2925,7 @@ modules:
   - decl: 'public func unreachable(_ message: @autoclosure () -> String = String(), file: StaticString = #file, line: UInt = #line) -> Never'
     source: Sources/MetalSprocketsSupport/BaseSupport.swift:4
   - decl: 'public func withIntervalSignpost<T>(_ signposter: OSSignposter?, name: StaticString, id: OSSignpostID? = nil, around task: () throws -> T) rethrows -> T'
-    source: Sources/MetalSprocketsSupport/Logging.swift:11
+    source: Sources/MetalSprocketsSupport/Logging.swift:17
   - decl: '@attached public (accessor) @attached(peer, names: prefixed(__Key_)) macro MSEntry()'
     source: Sources/MetalSprocketsSupport/MetalSprocketsSupportMacros.swift:3
   extensions:
@@ -2996,10 +2990,10 @@ modules:
     - decl: extension Logger
       members:
       - decl: public extension Logger
-        source: Sources/MetalSprocketsSupport/Logging.swift:18
+        source: Sources/MetalSprocketsSupport/Logging.swift:24
         members:
         - decl: 'public var verbose: Logger? { get }'
-          source: Sources/MetalSprocketsSupport/Logging.swift:19
+          source: Sources/MetalSprocketsSupport/Logging.swift:25
 - name: MetalSprocketsUI
   symbols:
   - decl: public struct FrameTimingDisplayOptions
@@ -3146,23 +3140,23 @@ modules:
       }
       .parameter("time", value: context.frameUniforms.time)
       ```
-    source: Sources/MetalSprocketsUI/RenderView.swift:862
+    source: Sources/MetalSprocketsUI/RenderView.swift:856
     members:
     - decl: 'public init(index: UInt32, time: Float, deltaTime: Float, viewportSize: SIMD2<UInt32>)'
       doc: Creates frame uniforms with the specified values.
-      source: Sources/MetalSprocketsUI/RenderView.swift:876
+      source: Sources/MetalSprocketsUI/RenderView.swift:870
     - decl: 'public var deltaTime: Float'
       doc: Time in seconds since the previous frame (useful for frame-rate independent animation).
-      source: Sources/MetalSprocketsUI/RenderView.swift:870
+      source: Sources/MetalSprocketsUI/RenderView.swift:864
     - decl: 'public var index: UInt32'
       doc: The zero-based frame number, incrementing each frame.
-      source: Sources/MetalSprocketsUI/RenderView.swift:864
+      source: Sources/MetalSprocketsUI/RenderView.swift:858
     - decl: 'public var time: Float'
       doc: Elapsed time in seconds since rendering started.
-      source: Sources/MetalSprocketsUI/RenderView.swift:867
+      source: Sources/MetalSprocketsUI/RenderView.swift:861
     - decl: 'public var viewportSize: SIMD2<UInt32>'
       doc: The drawable size in pixels as `[width, height]`.
-      source: Sources/MetalSprocketsUI/RenderView.swift:873
+      source: Sources/MetalSprocketsUI/RenderView.swift:867
   - decl: '@MainActor public struct OverlayBadgeModifier'
     doc: |-
       Styles a small floating readout that sits on top of rendered content.
@@ -3283,14 +3277,14 @@ modules:
           // Use rotation in your rendering...
       }
       ```
-    source: Sources/MetalSprocketsUI/RenderView.swift:830
+    source: Sources/MetalSprocketsUI/RenderView.swift:824
     members:
     - decl: 'public var frameTimingStatistics: FrameTimingStatistics { get }'
       doc: Frame timing statistics computed over a rolling window.
-      source: Sources/MetalSprocketsUI/RenderView.swift:835
+      source: Sources/MetalSprocketsUI/RenderView.swift:829
     - decl: 'public var frameUniforms: FrameUniforms { get }'
       doc: Per-frame timing and viewport information.
-      source: Sources/MetalSprocketsUI/RenderView.swift:832
+      source: Sources/MetalSprocketsUI/RenderView.swift:826
   - decl: public struct YCbCrBillboardRenderPass
     doc: |-
       Renders YCbCr video textures as a full-screen billboard.
@@ -3343,12 +3337,12 @@ modules:
 
       These are the fallbacks used when a view has not set the equivalent environment value with
       ``SwiftUI/View/renderViewLogFrame(_:)`` or ``SwiftUI/View/renderViewFatalErrorOnError(_:)``.
-    source: Sources/MetalSprocketsUI/RenderView.swift:805
+    source: Sources/MetalSprocketsUI/RenderView.swift:799
     members:
     - decl: 'public static var fatalErrorOnCatch: Bool { get }'
-      source: Sources/MetalSprocketsUI/RenderView.swift:810
+      source: Sources/MetalSprocketsUI/RenderView.swift:804
     - decl: 'public static var logFrame: Bool { get }'
-      source: Sources/MetalSprocketsUI/RenderView.swift:806
+      source: Sources/MetalSprocketsUI/RenderView.swift:800
   extensions:
   - extended_module: MetalSprockets
     symbols:

@@ -9663,12 +9663,13 @@ Expected
 ## 494: Deprecated API is still public: MetalSprocketsError.missingEnvironment(_: PartialKeyPath)
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: area:api, effort:xs
 created: 2026-10-16T13:44:31Z
-updated: 2026-10-16T18:48:54Z
+updated: 2026-10-16T19:08:20Z
+closed: 2026-10-16T19:08:20Z
 +++
 
 What is still there

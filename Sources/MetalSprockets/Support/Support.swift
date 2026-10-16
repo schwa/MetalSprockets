@@ -2,13 +2,6 @@ import Metal
 import MetalSprocketsSupport
 import os
 
-public extension MetalSprocketsError {
-    @available(*, deprecated, message: "Pass the property name as a string. Key path descriptions lose the name in Release builds.")
-    static func missingEnvironment(_ key: PartialKeyPath<MSEnvironmentValues>) -> Self {
-        missingEnvironment("\(key)")
-    }
-}
-
 // Resource declarations on Metal 4 are residency and lifetime: the resource stays resident and alive until the
 // submission completes. They are not hazard tracking. `usage` and `stages` are accepted for source compatibility and
 // documentation only; order dependent work with EncoderBarrier and QueueBarrier.

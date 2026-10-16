@@ -47,7 +47,7 @@ struct RenderDemoView: View {
             // Shown as its own row in the FrameTimingView HUD.
             .gpuTimed("Cube pass")
             .onWorkloadEnter { environment in
-                let commandBuffer = try environment.commandBuffer.orThrow(.missingEnvironment(\.commandBuffer))
+                let commandBuffer = try environment.commandBuffer.orThrow(.missingEnvironment("commandBuffer"))
                 commandBuffer.label = "Cube Frame"
             }
         }
