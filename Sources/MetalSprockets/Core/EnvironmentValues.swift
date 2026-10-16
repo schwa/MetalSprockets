@@ -89,13 +89,22 @@ public struct MSEnvironmentValues {
         recomputeEffectiveValues()
     }
 
+    // Updates the one key in place instead of re-merging the whole environment (#498).
     internal mutating func setValue(_ value: Any?, forKey key: Key) {
         values[key] = value
-        recomputeEffectiveValues()
+        effectiveValues[key] = value ?? inheritedValues[key]
     }
 
     private mutating func recomputeEffectiveValues() {
-        effectiveValues = values.isEmpty ? inheritedValues : inheritedValues.merging(values) { _, own in own }
+        guard !values.isEmpty else {
+            effectiveValues = inheritedValues
+            return
+        }
+        var effective = inheritedValues
+        for (key, value) in values {
+            effective[key] = value
+        }
+        effectiveValues = effective
     }
 }
 

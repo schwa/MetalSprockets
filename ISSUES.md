@@ -9812,6 +9812,13 @@ Expected
 
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: TreeDictionary (persistent hash tree from swift-collections, cheap copies with structural sharing) instead of copying and merging Dictionary on every write/inherit.
 - `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+- `2026-10-16T14:34:35Z`: Experiments (Release, cubes 1000, 30 frames, medians, ms). Baseline before: update 9.9-10.8, setup 0.90-0.98, workload 5.3-6.0, cpu 16.2-17.7.
+
+1. FAILED, reverted: TreeDictionary (swift-collections HashTreeCollections) for inheritedValues/effectiveValues. Update 10.6-11.5, workload 4.9-5.4, cpu 16.5-17.7: no net gain. Profile: environments hold only a few dozen keys, which fit in one hash-tree node, so copy-on-write still copies the whole node; extra cost in _HashNode deinit/copy and slower lookups. The swift-collections dependency was removed again.
+
+2. KEPT: setValue updates the one effective value in place instead of re-merging inherited and own values on every write; recompute skips the copy when the node has no own values. Update 9.93-10.05, setup 0.80-0.81, workload 4.70-4.75, cpu 15.48-15.63 (3 runs).
+
+Remaining: inherit still copies the parent's effective dictionary for every node that has own values (every ParameterModifier), once per phase; reads still cast Any back (swift_dynamicCast ~14% of frame samples). Ideas not tried: immutable layered environments (O(1) inherit, lookups walk only ancestors with own values); typed slots per @MSEntry key; writing parameterSet once per draw. Keeping open.
 
 ---
 

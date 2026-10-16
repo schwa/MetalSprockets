@@ -158,7 +158,7 @@ Work in layers, measure each step with the benchmark, and keep reflection as a f
 
 Order: 1 and 2 first (largest share, lowest risk; #496 is likely the easiest single change), then 3 and 5, then 4.
 
-## Shit thrown at the wall
+## Brainstorm
 
 Every idea raised so far, unfiltered. Some conflict. None are verified.
 
@@ -195,7 +195,8 @@ Every idea raised so far, unfiltered. Some conflict. None are verified.
 
 ### Environment (#498)
 
-- `TreeDictionary` (persistent hash tree, swift-collections) for cheap copies with structural sharing.
+- `TreeDictionary` (persistent hash tree, swift-collections) for cheap copies with structural sharing. **Tried: no net
+  gain, reverted** (see Progress).
 - Do not recompute `effectiveValues` on every write; resolve lazily or by parent chain.
 - Give each `@MSEntry` key a static index and store values in typed slots, not `Any`.
 - Write `parameterSet` once per draw instead of once per `ParameterModifier`.
@@ -257,6 +258,10 @@ From here on, Release only.
 | Skip the removed-node set diff when every previous node was reused | cubes 1000 | 13.23 → 12.24 | 20.75 → 20.2 |
 | Per-type conformance flags on `Node` (`ElementTypeInfo`); skip casts that would fail | cubes 1000 | 12.24 → 9.9–10.8 (setup 1.76 → 0.9–1.0) | 20.2 → 16.2–17.7 |
 | | draws 100/pass | 13.19 → 10.56 | 17.77 → 14.03 |
+| #498: environment `setValue` updates one key in place; no copy when a node has no own values | cubes 1000 | ~10.0 (setup 0.95 → 0.80, workload 5.5 → 4.7) | 16.2–17.7 → 15.5–15.6 |
+
+Tried and reverted: `TreeDictionary` for the environment (#498). Environments hold a few dozen keys, which fit in one
+hash-tree node, so copy-on-write still copies the whole node, and lookups are slower. No net gain.
 
 Identifier equality is still ~23% of Update samples, mostly `Atom` comparison including the `AnyHashable` box for
 `ForEach` IDs. Interned or per-parent identity (#497, #501) is the next step.
