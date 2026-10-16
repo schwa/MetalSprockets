@@ -231,6 +231,18 @@ Every idea raised so far, unfiltered. Some conflict. None are verified.
 - Reduce `System.current` side-channel cost (#389) and `System` responsibilities (#390) if they show up in profiles.
 - Evaluate `@MSState` initial values lazily (#475).
 
+## Progress
+
+Each row is measured with `Experiments/ReconciliationBenchmark` (30 frames, medians, ms) right before and after the change.
+
+| Change | Scenario | Update | CPU |
+|---|---|---|---|
+| #496: skip dynamic-property reflection for types that have none | cubes 1000, Release | 51.56 → 40.63 (−21%) | 59.09 → 48.22 (−18%) |
+| | cubes 1000, Debug | 89.67 → 77.13 (−14%) | 111.79 → 98.91 (−12%) |
+| | draws 100/pass, Release | 44.60 → 39.03 (−12%) | 48.68 → 43.48 (−11%) |
+
+Follow-up: #503 (detect dynamic properties stored behind `Any` or an existential).
+
 ## Open questions
 
 - What is the target? For example: 1000-cube demo at 60 fps in Release, and at what fps in Debug?

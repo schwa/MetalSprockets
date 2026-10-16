@@ -9703,12 +9703,13 @@ Expected
 ## 496: Element.visitDynamicProperties uses reflection on every node every frame
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: area:performance, effort:m
 created: 2026-10-16T13:52:10Z
-updated: 2026-10-16T13:52:18Z
+updated: 2026-10-16T14:08:05Z
+closed: 2026-10-16T14:08:05Z
 +++
 
 From the #489 profile (Release, 1000 cubes).
@@ -9723,8 +9724,16 @@ Repro
 Expected
 - Nodes whose element type has no dynamic properties pay nothing for this.
 
-- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Macros are an option for generating the list of dynamic properties at compile time instead of reflecting each frame.
-- `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+\- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Macros are an option for generating the list of dynamic properties at compile time instead of reflecting each frame.
+\- `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+\- `2026-10-16T14:08:05Z`: Fixed: DynamicPropertyCache (Core/Element+SystemExtensions.swift) records element types with no dynamic property and no optional field; configureNode skips both reflection passes for them.
+
+Benchmark (30 frames, medians, ms), before -> after:
+- cubes 1000 Release: update 51.56 -> 40.63 (-21%), cpu 59.09 -> 48.22
+- cubes 1000 Debug: update 89.67 -> 77.13 (-14%), cpu 111.79 -> 98.91
+- draws 100/pass Release: update 44.60 -> 39.03 (-12%), cpu 48.68 -> 43.48
+
+Known gap: a dynamic property stored behind Any or an existential field can be missed. Tracked in #503.
 
 ---
 
@@ -9903,5 +9912,31 @@ Suggested:
 - Group into sections (Frame, CPU, GPU) with indented sub-rows or headers.
 - Use monospaced digits for values.
 - Shorten or reformat the range row.
+
+---
+
+## 503: Dynamic property cache can miss a dynamic property stored in an Any or existential field
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:performance, effort:s
+created: 2026-10-16T14:07:47Z
+updated: 2026-10-16T14:07:54Z
++++
+
+Follow-up to #496.
+
+What is wrong
+- DynamicPropertyCache records an element type as having no dynamic properties after reflecting one value of it. Types with an optional field are never recorded.
+- A field declared as Any or another existential is not detected. If the first value seen holds something else, and a later value holds a dynamic property (such as MSState), that property is skipped: its state is not restored or persisted, and it silently resets each frame.
+- No library element is affected: the only Any-typed element field is EnvironmentWritingModifier.value (Any?, optional, so never cached).
+
+Expected
+- The case is detected. A runtime assertion that says not to store dynamic properties behind Any or an existential is acceptable (per Jonathan).
+
+Notes
+- Swift's underscored _forEachField(of:options:body:) lists declared field types, not current values, which would show which fields are Any or existential. Not verified here; it may need an @_spi(Reflection) import.
 
 ---

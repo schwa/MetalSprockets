@@ -1,3 +1,5 @@
+import Synchronization
+
 internal extension Element {
     func configureNode(_ node: Node) throws {
         guard let system = System.current else {
@@ -10,12 +12,17 @@ internal extension Element {
 
         applyInheritedEnvironment(from: parent, to: node)
 
-        try updateDynamicProperties(node)
+        let hasDynamicProperties = DynamicPropertyCache.mayHaveDynamicProperties(self)
+        if hasDynamicProperties {
+            try updateDynamicProperties(node)
+        }
 
         if let bodylessElement = self as? any BodylessElement {
             try bodylessElement.configureNodeBodyless(node)
         }
-        try persistDynamicProperties(node)
+        if hasDynamicProperties {
+            try persistDynamicProperties(node)
+        }
     }
 
     private func applyInheritedEnvironment(from parent: Node?, to node: Node) {
@@ -49,5 +56,34 @@ internal extension Element {
             }
             try body(property, MSDynamicPropertyContext(node: node, label: label))
         }
+    }
+}
+
+/// Remembers element types that cannot hold a dynamic property, so their nodes skip reflection every frame (#496).
+///
+/// A type is recorded only when one reflection found no dynamic property and no optional field. An optional field could
+/// hold a dynamic property in a later value, so such types are always reflected. A field declared as `Any` or another
+/// existential is not detected and is assumed to keep the kind of value it first held.
+internal enum DynamicPropertyCache {
+    private static let typesWithout = Mutex<Set<ObjectIdentifier>>([])
+
+    static func mayHaveDynamicProperties(_ element: some Element) -> Bool {
+        let key = ObjectIdentifier(type(of: element))
+        if typesWithout.withLock({ $0.contains(key) }) {
+            return false
+        }
+        var canCache = true
+        for (_, value) in Mirror(reflecting: element).children {
+            if value is any MSDynamicProperty {
+                return true
+            }
+            if Mirror(reflecting: value).displayStyle == .optional {
+                canCache = false
+            }
+        }
+        if canCache {
+            typesWithout.withLock { _ = $0.insert(key) }
+        }
+        return false
     }
 }
