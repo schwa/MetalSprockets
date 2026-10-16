@@ -9317,3 +9317,47 @@ Expose read-only environment values, e.g. `\.submissionIndex: UInt64` and `\.max
 This needs a guarantee that recording frame N+k (k = maximumInFlightSubmissions) only starts after frame N completes. RenderView skips frames at the limit, so it records only with a free slot. Runner docs say "submission waits for the oldest"; confirm the wait happens before recording, not only before commit.
 
 ---
+
+## 486: Per-frame reconciliation cost is high for ~200 draw elements (StructuralIdentifier hashing)
+
++++
+status: new
+priority: high
+kind: enhancement
+labels: area:performance
+created: 2026-10-16T12:46:24Z
++++
+
+A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
+
+What the app was doing
+- Every frame it builds a new element tree and renders it: about 90 draws in one RenderPass, plus the same draws again in an earlier RenderPass (an offscreen pre-pass). That is about 180 draw elements per frame.
+- Each draw is a Draw element wrapped in the usual modifier stack: one .vertexBuffer per buffer (3 to 4), several .parameter calls (structs, a texture, a sampler), .useResource, and a depth-compare and render-state modifier. Draws are grouped in ForEach (id: \.offset over enumerated arrays) inside a RenderPipeline. Each draw is erased to AnyElement, and the groups are nested 3 or 4 levels deep.
+- Making 84 of the draws instanced (same mesh, one draw) took the frame from 150 ms to 22 ms (debug build, Apple silicon, 1280x800 offscreen). That is roughly 0.75 ms of CPU per non-instanced draw per frame.
+
+Profile (Instruments Time Profiler, debug build, main thread)
+- TreeReconciler.processElement / ForEach.visitChildrenBodyless: about 69% inclusive
+- System.update(root:): about 37%; System.processNode / reuseNode: about 22-25%
+- StructuralIdentifier.hash(into:): about 27% inclusive; StructuralIdentifier ==: about 22%
+- isEqualStructurally: about 16%
+- Top self time: _platform_memmove 14%, plus copying/destroying StructuralIdentifier.Atom and AnyElementID?, Hasher.combine, Array ==, and Array.hash. This suggests identifiers are long arrays that get copied, hashed and compared often.
+- The client's own code was under 2%.
+
+Clean-room repro to build (please do not use the client code)
+1. Offscreen render loop: render the same root element N times in a row, timing each frame's wall time. Wait for the GPU each frame.
+2. Root: RenderPass { RenderPipeline(any trivial vertex/fragment shader) { ForEach(Array(items.enumerated()), id: \.offset) { _, item in draw(item) } } }.
+3. draw(item): Draw(indexed triangles, e.g. a 24-vertex box) with 3 .vertexBuffer modifiers, 3 .parameter values (a float4x4, a small struct, a float), 1 texture and 1 sampler parameter, .useResource for the index buffer, .depthCompare, and .eraseToAnyElement(). Optionally wrap groups of 8 in another ForEach and a Group to add nesting.
+4. Also put a second RenderPass before it containing the same ForEach.
+5. Sweep N = 10, 50, 100, 200, 400 draws per pass and plot ms per frame. Repeat with the modifier count halved, and with nesting removed.
+
+Expected: CPU cost per draw well under 0.1 ms; roughly linear in N.
+Actual (client app, debug): about 0.75 ms per draw. Not yet known whether it is linear or worse, or how much depends on nesting depth (identifier length) versus modifier count.
+
+Ideas, not verified
+- Hash StructuralIdentifier once and cache it (or intern identifiers), so Set/Dictionary lookups do not rehash the whole path.
+- Avoid copying Atom arrays on every child visit: share a parent prefix, for example a linked parent pointer.
+- Check whether isEqualStructurally runs for every node every frame even when nothing changed.
+
+Related: #476 (argument tables rebuilt for every draw).
+
+---
