@@ -9949,3 +9949,16 @@ Notes
 - Swift's underscored _forEachField(of:options:body:) lists declared field types, not current values, which would show which fields are Any or existential. Not verified here; it may need an @_spi(Reflection) import.
 
 ---
+
+## 504: Demo viewer: toggle between instanced cubes and ForEach cubes
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-10-16T14:20:54Z
++++
+
+Add a toggle in the demo viewer to switch between rendering cubes with instancing and rendering them with a per-cube ForEach (the slow approach), for side-by-side performance comparison.
+
+---
