@@ -9363,9 +9363,9 @@ status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:l
-depends: 489
+depends: 489, 495, 496, 497, 498
 created: 2026-10-16T12:46:24Z
-updated: 2026-10-16T13:30:53Z
+updated: 2026-10-16T13:52:11Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -9407,12 +9407,13 @@ Related: #476 (argument tables rebuilt for every draw).
 ## 487: No representative benchmark for per-frame CPU cost with many draw elements
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:performance, effort:m
 created: 2026-10-16T12:54:57Z
-updated: 2026-10-16T13:30:53Z
+updated: 2026-10-16T13:52:11Z
+closed: 2026-10-16T13:52:11Z
 +++
 
 Follow-up to #486.
@@ -9432,6 +9433,26 @@ Current numbers (release, Apple silicon, 2 passes, 1280x800)
 - full modifiers, nested: about 0.26 ms per draw, linear in N
 - half modifiers: about 0.19 ms per draw
 - flat (no nesting): about 0.24 ms per draw
+
+\- `2026-10-16T13:52:09Z`: Baseline (Release, Apple M5 Max, Xcode 27 RC, OffscreenRenderer 1280x800, 30 frames, medians, ms). Benchmark: Experiments/ReconciliationBenchmark.
+
+cubes scenario (Example Render demo: one Draw per cube in ForEach, vertexValues + 2 parameters):
+count  content  update  setup  workload  cpu     gpu   us/draw
+100    0.01     5.23    0.17   0.61      6.03    0.09  60.3
+500    0.02     25.42   0.81   2.98      29.22   0.25  58.4
+1000   0.03     51.68   1.65   5.90      59.26   0.47  59.3
+2000   0.04     105.61  3.38   11.94     120.97  0.30  60.5
+
+draws scenario (#486 repro: 2 passes, deeper modifier stack, AnyElement, nested ForEach/Group; count is per pass):
+count  draws  update  setup  workload  cpu     us/draw
+10     20     5.04    0.14   0.37      5.55    277
+100    200    47.07   1.19   3.32      51.59   258
+400    800    184.58  4.50   12.81     201.91  252
+
+Debug, cubes 1000: update 87, setup 3.9, workload 17, cpu 109 (109 us/draw).
+- Cost is linear in draw count.
+- Building the element tree (content) is negligible; the cost is in the framework.
+- Not run in CI.
 
 ---
 
@@ -9465,13 +9486,14 @@ Expected
 ## 489: Profile per-frame CPU cost with Instruments to find where the time goes
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:performance, effort:m
 depends: 487, 488
 created: 2026-10-16T12:54:58Z
-updated: 2026-10-16T13:30:54Z
+updated: 2026-10-16T13:52:11Z
+closed: 2026-10-16T13:52:11Z
 +++
 
 Follow-up to #486.
@@ -9485,6 +9507,27 @@ Expected
 - A written breakdown of the top costs per phase, with the traces kept or summarised in the issue.
 
 Depends on having a trusted benchmark and phase timings (the other #486 follow-ups) so results can be read per phase.
+
+\- `2026-10-16T13:52:10Z`: Profiled with Scripts/profile-benchmark.sh (xctrace Time Profiler, Release, cubes scenario, 1000 cubes, 60 frames). Percentages are inclusive shares of samples within each phase.
+
+Update (~87% of CPU):
+- ~38% isEqual / isEqualStructurally: runtime reflection on every element every frame. Mirror (~15%), swift_dynamicCast (~18%), swift_getTypeByMangledName (~12%), protocol conformance lookups (~11%).
+- ~25% StructuralIdentifier == (~15%) and hash (~10%): full-path atom arrays compared and hashed on dictionary lookups. Hasher._combine is the top self symbol.
+- ~21% Element.visitDynamicProperties / configureNode: reflection on every node every frame.
+
+Workload (~10%):
+- ~35% Draw.workloadEnter, of which ~27% is swift_dynamicCast (environment values stored as Any and cast on read).
+- ~17% MSEnvironmentValues.recomputeEffectiveValues: each ParameterModifier write re-merges whole dictionaries (copy + merge).
+- ~17% ParameterSet.makeTables (argument tables per draw, see #476).
+
+Setup (~3%):
+- ~20% MSEnvironmentValues.recomputeEffectiveValues via inheritEnvironmentFromActiveParent.
+
+Why Release is only ~1.7x faster than Debug: most time is in Swift runtime calls (reflection, dynamic casts, metadata lookup, conformance checks, allocation) that the optimizer cannot remove. Not confirmed by a Debug-vs-Release trace comparison.
+
+ForEach itself (#490) is not a significant cost; it is the caller of the above.
+
+Follow-ups: #495, #496, #497, #498.
 
 ---
 
@@ -9509,6 +9552,8 @@ What is unknown
 
 Expected
 - A measured comparison of the same draws as a ForEach, as an unrolled list, with and without AnyElement, showing per-phase cost and how many nodes are reused vs rebuilt per frame.
+
+- `2026-10-16T13:52:11Z`: #489 profile: ForEach itself is not a significant cost. Its children are where the time goes (see #495-#498).
 
 ---
 
@@ -9608,7 +9653,7 @@ Expected
 status: new
 priority: low
 kind: task
-labels: area:api,effort:xs,deferred
+labels: area:api, effort:xs, deferred
 created: 2026-10-16T13:44:31Z
 +++
 
@@ -9619,5 +9664,108 @@ What is still there
 
 Expected
 - No deprecated public API remains, and no callers in the Example app or tests use it. .public-api.yaml updated.
+
+---
+
+## 495: isEqualStructurally uses runtime reflection for every element on every frame
+
++++
+status: open
+priority: high
+kind: enhancement
+labels: area:performance, effort:l
+created: 2026-10-16T13:52:10Z
+updated: 2026-10-16T13:52:18Z
++++
+
+From the #489 profile (Release, 1000 cubes, Experiments/ReconciliationBenchmark).
+
+What is wrong
+- isEqual / isEqualStructurally takes about 38% of the Update phase.
+- The time is Swift runtime work: Mirror reflection (~15%), swift_dynamicCast (~18%), swift_getTypeByMangledName (~12%), protocol conformance lookups (~11%).
+- It runs for every element on every frame, including unchanged ones.
+
+Repro
+1. Scripts/profile-benchmark.sh
+
+Expected
+- Comparing an element with the previous frame does not need reflection or dynamic casts per stored property per frame.
+
+---
+
+## 496: Element.visitDynamicProperties uses reflection on every node every frame
+
++++
+status: open
+priority: high
+kind: enhancement
+labels: area:performance, effort:m
+created: 2026-10-16T13:52:10Z
+updated: 2026-10-16T13:52:18Z
++++
+
+From the #489 profile (Release, 1000 cubes).
+
+What is wrong
+- Element.visitDynamicProperties / configureNode take about 21% of the Update phase.
+- It reflects over each element's stored properties on every frame, for every node, including elements with no dynamic properties (such as Draw and modifiers).
+
+Repro
+1. Scripts/profile-benchmark.sh
+
+Expected
+- Nodes whose element type has no dynamic properties pay nothing for this.
+
+---
+
+## 497: StructuralIdentifier hashing and equality cost grows with tree depth
+
++++
+status: open
+priority: high
+kind: enhancement
+labels: area:performance, effort:m
+created: 2026-10-16T13:52:10Z
+updated: 2026-10-16T13:52:19Z
++++
+
+From the #489 profile (Release, 1000 cubes).
+
+What is wrong
+- StructuralIdentifier == (~15%) and hash (~10%) take about 25% of the Update phase. Hasher._combine is the top self symbol.
+- A StructuralIdentifier is the full array of atoms from the root. appending copies the parent's array. System.nodes is keyed by it, so every lookup hashes and compares the whole path.
+- Atoms from ForEach hold an AnyElementID (AnyHashable box), which every descendant's identifier hashes again.
+
+Repro
+1. Scripts/profile-benchmark.sh
+
+Expected
+- Node lookup cost does not depend on the depth of the node.
+
+---
+
+## 498: MSEnvironmentValues re-merges whole dictionaries on every write and inherit
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: area:performance, effort:m
+created: 2026-10-16T13:52:10Z
+updated: 2026-10-16T13:52:19Z
++++
+
+From the #489 profile (Release, 1000 cubes).
+
+What is wrong
+- MSEnvironmentValues.recomputeEffectiveValues takes about 17% of the Workload phase and 20% of the Setup phase.
+- Each write (for example every ParameterModifier setting parameterSet) and each inherit copies and merges the full inherited and own dictionaries.
+- Values are stored as Any. Reads cast them back: swift_dynamicCast is about 27% of Workload, most of it under Draw.workloadEnter.
+
+Repro
+1. Scripts/profile-benchmark.sh --within processWorkload
+
+Expected
+- Writing or reading one environment value does not copy the whole environment or need a dynamic cast.
 
 ---
