@@ -10050,12 +10050,13 @@ Release, 60 frames: cubes 1000 update 7.35-7.64 -> 4.1-4.6, cpu 11.2-11.7 -> 8.0
 ## 507: No repeatable profile of the real app (RenderView) under load
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:performance, effort:m
 created: 2026-10-16T14:59:32Z
-updated: 2026-10-16T14:59:38Z
+updated: 2026-10-16T18:42:49Z
+closed: 2026-10-16T18:42:49Z
 +++
 
 Part of RFC 0006.
@@ -10074,6 +10075,10 @@ Expected
 - Inside Workload: Draw.workloadEnter 53% (of which ParameterSet.makeTables 25% -> #476; environment reads casting Any ~7% -> #498); inheritEnvironmentFromActiveParent 12.5% (#498); ParameterModifier.workloadEnter (collapsed chain) 15%.
 - Caution when reading these traces: element modifiers like CollapsibleWorkloadModifier.visitInnermost call into their child subtree, so their inclusive share includes all descendants' costs. An experiment based on misreading that (caching the collapsible check) gave no change and was reverted.
 Still open: a scripted, repeatable way to record the app; why the app's Workload/Update ratio differs from the benchmark's.
+
+\- `2026-10-16T18:42:49Z`: Done. Scripts/profile-app.sh builds the Example app, launches it frontmost with a set cube count/instancing (@AppStorage via defaults, restored afterwards), attaches xctrace for N seconds, and summarises signpost intervals plus hot functions per phase.
+
+Findings (Release, 1000 cubes, one Draw per cube, ~2500 frames): Update 2.39 ms, Workload 1.70 ms, Setup 0.13 ms, Frame 4.37 ms, Drawable wait ~0, Commit 0.05 ms. The app now matches the benchmark (Workload 1.66 ms); the earlier gap (app Workload 11.3 ms vs 3.5 ms) predates the Workload fixes from RFC 0006 work (typed environment boxes, StageTables, cast-free dispatch, etc.). Reported in the app: 120 fps with 1000 non-instanced cubes. Frame rates under Xcode (debugger, Metal API validation, Debug config) are lower (~90 fps reported) and are not comparable. For many identical draws, instancing remains the right answer (#500).
 
 ---
 
