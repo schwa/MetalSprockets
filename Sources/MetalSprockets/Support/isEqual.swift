@@ -137,7 +137,11 @@ internal enum ComparisonCache {
             return false
         }
         switch Mirror(reflecting: value).displayStyle {
-        case .struct, .optional:
+        case .struct:
+            // A nested struct that is never equal makes this field never equal too, for example ForEach's
+            // IdentifiedElement wrapping a modifier that holds a closure (#506).
+            return isNeverEqual(value)
+        case .optional:
             return false
         default:
             return true

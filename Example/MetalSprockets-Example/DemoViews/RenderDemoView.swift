@@ -12,7 +12,8 @@ struct RenderDemoView: View {
     @State private var pausedTime: Float = 0
     @State private var frameTimingStatistics: FrameTimingStatistics?
     // More than one cube is a stress test: one non-instanced draw per cube.
-    @State private var cubeCount = 1
+    // `-cubeCount 1000` on the command line starts the stress test directly, for profiling.
+    @State private var cubeCount = UserDefaults.standard.object(forKey: "cubeCount") as? Int ?? 1
 
     private static let cubeCounts = [1, 100, 500, 1_000, 2_000, 5_000]
 

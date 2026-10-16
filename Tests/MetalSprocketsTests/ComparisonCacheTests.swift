@@ -31,6 +31,17 @@ struct ComparisonCacheTests {
         #expect(isEqual(WithClosure(), WithClosure()) == false)
     }
 
+    private struct Wrapper: Element {
+        var id = 1
+        var inner: WithClosure
+        var body: some Element { EmptyElement() }
+    }
+
+    @Test func `a struct wrapping a never-equal struct is never equal`() {
+        #expect(ComparisonCache.isNeverEqual(Wrapper(inner: WithClosure())))
+        #expect(isEqual(Wrapper(inner: WithClosure()), Wrapper(inner: WithClosure())) == false)
+    }
+
     @Test func `a struct with only comparable fields is compared field by field`() {
         #expect(ComparisonCache.isNeverEqual(PlainFields()) == false)
         #expect(isEqual(PlainFields(), PlainFields()))
