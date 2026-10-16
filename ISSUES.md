@@ -9777,6 +9777,12 @@ Expected
 - `2026-10-16T13:57:32Z`: Span for walking atoms without copying arrays.
 - `2026-10-16T13:57:32Z`: These address copy cost, not the larger reflection costs in #495 and #496.
 - `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+- `2026-10-16T14:22:55Z`: Partial fix (Release, cubes 1000, 30 frames, medians, ms):
+- Step 1: StructuralIdentifier caches its path hash (extended from the parent's by the reconciler and by appending); == checks hash and length, then atoms leaf-first. Update 23.61 -> 17.06.
+- Step 2: the reconciler walks the previous traversal's nodes and reuses the node at the same position when its identifier matches: one comparison, no System.nodes lookups (processNode/reuseNode take the node). Update 17.06 -> 13.23.
+- draws 100/pass: update 22.19 -> 13.10.
+
+Remaining: identifier equality is still ~23% of Update samples, mostly Atom comparison including the AnyHashable box for ForEach IDs. Next step is interned or per-parent identity (overlaps #501). Keeping open.
 
 ---
 

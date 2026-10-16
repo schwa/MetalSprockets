@@ -19,13 +19,13 @@ This RFC collects the measurements, the profile, and all candidate fixes in one 
 - A client scene graph (#486) dropped to about 6 fps with about 180 non-instanced draws.
 - The Example app's Render demo runs at 12 fps in Release and 7 fps in Debug with 1000 cubes.
 - Release is only about 1.7x faster than Debug. The optimizer cannot remove most of the cost.
-- Debug builds should also be acceptably fast. Xcode builds Swift packages with the app's configuration, so a Debug app
-  gets a Debug MetalSprockets. The fix has to reduce work, not depend on the optimizer.
+- Because the optimizer removes little of the cost, reducing work helps every build configuration.
 
 ## Goals
 
 - CPU cost per draw is well under 0.1 ms in Release (target to be set, see Open questions).
-- Debug builds are usable at the same scene sizes, not only Release.
+- Measure and optimize Release builds only. Debug performance is not a goal (per Jonathan); Debug numbers below are
+  history.
 - Cost stays linear in draw count, and does not grow with tree depth.
 - No regression in correctness: node identity, state, setup, and change detection behave as today.
 
@@ -247,11 +247,22 @@ Each row is measured with `Experiments/ReconciliationBenchmark` (30 frames, medi
 After #495 the largest Update cost is `StructuralIdentifier` equality in `processNode` / `reuseNode` (~22% of samples)
 and `Hasher._combine` (~10% self): #497.
 
+From here on, Release only.
+
+| Change | Scenario | Update | CPU |
+|---|---|---|---|
+| #497 step 1: cached path hash, leaf-first equality | cubes 1000 | 23.61 → 17.06 | 31.35 → 24.58 |
+| #497 step 2: reuse the previous traversal's node, no dictionary lookups | cubes 1000 | 17.06 → 13.23 | 24.58 → 20.75 |
+| #497 steps 1+2 | draws 100/pass | 22.19 → 13.10 | 26.35 → 17.24 |
+
+Identifier equality is still ~23% of Update samples, mostly `Atom` comparison including the `AnyHashable` box for
+`ForEach` IDs. Interned or per-parent identity (#497, #501) is the next step.
+
 Follow-up: #503 (detect dynamic properties stored behind `Any` or an existential).
 
 ## Open questions
 
-- What is the target? For example: 1000-cube demo at 60 fps in Release, and at what fps in Debug?
+- What is the target? For example: 1000-cube demo at 60 fps in Release?
 - How much behaviour change is acceptable in change detection (for example "elements holding closures always rebuild")?
 - Is an opt-in macro for user elements acceptable as public API?
 - Should the benchmark run in CI, with a regression threshold?
@@ -259,6 +270,6 @@ Follow-up: #503 (detect dynamic properties stored behind `Any` or an existential
 
 ## Verification
 
-- Before and after each change: `Experiments/ReconciliationBenchmark` (cubes and draws, Release and Debug) and
+- Before and after each change: `Experiments/ReconciliationBenchmark` (cubes and draws, Release) and
   `Scripts/profile-benchmark.sh`. Record results in the issue.
 - Full test suite passes, in particular reconciliation, identity, state, and setup tests.

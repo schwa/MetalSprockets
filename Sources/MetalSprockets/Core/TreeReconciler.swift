@@ -17,24 +17,26 @@ internal struct Reconciliation {
 internal final class TreeReconciler {
     private let system: System
 
-    /// Identifiers entered by the previous traversal, in pre-order, consumed in lock-step with this walk.
-    private var previousIterator: IndexingIterator<[StructuralIdentifier]>
+    /// Nodes entered by the previous traversal, in pre-order, consumed in lock-step with this walk.
+    private var previousIterator: IndexingIterator<[Node]>
     private var newEvents: [TraversalEvent] = []
     private var newNodes: [StructuralIdentifier: Node] = [:]
     /// Atoms for the path from the root to the element currently being processed.
     private var atomStack: [StructuralIdentifier.Atom] = []
+    /// Path hashes matching `atomStack`, so each identifier's hash extends its parent's instead of rehashing the path.
+    private var hashStack: [Int] = [StructuralIdentifier.rootHash]
     /// Per-level sibling counts, used to give same-typed siblings distinct identities.
     private var siblingIndices: [[ElementTypeIdentifier: Int]] = [[:]]
 
     init(system: System) {
         self.system = system
-        let previousIdentifiers = system.traversalEvents.compactMap { event -> StructuralIdentifier? in
+        let previousNodes = system.traversalEvents.compactMap { event -> Node? in
             guard case .enter(let node) = event else {
                 return nil
             }
-            return node.id
+            return node
         }
-        self.previousIterator = previousIdentifiers.makeIterator()
+        self.previousIterator = previousNodes.makeIterator()
     }
 
     /// Walk `root`, reconciling it against the previous tree.
@@ -89,12 +91,18 @@ internal final class TreeReconciler {
         let atom = StructuralIdentifier.Atom(typeIdentifier: typeIdentifier, index: explicitID == nil ? index : 0, explicitID: explicitID)
 
         atomStack.append(atom)
-        defer { atomStack.removeLast() }
+        let pathHash = StructuralIdentifier.extend(hashStack[hashStack.count - 1], with: atom)
+        hashStack.append(pathHash)
+        defer {
+            atomStack.removeLast()
+            hashStack.removeLast()
+        }
 
-        let currentId = StructuralIdentifier(atoms: atomStack)
-        let previousId = previousIterator.next()
-
-        let previousNode = previousId == currentId ? system.nodes[currentId] : nil
+        let currentId = StructuralIdentifier(atoms: atomStack, pathHash: pathHash)
+        // The previous traversal's node at this position is reused when its identifier matches. One comparison, no
+        // dictionary lookup (#497).
+        let candidate = previousIterator.next()
+        let previousNode = candidate?.id == currentId ? candidate : nil
         // Class elements never compare equal (their mutable stored properties are invisible to `isEqual`), so
         // they always re-evaluate; only their unchanged children get skipped.
         let isEqualToPrevious = previousNode.map { isEqual($0.element, element) } ?? false
@@ -106,7 +114,7 @@ internal final class TreeReconciler {
             return
         }
 
-        let currentNode = system.processNode(currentId: currentId, previousId: previousId, element: element, isEqualToPrevious: isEqualToPrevious, newNodes: &newNodes)
+        let currentNode = system.processNode(currentId: currentId, previousNode: previousNode, element: element, isEqualToPrevious: isEqualToPrevious, newNodes: &newNodes)
 
         newEvents.append(.enter(currentNode))
         system.traversalContext.push(currentNode)

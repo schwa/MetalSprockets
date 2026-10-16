@@ -20,9 +20,51 @@ public struct StructuralIdentifier: Hashable, Sendable {
     }
 
     public let atoms: [Atom]
+    // Hash of the whole path, computed once. Equal paths always have equal hashes, so it also rejects most unequal
+    // paths before comparing atoms (#497).
+    private let pathHash: Int
 
     public init(atoms: [Atom]) {
         self.atoms = atoms
+        var hash = Self.rootHash
+        for atom in atoms {
+            hash = Self.extend(hash, with: atom)
+        }
+        self.pathHash = hash
+    }
+
+    /// For callers that already know the path hash, such as the reconciler extending its parent's hash.
+    internal init(atoms: [Atom], pathHash: Int) {
+        self.atoms = atoms
+        self.pathHash = pathHash
+    }
+
+    internal static let rootHash = 0
+
+    internal static func extend(_ hash: Int, with atom: Atom) -> Int {
+        var hasher = Hasher()
+        hasher.combine(hash)
+        hasher.combine(atom)
+        return hasher.finalize()
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        guard lhs.pathHash == rhs.pathHash, lhs.atoms.count == rhs.atoms.count else {
+            return false
+        }
+        // Leaf first: siblings and cousins differ near the end of the path.
+        var index = lhs.atoms.count - 1
+        while index >= 0 {
+            if lhs.atoms[index] != rhs.atoms[index] {
+                return false
+            }
+            index -= 1
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pathHash)
     }
 }
 
@@ -43,6 +85,6 @@ extension StructuralIdentifier.Atom: CustomStringConvertible {
 
 public extension StructuralIdentifier {
     func appending(_ atom: Atom) -> StructuralIdentifier {
-        StructuralIdentifier(atoms: atoms + [atom])
+        StructuralIdentifier(atoms: atoms + [atom], pathHash: Self.extend(pathHash, with: atom))
     }
 }

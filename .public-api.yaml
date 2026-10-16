@@ -2550,7 +2550,7 @@ modules:
       - decl: 'public init(typeIdentifier: ElementTypeIdentifier, index: Int, explicitID: AnyElementID? = nil)'
         source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:9
       - decl: 'public var description: String { get }'
-        source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:36
+        source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:78
       - decl: 'public let explicitID: AnyElementID?'
         doc: |-
           Identity supplied via ``Element/id(_:)``. When present it replaces sibling position
@@ -2561,13 +2561,17 @@ modules:
       - decl: 'public let typeIdentifier: ElementTypeIdentifier'
         source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:3
     - decl: 'public init(atoms: [Atom])'
-      source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:24
+      source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:27
     - decl: 'public let atoms: [Atom]'
       source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:22
     - decl: 'public var description: String { get }'
-      source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:30
+      source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:72
     - decl: 'public func appending(_ atom: Atom) -> StructuralIdentifier'
-      source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:45
+      source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:87
+    - decl: 'public func hash(into hasher: inout Hasher)'
+      source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:66
+    - decl: 'public static func == (lhs: `Self`, rhs: `Self`) -> Bool'
+      source: Sources/MetalSprockets/Core/StructuralIdentifier.swift:51
   - decl: public struct Submission
     doc: |-
       GPU work that a root has committed to its Metal 4 queue.

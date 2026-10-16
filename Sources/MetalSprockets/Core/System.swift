@@ -271,18 +271,16 @@ package final class System: @unchecked Sendable {
 internal extension System {
     /// Determine whether to reuse an existing node or create a new one
     /// `isEqualToPrevious` is the caller's `isEqual` result for the previous element, so it is not computed twice.
-    func processNode(currentId: StructuralIdentifier, previousId: StructuralIdentifier?, element: any Element, isEqualToPrevious: Bool, newNodes: inout [StructuralIdentifier: Node]) -> Node {
-        if let previousId, previousId == currentId {
-            return reuseNode(currentId: currentId, element: element, isEqualToPrevious: isEqualToPrevious, newNodes: &newNodes)
+    /// `previousNode` is the previous traversal's node with the same identifier, or nil.
+    func processNode(currentId: StructuralIdentifier, previousNode: Node?, element: any Element, isEqualToPrevious: Bool, newNodes: inout [StructuralIdentifier: Node]) -> Node {
+        if let previousNode {
+            return reuseNode(previousNode, currentId: currentId, element: element, isEqualToPrevious: isEqualToPrevious, newNodes: &newNodes)
         }
         return makeNode(currentId: currentId, element: element, newNodes: &newNodes)
     }
 
     /// Reuse an existing node, updating it if its element has changed
-    func reuseNode(currentId: StructuralIdentifier, element: any Element, isEqualToPrevious: Bool, newNodes: inout [StructuralIdentifier: Node]) -> Node {
-        guard let existingNode = nodes[currentId] else {
-            fatalError("Found matching structural ID \(currentId) but no existing node - this indicates a bug in the System")
-        }
+    func reuseNode(_ existingNode: Node, currentId: StructuralIdentifier, element: any Element, isEqualToPrevious: Bool, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         existingNode.parentIdentifier = traversalContext.currentNode?.id
 
         if isDirty(currentId) || !isEqualToPrevious {
