@@ -1,5 +1,7 @@
-// Clean-room repro for issue #486: per-frame reconciliation cost with ~200 draw elements.
-// Usage: ReconciliationBenchmark [--frames N] [--half-modifiers] [--flat] [--counts 10,50,100]
+// Per-frame CPU cost with many draw elements (#486, #487).
+// Usage: ReconciliationBenchmark [--scenario cubes|draws] [--frames N] [--counts 10,50,100] [--half-modifiers] [--flat]
+//   cubes (default): the Example app's Render demo, one Draw per cube in a ForEach. Default count 1000.
+//   draws: the #486 repro, two passes with a deeper modifier stack per draw.
 
 import CoreGraphics
 import Foundation
@@ -45,15 +47,26 @@ struct Material {
 }
 
 struct Options {
+    enum Scenario: String {
+        case cubes
+        case draws
+    }
+
+    var scenario = Scenario.cubes
     var frames = 60
     var halfModifiers = false
     var flat = false
-    var counts = [10, 50, 100, 200, 400]
+    var counts: [Int]?
 
     init(arguments: [String]) {
         var iterator = arguments.dropFirst().makeIterator()
         while let argument = iterator.next() {
             switch argument {
+            case "--scenario":
+                guard let scenario = Scenario(rawValue: iterator.next() ?? "") else {
+                    fatalError("--scenario must be cubes or draws")
+                }
+                self.scenario = scenario
             case "--frames": frames = Int(iterator.next() ?? "") ?? frames
             case "--half-modifiers": halfModifiers = true
             case "--flat": flat = true
@@ -210,32 +223,58 @@ func median(_ values: [Double]) -> Double {
     return sorted[sorted.count / 2]
 }
 
+func seconds(_ duration: Duration) -> Double {
+    Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
+}
+
 let options = Options(arguments: CommandLine.arguments)
 let device = MTLCreateSystemDefaultDevice()!
-let resources = try Resources(device: device)
 let renderer = try OffscreenRenderer(size: CGSize(width: 1280, height: 800), device: device)
+let drawResources = options.scenario == .draws ? try Resources(device: device) : nil
+let cubeResources = options.scenario == .cubes ? try CubeResources(device: device) : nil
+
+// Builds one frame's root element and reports how many draws it issues.
+@MainActor
+func makeRoot(count: Int, frame: Int) throws -> (AnyElement, Int) {
+    switch options.scenario {
+    case .cubes:
+        return (try cubesRoot(count: count, frame: frame, resources: cubeResources!).eraseToAnyElement(), count)
+    case .draws:
+        return (try root(makeItems(count: count, frame: frame), resources: drawResources!, options: options).eraseToAnyElement(), count * 2)
+    }
+}
 
 #if DEBUG
 let configuration = "debug"
 #else
 let configuration = "release"
 #endif
-print("# config=\(configuration) frames=\(options.frames) halfModifiers=\(options.halfModifiers) flat=\(options.flat)")
-print("drawsPerPass,totalDraws,medianFrameMs,minFrameMs,medianMsPerDraw,medianGpuMs")
+let counts = options.counts ?? (options.scenario == .cubes ? [1_000] : [10, 50, 100, 200, 400])
+print("# scenario=\(options.scenario.rawValue) config=\(configuration) frames=\(options.frames) halfModifiers=\(options.halfModifiers) flat=\(options.flat)")
+print("# medians in ms; perDraw in microseconds of total CPU")
+print("count,draws,frame,content,update,setup,workload,cpu,gpu,perDrawUs")
 
-for count in options.counts {
-    var frameTimes: [Double] = []
-    var gpuTimes: [Double] = []
-    // A few warm-up frames so first-frame pipeline creation is not counted.
-    for frame in 0 ..< (options.frames + 3) {
+for count in counts {
+    var frame: [Double] = [], content: [Double] = [], update: [Double] = [], setup: [Double] = [], workload: [Double] = [], gpu: [Double] = []
+    var draws = 0
+    // Warm-up frames so first-frame pipeline creation is not counted.
+    for index in 0 ..< (options.frames + 3) {
         let start = ContinuousClock.now
-        let rendering = try renderer.render(try root(makeItems(count: count, frame: frame), resources: resources, options: options))
-        let elapsed = ContinuousClock.now - start
-        guard frame >= 3 else { continue }
-        frameTimes.append(Double(elapsed.components.attoseconds) / 1e15 + Double(elapsed.components.seconds) * 1000)
-        gpuTimes.append((rendering.gpuTime ?? 0) * 1000)
+        let (element, drawCount) = try makeRoot(count: count, frame: index)
+        let built = ContinuousClock.now
+        let rendering = try renderer.render(element)
+        let end = ContinuousClock.now
+        guard index >= 3, let phases = rendering.cpuPhaseTimings else {
+            continue
+        }
+        draws = drawCount
+        frame.append(seconds(end - start) * 1_000)
+        content.append(seconds(built - start) * 1_000)
+        update.append(phases.update * 1_000)
+        setup.append(phases.setup * 1_000)
+        workload.append(phases.workload * 1_000)
+        gpu.append((rendering.gpuTime ?? 0) * 1_000)
     }
-    let medianMs = median(frameTimes)
-    let totalDraws = count * 2
-    print(String(format: "%d,%d,%.3f,%.3f,%.4f,%.3f", count, totalDraws, medianMs, frameTimes.min()!, medianMs / Double(totalDraws), median(gpuTimes)))
+    let cpu = median(content) + median(update) + median(setup) + median(workload)
+    print(String(format: "%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f", count, draws, median(frame), median(content), median(update), median(setup), median(workload), cpu, median(gpu), cpu * 1_000 / Double(draws)))
 }
