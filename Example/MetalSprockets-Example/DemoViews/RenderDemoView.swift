@@ -14,7 +14,7 @@ struct RenderDemoView: View {
     // More than one cube is a stress test: one draw per cube, unless instancing is on.
     // Persisted, so a profiling run can start with many cubes (`defaults write` or `-cubeCount 1000`).
     @AppStorage("cubeCount") private var cubeCount = 1
-    @State private var instanced = false
+    @AppStorage("instanced") private var instanced = true
 
     private static let cubeCounts = [1, 100, 500, 1_000, 2_000, 5_000]
 
