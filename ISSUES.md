@@ -9878,3 +9878,30 @@ Repro
 - `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 
 ---
+
+## 502: Improve layout of default FPS HUD
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-10-16T14:05:08Z
++++
+
+The default FPS HUD is one flat list of label/value rows (FPS, Frame, 1s Range, CPU, Content, Update, Setup, Workload, GPU, per-pass timings, Frame #). It is hard to scan.
+
+Screenshot: /Users/schwa/Library/Application Support/CleanShot/media/media_a6gs1nDdJn/Screenshot 2026-10-16 at 10.04.27@2x.png
+
+Problems:
+- No grouping: CPU sub-phases (Content, Update, Setup, Workload) and GPU passes (e.g. Cube pass) look the same as top-level rows.
+- FPS is the most important value but has the same size as the other rows.
+- '1s Range' value (689.8 ms–689.8 ms) is wide and pushes the column width.
+- Values do not use monospaced digits, so they jitter.
+
+Suggested:
+- Make FPS large at the top.
+- Group into sections (Frame, CPU, GPU) with indented sub-rows or headers.
+- Use monospaced digits for values.
+- Shorten or reformat the range row.
+
+---
