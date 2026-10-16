@@ -13,13 +13,27 @@ internal func isEqual<LHS: Equatable, RHS: Equatable>(_ lhs: LHS, _ rhs: RHS) ->
 /// invisible here, so `System` has to re-evaluate them.
 internal func isEqual(_ lhs: Any, _ rhs: Any) -> Bool {
     let info = ComparisonCache.info(for: lhs)
-    if info.isEquatable, let equatableLHS = lhs as? any Equatable, let equatableRHS = rhs as? any Equatable {
-        return isEqual(equatableLHS, equatableRHS)
+    if let equatableType = info.equatableType {
+        return equatableType.isEqualErased(lhs, rhs)
     }
     guard !info.isClass, !(type(of: rhs) is AnyClass) else {
         return false
     }
+    if info.isNeverEqual {
+        return false
+    }
     return isEqualStructurally(lhs, rhs)
+}
+
+extension Equatable {
+    /// `lhs` must have type `Self` (it comes from the cached metatype of `lhs`). Different dynamic types are unequal.
+    static func isEqualErased(_ lhs: Any, _ rhs: Any) -> Bool {
+        guard let rhs = rhs as? Self else {
+            return false
+        }
+        // swiftlint:disable:next force_cast
+        return (lhs as! Self) == rhs
+    }
 }
 
 /// Compares one stored property of a non-Equatable element.
@@ -27,8 +41,8 @@ internal func isEqual(_ lhs: Any, _ rhs: Any) -> Bool {
 /// Unlike an element, a class-typed property is compared by identity: an element holding the same model instance
 /// (for example an `@Observable`) has not changed. (#352)
 private func isEqualStoredProperty(_ lhs: Any, _ rhs: Any) -> Bool {
-    if ComparisonCache.info(for: lhs).isEquatable, let equatableLHS = lhs as? any Equatable, let equatableRHS = rhs as? any Equatable {
-        return isEqual(equatableLHS, equatableRHS)
+    if let equatableType = ComparisonCache.info(for: lhs).equatableType {
+        return equatableType.isEqualErased(lhs, rhs)
     }
     // A non-Equatable dynamic property (e.g. `@MSState`) owns mutable storage that reflection cannot see through,
     // so it is always treated as changed.
@@ -89,9 +103,13 @@ private func isEqualStructurally(_ lhs: Any, _ rhs: Any) -> Bool {
 
 /// Per-type facts used by `isEqual`, computed once per type instead of on every comparison (#495).
 internal enum ComparisonCache {
-    struct Info {
-        var isEquatable: Bool
+    struct Info: @unchecked Sendable {
+        var equatableType: (any Equatable.Type)?
         var isClass: Bool
+        /// See ``isNeverEqual(_:)``. Only computed for non-Equatable, non-class types.
+        var isNeverEqual = false
+
+        var isEquatable: Bool { equatableType != nil }
     }
 
     private static let infos = Mutex<[ObjectIdentifier: Info]>([:])
@@ -102,7 +120,10 @@ internal enum ComparisonCache {
         if let info = infos.withLock({ $0[key] }) {
             return info
         }
-        let info = Info(isEquatable: value is any Equatable, isClass: type(of: value) is AnyClass)
+        var info = Info(equatableType: type(of: value) as? any Equatable.Type, isClass: type(of: value) is AnyClass)
+        if !info.isEquatable, !info.isClass {
+            info.isNeverEqual = isNeverEqual(value)
+        }
         infos.withLock { $0[key] = info }
         return info
     }
