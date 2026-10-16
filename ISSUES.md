@@ -9115,6 +9115,7 @@ Found while debugging SolarSystem #36.
 
 - `2026-10-05T22:35:19Z`: Looked at ArgumentTablePool/ParameterSet.makeTables. Tables are already pooled per recording slot (#465); the remaining per-draw cost is clearing slots plus setAddress/setTexture calls. Punting: skipping re-binds needs per-slot change tracking, value:/values: get new scratch addresses every frame (so they must be re-bound regardless), and cross-frame reuse safety is entangled with the unexplained in-flight race in #471. The only profile so far (#479, GLTFViewer) showed reconciliation, not binding, as the hot spot; that is now reduced (#479, #480). Unblocker: a Time Profiler capture after #479/#480 showing makeTables/acquire as significant, or a decision to drop this to Low until then.
 - `2026-10-07T14:24:29Z`: Auto-fixer punt: no actionable code change without evidence. Per the prior analysis, tables are already pooled (#465) and the remaining re-binds are required because value:/values: get fresh scratch addresses each frame; cross-frame reuse safety is entangled with #471 (now deferred). Unblocker: a Time Profiler capture showing makeTables/acquire as a real hot spot, or a decision to drop this to Low until then.
+- `2026-10-16T13:30:54Z`: Related: #486 per-draw CPU cost. Revisit after profiling (#489).
 
 ---
 
@@ -9274,9 +9275,9 @@ On device, the first frames after opening an immersive space (ImmersiveRenderCon
 status: open
 priority: low
 kind: enhancement
-labels: effort:m, area:api
+labels: effort:m, area:api, deferred
 created: 2026-10-07T01:51:42Z
-updated: 2026-10-07T14:14:55Z
+updated: 2026-10-16T13:28:04Z
 +++
 
 RenderView configures its Metal context through SwiftUI view modifiers backed by EnvironmentValues (`.device`, `.commandQueue`, `.shaderStore`, `.metalShaderLogging`, `.renderViewLogFrame`, `.renderViewFatalErrorOnError`). Runner and OffscreenRenderer configure the same underlying context through init parameters (device, commandQueue, shaderLogging, residency, maximumInFlightSubmissions; plus size/colorUsage/depthUsage/clearDepth for OffscreenRenderer).
@@ -9358,11 +9359,13 @@ This needs a guarantee that recording frame N+k (k = maximumInFlightSubmissions)
 ## 486: Per-frame reconciliation cost is high for ~200 draw elements (StructuralIdentifier hashing)
 
 +++
-status: new
+status: open
 priority: high
 kind: enhancement
-labels: area:performance
+labels: area:performance, effort:l
+depends: 489
 created: 2026-10-16T12:46:24Z
+updated: 2026-10-16T13:30:53Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -9397,16 +9400,19 @@ Ideas, not verified
 
 Related: #476 (argument tables rebuilt for every draw).
 
+- `2026-10-16T13:30:54Z`: Related: #476 (deferred) — argument tables rebuilt and re-bound for every draw every frame may be part of the per-draw CPU cost. Revisit after #489.
+
 ---
 
 ## 487: No representative benchmark for per-frame CPU cost with many draw elements
 
 +++
-status: new
+status: open
 priority: high
-kind: enhancement
-labels: area:performance
+kind: task
+labels: area:performance, effort:m
 created: 2026-10-16T12:54:57Z
+updated: 2026-10-16T13:30:53Z
 +++
 
 Follow-up to #486.
@@ -9432,11 +9438,12 @@ Current numbers (release, Apple silicon, 2 passes, 1280x800)
 ## 488: Client code cannot read per-phase CPU timings (update, setup, workload)
 
 +++
-status: new
+status: open
 priority: high
 kind: enhancement
-labels: area:performance
+labels: area:performance, effort:m, area:timing
 created: 2026-10-16T12:54:57Z
+updated: 2026-10-16T13:30:53Z
 +++
 
 Follow-up to #486.
@@ -9457,11 +9464,13 @@ Expected
 ## 489: Profile per-frame CPU cost with Instruments to find where the time goes
 
 +++
-status: new
+status: open
 priority: high
 kind: task
-labels: area:performance
+labels: area:performance, effort:m
+depends: 487, 488
 created: 2026-10-16T12:54:58Z
+updated: 2026-10-16T13:30:54Z
 +++
 
 Follow-up to #486.
@@ -9481,11 +9490,12 @@ Depends on having a trusted benchmark and phase timings (the other #486 follow-u
 ## 490: Unknown whether ForEach defeats node reuse or equality checks in large trees
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
-labels: area:performance
+labels: area:performance, effort:s
 created: 2026-10-16T12:54:58Z
+updated: 2026-10-16T13:30:54Z
 +++
 
 Follow-up to #486.
@@ -9504,11 +9514,12 @@ Expected
 ## 491: Unknown whether per-dispatch GPU timestamps on Metal 4 compute encoders are accurate
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
-labels: area:timing, area:metal4
+labels: area:timing, area:metal4, effort:s, deferred
 created: 2026-10-16T13:23:23Z
+updated: 2026-10-16T13:31:54Z
 +++
 
 Follow-up to #448.
@@ -9531,47 +9542,61 @@ Expected
 status: new
 priority: low
 kind: task
-labels: area:timing, area:metal4
+labels: area:timing, area:metal4, deferred
 created: 2026-10-16T13:23:23Z
+updated: 2026-10-16T13:29:33Z
 +++
 
 Follow-up to #448.
 
-Observed (Apple M5 Max, Xcode 27 RC, one run, debug layer off)
-- 64 draws in one render pass, writeTimestamp(granularity: .precise, after: .vertex) before each draw and after: .fragment after each draw.
+Observed (Apple M5 Max, Xcode 27 RC)
+- 64 draws in one render pass. A timestamp was written before each draw (writeTimestamp(granularity: .precise, after: .vertex)) and after each draw (after: .fragment), through the library's RenderPassEncoder.writeTimestamp. All 64 went into one 64-entry MTL4CounterHeap.
 - Only the first 9 writes (start0, end0 ... end3, start4) were non-zero. All later writes read 0.
 - All 4 recorded end timestamps were the same tick. start1 to start4 were the same tick.
+- Reproduced with MTL_DEBUG_LAYER=1 and without it.
+- In #447, 4 timestamps written from RenderCommand and Draw closures in one render pass all resolved, so the cap is at least 4.
 - The Metal 4 header says a render timestamp 'may also include subsequent operations'. No limit is documented.
-- supportsCounterSampling(.atDrawBoundary) is false on this device (older API).
+- supportsCounterSampling(.atDrawBoundary) is false on this device. That query is for the older MTLCounterSampleBuffer API.
+
+Caveat
+- These runs used code that still had the bug fixed in #448, where gpuTimed accumulated pass requests across frames. That test had no gpuTimed outside a pass, so it should not have been affected, but redo the run on current code.
 
 Unknown
-- Whether the cap is per encoder, per heap or per command buffer, and whether it depends on stage, granularity, draw count or the debug layer.
+- Whether the cap is per encoder, per heap or per command buffer, and whether it depends on stage, granularity or draw count.
 - Whether per-draw GPU time on Apple GPUs is available at runtime at all, or only through Xcode GPU capture.
 
 Expected
-- A probe that varies those factors, with results recorded here.
+- A probe on current code that varies those factors, with results recorded here.
 
 ---
 
-## 493: Metal allows only 32 counter heaps per process; GPU timing fails hard when they run out
+## 493: Counter heap creation fails after 32 live heaps, and the failure fails the frame
 
 +++
 status: new
 priority: low
 kind: enhancement
-labels: area:timing, area:metal4
+labels: area:timing, area:metal4, deferred
 created: 2026-10-16T13:23:24Z
+updated: 2026-10-16T13:30:13Z
 +++
 
 Found while adding .gpuTimed (#448).
 
+Observed (Apple M5 Max, Xcode 27 RC)
+- After 32 live 64-entry timestamp heaps, makeCounterHeap fails with MTLTimestampCounterHeapDomain Code=1: 'Cannot create heap; there are too many heaps already allocated in this process or on the system.' AGX also logs 'MTLCounterHeap: Invalid heap size requested.' After that, even 1-entry heaps fail.
+- In #448 a bug leaked heaps every frame and hit this limit. That bug is fixed.
+
 What is wrong
-- makeCounterHeap fails after 32 live counter heaps in a process (MTLTimestampCounterHeapDomain Code=1, 'too many heaps already allocated in this process or on the system'). AGX also logs 'MTLCounterHeap: Invalid heap size requested.'
-- .gpuCounters (TimestampSampler) and .onGPUTimings (GPUTimingHeapPool) each keep their own pool per node. Many such nodes, many frames in flight, or a leak can reach the limit.
-- When heap creation fails the error is thrown from the workload, so the whole frame fails, not only the timing.
+- .onGPUTimings through OffscreenRenderer: when heap creation fails, the error is thrown from the workload and render throws, so the frame fails, not only the timing. Verified by test.
+- .gpuCounters (TimestampSampler) creates heaps the same way and probably behaves the same. Not tested.
+- RenderView: the demo kept running while the error was logged. Not known whether frames were dropped.
+- .gpuCounters and .onGPUTimings each keep their own heap pool per node. Many timing nodes, or several renderers in one process, may reach the limit. Not tested.
+
+Unknown
+- Whether the limit is per process or system-wide, and whether it depends on heap entry count.
 
 Expected
-- Running out of counter heaps does not fail rendering. Timing is skipped with a warning.
-- Ideally one shared heap pool per device.
+- Running out of counter heaps does not fail rendering.
 
 ---
