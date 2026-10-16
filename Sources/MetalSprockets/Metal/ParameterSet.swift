@@ -1,6 +1,45 @@
 import Metal
 import MetalSprocketsSupport
 
+/// The argument table for each programmable stage of one draw or dispatch. Fixed slots instead of a dictionary: a
+/// pipeline has at most a few stages, and this is built for every draw.
+internal struct StageTables {
+    /// Every table, in no particular order.
+    var values: [any MTL4ArgumentTable] {
+        [vertex, fragment, kernel, object, mesh].compactMap(\.self) + Array(other.values)
+    }
+
+    private var vertex: (any MTL4ArgumentTable)?
+    private var fragment: (any MTL4ArgumentTable)?
+    private var kernel: (any MTL4ArgumentTable)?
+    private var object: (any MTL4ArgumentTable)?
+    private var mesh: (any MTL4ArgumentTable)?
+    private var other: [MTLFunctionType: any MTL4ArgumentTable] = [:]
+
+    subscript(stage: MTLFunctionType) -> (any MTL4ArgumentTable)? {
+        get {
+            switch stage {
+            case .vertex: vertex
+            case .fragment: fragment
+            case .kernel: kernel
+            case .object: object
+            case .mesh: mesh
+            default: other[stage]
+            }
+        }
+        set {
+            switch stage {
+            case .vertex: vertex = newValue
+            case .fragment: fragment = newValue
+            case .kernel: kernel = newValue
+            case .object: object = newValue
+            case .mesh: mesh = newValue
+            default: other[stage] = newValue
+            }
+        }
+    }
+}
+
 /// Named and indexed shader inputs resolved against reflected pipeline bindings into per-stage argument tables.
 ///
 /// Every `makeTables` call leases cleared tables, so a draw or dispatch can never inherit a stale binding
@@ -134,12 +173,12 @@ internal struct ParameterSet {
         Dictionary(uniqueKeysWithValues: stages.map { ($0, tableLabel(pipelineLabel: pipelineLabel, stage: $0)) })
     }
 
-    func makeTables(for bindings: PipelineBindings, stages: [MTLFunctionType], functionTables: FunctionTables? = nil, pipelineLabel: String? = nil, tableLabels: [MTLFunctionType: String] = [:], scope: RecordingScope) throws -> [MTLFunctionType: any MTL4ArgumentTable] {
+    func makeTables(for bindings: PipelineBindings, stages: [MTLFunctionType], functionTables: FunctionTables? = nil, pipelineLabel: String? = nil, tableLabels: [MTLFunctionType: String] = [:], scope: RecordingScope) throws -> StageTables {
         try validateVertexInputs()
-        var tables: [MTLFunctionType: any MTL4ArgumentTable] = [:]
+        var tables = StageTables()
         for stage in stages {
             var sizes = bindings.tableSizes(stage: stage)
-            if stage == .vertex, let highest = (vertexBuffers.map(\.index) + vertexValues.map(\.index)).max() {
+            if stage == .vertex, let highest = highestVertexIndex {
                 sizes.buffers = max(sizes.buffers, highest + 1)
             }
             guard sizes.buffers + sizes.textures + sizes.samplers > 0 else {
@@ -175,18 +214,26 @@ internal struct ParameterSet {
         return tables
     }
 
-    private func bind(_ entry: Entry, bindings: PipelineBindings, stages: [MTLFunctionType], tables: [MTLFunctionType: any MTL4ArgumentTable], scope: RecordingScope) throws {
-        // Empty stage filters mean every requested stage, matching the legacy parameter API.
-        let targets = stages.filter { entry.stages.isEmpty || entry.stages.contains(FunctionTypes($0)) }
-        let matches = targets.compactMap { stage in bindings.binding(named: entry.name, stage: stage).map { (stage, $0) } }
-        guard !matches.isEmpty else {
-            if entry.isOptional {
-                return
-            }
-            throw Failure.missingBinding(entry.name)
+    private var highestVertexIndex: Int? {
+        var highest: Int?
+        for vertexBuffer in vertexBuffers {
+            highest = max(highest ?? vertexBuffer.index, vertexBuffer.index)
         }
+        for vertexValue in vertexValues {
+            highest = max(highest ?? vertexValue.index, vertexValue.index)
+        }
+        return highest
+    }
+
+    private func bind(_ entry: Entry, bindings: PipelineBindings, stages: [MTLFunctionType], tables: StageTables, scope: RecordingScope) throws {
         var address: MTLGPUAddress?
-        for (stage, binding) in matches {
+        var matched = false
+        for stage in stages {
+            // Empty stage filters mean every requested stage, matching the legacy parameter API.
+            guard entry.stages.isEmpty || entry.stages.contains(FunctionTypes(stage)), let binding = bindings.binding(named: entry.name, stage: stage) else {
+                continue
+            }
+            matched = true
             guard entry.value.accepts(binding.type) else {
                 throw Failure.kindMismatch(name: entry.name, expected: binding.type)
             }
@@ -221,6 +268,9 @@ internal struct ParameterSet {
                 try scope.retainAllocation(accelerationStructure)
                 table.setResource(accelerationStructure.gpuResourceID, bufferIndex: binding.index)
             }
+        }
+        if !matched, !entry.isOptional {
+            throw Failure.missingBinding(entry.name)
         }
     }
 
