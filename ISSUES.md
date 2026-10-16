@@ -9094,9 +9094,9 @@ MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure 
 status: open
 priority: high
 kind: enhancement
-labels: area:metal4, area:performance, effort:l, needs-decision, deferred
+labels: area:metal4, area:performance, effort:l, needs-decision
 created: 2026-10-03T00:16:32Z
-updated: 2026-10-16T12:56:05Z
+updated: 2026-10-16T14:47:53Z
 +++
 
 Potential performance issue, not measured.
@@ -9116,6 +9116,7 @@ Found while debugging SolarSystem #36.
 - `2026-10-05T22:35:19Z`: Looked at ArgumentTablePool/ParameterSet.makeTables. Tables are already pooled per recording slot (#465); the remaining per-draw cost is clearing slots plus setAddress/setTexture calls. Punting: skipping re-binds needs per-slot change tracking, value:/values: get new scratch addresses every frame (so they must be re-bound regardless), and cross-frame reuse safety is entangled with the unexplained in-flight race in #471. The only profile so far (#479, GLTFViewer) showed reconciliation, not binding, as the hot spot; that is now reduced (#479, #480). Unblocker: a Time Profiler capture after #479/#480 showing makeTables/acquire as significant, or a decision to drop this to Low until then.
 - `2026-10-07T14:24:29Z`: Auto-fixer punt: no actionable code change without evidence. Per the prior analysis, tables are already pooled (#465) and the remaining re-binds are required because value:/values: get fresh scratch addresses each frame; cross-frame reuse safety is entangled with #471 (now deferred). Unblocker: a Time Profiler capture showing makeTables/acquire as a real hot spot, or a decision to drop this to Low until then.
 - `2026-10-16T13:30:54Z`: Related: #486 per-draw CPU cost. Revisit after profiling (#489).
+- `2026-10-16T14:47:53Z`: Un-deferred: after RFC 0006 work, Draw.workloadEnter is ~18% of frame samples (Release, cubes 1000), so per-draw encoding cost now matters.
 
 ---
 
@@ -9356,16 +9357,16 @@ This needs a guarantee that recording frame N+k (k = maximumInFlightSubmissions)
 
 ---
 
-## 486: Per-frame reconciliation cost is high for ~200 draw elements (StructuralIdentifier hashing)
+## 486: Per-frame CPU cost is high for many draw elements
 
 +++
 status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:l
-depends: 489, 495, 496, 497, 498, 501
+depends: 489, 495, 496, 497, 498, 501, 506
 created: 2026-10-16T12:46:24Z
-updated: 2026-10-16T13:55:06Z
+updated: 2026-10-16T14:47:59Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -9403,6 +9404,7 @@ Related: #476 (argument tables rebuilt for every draw).
 - `2026-10-16T13:30:54Z`: Related: #476 (deferred) — argument tables rebuilt and re-bound for every draw every frame may be part of the per-draw CPU cost. Revisit after #489.
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine.
 - `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+- `2026-10-16T14:47:53Z`: Retitled: StructuralIdentifier hashing is now ~6% of frame samples; see RFC 0006 for current breakdown.
 
 ---
 
@@ -9536,12 +9538,13 @@ Follow-ups: #495, #496, #497, #498.
 ## 490: Unknown whether ForEach defeats node reuse or equality checks in large trees
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:performance, effort:s
 created: 2026-10-16T12:54:58Z
-updated: 2026-10-16T13:30:54Z
+updated: 2026-10-16T14:47:53Z
+closed: 2026-10-16T14:47:53Z
 +++
 
 Follow-up to #486.
@@ -9557,6 +9560,7 @@ Expected
 
 - `2026-10-16T13:52:11Z`: #489 profile: ForEach itself is not a significant cost. Its children are where the time goes (see #495-#498).
 - `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+- `2026-10-16T14:47:53Z`: Answered by the #489 profile: ForEach itself is not a significant cost. Follow-up work is in #501.
 
 ---
 
@@ -9810,9 +9814,9 @@ Repro
 Expected
 - Writing or reading one environment value does not copy the whole environment or need a dynamic cast.
 
-- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: TreeDictionary (persistent hash tree from swift-collections, cheap copies with structural sharing) instead of copying and merging Dictionary on every write/inherit.
-- `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
-- `2026-10-16T14:34:35Z`: Experiments (Release, cubes 1000, 30 frames, medians, ms). Baseline before: update 9.9-10.8, setup 0.90-0.98, workload 5.3-6.0, cpu 16.2-17.7.
+\- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: TreeDictionary (persistent hash tree from swift-collections, cheap copies with structural sharing) instead of copying and merging Dictionary on every write/inherit.
+\- `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+\- `2026-10-16T14:34:35Z`: Experiments (Release, cubes 1000, 30 frames, medians, ms). Baseline before: update 9.9-10.8, setup 0.90-0.98, workload 5.3-6.0, cpu 16.2-17.7.
 
 1. FAILED, reverted: TreeDictionary (swift-collections HashTreeCollections) for inheritedValues/effectiveValues. Update 10.6-11.5, workload 4.9-5.4, cpu 16.5-17.7: no net gain. Profile: environments hold only a few dozen keys, which fit in one hash-tree node, so copy-on-write still copies the whole node; extra cost in _HashNode deinit/copy and slower lookups. The swift-collections dependency was removed again.
 
@@ -9986,5 +9990,30 @@ created: 2026-10-16T14:29:17Z
 +++
 
 Benchmarks should render a configurable number of warmup frames before measuring, so pipeline compilation, resource allocation, and caching don't skew results.
+
+---
+
+## 506: isEqual is still ~26% of the frame after per-type caching
+
++++
+status: open
+priority: high
+kind: enhancement
+labels: area:performance, effort:m
+created: 2026-10-16T14:47:52Z
+updated: 2026-10-16T14:47:59Z
++++
+
+Follow-up to #495. Part of RFC 0006.
+
+What is wrong
+- After #495 (ComparisonCache), #497 and the modifier collapse, isEqual is the largest single cost: about 26% of frame samples (Release, cubes 1000, Scripts/profile-benchmark.sh --within System.render).
+- Not yet investigated. Guesses: per-call overhead now dominates (two Mutex-guarded cache lookups, type(of:) comparisons, Mirror for types compared field by field), and the ForEach child wrapper (IdentifiedElement) compares its collapsed content.
+
+Repro
+1. Scripts/profile-benchmark.sh --within System.render
+
+Expected
+- Comparing an element with the previous frame's is a small share of the frame.
 
 ---
