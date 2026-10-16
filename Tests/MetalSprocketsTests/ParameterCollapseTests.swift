@@ -45,8 +45,29 @@ struct ParameterCollapseTests {
             .parameter("b", value: simd_float4x4(diagonal: [1, 1, 1, 1]))
         let system = System()
         try system.update(root: element)
-        #expect(system.nodes.values.filter { $0.element is any ParameterApplying }.count == 1)
+        #expect(system.nodes.values.filter { $0.element is any CollapsibleWorkloadModifier }.count == 1)
         #expect(system.nodes.values.contains { $0.element is EmptyElement })
+    }
+
+    @Test func `a mixed chain of workload modifiers produces a single node`() throws {
+        let element = EmptyElement()
+            .parameter("a", value: SIMD4<Float>(1, 0, 0, 1))
+            .viewport(MTLViewport(originX: 0, originY: 0, width: 1, height: 1, znear: 0, zfar: 1))
+            .depthBias(0.5)
+            .parameter("b", value: SIMD4<Float>(0, 1, 0, 1))
+            .onSubmissionCommitted { _ in }
+        let system = System()
+        try system.update(root: element)
+        #expect(system.nodes.values.filter { $0.element is any CollapsibleWorkloadModifier }.count == 1)
+    }
+
+    // Collapsed draw state is written on the outer node; a write nearer the content still wins.
+    @Test(.requiresMetal4) func `collapsed draw state keeps the nearest write`() throws {
+        var seen: DepthBias?
+        let system = System()
+        try system.update(root: EmptyElement().onWorkloadEnter { seen = $0.depthBias }.depthBias(0.25).parameter("x", value: SIMD4<Float>(0, 0, 0, 0)).depthBias(0.75))
+        try system.processWorkload()
+        #expect(seen?.bias == 0.25)
     }
 
     @Test(.requiresMetal4) func `the binding nearest the content wins for a repeated name in the same stage`() throws {

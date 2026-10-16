@@ -261,6 +261,8 @@ From here on, Release only.
 | #498: environment `setValue` updates one key in place; no copy when a node has no own values | cubes 1000 | ~10.0 (setup 0.95 → 0.80, workload 5.5 → 4.7) | 16.2–17.7 → 15.5–15.6 |
 | Collapse chained parameter modifiers into one node (restores #54 for Metal 4) | cubes 1000 | 10.0 → 7.25 (setup 0.80 → 0.31, workload 4.7 → 3.5) | 15.5 → 11.1 |
 | | draws 100/pass | 10.89 → 8.26 | 14.12 → 10.21 |
+| Extend the collapse to draw state, depth bias and scope modifiers (`CollapsibleWorkloadModifier`) | cubes 1000 | 7.25 → 7.35–7.64 (no change) | 11.1 → 11.2–11.7 |
+| | draws 100/pass | 8.26 → 7.69–8.16 | 10.21 → 9.3–9.9 |
 
 Example app (reported, Debug): 1000 cubes 25 fps; 5000 cubes 5 fps, up from about 1 fps.
 

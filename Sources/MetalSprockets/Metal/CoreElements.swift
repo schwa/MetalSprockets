@@ -98,66 +98,109 @@ internal struct PassFormats {
 
 /// Adds parameters during workload, rebuilding from the parent's current parameters every frame. Reading the
 /// inherited value (not this node's own earlier write) keeps skipped, reused nodes from pinning stale parameters.
-/// A parameter modifier whose bindings can be folded into an enclosing one.
-internal protocol ParameterApplying {
-    var parameterApply: (inout ParameterSet) -> Void { get }
-    var parameterContent: any Element { get }
+/// State carried through a collapsed chain of workload modifiers.
+internal struct CollapseState {
+    /// The parameter set being built, started from the inherited one by the first parameter modifier in the chain.
+    var parameters: ParameterSet?
 }
 
-/// Binds parameters for its subtree.
+/// A modifier that only acts in `workloadEnter` and can be collapsed into an enclosing one.
 ///
-/// A chain of directly nested parameter modifiers (`.vertexValues(...).parameter(...).parameter(...)`) becomes one node:
-/// the outermost applies every binding in the chain and visits the first element that is not a parameter modifier.
-/// Bindings apply outermost first, so the one nearest the content wins, as with separate nodes. Restores #54 for
-/// Metal 4 (RFC 0006).
-internal struct ParameterModifier<Content>: Element, WorkloadElement, BodylessContentElement, ParameterApplying where Content: Element {
-    var content: Content
-    var apply: (inout ParameterSet) -> Void
+/// A chain of directly nested collapsible modifiers (for example `.vertexValues(...).parameter(...).viewport(...)
+/// .useResource(...)`) becomes one node: the outermost applies every modifier in the chain to its own node, outermost
+/// first, and visits the first element that is not collapsible. Writes nearer the content still win, as with separate
+/// nodes. Restores and extends #54 for Metal 4 (RFC 0006).
+internal protocol CollapsibleWorkloadModifier {
+    var collapsedContent: any Element { get }
+    func applyCollapsed(to node: Node, state: inout CollapseState) throws
+}
 
-    var parameterApply: (inout ParameterSet) -> Void { apply }
-    var parameterContent: any Element { content }
-
-    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
-        var innermost: any Element = content
-        while let next = innermost as? any ParameterApplying {
-            innermost = next.parameterContent
+extension CollapsibleWorkloadModifier {
+    func visitInnermost(_ visit: (any Element) throws -> Void) throws {
+        var innermost = collapsedContent
+        while let next = innermost as? any CollapsibleWorkloadModifier {
+            innermost = next.collapsedContent
         }
         try visit(innermost)
     }
 
-    func workloadEnter(_ node: Node) throws {
-        var parameters = node.environmentValues.inheritedValue(ParameterSetKey.self) ?? ParameterSet()
-        apply(&parameters)
-        var inner: any Element = content
-        while let next = inner as? any ParameterApplying {
-            next.parameterApply(&parameters)
-            inner = next.parameterContent
+    func applyChain(to node: Node) throws {
+        var state = CollapseState()
+        try applyCollapsed(to: node, state: &state)
+        var inner = collapsedContent
+        while let next = inner as? any CollapsibleWorkloadModifier {
+            try next.applyCollapsed(to: node, state: &state)
+            inner = next.collapsedContent
         }
-        node.environmentValues.parameterSet = parameters
+        if let parameters = state.parameters {
+            node.environmentValues.parameterSet = parameters
+        }
+    }
+}
+
+/// Binds parameters for its subtree.
+internal struct ParameterModifier<Content>: Element, WorkloadElement, BodylessContentElement, CollapsibleWorkloadModifier where Content: Element {
+    var content: Content
+    var apply: (inout ParameterSet) -> Void
+
+    var collapsedContent: any Element { content }
+
+    func applyCollapsed(to node: Node, state: inout CollapseState) throws {
+        var parameters = state.parameters ?? node.environmentValues.inheritedValue(ParameterSetKey.self) ?? ParameterSet()
+        apply(&parameters)
+        state.parameters = parameters
+    }
+
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        try visitInnermost(visit)
+    }
+
+    func workloadEnter(_ node: Node) throws {
+        try applyChain(to: node)
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }
 }
 
 /// Writes a draw-state value during workload every frame, so reused nodes never keep an earlier frame's state.
-internal struct DrawStateModifier<Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
+internal struct DrawStateModifier<Content>: Element, WorkloadElement, BodylessContentElement, CollapsibleWorkloadModifier where Content: Element {
     var content: Content
     var apply: (inout MSEnvironmentValues) -> Void
 
-    func workloadEnter(_ node: Node) throws {
+    var collapsedContent: any Element { content }
+
+    func applyCollapsed(to node: Node, state: inout CollapseState) throws {
         apply(&node.environmentValues)
+    }
+
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        try visitInnermost(visit)
+    }
+
+    func workloadEnter(_ node: Node) throws {
+        try applyChain(to: node)
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }
 }
 
 /// Runs `action` with the recording scope during workload, for resource declarations and result callbacks.
-internal struct ScopeModifier<Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
+internal struct ScopeModifier<Content>: Element, WorkloadElement, BodylessContentElement, CollapsibleWorkloadModifier where Content: Element {
     var content: Content
     var action: (RecordingScope) throws -> Void
 
-    func workloadEnter(_ node: Node) throws {
+    var collapsedContent: any Element { content }
+
+    func applyCollapsed(to node: Node, state: inout CollapseState) throws {
         try action(try node.environmentValues.recordingScope.orThrow(.missingEnvironment("recordingScope")))
+    }
+
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        try visitInnermost(visit)
+    }
+
+    func workloadEnter(_ node: Node) throws {
+        try applyChain(to: node)
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }

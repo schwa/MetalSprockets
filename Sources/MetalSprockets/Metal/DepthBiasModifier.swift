@@ -1,7 +1,7 @@
 import Metal
 import MetalSprocketsSupport
 
-internal struct DepthBiasModifier<Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
+internal struct DepthBiasModifier<Content>: Element, WorkloadElement, BodylessContentElement, CollapsibleWorkloadModifier where Content: Element {
     typealias Body = Never
     var depthBias: Float
     var slopeScale: Float
@@ -9,8 +9,18 @@ internal struct DepthBiasModifier<Content>: Element, WorkloadElement, BodylessCo
     var content: Content
 
     // Written every frame; each Draw sets bias explicitly, so it never leaks to siblings.
-    func workloadEnter(_ node: Node) throws {
+    var collapsedContent: any Element { content }
+
+    func applyCollapsed(to node: Node, state: inout CollapseState) throws {
         node.environmentValues.depthBias = DepthBias(bias: depthBias, slopeScale: slopeScale, clamp: clamp)
+    }
+
+    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
+        try visitInnermost(visit)
+    }
+
+    func workloadEnter(_ node: Node) throws {
+        try applyChain(to: node)
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }
