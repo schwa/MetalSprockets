@@ -138,7 +138,9 @@ internal final class ImmersiveRuntime<Content: Element> {
         let context = ImmersiveContext(device: device, time: time, drawable: drawable, deviceAnchor: deviceAnchor, renderContext: renderContext, isProgressive: progressive, stencilValue: stencilValue, stencilFormat: stencilFormat, frameTimingStatistics: frameTimingStatistics)
 
         let contentStart = CACurrentMediaTime()
-        let userContent = try contentBuilder(context)
+        let userContent = try frameSignposter.withIntervalSignpost("Content") {
+            try contentBuilder(context)
+        }
         let contentDuration = CACurrentMediaTime() - contentStart
 
         let root = userContent

@@ -139,6 +139,8 @@ internal final class TimestampRequest {
 
 internal extension MSEnvironmentValues {
     @MSEntry var timestampRequest: TimestampRequest?
+    /// The open "Render Pass" / "Compute Pass" signpost interval, ended when the pass exits.
+    @MSEntry var passSignpostInterval: OSSignpostIntervalState?
 }
 
 internal extension RenderPassEncoder {

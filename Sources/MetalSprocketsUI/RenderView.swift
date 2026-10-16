@@ -567,19 +567,6 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     private let fallbackShaderStore = ShaderStore()
 
-    /// Lazily created on first use (see #337).
-    @ObservationIgnored
-    private var _signpostID: OSSignpostID?
-    @ObservationIgnored
-    var signpostID: OSSignpostID? {
-        if let id = _signpostID {
-            return id
-        }
-        let id = signposter?.makeSignpostID()
-        _signpostID = id
-        return id
-    }
-
     @ObservationIgnored
     var timingState = FrameTimingState()
 
@@ -673,18 +660,23 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
             defer {
                 logger?.verbose?.info("Exit draw callback (frame #\(currentFrame))")
             }
-            try withIntervalSignpost(signposter, name: "RenderViewViewModel.draw()", id: signpostID) {
+            try frameSignposter.withIntervalSignpost("Frame", id: frameSignposter.makeSignpostID(), "frame \(currentFrame)") {
                 let runner = try runner()
                 // Skip at the configured in-flight limit rather than block the display callback.
                 guard try runner.prepareFrame() else {
                     skippedFrameCount += 1
+                    frameSignposter.emitEvent("Frame skipped", "in-flight limit")
                     return
                 }
-                let currentDrawable = try view.currentDrawable.orThrow(.resourceCreationFailure("No drawable available"))
+                // MTKView may block here until a drawable is free.
+                let currentDrawable = try frameSignposter.withIntervalSignpost("Drawable") {
+                    try view.currentDrawable.orThrow(.resourceCreationFailure("No drawable available"))
+                }
                 // MTKView releases its drawable after each draw(); a drawable already presented cannot be waited on
                 // again by a Metal 4 queue, so a repeated one (drawing outside MTKView's cycle) is skipped.
                 guard currentDrawable !== lastPresentedDrawable else {
                     skippedFrameCount += 1
+                    frameSignposter.emitEvent("Frame skipped", "drawable already presented")
                     return
                 }
                 lastPresentedDrawable = currentDrawable
@@ -705,7 +697,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 frameTimingChange?(frameTimingStatistics)
 
                 let t0 = CACurrentMediaTime()
-                let userContent = try self.content(context, currentDrawableSize)
+                let userContent = try frameSignposter.withIntervalSignpost("Content") {
+                    try self.content(context, currentDrawableSize)
+                }
                 let rootElement = try buildRenderViewRootElement(
                     content: userContent,
                     captureConfiguration: self.captureConfiguration,

@@ -262,6 +262,8 @@ internal final class MetalContext {
         for handler in resources.terminalHandlers {
             completion.onTerminated(handler)
         }
+        let commitInterval = frameSignposter.beginInterval("Commit", id: frameSignposter.makeSignpostID(), "submission \(identifier)")
+        defer { frameSignposter.endInterval("Commit", commitInterval) }
         // Native MTL4CommandQueue.commit cannot fail, so notifying first is observably equivalent and guarantees the
         // commit notification precedes any terminal result.
         presentable?.waitForAvailability(on: commandQueue)

@@ -362,17 +362,6 @@ struct RenderViewViewModelTests {
         #expect(!optedIn.fatalErrorOnError)
     }
 
-    @Test(.requiresMetal4) func `the signpost id is made once and reused`() throws {
-        let device = try #require(MTLCreateSystemDefaultDevice())
-        let viewModel = try makeViewModel(device: device) { _, _ in
-            try triangle()
-        }
-
-        let first = viewModel.signpostID
-        let second = viewModel.signpostID
-        #expect(first == second)
-    }
-
     // Ported from the removed Metal4ViewRenderer staging tests (#438).
 
     private static let colorSource = """

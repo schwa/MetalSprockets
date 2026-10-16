@@ -27,6 +27,8 @@ public struct ComputePass <Content>: Element, WorkloadElement, BodylessContentEl
         }
         try pass.beginTimestamps(node.environmentValues.timestampRequest)
         try pass.beginGPUTimings(node.environmentValues.gpuTimingPassRequests)
+        let passLabel = label ?? "<unlabeled>"
+        node.environmentValues.passSignpostInterval = frameSignposter.beginInterval("Compute Pass", id: frameSignposter.makeSignpostID(), "\(passLabel)")
     }
 
     // Also runs while unwinding a thrown traversal, so the encoder always ends before the recording is discarded.
@@ -36,6 +38,10 @@ public struct ComputePass <Content>: Element, WorkloadElement, BodylessContentEl
         }
         node.environmentValues.computePassEncoder = nil
         node.environmentValues.computeCommandEncoder = nil
+        if let interval = node.environmentValues.passSignpostInterval {
+            frameSignposter.endInterval("Compute Pass", interval)
+            node.environmentValues.passSignpostInterval = nil
+        }
         try pass.endTimestamps(node.environmentValues.timestampRequest)
         try pass.endGPUTimings(node.environmentValues.gpuTimingPassRequests)
         try scope.endComputePass(pass, producerBarrier: node.environmentValues.passProducerBarrier)

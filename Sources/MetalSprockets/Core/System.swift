@@ -1,4 +1,5 @@
 import Foundation
+import MetalSprocketsSupport
 import os
 import QuartzCore
 
@@ -204,25 +205,46 @@ package final class System: @unchecked Sendable {
     /// sequence. See #374.
     @discardableResult
     package func render(root: some Element) throws -> PhaseTimings {
+        renderCount += 1
+        let frame = renderCount
         let updateStart = CACurrentMediaTime()
-        try phaseSignposter.withIntervalSignpost("Update") {
-            try update(root: root)
+        // Each interval carries the frame number, so a slow frame in Instruments matches the HUD's (#510).
+        let update = frameSignposter.beginInterval("Update", id: frameSignposter.makeSignpostID(), "frame \(frame)")
+        do {
+            try self.update(root: root)
+        } catch {
+            frameSignposter.endInterval("Update", update, "failed")
+            throw error
         }
+        let nodeCount = nodes.count
+        let createdCount = lastCreatedNodeCount
+        frameSignposter.endInterval("Update", update, "nodes \(nodeCount), created \(createdCount)")
         let setupStart = CACurrentMediaTime()
         let timings = try withCurrentSystem {
-            try phaseSignposter.withIntervalSignpost("Setup") {
+            let setup = frameSignposter.beginInterval("Setup", id: frameSignposter.makeSignpostID(), "frame \(frame)")
+            do {
                 try processSetup()
+            } catch {
+                frameSignposter.endInterval("Setup", setup, "failed")
+                throw error
             }
+            frameSignposter.endInterval("Setup", setup)
             let workloadStart = CACurrentMediaTime()
-            try phaseSignposter.withIntervalSignpost("Workload") {
-                try processWorkload()
-            }
+            let workload = frameSignposter.beginInterval("Workload", id: frameSignposter.makeSignpostID(), "frame \(frame)")
+            defer { frameSignposter.endInterval("Workload", workload) }
+            try processWorkload()
             let end = CACurrentMediaTime()
             return PhaseTimings(update: setupStart - updateStart, setup: workloadStart - setupStart, workload: end - workloadStart)
         }
         lastPhaseTimings = timings
         return timings
     }
+
+    /// Number of ``render(root:)`` calls, used as the frame number in signposts.
+    private(set) var renderCount = 0
+
+    /// Nodes created by the most recent update (not reused from the previous frame).
+    private(set) var lastCreatedNodeCount = 0
 
     /// Timings of the most recent successful ``render(root:)``, for roots that render through another driver.
     package private(set) var lastPhaseTimings: PhaseTimings?
@@ -256,6 +278,7 @@ package final class System: @unchecked Sendable {
                 }
             }
 
+            lastCreatedNodeCount = reconciliation.nodes.count - reconciliation.reusedCount
             self.nodes = reconciliation.nodes
             self.traversalEvents = reconciliation.events
             // Again, to pick up invalidation that happened during this update (e.g. a dynamic property calling

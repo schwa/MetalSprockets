@@ -1,10 +1,11 @@
 #!/bin/bash
 # Builds ReconciliationBenchmark in Release, records it with the Time Profiler, and prints the hottest functions.
 #
-#   Scripts/profile-benchmark.sh                              # 1000 cubes, samples inside System.update
-#   Scripts/profile-benchmark.sh --within processWorkload -- --scenario draws --counts 200
+#   Scripts/profile-benchmark.sh                              # 1000 cubes, samples inside the Update signposts
+#   Scripts/profile-benchmark.sh --phase Workload -- --scenario draws --counts 200
 #
-# Options before `--` go to profile_summary.py (--within, --top, --module), except -c Debug|Release (default Release).
+# Options before `--` go to profile_summary.py (--phase, --within, --top, --module), except -c Debug|Release (default
+# Release). The summary always starts with signpost interval statistics.
 # Arguments after `--` go to the benchmark.
 # The .trace is kept in /tmp/metalsprockets-profile/ for opening in Instruments.
 set -euo pipefail
@@ -28,7 +29,7 @@ if [ ${#benchmark_args[@]} -eq 0 ]; then
     benchmark_args=(--frames 60)
 fi
 if [ ${#summary_args[@]} -eq 0 ]; then
-    summary_args=(--within System.update)
+    summary_args=(--phase Update)
 fi
 
 output="/tmp/metalsprockets-profile"
@@ -41,6 +42,7 @@ executable="$(xcb executable-path ReconciliationBenchmark -c "${configuration}" 
 
 xcrun xctrace record --template 'Time Profiler' --output "${trace}" --launch -- "${executable}" "${benchmark_args[@]}" >&2
 xcrun xctrace export --input "${trace}" --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]' > "${trace}.xml"
+xcrun xctrace export --input "${trace}" --xpath '/trace-toc/run[@number="1"]/data/table[@schema="os-signpost" and @category="PointsOfInterest"]' > "${trace}.signposts.xml"
 
 echo "trace: ${trace}"
-"${root}/Scripts/profile_summary.py" "${trace}.xml" "${summary_args[@]}"
+"${root}/Scripts/profile_summary.py" "${trace}.xml" --signposts "${trace}.signposts.xml" "${summary_args[@]}"

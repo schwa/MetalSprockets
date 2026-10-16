@@ -10066,12 +10066,13 @@ Still open: a scripted, repeatable way to record the app; why the app's Workload
 ## 508: profile_summary.py attributes samples by function name, not by signpost intervals
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:performance, area:tooling, effort:s
 created: 2026-10-16T15:41:07Z
-updated: 2026-10-16T15:41:23Z
+updated: 2026-10-16T16:05:59Z
+closed: 2026-10-16T16:05:59Z
 +++
 
 Part of RFC 0006.
@@ -10085,17 +10086,20 @@ Expected
 - Samples can be attributed to a phase by the time range of its signpost interval.
 - The summary reports per-phase duration statistics from the signposts.
 
+- `2026-10-16T16:05:58Z`: Fixed: profile_summary.py --signposts prints per-interval count/median/p95/max/total; --phase NAME counts only samples inside those intervals on the same thread. profile-benchmark.sh exports the signpost table and defaults to --phase Update.
+
 ---
 
 ## 509: Frame, content, submission, drawable and pass work have no signpost intervals by default
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:timing, effort:s
 created: 2026-10-16T15:41:07Z
-updated: 2026-10-16T15:41:23Z
+updated: 2026-10-16T16:05:59Z
+closed: 2026-10-16T16:05:59Z
 +++
 
 Part of RFC 0006.
@@ -10108,17 +10112,20 @@ What is missing
 Expected
 - These appear as named intervals in Instruments without enabling logging.
 
+- `2026-10-16T16:05:58Z`: Fixed: always-on Points of Interest intervals Frame, Drawable, Content (RenderView), Content (immersive), Commit (submission number), Render Pass / Compute Pass (label), and a 'Frame skipped' event with the reason. Verified in benchmark traces; the RenderView-only intervals are not yet seen in an app trace.
+
 ---
 
 ## 510: Phase signposts carry no frame number, node count or draw count
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:performance, area:timing, effort:xs
 created: 2026-10-16T15:41:08Z
-updated: 2026-10-16T15:41:23Z
+updated: 2026-10-16T16:05:59Z
+closed: 2026-10-16T16:05:59Z
 +++
 
 Part of RFC 0006.
@@ -10129,17 +10136,20 @@ What is missing
 Expected
 - Each phase interval carries at least the frame number, and ideally node and draw counts.
 
+- `2026-10-16T16:05:58Z`: Fixed: Update/Setup/Workload carry 'frame N'; Update's end carries 'nodes N, created M'.
+
 ---
 
 ## 511: Duplicate, logging-gated signposts for processSetup and processWorkload
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: area:performance, area:timing, effort:xs
 created: 2026-10-16T15:41:08Z
-updated: 2026-10-16T15:41:23Z
+updated: 2026-10-16T16:05:59Z
+closed: 2026-10-16T16:05:59Z
 +++
 
 Part of RFC 0006.
@@ -10150,17 +10160,20 @@ What is wrong
 Expected
 - One interval per phase.
 
+- `2026-10-16T16:05:58Z`: Fixed: removed the logging-gated processSetup/processWorkload signposts; render(root:) owns the phase intervals.
+
 ---
 
 ## 512: All MetalSprockets signposts share the Points of Interest category
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:performance, area:timing, effort:xs
 created: 2026-10-16T15:41:08Z
-updated: 2026-10-16T15:41:24Z
+updated: 2026-10-16T16:05:59Z
+closed: 2026-10-16T16:05:59Z
 +++
 
 Part of RFC 0006.
@@ -10170,6 +10183,8 @@ What is wrong
 
 Expected
 - MetalSprockets frame intervals have their own category (for example "Frame"), so they can be shown in their own track.
+
+- `2026-10-16T16:05:58Z`: Won't do (per Jonathan): signposts exist to be seen in Instruments. Points of Interest is recorded by the Time Profiler and other templates without adding an instrument; a custom category would hide them from ordinary traces and from the trace-based tooling (#508).
 
 ---
 

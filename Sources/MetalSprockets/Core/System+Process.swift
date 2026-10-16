@@ -1,21 +1,18 @@
 import MetalSprocketsSupport
 
 package extension System {
+    // Signposted as Setup and Workload by `render(root:)`.
     func processSetup() throws {
-        try withIntervalSignpost(signposter, name: "System.processSetup()") {
-            try process(needsSetup: true) { element, node in
-                try element.setupEnter(node)
-            } exit: { element, node in
-                try element.setupExit(node)
-                node.needsSetup = false
-            }
+        try process(needsSetup: true) { element, node in
+            try element.setupEnter(node)
+        } exit: { element, node in
+            try element.setupExit(node)
+            node.needsSetup = false
         }
     }
 
     func processWorkload() throws {
-        try withIntervalSignpost(signposter, name: "System.processWorkload()") {
-            try processWorkloadWithSkipping()
-        }
+        try processWorkloadWithSkipping()
     }
 }
 
