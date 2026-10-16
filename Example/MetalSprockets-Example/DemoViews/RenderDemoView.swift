@@ -11,6 +11,10 @@ struct RenderDemoView: View {
     @State private var isPaused = false
     @State private var pausedTime: Float = 0
     @State private var frameTimingStatistics: FrameTimingStatistics?
+    // More than one cube is a stress test: one non-instanced draw per cube.
+    @State private var cubeCount = 1
+
+    private static let cubeCounts = [1, 100, 500, 1_000, 2_000, 5_000]
 
     // Queried once: this view redraws every frame, so probing the device from `body` would create a device and
     // rebuild this array 60+ times a second.
@@ -26,14 +30,17 @@ struct RenderDemoView: View {
 
             // Standard MVP transform chain
             let modelMatrix = cubeRotationMatrix(time: TimeInterval(time))
-            let viewMatrix = float4x4.translation(0, 0, -8)
+            let gridSide = Int(ceil(cbrt(Double(cubeCount))))
+            let viewMatrix = float4x4.translation(0, 0, -8 * Float(gridSide))
             let aspect = size.height > 0 ? Float(size.width / size.height) : 1.0
-            let projectionMatrix = float4x4.perspective(fovY: .pi / 4, aspect: aspect, near: 0.1, far: 100.0)
-            let transform = projectionMatrix * viewMatrix * modelMatrix
+            let projectionMatrix = float4x4.perspective(fovY: .pi / 4, aspect: aspect, near: 0.1, far: 100.0 * Float(gridSide))
+            let transforms = cubeGridOffsets(count: cubeCount, side: gridSide).map { offset in
+                projectionMatrix * viewMatrix * modelMatrix * float4x4.translation(offset.x, offset.y, offset.z)
+            }
 
             // RenderPass creates a render command encoder, contains one or more pipelines
             try RenderPass(label: "Cube") {
-                try DemoCubeRenderPipeline(transform: transform, time: time)
+                try DemoCubeRenderPipeline(transforms: transforms, time: time)
             }
             // Shown as its own row in the FrameTimingView HUD.
             .gpuTimed("Cube pass")
@@ -60,6 +67,14 @@ struct RenderDemoView: View {
                         pausedTime += 1.0 / 60.0  // Advance by one frame (~16.67ms at 60fps)
                     }
                 }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Picker("Cubes", selection: $cubeCount) {
+                    ForEach(Self.cubeCounts, id: \.self) { count in
+                        Text("\(count) cubes").tag(count)
+                    }
+                }
+                .pickerStyle(.menu)
             }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -91,6 +106,18 @@ struct RenderDemoView: View {
                 FrameTimingView(statistics: frameTimingStatistics, options: .all)
             }
         }
+    }
+}
+
+/// Centred grid positions, `side` cubes per edge, filled until `count` is reached.
+private func cubeGridOffsets(count: Int, side: Int) -> [SIMD3<Float>] {
+    let spacing: Float = 3
+    let center = Float(side - 1) / 2
+    return (0..<count).map { index in
+        let x = Float(index % side) - center
+        let y = Float((index / side) % side) - center
+        let z = Float(index / (side * side)) - center
+        return SIMD3(x, y, z) * spacing
     }
 }
 
