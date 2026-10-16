@@ -9402,6 +9402,7 @@ Related: #476 (argument tables rebuilt for every draw).
 
 - `2026-10-16T13:30:54Z`: Related: #476 (deferred) — argument tables rebuilt and re-bound for every draw every frame may be part of the per-draw CPU cost. Revisit after #489.
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine.
+- `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 
 ---
 
@@ -9555,6 +9556,7 @@ Expected
 - A measured comparison of the same draws as a ForEach, as an unrolled list, with and without AnyElement, showing per-phase cost and how many nodes are reused vs rebuilt per frame.
 
 - `2026-10-16T13:52:11Z`: #489 profile: ForEach itself is not a significant cost. Its children are where the time goes (see #495-#498).
+- `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 
 ---
 
@@ -9694,6 +9696,7 @@ Expected
 - Comparing an element with the previous frame does not need reflection or dynamic casts per stored property per frame.
 
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Macros (MetalSprocketsMacros already exists) are an option for generating comparison code instead of reflecting at runtime.
+- `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 
 ---
 
@@ -9721,6 +9724,7 @@ Expected
 - Nodes whose element type has no dynamic properties pay nothing for this.
 
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Macros are an option for generating the list of dynamic properties at compile time instead of reflecting each frame.
+- `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 
 ---
 
@@ -9754,6 +9758,7 @@ Expected
 - `2026-10-16T13:57:32Z`: borrowing / consuming parameters on hot paths (processElement, isEqual, appending, identifier passing) work on copyable types and may remove hidden copies and retain/release pairs. The #489 profile shows memmove, Atom initializeWithCopy and retain/release at roughly 10-15% self time.
 - `2026-10-16T13:57:32Z`: Span for walking atoms without copying arrays.
 - `2026-10-16T13:57:32Z`: These address copy cost, not the larger reflection costs in #495 and #496.
+- `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 
 ---
 
@@ -9782,6 +9787,7 @@ Expected
 - Writing or reading one environment value does not copy the whole environment or need a dynamic cast.
 
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: TreeDictionary (persistent hash tree from swift-collections, cheap copies with structural sharing) instead of copying and merging Dictionary on every write/inherit.
+- `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 
 ---
 
@@ -9864,10 +9870,11 @@ Repro
 
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: OrderedDictionary for per-ForEach item-ID-to-node tables; Span over children.
 - `2026-10-16T13:57:33Z`: Notes on ~Copyable / borrowing / Span (discussion, not verified):
-- borrowing / consuming on the per-child path to cut hidden copies and retain/release.
-- Span over children and data instead of materialising arrays (for example ForEach(Array(x.enumerated()), id: \.offset) builds a new array every frame).
-- Internal state (Node, traversal stacks, per-ForEach tables) may use ~Copyable-friendly swift-collections containers; check their maturity, some are experimental.
-- Public Element types stay copyable.
-- Bigger wins are expected from doing type-level work once per ForEach (direction 1) and removing reflection (#495, #496).
+- `2026-10-16T13:57:33Z`: borrowing / consuming on the per-child path to cut hidden copies and retain/release.
+- `2026-10-16T13:57:33Z`: Span over children and data instead of materialising arrays (for example ForEach(Array(x.enumerated()), id: \.offset) builds a new array every frame).
+- `2026-10-16T13:57:33Z`: Internal state (Node, traversal stacks, per-ForEach tables) may use ~Copyable-friendly swift-collections containers; check their maturity, some are experimental.
+- `2026-10-16T13:57:33Z`: Public Element types stay copyable.
+- `2026-10-16T13:57:33Z`: Bigger wins are expected from doing type-level work once per ForEach (direction 1) and removing reflection (#495, #496).
+- `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 
 ---
