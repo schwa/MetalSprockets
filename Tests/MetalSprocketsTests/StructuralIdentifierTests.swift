@@ -140,9 +140,11 @@ struct StructuralIdentifierTests {
     @Test("Explicit .id() distinguishes atoms of the same type and index")
     func explicitIDDistinguishesAtoms() {
         let typeId = ElementTypeIdentifier(Leaf.self)
+        // swiftlint:disable identical_operands
         #expect(AnyElementID(3) == AnyElementID(3))
         #expect(AnyElementID(3) != AnyElementID(4))
         #expect(AnyElementID(3).hashValue == AnyElementID(3).hashValue)
+        // swiftlint:enable identical_operands
         #expect(AnyElementID(3) != AnyElementID("3"))
         #expect(AnyElementID(3).description == "3")
         let first = StructuralIdentifier.Atom(typeIdentifier: typeId, index: 0, explicitID: AnyElementID("a"))

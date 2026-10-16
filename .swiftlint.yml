@@ -4,6 +4,7 @@ excluded:
   - "**/Package.swift"
   - "temp"
   - "Documentation"
+  - "Experiments"
 cyclomatic_complexity:
   # A flat switch over an enum's cases (e.g. FunctionConstants.Value.apply(to:at:)) is not complex in any way that
   # matters; splitting one up makes the code worse. See #353.
