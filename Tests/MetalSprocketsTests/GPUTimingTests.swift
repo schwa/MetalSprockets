@@ -133,7 +133,7 @@ struct GPUTimingTests {
         let count = GPUTimingHeapPool.heapCapacity / 2 + 1 // Two slots each, so this needs two heaps.
         let renderer = try renderer()
         func frame() throws -> some Element {
-            try ForEach(Array(0..<count), id: \.self) { index in
+            ForEach(Array(0..<count), id: \.self) { index in
                 try RenderPass { try pipeline { triangle() } }.gpuTimed("pass \(index)")
             }
             .onGPUTimings { collected.append($0) }
