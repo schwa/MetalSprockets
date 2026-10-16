@@ -9118,6 +9118,8 @@ Found while debugging SolarSystem #36.
 - `2026-10-16T13:30:54Z`: Related: #486 per-draw CPU cost. Revisit after profiling (#489).
 - `2026-10-16T14:47:53Z`: Un-deferred: after RFC 0006 work, Draw.workloadEnter is ~18% of frame samples (Release, cubes 1000), so per-draw encoding cost now matters.
 - `2026-10-16T15:41:25Z`: From the real-app trace in #507 (Release, 1000 cubes): ParameterSet.makeTables is about 25% of Workload, the largest single item there.
+- `2026-10-16T17:51:28Z`: Autoresearch session: makeTables returns fixed per-stage slots (StageTables) instead of a Dictionary, and bind no longer builds temporary arrays (-7%). Tables are still acquired and fully bound for every draw every frame.
+- `2026-10-16T17:53:15Z`: Big remaining lever after the autoresearch session: Workload is now about 45% of the cubes frame (1.5 of 3.4 ms, Release), and most of it is per-draw table acquisition and binding. Reusing a draw's bound tables when its bindings are unchanged (or encoding unchanged draws more cheaply) is the next large win here. Still needs the design decision. Related: #519 (draw subtrees never reused in Update).
 
 ---
 
@@ -9365,9 +9367,9 @@ status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:l
-depends: 489, 495, 496, 497, 498, 501, 506, 507, 513, 514, 515, 516
+depends: 489, 495, 496, 497, 498, 501, 506, 507, 513, 514, 515, 516, 519
 created: 2026-10-16T12:46:24Z
-updated: 2026-10-16T15:41:24Z
+updated: 2026-10-16T17:53:14Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -9406,6 +9408,7 @@ Related: #476 (argument tables rebuilt for every draw).
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine.
 - `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 - `2026-10-16T14:47:53Z`: Retitled: StructuralIdentifier hashing is now ~6% of frame samples; see RFC 0006 for current breakdown.
+- `2026-10-16T17:51:27Z`: Autoresearch session (RFC 0006, 'Autoresearch session'): per-frame CPU geomean 5.10 -> 2.86 ms (cubes 1000: 6.71 -> 3.39 ms; draws 100/pass: 3.87 -> 2.42 ms), Release, offscreen benchmark. Landed as three commits: 'Element equality through cached Equatable metatypes', 'Argument tables without per-draw dictionaries or arrays', 'Cheaper reconciliation, dispatch and identity'. Real-app gap still tracked in #507.
 
 ---
 
@@ -9789,6 +9792,8 @@ Expected
 
 Remaining: identifier equality is still ~23% of Update samples, mostly Atom comparison including the AnyHashable box for ForEach IDs. Next step is interned or per-parent identity (overlaps #501). Keeping open.
 
+- `2026-10-16T17:51:27Z`: Autoresearch session: a reused node is now matched by parent node identity plus its last atom (full path equality only as fallback), and AnyElementID stores Int ids directly (no AnyHashable). Identifier comparison is no longer a notable cost in profiles. Interning not done; leaving open in case it shows up again.
+
 ---
 
 ## 498: MSEnvironmentValues re-merges whole dictionaries on every write and inherit
@@ -9827,6 +9832,7 @@ Remaining: inherit still copies the parent's effective dictionary for every node
 
 - `2026-10-16T15:41:25Z`: From the real-app trace in #507: inheritEnvironmentFromActiveParent is about 12.5% of Workload. Per-draw environment reads are split out as #515.
 - `2026-10-16T15:56:09Z`: Casts on read are gone (#515: typed boxes). Remaining: inherit/recompute still copy the parent's effective dictionary for nodes with own values.
+- `2026-10-16T17:51:27Z`: Autoresearch session: the parameter set moved to dedicated environment fields, so parameter nodes no longer copy the dictionaries each phase (-5%). Tried and discarded: environment versions to skip re-inheriting (the root writes the environment every frame, so versions always change; no gain) and sorted-array tables instead of Dictionary (about 1%). Remaining: nodes with own values still copy; .environment chains tracked in #518.
 
 ---
 
@@ -9875,6 +9881,8 @@ Open questions
 - What happens to per-item state, setup and identity when items are collapsed.
 - Whether an explicit API (an instanced ForEach or Draw variant) is a better answer than detection.
 
+- `2026-10-16T17:53:15Z`: Post-autoresearch assessment: for many identical draws this is still the largest lever (the Example demo's instanced mode is far cheaper than ForEach of Draws). Remains deferred and speculative; per-draw cost is now about 3.4 us (Release, cubes).
+
 ---
 
 ## 501: ForEach children each pay the full per-node update cost, though they share one structure
@@ -9915,6 +9923,8 @@ Repro
 - `2026-10-16T13:57:33Z`: Public Element types stay copyable.
 - `2026-10-16T13:57:33Z`: Bigger wins are expected from doing type-level work once per ForEach (direction 1) and removing reflection (#495, #496).
 - `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
+- `2026-10-16T17:51:27Z`: Autoresearch session: IdentifiedElement (one per ForEach item) no longer gets a node; its identity goes on its content's atom, and Int ids are stored directly. Sibling counts use a flat stack instead of a Dictionary per node. Directions 1, 3 and 4 in this issue are not done.
+- `2026-10-16T17:53:15Z`: After the autoresearch session, the remaining directions here (type-level work once per ForEach; positional matching when ids are unchanged; reusing unchanged items) are among the big remaining levers. Item reuse (direction 4) overlaps #519.
 
 ---
 
@@ -10211,6 +10221,7 @@ Expected
 - Binding unchanged parameters costs little per draw.
 
 - `2026-10-16T15:56:09Z`: Partly addressed: collapsed chains are walked via a metatype cached in ElementTypeInfo (static requirements cast to the concrete type) instead of as? any CollapsibleWorkloadModifier; that cast was ~58% of ParameterModifier.workloadEnter in the benchmark. Cubes cpu 7.2 -> 6.8-6.9 ms. Still open: the ParameterSet is rebuilt every frame (a few allocations per draw), now a few percent.
+- `2026-10-16T17:51:28Z`: Autoresearch session: collapsed chains are walked in place through pointers and the Content metatype instead of copying the rest of the chain at each level (-3.4%). The ParameterSet itself is still rebuilt every frame.
 
 ---
 
@@ -10300,5 +10311,57 @@ created: 2026-10-16T15:45:13Z
 +++
 
 Review RFCs, experiments, and scripts in the repo. Remove or archive anything that is outdated or no longer used.
+
+---
+
+## 518: Chains of .environment writers each create a node and copy the environment
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:performance, effort:m
+created: 2026-10-16T17:51:05Z
+updated: 2026-10-16T17:51:27Z
++++
+
+Part of RFC 0006. Found in the autoresearch session.
+
+What is wrong
+- Each .environment(keyPath, value) is its own EnvironmentWritingModifier node. A chain (for example .depthCompare(...).depthStencilDescriptor(...) on every draw in the #486-style scene) is several nodes, and each one has own environment values, so each copies and merges the environment dictionaries in every phase.
+- Workload-only modifiers already collapse into one node (#54, CollapsibleWorkloadModifier); environment writers do not.
+
+Notes
+- A first attempt collapsed the whole chain onto the outermost node and broke 'transformEnvironment modifies the inherited value' (EnvironmentTests.swift:135): transformEnvironment reads the inherited value, and with the chain on one node the inner writer sees the outer write as its own value, not the inherited one. Plain .environment(keyPath, value) writes do not read the inherited value.
+
+Expected
+- A chain of environment writers costs about one node, and transformEnvironment still receives the value inherited from above it.
+
+---
+
+## 519: Draw subtrees are never reused between frames because closure-holding elements never compare equal
+
++++
+status: open
+priority: high
+kind: enhancement
+labels: area:performance, area:api, needs-decision, effort:l
+created: 2026-10-16T17:52:46Z
+updated: 2026-10-16T17:53:14Z
++++
+
+Part of RFC 0006. A big remaining lever after the autoresearch session.
+
+What is wrong
+- System.update can splice an unchanged, clean subtree without evaluating it (#370). This never happens for typical draw trees.
+- Draw holds an encode closure, and ParameterModifier, DrawStateModifier and ScopeModifier hold closures. Closures cannot be compared, so these elements are 'never equal' (#495) and every one of them is reconciled again every frame, even when the scene has not changed.
+- So a static scene with 1000 draws pays the full Update cost every frame (about 1.75 ms for 1000 cubes in Release), and an app has no way to say that a draw is unchanged.
+
+Notes
+- Reuse only saves Update (and some Setup). Workload still encodes every draw each frame; see #476 for reusing encoded state.
+- Correctness is the hard part: a closure may capture values that changed. Any scheme must only skip when unchanged is known, never guessed.
+
+Expected
+- A way for unchanged draw subtrees to be reused across frames, with the trade-offs decided (for example an explicit identity or version supplied by the caller, Equatable payloads instead of closures for common modifiers, or something else).
 
 ---

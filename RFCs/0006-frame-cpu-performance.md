@@ -285,6 +285,44 @@ Identifier equality is still ~23% of Update samples, mostly `Atom` comparison in
 
 Follow-up: #503 (detect dynamic properties stored behind `Any` or an existential).
 
+### Autoresearch session (2026-10-16)
+
+An automated experiment loop measured the geometric mean of the cubes (1000) and draws (100 per pass) scenes' CPU per
+frame in `Experiments/ReconciliationBenchmark` (Release), with the full test suite and SwiftLint as gates. The benchmark
+scenes were not changed. The kept work landed as three commits: "Element equality through cached Equatable
+metatypes", "Argument tables without per-draw dictionaries or arrays", "Cheaper reconciliation, dispatch and identity".
+
+| Change | Effect (geomean) |
+|---|---|
+| Reused node matched by parent node identity + last atom (`Node.parentNode`, `Node.id` immutable) | -4% |
+| Bodyless/Setup/Workload/ExplicitlyIdentified dispatch through metatypes cached in `ElementTypeInfo` | -10% |
+| `isEqual` through cached `Equatable` metatypes | about -1% |
+| `StageTables` (fixed slots) and allocation-free `bind` in `ParameterSet` (#476 area) | -7% |
+| `IdentifiedElement` bodyless | -3% |
+| Parameter set in dedicated environment fields instead of the dictionaries (#498) | -5% |
+| Flat sibling-count stack in the reconciler | about -1% |
+| `AnyElementID` stores `Int` directly (#497, #501) | -5.6% |
+| Collapsed modifier chains walked in place (#513) | -3.4% |
+| `IdentifiedElement` gets no node; its identity goes on its content's atom (#501) | -13% |
+
+| Release | Before | After |
+|---|---|---|
+| geomean | 5.10 ms | 2.86 ms |
+| cubes 1000 CPU | 6.71 ms | 3.39 ms |
+| cubes 1000 Update | 3.84 ms | 1.75 ms |
+| draws 100/pass CPU | 3.87 ms | 2.42 ms |
+
+Behaviour notes: structural identifiers change shape (ForEach items have no wrapper node); an `Int` explicit id no
+longer equals the same value of another integer type.
+
+Tried and discarded: environment versions to skip re-inheriting (the root writes the environment every frame, so
+versions always change); sorted-array environment tables (about 1%); reading elements in place in the static dispatch
+helpers (+8%, reproducible); lazy default viewport/scissor; a recent-bucket cache for `ArgumentTablePool` and a flat
+binding list (about 1%). Unfinished: collapsing chains of `.environment` writers (#518).
+
+Measurement: background load skewed results by about 8% for part of the session, so the script took the minimum of five
+runs and interleaved runs of the previous best build.
+
 ## Open questions
 
 - What is the target? For example: 1000-cube demo at 60 fps in Release?
