@@ -9363,9 +9363,9 @@ status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:l
-depends: 489, 495, 496, 497, 498
+depends: 489, 495, 496, 497, 498, 501
 created: 2026-10-16T12:46:24Z
-updated: 2026-10-16T13:52:11Z
+updated: 2026-10-16T13:55:06Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -9401,6 +9401,7 @@ Ideas, not verified
 Related: #476 (argument tables rebuilt for every draw).
 
 - `2026-10-16T13:30:54Z`: Related: #476 (deferred) — argument tables rebuilt and re-bound for every draw every frame may be part of the per-draw CPU cost. Revisit after #489.
+- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine.
 
 ---
 
@@ -9585,12 +9586,12 @@ Expected
 ## 492: Render-encoder timestamps between draws read 0 after the first few
 
 +++
-status: new
+status: open
 priority: low
 kind: task
-labels: area:timing, area:metal4, deferred
+labels: area:timing, area:metal4, deferred, effort:s
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-16T13:29:33Z
+updated: 2026-10-16T13:55:56Z
 +++
 
 Follow-up to #448.
@@ -9619,12 +9620,12 @@ Expected
 ## 493: Counter heap creation fails after 32 live heaps, and the failure fails the frame
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
-labels: area:timing, area:metal4, deferred
+labels: area:timing, area:metal4, deferred, effort:s
 created: 2026-10-16T13:23:24Z
-updated: 2026-10-16T13:30:13Z
+updated: 2026-10-16T13:55:56Z
 +++
 
 Found while adding .gpuTimed (#448).
@@ -9650,11 +9651,12 @@ Expected
 ## 494: Deprecated API is still public: MetalSprocketsError.missingEnvironment(_: PartialKeyPath)
 
 +++
-status: new
+status: open
 priority: low
 kind: task
 labels: area:api, effort:xs, deferred
 created: 2026-10-16T13:44:31Z
+updated: 2026-10-16T13:55:56Z
 +++
 
 What is still there
@@ -9691,6 +9693,8 @@ Repro
 Expected
 - Comparing an element with the previous frame does not need reflection or dynamic casts per stored property per frame.
 
+- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Macros (MetalSprocketsMacros already exists) are an option for generating comparison code instead of reflecting at runtime.
+
 ---
 
 ## 496: Element.visitDynamicProperties uses reflection on every node every frame
@@ -9715,6 +9719,8 @@ Repro
 
 Expected
 - Nodes whose element type has no dynamic properties pay nothing for this.
+
+- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Macros are an option for generating the list of dynamic properties at compile time instead of reflecting each frame.
 
 ---
 
@@ -9742,6 +9748,13 @@ Repro
 Expected
 - Node lookup cost does not depend on the depth of the node.
 
+- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: InlineArray or interned identifiers instead of [Atom] paths; Span for traversal without copying.
+- `2026-10-16T13:57:32Z`: Notes on ~Copyable / borrowing / Span (discussion, not verified):
+- `2026-10-16T13:57:32Z`: StructuralIdentifier cannot be ~Copyable while it is a Dictionary key (Hashable requires Copyable). Interned identifiers (small integer or handle) would make copying irrelevant.
+- `2026-10-16T13:57:32Z`: borrowing / consuming parameters on hot paths (processElement, isEqual, appending, identifier passing) work on copyable types and may remove hidden copies and retain/release pairs. The #489 profile shows memmove, Atom initializeWithCopy and retain/release at roughly 10-15% self time.
+- `2026-10-16T13:57:32Z`: Span for walking atoms without copying arrays.
+- `2026-10-16T13:57:32Z`: These address copy cost, not the larger reflection costs in #495 and #496.
+
 ---
 
 ## 498: MSEnvironmentValues re-merges whole dictionaries on every write and inherit
@@ -9767,5 +9780,94 @@ Repro
 
 Expected
 - Writing or reading one environment value does not copy the whole environment or need a dynamic cast.
+
+- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: TreeDictionary (persistent hash tree from swift-collections, cheap copies with structural sharing) instead of copying and merging Dictionary on every write/inherit.
+
+---
+
+## 499: Scripts/ has no single entry point; tasks are separate shell/Python scripts
+
++++
+status: open
+priority: low
+kind: task
+labels: area:tooling, effort:s, deferred
+created: 2026-10-16T13:52:36Z
+updated: 2026-10-16T13:55:56Z
++++
+
+What is missing
+- Repo tasks are separate scripts in Scripts/: api-snapshot.sh, profile-benchmark.sh, profile_summary.py. There is no justfile.
+- Common commands that are not scripted at all have to be remembered: running ReconciliationBenchmark (xcb run ... -c Release -- --scenario ...), the full test suite (xcb test MetalSprockets/MetalSprockets-Package), MTL_DEBUG_LAYER=1 test runs, building the Example app.
+- Nothing lists the available tasks.
+
+Expected
+- One place (a justfile, or one per area if that reads better) that lists and runs these tasks, with the existing scripts' options still reachable.
+
+---
+
+## 500: Idea: ForEach of identical draws could render as one instanced draw automatically
+
++++
+status: open
+priority: low
+kind: feature
+labels: area:performance, needs-decision, effort:xl, deferred
+created: 2026-10-16T13:52:51Z
+updated: 2026-10-16T13:55:56Z
++++
+
+Idea (speculative).
+
+What is missing
+- A ForEach whose children are the same Draw with the same pipeline, geometry and resources, and differ only in per-item parameter values (such as a transform), encodes one draw per item. Each item is also a separate set of nodes to reconcile, which is the per-draw CPU cost in #486 (about 60 us per cube in Release, see #487).
+- The Example Render demo at 1000 cubes is this case: same vertices and pipeline, only transform differs.
+- In #486 the client got 150 ms -> 22 ms by instancing by hand. MetalSprockets has no way to get that from a plain ForEach.
+
+Open questions
+- How to detect it safely: same element type, same pipeline, same non-varying parameters and resources, Draw closures that are equivalent (closures cannot be compared).
+- How varying parameters become per-instance data (buffer of values, instance_id in the shader). The shader would have to be written for it, so it may need opt-in rather than being automatic.
+- What happens to per-item state, setup and identity when items are collapsed.
+- Whether an explicit API (an instanced ForEach or Draw variant) is a better answer than detection.
+
+---
+
+## 501: ForEach children each pay the full per-node update cost, though they share one structure
+
++++
+status: open
+priority: high
+kind: enhancement
+labels: area:performance, needs-decision, effort:l
+created: 2026-10-16T13:55:05Z
++++
+
+From the #489 profile. Related: #486, #495, #496, #497, #490. Not the same as #500 (instancing).
+
+What is wrong
+- In large scenes most nodes are ForEach children (1000 cubes = 1000 copies of the same subtree). Each child pays the full per-node update cost: reflection-based equality (#495), dynamic-property discovery (#496), full-path identifier hashing and lookup (#497), and boxing its ID in AnyElementID (AnyHashable).
+- Work that depends only on the child's element type is repeated for every child.
+- Children are found through System.nodes by full path, even when the IDs and their order are unchanged from the previous frame.
+- An unchanged item still runs its content closure and has its whole subtree diffed.
+
+Possible directions (to decide)
+1. Do type-level work (dynamic properties, how to compare stored properties, conformance lookups) once per ForEach and reuse it for every child.
+2. Keep a per-ForEach table from item ID to child node, so lookup does not depend on depth.
+3. When IDs match the previous frame in the same order, match children to nodes by position, with no hashing.
+4. When an item equals the previous frame's item (Data.Element: Equatable), reuse the child subtree without calling content or diffing. Needs a contract that content depends only on the item. Does not help when every item changes each frame (the cube demo).
+5. Avoid the AnyHashable box for common ID types such as Int, or box once per child.
+
+1 and 5 also apply outside ForEach and overlap with #495-#497.
+
+Repro
+1. Scripts/profile-benchmark.sh (1000 cubes in a ForEach)
+
+- `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: OrderedDictionary for per-ForEach item-ID-to-node tables; Span over children.
+- `2026-10-16T13:57:33Z`: Notes on ~Copyable / borrowing / Span (discussion, not verified):
+- borrowing / consuming on the per-child path to cut hidden copies and retain/release.
+- Span over children and data instead of materialising arrays (for example ForEach(Array(x.enumerated()), id: \.offset) builds a new array every frame).
+- Internal state (Node, traversal stacks, per-ForEach tables) may use ~Copyable-friendly swift-collections containers; check their maturity, some are experimental.
+- Public Element types stay copyable.
+- Bigger wins are expected from doing type-level work once per ForEach (direction 1) and removing reflection (#495, #496).
 
 ---
