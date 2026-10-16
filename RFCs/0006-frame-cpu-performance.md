@@ -263,6 +263,11 @@ From here on, Release only.
 | | draws 100/pass | 10.89 → 8.26 | 14.12 → 10.21 |
 | Extend the collapse to draw state, depth bias and scope modifiers (`CollapsibleWorkloadModifier`) | cubes 1000 | 7.25 → 7.35–7.64 (no change) | 11.1 → 11.2–11.7 |
 | | draws 100/pass | 8.26 → 7.69–8.16 | 10.21 → 9.3–9.9 |
+| #506: never-equal propagates through nested struct fields (ForEach's `IdentifiedElement`) | cubes 1000 | 7.35–7.64 → 4.1–4.6 | 11.2–11.7 → 8.0–8.8 |
+| | draws 100/pass | 7.69–8.16 → 5.9–7.0 | 9.3–9.9 → 7.5–9.0 |
+
+Example app, Release, 1000 cubes (reported): 51 fps; CPU 17.4 ms, of which Workload 11.3 ms, versus 3.5 ms in the
+benchmark. Not yet explained: #507.
 
 Example app (reported, Debug): 1000 cubes 25 fps; 5000 cubes 5 fps, up from about 1 fps.
 

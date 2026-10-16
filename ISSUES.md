@@ -9364,9 +9364,9 @@ status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:l
-depends: 489, 495, 496, 497, 498, 501, 506
+depends: 489, 495, 496, 497, 498, 501, 506, 507
 created: 2026-10-16T12:46:24Z
-updated: 2026-10-16T14:47:59Z
+updated: 2026-10-16T14:59:38Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -10000,12 +10000,13 @@ Benchmarks should render a configurable number of warmup frames before measuring
 ## 506: isEqual is still ~26% of the frame after per-type caching
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: area:performance, effort:m
 created: 2026-10-16T14:47:52Z
-updated: 2026-10-16T14:47:59Z
+updated: 2026-10-16T15:00:29Z
+closed: 2026-10-16T15:00:29Z
 +++
 
 Follow-up to #495. Part of RFC 0006.
@@ -10019,5 +10020,33 @@ Repro
 
 Expected
 - Comparing an element with the previous frame's is a small share of the frame.
+
+\- `2026-10-16T15:00:28Z`: Fixed in 'Propagate never-equal through nested struct fields' : a struct field whose type is never equal makes the outer type never equal (computed once per type). ForEach's IdentifiedElement wraps a collapsed modifier that holds a closure, so it was reflected field by field every frame only to fail on the content.
+
+Release, 60 frames: cubes 1000 update 7.35-7.64 -> 4.1-4.6, cpu 11.2-11.7 -> 8.0-8.8; draws 100/pass update 7.69-8.16 -> 5.9-7.0, cpu 9.3-9.9 -> 7.5-9.0.
+
+---
+
+## 507: No repeatable profile of the real app (RenderView) under load
+
++++
+status: open
+priority: high
+kind: task
+labels: area:performance, effort:m
+created: 2026-10-16T14:59:32Z
+updated: 2026-10-16T14:59:38Z
++++
+
+Part of RFC 0006.
+
+What is missing
+- All RFC 0006 numbers come from Experiments/ReconciliationBenchmark (OffscreenRenderer). The Example app (RenderView) at 1000 cubes, Release, shows a different picture: CPU 17.4 ms, Workload 11.3 ms (benchmark: CPU 8.0 ms, Workload 3.5 ms), 51 fps. 4x MSAA on or off makes no difference.
+- A first look suggested most of the app's Workload time is not CPU work (Time Profiler found few samples in processWorkload), but those runs were not valid: the app ran with 1 cube, and may have been behind other windows (throttled). Not known where the time goes.
+- There is no scripted way to launch the app at a given cube count, in front, and record it. The cube count is now @AppStorage("cubeCount"), so it can be set before launch.
+
+Expected
+- A script (like Scripts/profile-benchmark.sh) that launches the Release Example app with a set cube count, frontmost, records it (Time Profiler, and a trace that shows blocked time, such as System Trace), and summarises Update/Setup/Workload.
+- An explanation of the gap between the app's Workload and the benchmark's.
 
 ---
