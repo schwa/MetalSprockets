@@ -254,6 +254,7 @@ From here on, Release only.
 | #497 step 1: cached path hash, leaf-first equality | cubes 1000 | 23.61 → 17.06 | 31.35 → 24.58 |
 | #497 step 2: reuse the previous traversal's node, no dictionary lookups | cubes 1000 | 17.06 → 13.23 | 24.58 → 20.75 |
 | #497 steps 1+2 | draws 100/pass | 22.19 → 13.10 | 26.35 → 17.24 |
+| Skip the removed-node set diff when every previous node was reused | cubes 1000 | 13.23 → 12.24 | 20.75 → 20.2 |
 
 Identifier equality is still ~23% of Update samples, mostly `Atom` comparison including the `AnyHashable` box for
 `ForEach` IDs. Interned or per-parent identity (#497, #501) is the next step.

@@ -6,6 +6,8 @@ internal struct Reconciliation {
     var nodes: [StructuralIdentifier: Node]
     /// The new traversal events, in pre-order enter/exit pairs.
     var events: [TraversalEvent]
+    /// How many nodes of the previous tree were reused. When it equals the previous node count, nothing was removed.
+    var reusedCount: Int
 }
 
 /// Diffs an element tree against the previous traversal and produces the new node dictionary and traversal events.
@@ -21,6 +23,7 @@ internal final class TreeReconciler {
     private var previousIterator: IndexingIterator<[Node]>
     private var newEvents: [TraversalEvent] = []
     private var newNodes: [StructuralIdentifier: Node] = [:]
+    private var reusedCount = 0
     /// Atoms for the path from the root to the element currently being processed.
     private var atomStack: [StructuralIdentifier.Atom] = []
     /// Path hashes matching `atomStack`, so each identifier's hash extends its parent's instead of rehashing the path.
@@ -45,7 +48,7 @@ internal final class TreeReconciler {
     /// environment and state through the active node stack while their nodes are being configured.
     func reconcile(root: some Element) throws -> Reconciliation {
         try processElement(root)
-        return Reconciliation(nodes: newNodes, events: newEvents)
+        return Reconciliation(nodes: newNodes, events: newEvents, reusedCount: reusedCount)
     }
 
     private func nextIndex(for typeIdentifier: ElementTypeIdentifier) -> Int {
@@ -69,6 +72,7 @@ internal final class TreeReconciler {
                 newNodes[node.id] = node
             }
         }
+        reusedCount += enteredCount
         // The subtree's root identifier was already consumed by the caller; consume the descendants so the
         // previous-identifier iterator stays aligned with the pre-order walk.
         for _ in 1..<max(enteredCount, 1) {
@@ -114,6 +118,9 @@ internal final class TreeReconciler {
             return
         }
 
+        if previousNode != nil {
+            reusedCount += 1
+        }
         let currentNode = system.processNode(currentId: currentId, previousNode: previousNode, element: element, isEqualToPrevious: isEqualToPrevious, newNodes: &newNodes)
 
         newEvents.append(.enter(currentNode))

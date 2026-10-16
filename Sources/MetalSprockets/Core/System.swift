@@ -243,7 +243,8 @@ package final class System: @unchecked Sendable {
 
             // Find removed nodes by diffing old vs new, and give their elements a
             // chance to tear down any external state before they're dropped.
-            let removedIds = Set(nodes.keys).subtracting(Set(reconciliation.nodes.keys))
+            // Usually every previous node was reused, so nothing was removed and no diff is needed.
+            let removedIds = reconciliation.reusedCount == nodes.count ? [] : nodes.keys.filter { reconciliation.nodes[$0] == nil }
             for id in removedIds {
                 guard let removedNode = nodes[id] else { continue }
                 if let bodyless = removedNode.element as? any BodylessElement {
