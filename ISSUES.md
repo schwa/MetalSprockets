@@ -9117,6 +9117,7 @@ Found while debugging SolarSystem #36.
 - `2026-10-07T14:24:29Z`: Auto-fixer punt: no actionable code change without evidence. Per the prior analysis, tables are already pooled (#465) and the remaining re-binds are required because value:/values: get fresh scratch addresses each frame; cross-frame reuse safety is entangled with #471 (now deferred). Unblocker: a Time Profiler capture showing makeTables/acquire as a real hot spot, or a decision to drop this to Low until then.
 - `2026-10-16T13:30:54Z`: Related: #486 per-draw CPU cost. Revisit after profiling (#489).
 - `2026-10-16T14:47:53Z`: Un-deferred: after RFC 0006 work, Draw.workloadEnter is ~18% of frame samples (Release, cubes 1000), so per-draw encoding cost now matters.
+- `2026-10-16T15:41:25Z`: From the real-app trace in #507 (Release, 1000 cubes): ParameterSet.makeTables is about 25% of Workload, the largest single item there.
 
 ---
 
@@ -9364,9 +9365,9 @@ status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:l
-depends: 489, 495, 496, 497, 498, 501, 506, 507
+depends: 489, 495, 496, 497, 498, 501, 506, 507, 513, 514, 515, 516
 created: 2026-10-16T12:46:24Z
-updated: 2026-10-16T14:59:38Z
+updated: 2026-10-16T15:41:24Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -9824,6 +9825,8 @@ Expected
 
 Remaining: inherit still copies the parent's effective dictionary for every node that has own values (every ParameterModifier), once per phase; reads still cast Any back (swift_dynamicCast ~14% of frame samples). Ideas not tried: immutable layered environments (O(1) inherit, lookups walk only ancestors with own values); typed slots per @MSEntry key; writing parameterSet once per draw. Keeping open.
 
+- `2026-10-16T15:41:25Z`: From the real-app trace in #507: inheritEnvironmentFromActiveParent is about 12.5% of Workload. Per-draw environment reads are split out as #515.
+
 ---
 
 ## 499: Scripts/ has no single entry point; tasks are separate shell/Python scripts
@@ -9949,9 +9952,9 @@ Suggested:
 status: open
 priority: low
 kind: enhancement
-labels: area:performance, effort:s
+labels: area:performance, effort:s, deferred
 created: 2026-10-16T14:07:47Z
-updated: 2026-10-16T14:07:54Z
+updated: 2026-10-16T15:05:29Z
 +++
 
 Follow-up to #496.
@@ -9990,7 +9993,9 @@ Add a toggle in the demo viewer to switch between rendering cubes with instancin
 status: new
 priority: medium
 kind: enhancement
+labels: deferred
 created: 2026-10-16T14:29:17Z
+updated: 2026-10-16T15:05:29Z
 +++
 
 Benchmarks should render a configurable number of warmup frames before measuring, so pipeline compilation, resource allocation, and caching don't skew results.
@@ -10048,5 +10053,225 @@ What is missing
 Expected
 - A script (like Scripts/profile-benchmark.sh) that launches the Release Example app with a set cube count, frontmost, records it (Time Profiler, and a trace that shows blocked time, such as System Trace), and summarises Update/Setup/Workload.
 - An explanation of the gap between the app's Workload and the benchmark's.
+
+\- `2026-10-16T15:39:22Z`: Trace from the real app (Release, 1000 cubes, instancing off, frontmost; Time Profiler, 9.3 s, /Users/schwa/Desktop/Untitled.trace):
+- Samples: draw 6751, System.update 3677, processWorkload 2639. Workload is real CPU work, not waiting.
+- Inside Workload: Draw.workloadEnter 53% (of which ParameterSet.makeTables 25% -> #476; environment reads casting Any ~7% -> #498); inheritEnvironmentFromActiveParent 12.5% (#498); ParameterModifier.workloadEnter (collapsed chain) 15%.
+- Caution when reading these traces: element modifiers like CollapsibleWorkloadModifier.visitInnermost call into their child subtree, so their inclusive share includes all descendants' costs. An experiment based on misreading that (caching the collapsible check) gave no change and was reverted.
+Still open: a scripted, repeatable way to record the app; why the app's Workload/Update ratio differs from the benchmark's.
+
+---
+
+## 508: profile_summary.py attributes samples by function name, not by signpost intervals
+
++++
+status: open
+priority: medium
+kind: task
+labels: area:performance, area:tooling, effort:s
+created: 2026-10-16T15:41:07Z
+updated: 2026-10-16T15:41:23Z
++++
+
+Part of RFC 0006.
+
+What is wrong
+- Scripts/profile_summary.py filters samples with --within, which matches a function name anywhere in the stack. Element modifiers call into their child subtree, so a modifier's inclusive share includes all descendants. This led to a wrong conclusion in #507 (CollapsibleWorkloadModifier.visitInnermost looked like 32% of casts).
+- The Update, Setup and Workload signpost intervals are in every Time Profiler trace, but no tool uses them.
+- Per-frame phase durations (median, worst) are only available from the HUD or the benchmark, not from a trace.
+
+Expected
+- Samples can be attributed to a phase by the time range of its signpost interval.
+- The summary reports per-phase duration statistics from the signposts.
+
+---
+
+## 509: Frame, content, submission, drawable and pass work have no signpost intervals by default
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: area:performance, area:timing, effort:s
+created: 2026-10-16T15:41:07Z
+updated: 2026-10-16T15:41:23Z
++++
+
+Part of RFC 0006.
+
+What is missing
+- Only Update, Setup and Workload are always signposted (phaseSignposter).
+- RenderView's whole-frame interval (RenderViewViewModel.draw()) uses the logging-gated signposter, so it is off by default.
+- No intervals for: building content (the content closure), submitting and committing the command buffer, waiting for a drawable or for in-flight capacity, and each RenderPass / ComputePass (for example named by its label, which would line up with GPU tracks in Metal System Trace).
+
+Expected
+- These appear as named intervals in Instruments without enabling logging.
+
+---
+
+## 510: Phase signposts carry no frame number, node count or draw count
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:performance, area:timing, effort:xs
+created: 2026-10-16T15:41:08Z
+updated: 2026-10-16T15:41:23Z
++++
+
+Part of RFC 0006.
+
+What is missing
+- The Update, Setup and Workload intervals have no metadata. A slow frame in Instruments cannot be matched to the HUD's frame number, or to whether the tree changed (node count, nodes created/removed, draw count).
+
+Expected
+- Each phase interval carries at least the frame number, and ideally node and draw counts.
+
+---
+
+## 511: Duplicate, logging-gated signposts for processSetup and processWorkload
+
++++
+status: open
+priority: low
+kind: task
+labels: area:performance, area:timing, effort:xs
+created: 2026-10-16T15:41:08Z
+updated: 2026-10-16T15:41:23Z
++++
+
+Part of RFC 0006.
+
+What is wrong
+- System.processSetup() and System.processWorkload() wrap themselves in logging-gated signposts (signposter) with the same extent as the always-on Setup and Workload phase intervals. When logging is enabled the trace shows both.
+
+Expected
+- One interval per phase.
+
+---
+
+## 512: All MetalSprockets signposts share the Points of Interest category
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:performance, area:timing, effort:xs
+created: 2026-10-16T15:41:08Z
+updated: 2026-10-16T15:41:24Z
++++
+
+Part of RFC 0006.
+
+What is wrong
+- phaseSignposter and signposter both use OSLog.Category.pointsOfInterest. Frame-phase intervals mix with any other points of interest in the app, and cannot be shown or filtered on their own.
+
+Expected
+- MetalSprockets frame intervals have their own category (for example "Frame"), so they can be shown in their own track.
+
+---
+
+## 513: Collapsed parameter chain rebuilds the ParameterSet for every draw every frame
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: area:performance, area:metal4, effort:m
+created: 2026-10-16T15:41:08Z
+updated: 2026-10-16T15:41:24Z
++++
+
+Part of RFC 0006.
+
+From the real-app trace in #507 (Release, 1000 cubes): ParameterModifier.workloadEnter is about 15% of Workload.
+
+What is wrong
+- Every frame, each collapsed parameter chain reads the inherited ParameterSet, copies it, runs every binding closure, and writes the result into the node's environment (which also triggers an environment update).
+- This happens even when the bindings are the same as the previous frame.
+
+Expected
+- Binding unchanged parameters costs little per draw.
+
+---
+
+## 514: Argument table labels are built as strings for every draw and stage
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:performance, area:metal4, effort:xs
+created: 2026-10-16T15:41:08Z
+updated: 2026-10-16T15:41:24Z
++++
+
+Part of RFC 0006.
+
+What is wrong
+- ParameterSet.makeTables (ParameterSet.swift:138) builds "<pipelineLabel>: <stage> Arguments" with string interpolation for every table it acquires, that is for every draw and stage, every frame. String building shows up as about 3% of Workload in the #507 trace (_StringGuts.append).
+
+Expected
+- No string is built per draw when the label has not changed.
+
+---
+
+## 515: Draw reads 13 separate environment values per draw
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: area:performance, area:metal4, effort:m
+created: 2026-10-16T15:41:09Z
+updated: 2026-10-16T15:41:24Z
++++
+
+Part of RFC 0006.
+
+From the #507 trace: environment reads in Draw.workloadEnter (MSEnvironmentValues subscript getters, each a dictionary lookup plus a cast from Any) are about 7% of Workload.
+
+What is wrong
+- Draw.workloadEnter reads activeRenderPassDescriptor, depthBias, depthState, depthStencilDescriptor, depthStencilState, metalContext, parameterSet, recordingScope, renderPassEncoder, renderPipeline, scissor, stencilReference and viewport separately for every draw.
+- Each read hashes the key, looks it up in the effective dictionary and casts the Any back. Related: #498.
+
+Expected
+- A draw reads its state with a few cheap accesses, not 13 dictionary lookups and casts.
+
+---
+
+## 516: DynamicPropertyCache never caches EnvironmentWritingModifier, so it is reflected every frame
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:performance, effort:xs
+created: 2026-10-16T15:41:09Z
+updated: 2026-10-16T15:41:24Z
++++
+
+Part of RFC 0006.
+
+What is wrong
+- DynamicPropertyCache (#496) does not cache types with an optional field. EnvironmentWritingModifier stores value: Any?, so every .environment(...) node is reflected with Mirror every frame to look for dynamic properties. It shows up in the #507 trace (Mirror.init under mayHaveDynamicProperties).
+- EnvironmentWritingModifier cannot hold a dynamic property.
+
+Expected
+- Library elements known to have no dynamic properties are never reflected for them.
+
+---
+
+## 517: Clean up outdated RFCs, experiments, and scripts
+
++++
+status: new
+priority: medium
+kind: task
+created: 2026-10-16T15:45:13Z
++++
+
+Review RFCs, experiments, and scripts in the repo. Remove or archive anything that is outdated or no longer used.
 
 ---
