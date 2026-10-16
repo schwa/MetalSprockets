@@ -10346,8 +10346,9 @@ status: open
 priority: high
 kind: enhancement
 labels: area:performance, area:api, needs-decision, effort:l
+depends: 520, 521, 522, 523
 created: 2026-10-16T17:52:46Z
-updated: 2026-10-16T17:53:14Z
+updated: 2026-10-16T18:04:01Z
 +++
 
 Part of RFC 0006. A big remaining lever after the autoresearch session.
@@ -10363,5 +10364,116 @@ Notes
 
 Expected
 - A way for unchanged draw subtrees to be reused across frames, with the trade-offs decided (for example an explicit identity or version supplied by the caller, Equatable payloads instead of closures for common modifiers, or something else).
+
+- `2026-10-16T18:04:01Z`: Split into #520 (static-scene benchmark, prerequisite), #521 (data-only parameter/vertex modifiers), #522 (closure-free Draw for single calls), #523 (Draw with explicit inputs). Speculative and deferred: #524 (result-builder Draw).
+
+---
+
+## 520: No benchmark scene where the element tree is unchanged between frames
+
++++
+status: open
+priority: high
+kind: task
+labels: area:performance, area:tooling, effort:s
+created: 2026-10-16T18:03:37Z
+updated: 2026-10-16T18:04:00Z
++++
+
+Prerequisite for #519.
+
+What is missing
+- Both ReconciliationBenchmark scenes (cubes, draws) change every transform every frame, so nothing can compare equal and subtree reuse (#370) never applies. A change that lets unchanged draws be reused cannot show a gain in either scene.
+
+Expected
+- A scenario where most of the tree is the same every frame (for example 1000 static cubes and a few moving ones), measured like the others.
+
+---
+
+## 521: Parameter, vertex buffer and vertex value modifiers store closures, so they never compare equal
+
++++
+status: open
+priority: high
+kind: enhancement
+labels: area:performance, area:api, effort:m
+created: 2026-10-16T18:03:37Z
+updated: 2026-10-16T18:04:00Z
++++
+
+Part of #519.
+
+What is wrong
+- .parameter(...), .vertexBuffer(...), .vertexValues(...) and similar build a ParameterModifier holding a closure that writes the ParameterSet. Closures cannot be compared, so these modifiers are never equal (#495) even when name, value and stage are the same as the previous frame, and their subtrees can never be reused (#370).
+
+## Proposed (per Jonathan)
+- Store the binding as data (name, stages, value) instead of a closure, and compare it: plain-data values by bytes, Equatable values with ==, Metal objects by identity.
+
+---
+
+## 522: No closure-free Draw for single draw calls
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: area:performance, area:api, effort:m
+created: 2026-10-16T18:03:38Z
+updated: 2026-10-16T18:04:00Z
++++
+
+Part of #519.
+
+What is wrong
+- Every Draw takes an encode closure, so every Draw is never equal and its subtree is rebuilt every frame (#519).
+- A survey of the sibling repos (Examples, AddOns, PBR, GaussianSplats, about 200 Draw closures) found about half contain one draw call: a full-screen triangle, an instanced draw, an indexed draw or an indirect draw.
+
+## Proposed (per Jonathan)
+- Data-only Draw initializers for those cases (for example Draw(.triangle, vertexCount: 3), indexed with instance count, indirect). They compare by their arguments, and can declare their own buffers resident. The closure form stays.
+
+---
+
+## 523: Draw closures cannot declare the inputs they depend on
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: area:performance, area:api, needs-decision, effort:m
+created: 2026-10-16T18:03:38Z
+updated: 2026-10-16T18:04:01Z
++++
+
+Part of #519.
+
+What is wrong
+- About half of Draw closures in the sibling repos contain real logic (PBR loops over records with per-record cull mode and indexed draws; Gaussian splats build vertex-amplification mappings; helpers like encoder.draw(mesh) after a wireframe check). A data-only Draw cannot replace these.
+- Their output usually depends only on a few values (a mesh, a flag, a context), but Draw cannot know that, so it is never equal.
+
+## Proposed (per Jonathan)
+- A Draw form that takes its inputs explicitly and passes them to the closure, for example Draw(model.mesh, wireframe) { encoder, mesh, wireframe in ... }. Draw compares the inputs (Equatable, or identity for Metal objects); the documented contract is that the closure depends only on them. Risk: a closure that also captures something else goes stale. The current closure form stays and stays never-equal.
+
+---
+
+## 524: Idea: a result-builder Draw made of encoder commands
+
++++
+status: open
+priority: low
+kind: feature
+labels: area:api, needs-decision, effort:l, deferred
+created: 2026-10-16T18:03:38Z
+updated: 2026-10-16T18:04:01Z
++++
+
+Part of #519. Speculative.
+
+Idea
+- Draw { DrawPrimitives(...); CullMode(.back); DrawIndexed(...) } built from data commands, so the whole Draw is Equatable and composes like other elements.
+
+Concerns found
+- Every encoder call people use needs a command type, and helpers (encoder.draw(mesh)) need builder forms; anything missing pushes people back to the closure.
+- Logic-heavy closures (PBR record loops, splat amplification setup) would need for/if inside the builder and would likely read worse.
+- The explicit-inputs Draw covers the same need with less API. Revisit only if there is demand.
 
 ---
