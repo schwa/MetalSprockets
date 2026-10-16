@@ -3538,17 +3538,19 @@ Note: after this lands, https://schwa.github.io/MetalSprockets will no longer wo
 ## 304: Make MetalSprocketsShaders more opinionated.
 
 +++
-status: new
+status: closed
 priority: medium
 kind: task
 labels: needs-info, effort:m, deferred, area:api
 created: 2026-04-02T16:16:32Z
-updated: 2026-09-30T16:17:57Z
+updated: 2026-10-16T18:48:54Z
+closed: 2026-10-16T18:48:54Z
 +++
 
 Some of MetalSprokcetsAddsOns can come in - specifically the macros we have for textures etc
 
 - `2026-08-08T15:39:25Z`: Deferred for now (see 'deferred' label): decide later which parts of MetalSprocketsAddOns (texture macros etc.) should move in.
+- `2026-10-16T18:48:54Z`: Closing (per Jonathan).
 
 ---
 
@@ -5989,9 +5991,9 @@ It is also the only thing that makes the class look internally synchronized, whi
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l, area:architecture, needs-decision, deferred
+labels: effort:l, area:architecture, needs-decision
 created: 2026-08-08T23:14:01Z
-updated: 2026-10-16T12:56:04Z
+updated: 2026-10-16T18:48:52Z
 +++
 
 Ten call sites reach traversal state through the `@TaskLocal System.current` rather than being handed the context they need: `MSEnvironment` (EnvironmentValues.swift:170), `EnvironmentReader`, `Element` body evaluation (Element.swift:82), `StateBox.resolveSystem()`, `Element+SystemExtensions`, and the modifiers in `RenderPipelineDescriptorTransformer`, `RenderPassDescriptorModifier`, `MSAAModifier`, `GPUCounters`, plus ambient `ShaderStore` lookup in `ShaderLibrary`.
@@ -6021,9 +6023,9 @@ Decision needed: (a) split this: file the easy group as a subtask (effort:s) and
 status: open
 priority: low
 kind: enhancement
-labels: effort:l, area:architecture, deferred
+labels: effort:l, area:architecture
 created: 2026-08-08T23:14:01Z
-updated: 2026-10-16T12:56:04Z
+updated: 2026-10-16T18:48:53Z
 +++
 
 #292 proposed splitting `System` into a `TreeReconciler` (done, #372), a `PhaseRunner` that drives setup/workload over a frozen traversal event list, and a thin `System` facade composing the two.
@@ -6200,9 +6202,9 @@ cSettings: [
 status: open
 priority: low
 kind: enhancement
-labels: area:metal, area:plugin, effort:xs, blocked, deferred
+labels: area:metal, area:plugin, effort:xs, blocked
 created: 2026-08-25T22:45:15Z
-updated: 2026-10-07T14:28:22Z
+updated: 2026-10-16T18:48:53Z
 +++
 
 MetalCompilerPlugin names its default output `debug.metallib` in every build configuration. Release builds therefore ship a metallib whose filename incorrectly suggests that it contains debug output.
@@ -9075,9 +9077,9 @@ Done when a pipeline element can register its persistent buffers in its own `Res
 status: open
 priority: medium
 kind: enhancement
-labels: area:metal4, area:performance, effort:s, needs-decision, deferred
+labels: area:metal4, area:performance, effort:s, needs-decision
 created: 2026-10-02T22:35:16Z
-updated: 2026-10-16T12:56:05Z
+updated: 2026-10-16T18:48:53Z
 +++
 
 MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure () -> Value. A default like '@MSState var mesh: MTKMesh = .teapot()', or an assignment to an @MSState in init, runs every time the element struct is rebuilt. That is usually every frame. The persisted StateBox wins and the new value is discarded, but the allocation still happens. In MetalSprocketsExamples this builds a teapot MTKMesh, a sphere, a 2048x2048 texture and a sampler every frame in BouncingTeapots, and MetalCanvas allocated 16 MB of buffers per frame (MetalSprocketsExamples #438). Proposal: add init(wrappedValue: @autoclosure @escaping () -> Value) and evaluate it only when no persisted state exists, like SwiftUI State. Assignments in init are harder to fix; at least document that they run every rebuild.
@@ -9092,11 +9094,11 @@ MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure 
 
 +++
 status: open
-priority: high
+priority: medium
 kind: enhancement
-labels: area:metal4, area:performance, effort:l, needs-decision
+labels: area:metal4, area:performance, effort:l, needs-decision, deferred
 created: 2026-10-03T00:16:32Z
-updated: 2026-10-16T14:47:53Z
+updated: 2026-10-16T18:45:17Z
 +++
 
 Potential performance issue, not measured.
@@ -9279,9 +9281,9 @@ On device, the first frames after opening an immersive space (ImmersiveRenderCon
 status: open
 priority: low
 kind: enhancement
-labels: effort:m, area:api, deferred
+labels: effort:m, area:api
 created: 2026-10-07T01:51:42Z
-updated: 2026-10-16T13:28:04Z
+updated: 2026-10-16T18:48:53Z
 +++
 
 RenderView configures its Metal context through SwiftUI view modifiers backed by EnvironmentValues (`.device`, `.commandQueue`, `.shaderStore`, `.metalShaderLogging`, `.renderViewLogFrame`, `.renderViewFatalErrorOnError`). Runner and OffscreenRenderer configure the same underlying context through init parameters (device, commandQueue, shaderLogging, residency, maximumInFlightSubmissions; plus size/colorUsage/depthUsage/clearDepth for OffscreenRenderer).
@@ -9364,12 +9366,12 @@ This needs a guarantee that recording frame N+k (k = maximumInFlightSubmissions)
 
 +++
 status: open
-priority: high
+priority: medium
 kind: enhancement
-labels: area:performance, effort:l
+labels: area:performance, effort:l, deferred
 depends: 489, 495, 496, 497, 498, 501, 506, 507, 513, 514, 515, 516, 519
 created: 2026-10-16T12:46:24Z
-updated: 2026-10-16T17:53:14Z
+updated: 2026-10-16T18:45:18Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -9574,9 +9576,9 @@ Expected
 status: open
 priority: medium
 kind: task
-labels: area:timing, area:metal4, effort:s, deferred
+labels: area:timing, area:metal4, effort:s
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-16T13:31:54Z
+updated: 2026-10-16T18:48:53Z
 +++
 
 Follow-up to #448.
@@ -9599,9 +9601,9 @@ Expected
 status: open
 priority: low
 kind: task
-labels: area:timing, area:metal4, deferred, effort:s
+labels: area:timing, area:metal4, effort:s
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-16T13:55:56Z
+updated: 2026-10-16T18:48:53Z
 +++
 
 Follow-up to #448.
@@ -9633,9 +9635,9 @@ Expected
 status: open
 priority: low
 kind: enhancement
-labels: area:timing, area:metal4, deferred, effort:s
+labels: area:timing, area:metal4, effort:s
 created: 2026-10-16T13:23:24Z
-updated: 2026-10-16T13:55:56Z
+updated: 2026-10-16T18:48:53Z
 +++
 
 Found while adding .gpuTimed (#448).
@@ -9664,9 +9666,9 @@ Expected
 status: open
 priority: low
 kind: task
-labels: area:api, effort:xs, deferred
+labels: area:api, effort:xs
 created: 2026-10-16T13:44:31Z
-updated: 2026-10-16T13:55:56Z
+updated: 2026-10-16T18:48:54Z
 +++
 
 What is still there
@@ -9846,9 +9848,9 @@ Remaining: inherit still copies the parent's effective dictionary for every node
 status: open
 priority: low
 kind: task
-labels: area:tooling, effort:s, deferred
+labels: area:tooling, effort:s
 created: 2026-10-16T13:52:36Z
-updated: 2026-10-16T13:55:56Z
+updated: 2026-10-16T18:48:54Z
 +++
 
 What is missing
@@ -9893,10 +9895,11 @@ Open questions
 
 +++
 status: open
-priority: high
+priority: medium
 kind: enhancement
-labels: area:performance, needs-decision, effort:l
+labels: area:performance, needs-decision, effort:l, deferred
 created: 2026-10-16T13:55:05Z
+updated: 2026-10-16T18:45:18Z
 +++
 
 From the #489 profile. Related: #486, #495, #496, #497, #490. Not the same as #500 (instancing).
@@ -10213,9 +10216,9 @@ Expected
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:metal4, effort:m
+labels: area:performance, area:metal4, effort:m, deferred
 created: 2026-10-16T15:41:08Z
-updated: 2026-10-16T15:41:24Z
+updated: 2026-10-16T18:45:18Z
 +++
 
 Part of RFC 0006.
@@ -10333,9 +10336,9 @@ Review RFCs, experiments, and scripts in the repo. Remove or archive anything th
 status: open
 priority: low
 kind: enhancement
-labels: area:performance, effort:m
+labels: area:performance, effort:m, deferred
 created: 2026-10-16T17:51:05Z
-updated: 2026-10-16T17:51:27Z
+updated: 2026-10-16T18:45:18Z
 +++
 
 Part of RFC 0006. Found in the autoresearch session.
@@ -10356,12 +10359,12 @@ Expected
 
 +++
 status: open
-priority: high
+priority: medium
 kind: enhancement
-labels: area:performance, area:api, needs-decision, effort:l
+labels: area:performance, area:api, needs-decision, effort:l, deferred
 depends: 520, 521, 522, 523
 created: 2026-10-16T17:52:46Z
-updated: 2026-10-16T18:04:01Z
+updated: 2026-10-16T18:45:18Z
 +++
 
 Part of RFC 0006. A big remaining lever after the autoresearch session.
@@ -10410,11 +10413,11 @@ Expected
 
 +++
 status: open
-priority: high
+priority: medium
 kind: enhancement
-labels: area:performance, area:api, effort:m
+labels: area:performance, area:api, effort:m, deferred
 created: 2026-10-16T18:03:37Z
-updated: 2026-10-16T18:04:00Z
+updated: 2026-10-16T18:45:18Z
 +++
 
 Part of #519.
@@ -10433,9 +10436,9 @@ What is wrong
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:api, effort:m
+labels: area:performance, area:api, effort:m, deferred
 created: 2026-10-16T18:03:38Z
-updated: 2026-10-16T18:04:00Z
+updated: 2026-10-16T18:45:18Z
 +++
 
 Part of #519.
@@ -10455,9 +10458,9 @@ What is wrong
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:api, needs-decision, effort:m
+labels: area:performance, area:api, needs-decision, effort:m, deferred
 created: 2026-10-16T18:03:38Z
-updated: 2026-10-16T18:04:01Z
+updated: 2026-10-16T18:45:19Z
 +++
 
 Part of #519.
@@ -10491,5 +10494,70 @@ Concerns found
 - Every encoder call people use needs a command type, and helpers (encoder.draw(mesh)) need builder forms; anything missing pushes people back to the closure.
 - Logic-heavy closures (PBR record loops, splat amplification setup) would need for/if inside the builder and would likely read worse.
 - The explicit-inputs Draw covers the same need with less API. Revisit only if there is demand.
+
+---
+
+## 525: Environment reads use unsafeDowncast
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:architecture, effort:xs
+created: 2026-10-16T18:52:33Z
+updated: 2026-10-16T18:52:34Z
++++
+
+From the RFC 0006 performance work.
+
+What is wrong
+- MSEnvironmentValues stores values as TypedBox<Value> and reads them with unsafeDowncast (EnvironmentValues.swift: subscript getter, inheritedValue). In Release the downcast is unchecked: if a box ever held the wrong type, the read would be undefined behaviour instead of a trap.
+- It is correct today because a key always stores one Value type, but nothing checks that.
+
+## Proposed (per Jonathan)
+- Use a checked class cast (as! TypedBox<Value>). It checks the object's class, not a protocol conformance, so it should be cheap. Measure with Experiments/ReconciliationBenchmark before and after.
+
+---
+
+## 526: AnyElementID converts Int ids with unsafeBitCast
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:architecture, effort:xs
+created: 2026-10-16T18:52:33Z
+updated: 2026-10-16T18:52:34Z
++++
+
+From the RFC 0006 performance work.
+
+What is wrong
+- AnyElementID.init stores Int identities directly using unsafeBitCast(id, to: Int.self), guarded by ID.self == Int.self (IdentifiedElement.swift). Correct, but an unchecked conversion where a checked one is available.
+
+## Proposed (per Jonathan)
+- Use if let int = id as? Int. In optimized builds the generic cast is resolved at compile time, so it should cost nothing. Measure to confirm.
+
+---
+
+## 527: Collapsed modifier chains are walked with unchecked pointer binding
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:architecture, effort:s
+created: 2026-10-16T18:52:33Z
+updated: 2026-10-16T18:52:34Z
++++
+
+From the RFC 0006 performance work.
+
+What is wrong
+- CollapsibleWorkloadModifier.visitInnermost/applyChain (CoreElements.swift) walk a chain of nested modifiers through UnsafeRawPointer and assumingMemoryBound(to: Self.self), so the rest of the chain is not copied at each level (about 3% of per-frame CPU in the benchmark).
+- Sound by construction (each metatype comes from Content.self of the value being pointed at), but nothing checks it, and Span does not apply (it covers contiguous collections, not a value and its nested field).
+
+## Proposed (per Jonathan)
+- Keep the pointer walk, and add a debug assertion that the bound type matches plus a comment explaining why it is sound. Alternative if no unsafe code is wanted in the core: go back to as! Self and accept about 3%.
 
 ---
