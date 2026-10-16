@@ -91,7 +91,8 @@ internal final class TreeReconciler {
         let index = nextIndex(for: typeIdentifier)
         // An explicit .id() replaces sibling position, so the element keeps its identity
         // when it moves within its parent.
-        let explicitID = (element as? any ExplicitlyIdentifiedElement)?.explicitID
+        let typeInfo = ElementTypeInfo.of(element)
+        let explicitID = typeInfo.isExplicitlyIdentified ? (element as? any ExplicitlyIdentifiedElement)?.explicitID : nil
         let atom = StructuralIdentifier.Atom(typeIdentifier: typeIdentifier, index: explicitID == nil ? index : 0, explicitID: explicitID)
 
         atomStack.append(atom)
@@ -135,7 +136,7 @@ internal final class TreeReconciler {
         siblingIndices.append([:])
         defer { siblingIndices.removeLast() }
 
-        let childEnvironmentStable = environmentStable && (unchanged || !(element is any EnvironmentModifyingElement))
+        let childEnvironmentStable = environmentStable && (unchanged || !typeInfo.isEnvironmentModifying)
 
         try element.visitChildren { child in
             try processElement(child, environmentStable: childEnvironmentStable)

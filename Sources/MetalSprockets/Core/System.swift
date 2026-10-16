@@ -64,7 +64,7 @@ package final class System: @unchecked Sendable {
 
     /// Mark all nodes as needing setup (e.g., when drawable size changes)
     package func markAllNodesNeedingSetup() {
-        for node in nodes.values where node.element is any SetupElement {
+        for node in nodes.values where node.typeInfo.isSetup {
             node.needsSetup = true
         }
     }
@@ -292,7 +292,7 @@ internal extension System {
             existingNode.environmentValues.removeInheritedValues()
 
             // An already-set needsSetup (e.g. from markAllNodesNeedingSetup) is preserved.
-            if !existingNode.needsSetup {
+            if !existingNode.needsSetup, existingNode.typeInfo.isSetup {
                 if let oldBodyless = oldElement as? any BodylessElement,
                    let newBodyless = element as? any BodylessElement,
                    type(of: oldBodyless) == type(of: newBodyless) {
@@ -302,7 +302,7 @@ internal extension System {
                 }
             }
             // Only elements that take part in the setup phase can need setup. (#235)
-            existingNode.needsSetup = existingNode.needsSetup && element is any SetupElement
+            existingNode.needsSetup = existingNode.needsSetup && existingNode.typeInfo.isSetup
         }
         newNodes[currentId] = existingNode
         return existingNode
@@ -313,7 +313,7 @@ internal extension System {
         let currentNode = Node(system: self, id: currentId, parentIdentifier: parentId, element: element)
         newNodes[currentId] = currentNode
         // New nodes need setup, unless the element takes no part in the setup phase. (#235)
-        currentNode.needsSetup = element is any SetupElement
+        currentNode.needsSetup = currentNode.typeInfo.isSetup
         return currentNode
     }
 

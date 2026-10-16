@@ -64,14 +64,14 @@ internal extension System {
             state.skipDepth += 1
             return
         }
-        guard let bodylessElement = node.element as? any BodylessElement else {
+        guard node.typeInfo.isBodyless, let bodylessElement = node.element as? any BodylessElement else {
             return
         }
         if bodylessElement.skipsWorkload(node) {
             state.skipDepth = 1
             return
         }
-        if let workloadElement = bodylessElement as? any WorkloadElement {
+        if node.typeInfo.isWorkload, let workloadElement = bodylessElement as? any WorkloadElement {
             try workloadElement.workloadEnter(node)
             state.enteredNodes.append(node)
         }
@@ -83,7 +83,7 @@ internal extension System {
             state.skipDepth -= 1
             return
         }
-        guard let workloadElement = node.element as? any WorkloadElement else {
+        guard node.typeInfo.isWorkload, let workloadElement = node.element as? any WorkloadElement else {
             return
         }
         if state.enteredNodes.last === node {
@@ -129,11 +129,11 @@ internal extension System {
                 case .enter(let node):
                     traversalContext.push(node)
                     inheritEnvironmentFromActiveParent(node)
-                    if let bodylessElement = node.element as? any SetupElement, !needsSetup || node.needsSetup {
+                    if node.typeInfo.isSetup, !needsSetup || node.needsSetup, let bodylessElement = node.element as? any SetupElement {
                         try enter(bodylessElement, node)
                     }
                 case .exit(let node):
-                    if let bodylessElement = node.element as? any SetupElement, !needsSetup || node.needsSetup {
+                    if node.typeInfo.isSetup, !needsSetup || node.needsSetup, let bodylessElement = node.element as? any SetupElement {
                         try exit(bodylessElement, node)
                     }
                     traversalContext.pop()

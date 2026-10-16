@@ -12,11 +12,15 @@ internal final class Node: Identifiable {
     /// Access via ``cache(_:make:)``.
     private var elementCache: (any NodeElementCache)?
 
+    /// Conformances of `element`'s type. Fixed for the node's life: its identifier includes the element type.
+    let typeInfo: ElementTypeInfo
+
     init(system: System, id: StructuralIdentifier, parentIdentifier: StructuralIdentifier? = nil, element: (any Element)) {
         self.system = system
         self.id = id
         self.parentIdentifier = parentIdentifier
         self.element = element
+        self.typeInfo = ElementTypeInfo.of(element)
     }
 
     /// Return the existing cache if it is of type `C`, otherwise build a new
