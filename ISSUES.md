@@ -9801,12 +9801,13 @@ Remaining: identifier equality is still ~23% of Update samples, mostly Atom comp
 ## 498: MSEnvironmentValues re-merges whole dictionaries on every write and inherit
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, effort:m
 created: 2026-10-16T13:52:10Z
-updated: 2026-10-16T13:52:19Z
+updated: 2026-10-16T18:07:35Z
+closed: 2026-10-16T18:07:35Z
 +++
 
 From the #489 profile (Release, 1000 cubes).
@@ -9835,6 +9836,7 @@ Remaining: inherit still copies the parent's effective dictionary for every node
 - `2026-10-16T15:41:25Z`: From the real-app trace in #507: inheritEnvironmentFromActiveParent is about 12.5% of Workload. Per-draw environment reads are split out as #515.
 - `2026-10-16T15:56:09Z`: Casts on read are gone (#515: typed boxes). Remaining: inherit/recompute still copy the parent's effective dictionary for nodes with own values.
 - `2026-10-16T17:51:27Z`: Autoresearch session: the parameter set moved to dedicated environment fields, so parameter nodes no longer copy the dictionaries each phase (-5%). Tried and discarded: environment versions to skip re-inheriting (the root writes the environment every frame, so versions always change; no gain) and sorted-array tables instead of Dictionary (about 1%). Remaining: nodes with own values still copy; .environment chains tracked in #518.
+- `2026-10-16T18:07:35Z`: Closing as done. Fixed: setValue updates one key in place (no re-merge on write); reads use typed boxes and unsafeDowncast instead of casts from Any (#515); the parameter set has dedicated fields, so parameter nodes no longer copy the dictionaries. Tried with no gain: environment versions to skip re-inheriting, sorted-array tables, TreeDictionary. Left over: nodes with their own values still copy and merge on inherit each phase (about 5% of Update); the main source is per-draw .environment chains, tracked in #518, and the rest is noted in RFC 0006's Environment brainstorm.
 
 ---
 

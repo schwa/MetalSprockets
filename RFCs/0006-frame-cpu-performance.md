@@ -204,6 +204,9 @@ Every idea raised so far, unfiltered. Some conflict. None are verified.
 - Give each `@MSEntry` key a static index and store values in typed slots, not `Any`.
 - Write `parameterSet` once per draw instead of once per `ParameterModifier`.
 - Separate hot per-draw values (parameters, depth state) from the general environment.
+- Left after #498 was closed: a node with its own values still copies and merges the inherited dictionary on every
+  phase (pass and pipeline nodes, every `.environment(...)` node), roughly 5% of Update in the last profile. The
+  largest source is per-draw `.environment` chains (#518).
 
 ### ForEach (#501, #490)
 
