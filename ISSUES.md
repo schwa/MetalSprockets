@@ -10562,3 +10562,16 @@ What is wrong
 - Keep the pointer walk, and add a debug assertion that the bound type matches plus a comment explaining why it is sound. Alternative if no unsafe code is wanted in the core: go back to as! Self and accept about 3%.
 
 ---
+
+## 528: Verify MetalSprockets ForEach/_ConditionalContent don't clash with SwiftUI 27 ContentBuilder
+
++++
+status: new
+priority: low
+kind: task
+created: 2026-10-17T11:47:12Z
++++
+
+SDK 27 makes SwiftUI's ViewBuilder (now ContentBuilder) unconstrained. Apple notes that types shadowing SwiftUI names can now be 'ambiguous use' errors. MetalSprockets defines ForEach and _ConditionalContent. No breakage seen so far. To do: add a test file that imports SwiftUI and MetalSprockets, uses ForEach and if/else in both a SwiftUI body and a RenderView closure, and build it with Xcode 27.
+
+---
