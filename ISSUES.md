@@ -10575,3 +10575,16 @@ created: 2026-10-17T11:47:12Z
 SDK 27 makes SwiftUI's ViewBuilder (now ContentBuilder) unconstrained. Apple notes that types shadowing SwiftUI names can now be 'ambiguous use' errors. MetalSprockets defines ForEach and _ConditionalContent. No breakage seen so far. To do: add a test file that imports SwiftUI and MetalSprockets, uses ForEach and if/else in both a SwiftUI body and a RenderView closure, and build it with Xcode 27.
 
 ---
+
+## 529: RFC 0007: typed content domains for ElementBuilder
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-10-17T11:49:19Z
++++
+
+Use SwiftUI 27's ContentBuilder pattern so nonsensical nesting (e.g. ComputeDispatch inside RenderPipeline) fails to compile. See RFCs/0007-typed-content-domains.md.
+
+---
