@@ -10605,6 +10605,8 @@ Proposal: an opt-in RenderView setting (or modifier) that makes the depth attach
 
 Source: MetalSprocketsParticles #68 (soft particle demo) and #74 (MetalSprocketsSceneGraph integration).
 
+- `2026-10-18T14:57:03Z`: Design direction: don't add a RenderView setting that forces depth storage/store action/usage. Consumers keep configuring the depth attachment themselves (existing depthStencilStorageMode etc.). RenderView just exposes the frame's depth texture (and size) in RenderViewContext. If the depth texture is memoryless when content asks for it, that's a consumer mistake: assert.
+
 ---
 
 ## 531: depthCompare(function:enabled:) 'enabled' means depth writes
