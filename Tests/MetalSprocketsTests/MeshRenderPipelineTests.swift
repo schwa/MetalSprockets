@@ -133,7 +133,7 @@ struct MeshRenderPipelineTests {
 
         return try RenderPass {
             if depthCompare {
-                pipeline.depthCompare(function: .less, enabled: true)
+                pipeline.depthCompare(function: .less, writes: true)
             }
             else {
                 pipeline

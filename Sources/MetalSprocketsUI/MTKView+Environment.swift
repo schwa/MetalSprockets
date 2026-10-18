@@ -23,6 +23,7 @@ internal extension EnvironmentValues {
     @Entry var metalColorPixelFormat: MTLPixelFormat?
     @Entry var metalDepthStencilPixelFormat: MTLPixelFormat?
     @Entry var metalDepthStencilStorageMode: MTLStorageMode?
+    @Entry var metalDepthStoreAction: MTLStoreAction?
     @Entry var metalSampleCount: Int?
     @Entry var metalClearColor: MTLClearColor?
     @Entry var metalClearDepth: Double?
@@ -102,6 +103,14 @@ public extension View {
     /// Sets the storage mode for depth/stencil textures.
     func metalDepthStencilStorageMode(_ value: MTLStorageMode) -> some View {
         self.environment(\.metalDepthStencilStorageMode, value)
+    }
+
+    /// Sets the store action for the frame's depth attachment. MTKView defaults to `.dontCare`.
+    ///
+    /// Use `.store` (with a non-memoryless storage mode and `.shaderRead` usage) to read
+    /// ``RenderViewContext/depthTexture`` in a later pass.
+    func metalDepthStoreAction(_ value: MTLStoreAction) -> some View {
+        self.environment(\.metalDepthStoreAction, value)
     }
 
     /// Sets the number of samples for MSAA (multisample anti-aliasing).

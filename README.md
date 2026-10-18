@@ -162,7 +162,7 @@ struct ContentView: View {
                     .vertexBuffer(particleBuffer, index: 0)
                 }
                 .parameter("viewProjection", value: viewProjectionMatrix)
-                .depthCompare(function: .less, enabled: true)
+                .depthCompare(function: .less, writes: true)
             }
         }
         .metalDepthStencilPixelFormat(.depth32Float)

@@ -45,7 +45,7 @@ struct RenderPipelineCacheTests {
                 .vertexValues(([[0, 0.5], [-0.5, -0.5], [0.5, -0.5]] as [SIMD2<Float>]), index: 0)
             }
             .vertexDescriptor(shaders.vertex.inferredVertexDescriptor())
-            .depthCompare(function: .less, enabled: true)
+            .depthCompare(function: .less, writes: true)
         }
     }
 

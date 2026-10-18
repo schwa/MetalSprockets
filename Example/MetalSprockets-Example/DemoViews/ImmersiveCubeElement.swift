@@ -54,7 +54,7 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
                 .parameter("time", value: Float(context.time))
             }
             .vertexDescriptor(Vertex.descriptor)
-            .depthCompare(function: .greater, enabled: true)  // visionOS uses reverse-Z depth buffer
+            .depthCompare(function: .greater, writes: true)  // visionOS uses reverse-Z depth buffer
             .renderPipelineDescriptorTransformer { descriptor in
                 descriptor.maxVertexAmplificationCount = context.viewCount
                 // Attachment formats come from the render pass; Metal 4 pipeline descriptors have no depth format.

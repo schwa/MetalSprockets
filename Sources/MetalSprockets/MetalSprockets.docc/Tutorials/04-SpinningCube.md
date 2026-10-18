@@ -257,7 +257,7 @@ struct SpinningCubeRenderPipeline: Element {
             }
             .vertexDescriptor(Vertex.descriptor)
             // Enable depth testing so back faces don't render over front faces
-            .depthCompare(function: .less, enabled: true)
+            .depthCompare(function: .less, writes: true)
         }
     }
 }
@@ -267,7 +267,7 @@ struct SpinningCubeRenderPipeline: Element {
 
 - **`Uniforms` struct** — Matches the shader's struct layout exactly. Contains all three matrices.
 - **`.parameter("uniforms", value: uniforms)`** — Binds uniforms by shader argument name. `.vertexValues` sends vertices to layout index 0.
-- **`.depthCompare(function: .less, enabled: true)`** — Enables depth testing. A fragment renders only when it is closer than the stored depth.
+- **`.depthCompare(function: .less, writes: true)`** — Enables depth testing. A fragment renders only when it is closer than the stored depth.
 
 ---
 
@@ -468,7 +468,7 @@ struct SpinningCubeRenderPipeline: Element {
                 .parameter("uniforms", value: uniforms)
             }
             .vertexDescriptor(Vertex.descriptor)
-            .depthCompare(function: .less, enabled: true)
+            .depthCompare(function: .less, writes: true)
         }
     }
 }

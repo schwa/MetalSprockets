@@ -36,7 +36,7 @@ struct DemoCubeRenderPipeline: Element {
                     .parameter("time", value: time)
                 }
                 .vertexDescriptor(Vertex.descriptor)
-                .depthCompare(function: .less, enabled: true)
+                .depthCompare(function: .less, writes: true)
             } else {
                 // RenderPipeline binds shaders and configures pipeline state
                 try RenderPipeline(label: "Vertex-Colored Cube", vertexShader: shaderLibrary.vertexMain, fragmentShader: shaderLibrary.fragmentMain) {
@@ -54,7 +54,7 @@ struct DemoCubeRenderPipeline: Element {
                 }
                 // Tells Metal how to interpret Vertex struct
                 .vertexDescriptor(Vertex.descriptor)
-                .depthCompare(function: .less, enabled: true)
+                .depthCompare(function: .less, writes: true)
             }
         }
     }

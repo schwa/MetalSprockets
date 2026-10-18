@@ -436,6 +436,7 @@ internal struct MetalHostView <Content>: View where Content: Element {
             viewModel.maximumInFlightSubmissions = maximumInFlightSubmissions
             viewModel.shaderStore = shaderStore
             viewModel.diagnostics = RenderViewDiagnostics(environment: environment)
+            viewModel.depthStoreAction = environment.metalDepthStoreAction
         }
         dismantle: { view in
             // Stop the display link and drop the delegate before SwiftUI releases the representable, so no draw
@@ -585,6 +586,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     @ObservationIgnored
     var diagnostics = RenderViewDiagnostics(environment: EnvironmentValues())
 
+    @ObservationIgnored
+    var depthStoreAction: MTLStoreAction?
+
     init(device: MTLDevice, commandQueue: any MTL4CommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
@@ -684,6 +688,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     timingState.commit()
                 }
                 let currentRenderPassDescriptor = try view.currentMTL4RenderPassDescriptor.orThrow(.resourceCreationFailure("No render pass descriptor available"))
+                if let depthStoreAction {
+                    currentRenderPassDescriptor.depthAttachment.storeAction = depthStoreAction
+                }
 
                 let currentTime: CFTimeInterval = CACurrentMediaTime()
                 let frameUniforms = timingState.advance(
@@ -693,7 +700,11 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 frameTimingTracker.lastGPUTime = frameRenderer.lastGPUTime
                 frameTimingTracker.lastGPUTimings = frameRenderer.lastGPUTimings
                 let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
-                let context = RenderViewContext(frameUniforms: frameUniforms, frameTimingStatistics: frameTimingStatistics)
+                let context = RenderViewContext(
+                    frameUniforms: frameUniforms,
+                    frameTimingStatistics: frameTimingStatistics,
+                    attachedDepthTexture: currentRenderPassDescriptor.depthAttachment.texture
+                )
                 frameTimingChange?(frameTimingStatistics)
 
                 let t0 = CACurrentMediaTime()
@@ -827,6 +838,20 @@ public struct RenderViewContext {
 
     /// Frame timing statistics computed over a rolling window.
     public private(set) var frameTimingStatistics: FrameTimingStatistics
+
+    var attachedDepthTexture: MTLTexture?
+
+    /// The frame's depth attachment, or `nil` if the view has no depth format.
+    ///
+    /// Readable only in a later pass (or after a copy), not in the pass that writes it. RenderView does not
+    /// change how the attachment is configured; to sample it, configure it yourself, e.g.
+    /// `.metalDepthStencilAttachmentTextureUsage([.renderTarget, .shaderRead])`,
+    /// `.metalDepthStencilStorageMode(.private)` and `.metalDepthStoreAction(.store)`.
+    /// Accessing a memoryless depth texture asserts.
+    public var depthTexture: MTLTexture? {
+        assert(attachedDepthTexture?.storageMode != .memoryless, "RenderViewContext.depthTexture is memoryless and cannot be read. Configure a non-memoryless depth storage mode.")
+        return attachedDepthTexture
+    }
 }
 
 // MARK: - FrameUniforms

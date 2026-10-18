@@ -10592,11 +10592,13 @@ Use SwiftUI 27's ContentBuilder pattern so nonsensical nesting (e.g. ComputeDisp
 ## 530: RenderView content cannot read the frame's depth
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:api, effort:m
 created: 2026-10-18T14:27:35Z
+updated: 2026-10-18T15:06:17Z
+closed: 2026-10-18T15:06:17Z
 +++
 
 RenderViewContext exposes only frameUniforms and frameTimingStatistics, so content cannot get at the frame's depth attachment. The MTKView depth texture is also memoryless (#300), so it could not be read anyway. Effects that need scene depth after the opaque pass cannot be built on RenderView: soft particles (MetalSprocketsParticles render(sceneDepth:)), SSAO, depth fog, decals.
@@ -10612,12 +10614,13 @@ Source: MetalSprocketsParticles #68 (soft particle demo) and #74 (MetalSprockets
 ## 531: depthCompare(function:enabled:) 'enabled' means depth writes
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:api, effort:xs
 created: 2026-10-18T14:27:35Z
-updated: 2026-10-18T14:27:36Z
+updated: 2026-10-18T15:06:17Z
+closed: 2026-10-18T15:06:17Z
 +++
 
 Element.depthCompare(function:enabled:) passes 'enabled' as isDepthWriteEnabled. Callers reading 'enabled' expect it to switch depth testing on, so '.depthCompare(function: .less, enabled: false)' looks like 'no depth test' but is 'test, don't write' (what transparent passes like particles want). Suggest renaming to depthCompare(function:writes:) or depthTest(_:writes:), keeping the old spelling deprecated. Source: MetalSprocketsParticles #68.

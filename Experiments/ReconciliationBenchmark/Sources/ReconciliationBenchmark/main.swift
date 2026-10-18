@@ -170,7 +170,7 @@ func draw(_ item: Item, resources: Resources, halfModifiers: Bool) -> AnyElement
     return base
         .parameter("material", value: item.material)
         .parameter("scale", value: item.scale)
-        .depthCompare(function: .less, enabled: true)
+        .depthCompare(function: .less, writes: true)
         .depthStencilDescriptor(.init(depthCompareFunction: .less, isDepthWriteEnabled: true))
         .eraseToAnyElement()
 }

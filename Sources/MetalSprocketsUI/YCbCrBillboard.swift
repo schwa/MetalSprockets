@@ -80,7 +80,7 @@ package struct YCbCrBillboard: Element {
                     .parameter("textureCbCr", texture: textureCbCr)
                     .parameter("textureSampler", samplerState: try Self.sampler(for: textureY.device))
                     // Background layer: no depth test, no depth write.
-                    .depthCompare(function: .always, enabled: false)
+                    .depthCompare(function: .always, writes: false)
                     .retainOwners(owners)
             }.vertexDescriptor(Self.vertexDescriptor)
         }

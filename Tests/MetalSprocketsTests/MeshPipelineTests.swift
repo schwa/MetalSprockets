@@ -39,7 +39,7 @@ struct MeshPipelineTests {
                 .parameter("scale", functionTypes: scaleStages, value: scale)
                 .parameter("tint", functionTypes: .fragment, value: tint)
             if depthCompare {
-                draw.depthCompare(function: .less, enabled: true)
+                draw.depthCompare(function: .less, writes: true)
             } else {
                 draw
             }

@@ -119,16 +119,21 @@ public extension Element {
     /// RenderPipeline(vertexShader: vs, fragmentShader: fs) {
     ///     Draw { encoder in ... }
     /// }
-    /// .depthCompare(function: .less, enabled: true)
+    /// .depthCompare(function: .less, writes: true)
     /// ```
     ///
     /// - Parameters:
     ///   - function: The comparison function (e.g., `.less`, `.lessEqual`).
-    ///   - enabled: Whether depth writing is enabled.
+    ///   - writes: Whether passing fragments write depth. Use `false` to test without writing (e.g. transparent passes).
     ///
     /// - Note: Also requires `.metalDepthStencilPixelFormat(.depth32Float)` on your `RenderView`.
+    func depthCompare(function: MTLCompareFunction, writes: Bool) -> some Element {
+        depthStencilDescriptor(.init(depthCompareFunction: function, isDepthWriteEnabled: writes))
+    }
+
+    @available(*, deprecated, renamed: "depthCompare(function:writes:)", message: "'enabled' controls depth writes, not depth testing.")
     func depthCompare(function: MTLCompareFunction, enabled: Bool) -> some Element {
-        depthStencilDescriptor(.init(depthCompareFunction: function, isDepthWriteEnabled: enabled))
+        depthCompare(function: function, writes: enabled)
     }
 }
 

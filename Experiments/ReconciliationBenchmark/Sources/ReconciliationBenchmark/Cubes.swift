@@ -121,6 +121,6 @@ func cubesRoot(count: Int, frame: Int, resources: CubeResources, moving: Int? = 
             }
         }
         .vertexDescriptor(resources.vertexDescriptor)
-        .depthCompare(function: .less, enabled: true)
+        .depthCompare(function: .less, writes: true)
     }
 }

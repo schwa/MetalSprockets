@@ -46,7 +46,7 @@ struct GoldenRenderingTests {
                     draw
                 }
                 .vertexDescriptor(vertexShader.inferredVertexDescriptor())
-                .depthCompare(function: depthCompareFunction, enabled: true)
+                .depthCompare(function: depthCompareFunction, writes: true)
             }
         }
 

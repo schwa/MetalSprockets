@@ -28,7 +28,7 @@ struct OffscreenClearDepthTests {
             try RenderPipeline(vertexShader: library.function(type: VertexShader.self, named: "vertex_main"), fragmentShader: library.function(type: FragmentShader.self, named: "fragment_main")) {
                 Draw { $0.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3) }
             }
-            .depthCompare(function: .greater, enabled: true)
+            .depthCompare(function: .greater, writes: true)
         }
         let texture = try renderer.render(pass).texture
         var pixel = [UInt8](repeating: 0, count: 4)

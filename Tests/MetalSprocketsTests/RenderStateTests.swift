@@ -86,7 +86,7 @@ struct RenderStateTests {
                     .vertexBuffer(quad.buffer, index: 0)
                     .parameter("color", functionTypes: .fragment, value: quad.color)
                     .parameter("depth", functionTypes: .vertex, value: quad.depth)
-                    .depthCompare(function: quad.compare, enabled: true)
+                    .depthCompare(function: quad.compare, writes: true)
                 if let bias = quad.bias {
                     draw.depthBias(bias)
                 } else {
@@ -462,7 +462,7 @@ struct RenderStateTests {
                     .vertexValues(Self.leftQuad, index: 0)
                     .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
                     .parameter("depth", value: Float(0.5))
-                    .depthCompare(function: .less, enabled: true)
+                    .depthCompare(function: .less, writes: true)
             }
             .vertexDescriptor(shaders.vertex.inferredVertexDescriptor())
         }

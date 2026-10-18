@@ -49,7 +49,7 @@ struct DepthStencilKeyTests {
 
     // MARK: - Regression: .depthCompare produces fresh descriptor per call
 
-    /// `.depthCompare(function:enabled:)` is implemented as a fresh
+    /// `.depthCompare(function:writes:)` is implemented as a fresh
     /// `MTLDepthStencilDescriptor()` allocation every invocation. Without a
     /// contents-based key the RenderPipeline cache would miss every frame (the
     /// perf-regression half of #314). With `DepthStencilKey` the key should
