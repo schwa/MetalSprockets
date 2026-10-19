@@ -10630,11 +10630,13 @@ Element.depthCompare(function:enabled:) passes 'enabled' as isDepthWriteEnabled.
 ## 532: VideoFrameWriter.waitUntilReady can wait forever if the writer fails
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 labels: effort:s
 created: 2026-10-19T01:56:56Z
+updated: 2026-10-19T11:47:45Z
+closed: 2026-10-19T11:47:45Z
 +++
 
 defaultWaitUntilReady (Sources/MetalSprockets/Roots/VideoFrameWriter.swift) awaits AVAssetWriterInput.isReadyForMoreMediaData via KVO with no timeout and no check of AVAssetWriter.status. If the writer fails or is cancelled mid-export, the flag never turns true, the continuation never resumes, and the export hangs forever with AVFoundation threads idle on semaphores.

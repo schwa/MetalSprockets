@@ -70,61 +70,66 @@ internal final class VideoFrameWriter {
             self.waitUntilReady = waitUntilReady
         } else {
             let input = assetWriterInput
-            self.waitUntilReady = { await Self.defaultWaitUntilReady(input) }
+            let writer = assetWriter
+            self.waitUntilReady = { await Self.defaultWaitUntilReady(input, writer: writer) }
         }
     }
 
     /// Default production implementation of ``waitUntilReady``: awaits
     /// `AVAssetWriterInput.isReadyForMoreMediaData` via KVO, returning
-    /// immediately if the input is already ready. See #321.
-    static func defaultWaitUntilReady(_ input: AVAssetWriterInput) async {
-        if input.isReadyForMoreMediaData {
+    /// immediately if the input is already ready. Also returns when the writer leaves `.writing` (failed or
+    /// cancelled), since the input then never becomes ready; `append` checks the status afterwards. See #321, #532.
+    static func defaultWaitUntilReady(_ input: AVAssetWriterInput, writer: AVAssetWriter) async {
+        func isDone() -> Bool {
+            input.isReadyForMoreMediaData || writer.status != .writing
+        }
+        if isDone() {
             return
         }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            // `observe` returns an `NSKeyValueObservation` we need to hold
-            // alive until we've resumed, and invalidate exactly once.
+            // Observations must stay alive until we resume, then be invalidated exactly once.
             //
-            // With `.initial` the block can run synchronously inside `observe`,
-            // before the returned observation has been stored, so the block
-            // records that it resumed and the code after `observe` invalidates
-            // whatever the block couldn't. Both paths go through `lock`. See #366.
+            // With `.initial` a block can run synchronously inside `observe`, before its observation has been
+            // stored, so `resumed` records that and the code after the `observe` calls invalidates whatever
+            // the block couldn't. All paths go through `lock`. See #366.
             let lock = OSAllocatedUnfairLock()
             nonisolated(unsafe) var resumed = false
-            nonisolated(unsafe) var observation: NSKeyValueObservation?
+            nonisolated(unsafe) var observations: [NSKeyValueObservation] = []
 
-            let observer = input.observe(\.isReadyForMoreMediaData, options: [.new, .initial]) { observed, _ in
-                guard observed.isReadyForMoreMediaData else {
+            nonisolated(unsafe) let handleChange: () -> Void = {
+                guard isDone() else {
                     return
                 }
-                let justResumed: Bool = lock.withLockUnchecked {
+                let (justResumed, toInvalidate): (Bool, [NSKeyValueObservation]) = lock.withLockUnchecked {
                     if resumed {
-                        return false
+                        return (false, [])
                     }
                     resumed = true
-                    return true
+                    let current = observations
+                    observations = []
+                    return (true, current)
                 }
                 guard justResumed else {
                     return
                 }
-                let toInvalidate: NSKeyValueObservation? = lock.withLockUnchecked {
-                    let current = observation
-                    observation = nil
-                    return current
-                }
-                toInvalidate?.invalidate()
+                toInvalidate.forEach { $0.invalidate() }
                 continuation.resume()
             }
+
+            let observers = [
+                input.observe(\.isReadyForMoreMediaData, options: [.new, .initial]) { _, _ in handleChange() },
+                writer.observe(\.status, options: [.new, .initial]) { _, _ in handleChange() }
+            ]
 
             let alreadyResumed: Bool = lock.withLockUnchecked {
                 if resumed {
                     return true
                 }
-                observation = observer
+                observations = observers
                 return false
             }
             if alreadyResumed {
-                observer.invalidate()
+                observers.forEach { $0.invalidate() }
             }
         }
     }
@@ -154,6 +159,10 @@ internal final class VideoFrameWriter {
         let presentationTime = CMTime(value: CMTimeValue(frameNumber), timescale: CMTimeScale(frameRate))
 
         await waitUntilReady()
+
+        if assetWriter.status == .failed || assetWriter.status == .cancelled {
+            throw assetWriter.error ?? MetalSprocketsError.validationError("Asset writer stopped (status \(assetWriter.status.rawValue)) before frame \(frameNumber)")
+        }
 
         guard pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: presentationTime) else {
             throw MetalSprocketsError.validationError("Failed to append pixel buffer for frame \(frameNumber) at \(presentationTime.seconds)s: \(assetWriter.error?.localizedDescription ?? "no error reported")")
