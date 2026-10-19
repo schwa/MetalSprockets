@@ -10626,3 +10626,59 @@ closed: 2026-10-18T15:06:17Z
 Element.depthCompare(function:enabled:) passes 'enabled' as isDepthWriteEnabled. Callers reading 'enabled' expect it to switch depth testing on, so '.depthCompare(function: .less, enabled: false)' looks like 'no depth test' but is 'test, don't write' (what transparent passes like particles want). Suggest renaming to depthCompare(function:writes:) or depthTest(_:writes:), keeping the old spelling deprecated. Source: MetalSprocketsParticles #68.
 
 ---
+
+## 532: VideoFrameWriter.waitUntilReady can wait forever if the writer fails
+
++++
+status: new
+priority: medium
+kind: bug
+labels: effort:s
+created: 2026-10-19T01:56:56Z
++++
+
+defaultWaitUntilReady (Sources/MetalSprockets/Roots/VideoFrameWriter.swift) awaits AVAssetWriterInput.isReadyForMoreMediaData via KVO with no timeout and no check of AVAssetWriter.status. If the writer fails or is cancelled mid-export, the flag never turns true, the continuation never resumes, and the export hangs forever with AVFoundation threads idle on semaphores.
+
+Seen in MetalSprocketsParticles (#102 there): particles-render --video and OffscreenVideoRenderer-based tests hung for 10-34 minutes, a few times; not reproducible on demand.
+
+Fix: also observe assetWriter.status (or poll it) while waiting, and throw assetWriter.error when it is .failed or .cancelled; optionally an overall timeout. waitUntilReady would need to become throwing.
+
+---
+
+## 533: Immersive mode on visionOS (Metal 4) renders nothing — 0 fps
+
++++
+status: closed
+priority: high
+kind: bug
+labels: area:visionos, area:metal4
+created: 2026-10-19T01:57:25Z
+updated: 2026-10-19T01:57:32Z
+closed: 2026-10-19T01:57:32Z
++++
+
+Moved from the umbrella ~/Projects/Current/MetalSprockets/ISSUES.md (was #1 there, created 2026-10-02T16:39:02Z).
+
+Immersive-space rendering on visionOS with the Metal 4 path is broken: 0 fps, nothing renders. The RenderView-based approach works fine.
+
+Likely cause: residency set is used outside the command-buffer encoding window. Metal 4 validation asserts:
+
+    -[MTL4DebugCommandBuffer useResidencySet:]:348: failed assertion 'Use Residency Set Validation
+    Use residency sets between beginCommandBufferWithAllocator and endCommandBuffer.'
+
+useResidencySet: must be called between beginCommandBufferWithAllocator and endCommandBuffer.
+
+Other console output observed:
+
+    [C:1-2] Error received: Invalidated by remote connection.
+    ar_world_tracking_provider_query_device_anchor_at_timestamp: The device_anchor can only be queried when the world tracking provider is running.
+    cannot add handler to 0 from 0 - dropping
+
+Repro: run immersive mode on visionOS with the Metal 4 renderer.
+Expected: immersive scene renders at normal fps.
+Actual: 0 fps, blank.
+
+- `2026-10-19T01:57:31Z`: (2026-10-02T16:42:50Z) Fixed: scratch residency set was attached after encode(); the visionOS compositor ends the command buffer during the immersive render pass, so useResidencySet ran after endCommandBuffer, tripping validation and leaving scratch uniforms non-resident. Now attach the scratch residency set before encode() (in-window) and keep only order-independent retention after. Builds macOS + visionOS; Metal4 tests pass.
+- `2026-10-19T01:57:32Z`: (2026-10-02T16:43:33Z) Reopened: code fix is in and macOS/visionOS compile + Metal4 tests pass, but the actual 0-fps symptom is device-only (compositor path, not exercised by tests or simulator). Keep open until verified on Apple Vision Pro.
+
+---
