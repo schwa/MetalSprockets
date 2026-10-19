@@ -1,0 +1,32 @@
+# Fail on any DocC warning (broken links, missing parameter docs, missing resources).
+name: DocC Check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docc:
+    runs-on: macos-26
+    steps:
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: "26.6"
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - name: Download MetalToolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Trust plugins
+        run: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
+      - name: Build documentation with warnings as errors
+        run: |
+          swift package \
+            --allow-writing-to-directory ./docs \
+            generate-documentation \
+            --target MetalSprockets \
+            --target MetalSprocketsUI \
+            --enable-experimental-combined-documentation \
+            --warnings-as-errors \
+            --output-path ./docs
