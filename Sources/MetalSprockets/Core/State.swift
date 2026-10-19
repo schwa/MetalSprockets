@@ -34,9 +34,8 @@
 /// ChildElement(rotation: $rotation)  // Pass binding to child
 /// ```
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Types
 /// - ``MSBinding``
 /// - ``MSEnvironment``
 @propertyWrapper

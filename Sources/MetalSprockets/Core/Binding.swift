@@ -46,9 +46,8 @@ private let nextBindingIdentifier = Atomic<UInt64>(0)
 /// )
 /// ```
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Types
 /// - ``MSState``
 /// - ``MSEnvironment``
 @propertyWrapper

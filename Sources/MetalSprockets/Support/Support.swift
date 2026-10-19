@@ -34,7 +34,7 @@ public extension Element {
 }
 
 public extension Element {
-    /// Keeps `resource` resident and alive for the submission. See ``useResource(_:usage:stages:)``.
+    /// Keeps `resource` resident and alive for the submission. See ``Element/useResource(_:usage:stages:)-9b6tt``.
     func useComputeResource(_ resource: any MTLResource, usage: MTLResourceUsage) -> some Element {
         useComputeResources([resource], usage: usage)
     }

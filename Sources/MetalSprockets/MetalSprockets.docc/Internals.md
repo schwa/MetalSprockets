@@ -14,10 +14,10 @@ The `System` class is the central coordinator that manages the element tree, str
 
 ### Key Components
 
-- **orderedIdentifiers**: Array of StructuralIdentifiers in depth-first traversal order
 - **nodes**: Dictionary mapping identifiers to Node instances
+- **traversalEvents**: The enter/exit sequence recorded by the last update, replayed by the setup and workload phases
 - **traversalContext**: `TraversalContext` owning the stack of nodes being visited by the current phase
-- **dirtyIdentifiers**: Set of identifiers that need re-processing due to state changes
+- **dirtyIdentifiers**: Set of identifiers that need re-processing due to state changes. Lock-protected, because `@MSState` writes can arrive from other threads (for example, from `onCommandBufferCompleted` handlers)
 
 ## Structural Identity
 
@@ -40,7 +40,7 @@ Nodes are the runtime representation of elements:
 
 ### Update Phase
 
-Walks the element tree and updates the node graph via `System.update`:
+Walks the element tree and updates the node graph via `System.update(root:)`:
 
 1. Traverse element tree depth-first using `visitChildren`
 2. Build structural identifiers using atom stack (stored in pre-order traversal order)
@@ -52,16 +52,16 @@ Walks the element tree and updates the node graph via `System.update`:
 
 Runs setup operations for elements that need initialization, as the second phase of `System.render(root:)`:
 
-- Called via `setupEnter` and `setupExit` on BodylessElements
+- Called via `setupEnter` and `setupExit` on elements that conform to `SetupElement`
 - Used for expensive operations like shader compilation
 - Only runs when element properties change
 - Results cached in environment values
 
 ### Workload Phase
 
-Executes the actual rendering work via `System.processWorkload`:
+Executes the actual rendering work, as the last phase of `System.render(root:)`:
 
-- Called via `workloadEnter` and `workloadExit` on BodylessElements
+- Called via `workloadEnter` and `workloadExit` on elements that conform to `WorkloadElement`
 - Creates and configures Metal encoders
 - Manages encoder lifetimes to obey Metal's single-encoder rule
 - Handles parent-child and sibling relationships

@@ -65,12 +65,17 @@ Unlike SwiftUI's `body`, Element bodies can throw errors because Metal operation
 ### Core Types
 
 - ``Element``
+- ``ElementBuilder``
+- ``AnyElement``
 
 ### Render Pipeline
 
 - ``RenderPass``
 - ``RenderPipeline``
 - ``Draw``
+- ``RenderCommand``
+- ``RenderPipelineDescriptorTransformer``
+- ``RenderAttachmentFormats``
 
 ### Shaders
 
@@ -78,11 +83,27 @@ Unlike SwiftUI's `body`, Element bodies can throw errors because Metal operation
 - ``VertexShader``
 - ``FragmentShader``
 - ``ComputeKernel``
+- ``ShaderFunction``
+- ``ShaderNamespace``
+- ``FunctionConstants``
+- ``FunctionTypes``
+- ``ShaderParameters``
+- ``Reflection``
+
+### Shader Loading and Caching
+
+- ``ShaderLoader``
+- ``MetalShaderLoader``
+- ``ShaderStore``
+- ``ShaderCache``
+- ``ShaderLogging``
 
 ### Compute
 
 - ``ComputePass``
+- ``ComputePipeline``
 - ``ComputeDispatch``
+- ``ComputeCommand``
 
 ### Mesh Shading
 
@@ -90,19 +111,59 @@ Unlike SwiftUI's `body`, Element bodies can throw errors because Metal operation
 - ``MeshShader``
 - ``ObjectShader``
 
+### Synchronization
+
+- ``EncoderBarrier``
+- ``QueueBarrier``
+
+### Resources and Residency
+
+- ``ResourceCollection``
+- ``ResidencyConfiguration``
+
+### Upscaling
+
+- ``MetalFXSpatial``
+- ``MetalFXTemporal``
+
 ### State Management
 
 - ``MSState``
 - ``MSBinding``
+- ``MSObservedObject``
 - ``MSEnvironment``
+- ``MSEnvironmentValues``
+- ``MSEnvironmentKey``
+- ``MSDynamicProperty``
+- ``EnvironmentReader``
 
 ### Composition
 
 - ``Group``
 - ``ForEach``
 - ``EmptyElement``
+- ``TupleElement``
 
-### Offscreen Rendering
+### Running Elements
 
+- ``Runner``
 - ``OffscreenRenderer``
 - ``OffscreenVideoRenderer``
+- ``Submission``
+- ``SubmissionResult``
+
+### Debugging and Profiling
+
+- ``LoggingElement``
+- ``CaptureTarget``
+- ``GPUTiming``
+- ``GPUCounterSample``
+- ``CPUPhaseTimings``
+- ``SystemSnapshot``
+- ``NodeSnapshot``
+- ``StatePropertySnapshot``
+- ``EnvironmentSnapshot``
+- ``StructuralIdentifier``
+- ``ElementTypeIdentifier``
+- ``AnyElementID``
+- ``FunctionConstantInfo``

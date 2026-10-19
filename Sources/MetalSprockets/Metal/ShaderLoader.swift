@@ -22,7 +22,7 @@ public protocol ShaderLoader: Sendable {
 
     /// Returns the function constants declared by the function named `name`.
     ///
-    /// - Throws: ``MetalSprocketsError/configurationError(_:)`` if no such function exists.
+    /// - Throws: `MetalSprocketsError.configurationError` if no such function exists.
     func declaredConstants(forFunctionNamed name: String) throws -> [String: FunctionConstantInfo]
 }
 

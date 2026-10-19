@@ -15,7 +15,7 @@ import os
 /// A `ShaderStore` holds strong references to every library and specialized
 /// function it has seen. They live as long as the store does. Create and own a
 /// store for as long as you want its shaders cached — typically for a scene,
-/// a feature, or the lifetime of one or more ``RenderView``s.
+/// a feature, or the lifetime of one or more `RenderView`s.
 ///
 /// ## Scoping
 ///
@@ -33,7 +33,7 @@ import os
 /// }
 /// ```
 ///
-/// If no store is attached, ``RenderView`` creates a private one scoped to its
+/// If no store is attached, `RenderView` creates a private one scoped to its
 /// own lifetime. Shaders compiled inside that `RenderView` die with it — no
 /// process-global cache, no long-lived retention.
 ///

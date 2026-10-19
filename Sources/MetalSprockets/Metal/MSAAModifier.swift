@@ -35,9 +35,8 @@ import MetalSprocketsSupport
 /// 3. Sets the resolve texture and store action to `.multisampleResolve`
 /// 4. After rendering, the GPU resolves the multisample data to the resolve texture
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Modifiers
 /// - ``View/metalSampleCount(_:)`` - For MTKView-based MSAA (simpler, preferred for on-screen rendering)
 internal struct MSAAModifier<Content>: Element, BodylessContentElement, EnvironmentModifyingElement where Content: Element {
     var content: Content

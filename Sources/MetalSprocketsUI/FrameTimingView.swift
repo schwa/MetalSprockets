@@ -68,8 +68,11 @@ public struct FrameTimingView: View {
     @State
     private var savedStatistics: FrameTimingStatistics?
 
-    /// - Parameter targetFramesPerSecond: The frame rate the FPS readout is colour-coded against. Defaults to the
-    ///   display's maximum refresh rate, so a 120 Hz display isn't marked green at 60 FPS.
+    /// - Parameters:
+    ///   - statistics: The frame timing statistics to show.
+    ///   - options: Which readouts to show.
+    ///   - targetFramesPerSecond: The frame rate the FPS readout is colour-coded against. Defaults to the
+    ///     display's maximum refresh rate, so a 120 Hz display isn't marked green at 60 FPS.
     public init(statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions = .default, targetFramesPerSecond: Double? = nil) {
         self.statistics = statistics
         self.options = options

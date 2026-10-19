@@ -19,9 +19,8 @@ import MetalSupport
 /// let fragmentShader: FragmentShader = library.myFragmentFunction
 /// ```
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Shader Types
 /// - ``VertexShader``
 /// - ``FragmentShader``
 /// - ``ComputeKernel``
@@ -50,7 +49,10 @@ public extension ShaderProtocol {
 
     /// Compiles a shader from Metal source.
     ///
-    /// - Parameter device: The device to compile on. Defaults to the system default device, which is only the right
+    /// - Parameters:
+    ///   - source: Metal Shading Language source. The first function of this shader's type is used.
+    ///   - logging: Enables shader `os_log` output.
+    ///   - device: The device to compile on. Defaults to the system default device, which is only the right
     ///   choice when the renderer uses that device too (see #55).
     init(source: String, logging: Bool = false, device: MTLDevice? = nil) throws {
         let device = device ?? _MTLCreateSystemDefaultDevice()
@@ -65,6 +67,9 @@ public extension ShaderProtocol {
     ///
     /// - Parameters:
     ///   - library: The library to search. When `nil`, `device`'s default library is used.
+    ///   - name: The function name.
+    ///   - constants: Function constant values used to specialize the function.
+    ///   - specializedName: A name for the specialized function. Defaults to `name`.
     ///   - device: The device whose default library is searched. Defaults to the system default device, which is only
     ///     the right choice when the renderer uses that device too (see #55).
     init(library: MTLLibrary? = nil, name: String, constants: FunctionConstants = FunctionConstants(), specializedName: String? = nil, device: MTLDevice? = nil) throws {

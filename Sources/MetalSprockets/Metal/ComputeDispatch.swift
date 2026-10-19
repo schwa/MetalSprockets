@@ -76,7 +76,7 @@ public struct ComputeDispatch: Element, WorkloadElement {
 /// Raw access to the Metal 4 compute encoder inside a ``ComputePass``, without a pipeline.
 ///
 /// Use it for copies, fills and other pipeline-free commands (the replacement for `BlitPass`). The encoder performs no
-/// hazard tracking: declare every referenced resource with ``Element/useComputeResources(_:usage:)``, and order
+/// hazard tracking: declare every referenced resource with ``Element/useComputeResources(_:usage:)-1knuz``, and order
 /// dependent commands with ``EncoderBarrier``.
 ///
 /// ```swift

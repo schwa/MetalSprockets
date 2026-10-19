@@ -95,7 +95,7 @@ public extension Element {
 
     /// Transforms an environment value for this element and its descendants.
     ///
-    /// Unlike ``environment(_:_:)``, the transform receives the inherited value and can
+    /// Unlike ``Element/environment(_:_:)-1rm5p``, the transform receives the inherited value and can
     /// modify it in place:
     ///
     /// ```swift

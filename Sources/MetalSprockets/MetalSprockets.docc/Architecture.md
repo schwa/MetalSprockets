@@ -25,7 +25,8 @@ Elements compose hierarchically to form a rendering tree. Each element can eithe
 ### 2. BodylessElement
 
 `BodylessElement` represents elements that perform Metal operations rather than compose children.
-An element conforms to `SetupElement`, `WorkloadElement`, or both to specify its processing phases:
+An element conforms to `SetupElement`, `WorkloadElement`, or both to specify its processing phases.
+These protocols are internal to the framework:
 
 ```swift
 protocol BodylessElement {
@@ -136,31 +137,22 @@ SwiftUI integration components:
 Supporting utilities and extensions:
 
 - Metal helpers and extensions
-- Error types
+- Error types (`MetalSprocketsError`)
 - Logging utilities
-- Type-safe Metal buffer operations
+- The `@MSEntry` macro
 
 ### Macros (MetalSprocketsMacros)
 
-Swift macros for code generation:
-
-- `@MSEntry`: Generates boilerplate for shader parameters
-- Automatic struct alignment for Metal-Swift interop
-
-### Examples (MetalSprocketsExamples)
-
-Example implementations and demos:
-
-- Sample rendering pipelines
-- Shader implementations
-- Interaction patterns
-- Reusable elements
+The compiler plugin that implements `@MSEntry`. The macro generates the key type and accessor for a custom ``MSEnvironmentValues`` property. Import `MetalSprocketsSupport` to use it.
 
 ### Shaders
 
 Metal shader libraries:
 
-- **MetalSprocketsExampleShaders**: Common shaders for examples
+- **MetalSprocketsShaders**: Shared Metal headers for MetalSprockets shaders
+- **MetalSprocketsUIShaders**: Shaders used by MetalSprocketsUI, such as `YCbCrBillboardRenderPass`
+
+The `Example` folder contains a demo app that is not part of the package products.
 
 ## Rendering Pipeline
 
@@ -244,12 +236,22 @@ Elements compose to build complex rendering pipelines:
 
 ```swift
 struct MyScene: Element {
+    let library: ShaderLibrary
+    let vertices: [Vertex]
+    let transforms: Transforms
+
     var body: some Element {
-        RenderPass {
-            Draw(mesh: teapot)
-                .vertexShader(MyVertexShader())
-                .fragmentShader(MyFragmentShader())
-                .parameters(transforms)
+        get throws {
+            try RenderPass {
+                try RenderPipeline(vertexShader: library.vertex_main, fragmentShader: library.fragment_main) {
+                    Draw { encoder in
+                        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: vertices.count)
+                    }
+                    .vertexValues(vertices, index: 0)
+                    .parameter("transforms", value: transforms)
+                }
+                .vertexDescriptor(Vertex.descriptor)
+            }
         }
     }
 }
@@ -272,13 +274,13 @@ element
 Pass values down the tree:
 
 ```swift
-ContentView()
+MyScene()
     .device(metalDevice)
-    .commandQueue(commandQueue)
+    .environment(\.myCustomValue, value)
 ```
 
-Each supplied resource has a convenience modifier: device, command queue, command buffer, render pass/pipeline descriptors, drawable, and drawable size.
-`environment(_:_:)` supports custom keys.
+Elements have convenience modifiers for the device, render pass and pipeline descriptors, current drawable, and drawable size.
+`environment(_:_:)` supports custom keys. In SwiftUI, `RenderView` reads the device and command queue from the SwiftUI environment: `.environment(\.device, device)` and `.environment(\.commandQueue, queue)`.
 
 ### Conditional Rendering
 
@@ -301,17 +303,22 @@ var body: some Element {
 The `ShaderLibrary` provides type-safe shader loading:
 
 ```swift
-let library = ShaderLibrary(bundle: .module)
-let vertexShader = try library.function(named: "vertex_main", type: VertexShader.self)
+let library = try ShaderLibrary(bundle: .module)
+let vertexShader: VertexShader = library.vertex_main
+let fragmentShader = try library.function(type: FragmentShader.self, named: "fragment_main")
 ```
 
 ### Parameter Binding
 
-Type-safe parameter binding system:
+Parameters bind by name, using the pipeline's reflection. A value goes to every stage that declares the name, unless you pass `functionTypes`:
 
 ```swift
-Parameters(vertex: transforms, fragment: materials)
+Draw { encoder in /* ... */ }
+    .parameter("transforms", functionTypes: .vertex, value: transforms)
+    .parameter("material", functionTypes: .fragment, value: material)
 ```
+
+Use ``Element/parameters(_:)`` to set several values in one modifier.
 
 ### Resource Management
 
@@ -323,24 +330,22 @@ Automatic resource lifecycle management:
 
 ## Threading Model
 
-MetalSprockets currently operates on a **single-threaded model**:
+Each `System` is confined to one isolation context:
 
-- **Main Thread**: Element updates, setup, and command encoding run synchronously on the thread that calls the System. This is usually the main thread through MTKViewDelegate.
-- **GPU**: Command buffer execution happens asynchronously after `commit()`/`present()`
+- **Owning isolation**: Element updates, setup, and command encoding run synchronously on the isolation that drives the system. For `RenderView`, this is the main thread through `MTKViewDelegate`.
+- **GPU**: Command buffer execution happens asynchronously after commit.
 
-### Current Limitations
+### Rules
 
-The framework is **not thread-safe**. The `System` class temporarily uses `@unchecked Sendable`, but this does not provide thread safety. Its limitations include:
+`System` is `@unchecked Sendable` because each instance stays in one isolation. Do not share an instance across isolations.
 
-- The traversal context's node stack is mutable state without synchronization
-- All System methods must be called from the same thread
-- `@MSEnvironment` property wrappers rely on global state
+- The traversal context's node stack has no synchronization. Only the owning isolation may traverse.
+- `@MSEnvironment` resolves through the current traversal context, so it works only during a traversal.
+- `@MSState` writes from other threads are safe. For example, an `onCommandBufferCompleted` handler can write state. The system records the change under a lock and applies it at the next update.
 
 ### SwiftUI Integration
 
 In `RenderView`, MetalKit's `MTKViewDelegate.draw(in:)` drives the render loop. This callback runs on the main thread, where all MetalSprockets processing occurs.
-
-_Note: Concurrency improvements are tracked in [issue #146](https://github.com/schwa/MetalSprockets/issues/146)._
 
 ## Performance Considerations
 
@@ -362,30 +367,27 @@ struct MyCustomElement: Element {
 }
 ```
 
-### Custom BodylessElements
+### Direct Metal Encoding
 
-For direct Metal operations:
+The bodyless element protocols are internal. To encode Metal commands yourself, use the encoder closures:
 
-```swift
-struct MyMetalOperation: WorkloadElement {
-    func workloadEnter(_ node: Node) throws {
-        // Encode Metal commands
-    }
-}
-```
+- ``Draw`` for draws with the enclosing pipeline's state bound
+- ``RenderCommand`` for raw access to the render encoder
+- ``ComputeCommand`` for copies, fills, and other compute-encoder work
 
 ### Environment Keys
 
 Add custom environment values:
 
 ```swift
+import MetalSprocketsSupport
+
 extension MSEnvironmentValues {
-    var myCustomValue: MyType {
-        get { self[MyCustomKey.self] }
-        set { self[MyCustomKey.self] = newValue }
-    }
+    @MSEntry var myCustomValue: MyType = MyType()
 }
 ```
+
+You can also conform a key type to ``MSEnvironmentKey`` and write the accessor yourself.
 
 ## Best Practices
 
@@ -425,17 +427,8 @@ Regression coverage: `Tests/MetalSprocketsTests/ModifierContentReconciliationTes
 | Output        | UI Elements      | Metal Commands         |
 | Rebuild       | Diffing          | Selective Node Updates |
 
-## Future Directions
+## See Also
 
-- **Mesh Shaders**: Support for Metal 3 mesh shaders ([issue #68](https://github.com/schwa/MetalSprockets/issues/68))
-- **Ray Tracing**: Integration with Metal ray tracing ([issue #86](https://github.com/schwa/MetalSprockets/issues/86))
-- **Shader Graph**: Visual shader composition ([issue #67](https://github.com/schwa/MetalSprockets/issues/67))
-- **Performance Tools**: Built-in profiling and debugging
-- **More Platforms**: visionOS and iOS optimization ([issue #82](https://github.com/schwa/MetalSprockets/issues/82))
-
-## Related Documentation
-
-- [README.md](../README.md) - Getting started guide
-- [Internals.md](Internals.md) - Internal implementation details and performance
-- [CLAUDE.md](../CLAUDE.md) - Development guidelines
-- API Documentation - Generated from source
+- <doc:GettingStarted>
+- <doc:Internals>
+- <doc:FAQ>

@@ -45,6 +45,8 @@ public final class Runner {
     ///   - device: The device to use. Defaults to the system default device, which must support Metal 4.
     ///   - commandQueue: A Metal 4 queue on `device`. Defaults to a new queue.
     ///   - shaderLogging: Where shader `os_log` messages go. Defaults to ``ShaderLogging/processDefault``.
+    ///   - residency: How resources are made resident for each submission.
+    ///   - maximumInFlightSubmissions: The most submissions that can be on the GPU at once.
     public init(device: MTLDevice? = nil, commandQueue: (any MTL4CommandQueue)? = nil, shaderLogging: ShaderLogging = .processDefault, residency: ResidencyConfiguration = ResidencyConfiguration(), maximumInFlightSubmissions: Int = 3) throws {
         let resolvedDevice = device ?? commandQueue?.device ?? _MTLCreateSystemDefaultDevice()
         context = try MetalContext(device: resolvedDevice, commandQueue: commandQueue, maximumInFlightSubmissions: maximumInFlightSubmissions, shaderLogging: shaderLogging.configuration)

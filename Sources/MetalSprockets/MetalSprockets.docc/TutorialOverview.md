@@ -12,7 +12,7 @@ These tutorials start with a triangle and progress to render graphs composed of 
 
 Before you start, check these requirements:
 
-- macOS 15.5+ / iOS 18.5+ / visionOS 26.0+
+- macOS 26+ / iOS 26+ / visionOS 26+ on a device that supports Metal 4
 - Xcode 26+
 
 ## Topics

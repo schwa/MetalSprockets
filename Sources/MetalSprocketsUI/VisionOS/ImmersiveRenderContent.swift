@@ -65,9 +65,8 @@ import SwiftUI
 /// }
 /// ```
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Types
 /// - ``ImmersiveContext``
 /// - ``ImmersiveRenderPass``
 public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {

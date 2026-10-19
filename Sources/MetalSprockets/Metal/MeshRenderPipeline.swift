@@ -25,9 +25,8 @@ import MetalSprocketsSupport
 ///
 /// Requires mesh-shader support (Apple GPU Family 7 or Mac 2); other devices report a capability error.
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Types
 /// - ``MeshShader``
 /// - ``ObjectShader``
 /// - ``RenderPipeline``

@@ -39,9 +39,8 @@ import SwiftUI
 /// this pass automatically configures stencil masking for efficient
 /// partial-frame updates.
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Types
 /// - ``ImmersiveRenderContent``
 /// - ``ImmersiveContext``
 /// - ``RenderPass``

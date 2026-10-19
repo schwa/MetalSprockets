@@ -5,7 +5,7 @@ import MetalSprocketsSupport
 
 /// Issues draw calls with the enclosing ``RenderPipeline``.
 ///
-/// Before `encodeGeometry` runs, the pipeline, its argument tables (from ``Element/parameter(_:functionTypes:value:)``
+/// Before `encodeGeometry` runs, the pipeline, its argument tables (from ``Element/parameter(_:functionTypes:value:)-6o0zh``
 /// and related modifiers), depth/stencil state, depth bias, viewport and scissor are already bound. Cull mode, triangle
 /// fill mode, front-facing winding and vertex amplification count are reset to Metal's defaults. Every draw sets that
 /// state, so nothing leaks from one draw to the next.
@@ -19,7 +19,7 @@ import MetalSprocketsSupport
 /// ```
 ///
 /// Metal 4 encoders have no `setVertexBytes` or `setFragmentTexture`. Pass data with the parameter and vertex
-/// modifiers instead, and declare anything referenced only by the closure with ``Element/useResource(_:usage:stages:)``.
+/// modifiers instead, and declare anything referenced only by the closure with ``Element/useResource(_:usage:stages:)-9b6tt``.
 public struct Draw: Element, WorkloadElement {
     // Cannot use EnvironmentReader here: Draw runs in the workload phase, when the render command encoder exists,
     // not during the tree expansion phase where EnvironmentReader operates.

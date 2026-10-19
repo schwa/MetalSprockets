@@ -40,10 +40,10 @@ public struct FrameTimingStatistics: Sendable, Equatable {
     /// GPU execution time of the most recent completed frame, in seconds.
     ///
     /// This is `nil` until the first submission completes (typically one frame behind), and when Metal reports no
-    /// valid timing. Comes from ``MetalSprockets/SubmissionResult/gpuDuration``.
+    /// valid timing. Comes from `SubmissionResult.gpuDuration`.
     public var gpuTime: TimeInterval?
 
-    /// The ``MetalSprockets/GPUTiming`` intervals from `gpuTimed` elements in the most recent completed frame.
+    /// The `GPUTiming` intervals from `gpuTimed` elements in the most recent completed frame.
     public var gpuTimings: [GPUTiming]
 
     /// CPU time of each phase of the previous frame. `nil` until one frame has rendered.

@@ -29,9 +29,8 @@ import Observation
 /// }
 /// ```
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Core Elements
 /// - ``RenderPass``
 /// - ``RenderPipeline``
 /// - ``Draw``

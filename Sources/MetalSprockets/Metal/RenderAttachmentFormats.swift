@@ -3,7 +3,7 @@ import MetalSprocketsSupport
 
 /// The attachment pixel formats and sample count of the render pass currently in scope.
 ///
-/// Descriptor producers (root runners, offscreen renderers, ``MSAAModifier``, and the
+/// Descriptor producers (root runners, offscreen renderers, `MSAAModifier`, and the
 /// render-pass-descriptor modifiers) publish this alongside
 /// ``MSEnvironmentValues/renderPassDescriptor`` so that pipelines can be configured without
 /// reaching into the descriptor's textures. See #362.

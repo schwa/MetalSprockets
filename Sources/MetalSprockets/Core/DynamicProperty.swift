@@ -32,9 +32,8 @@
 /// Both requirements have default no-op implementations, so conformers only implement the phase
 /// they need.
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Types
 /// - ``MSDynamicPropertyContext``
 public protocol MSDynamicProperty {
     /// Prepares the property for this update, before the element's body is evaluated.

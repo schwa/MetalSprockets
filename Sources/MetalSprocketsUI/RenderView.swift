@@ -82,7 +82,7 @@ public extension View {
 
     /// Sets where shader `os_log` messages from descendant ``RenderView``s go.
     ///
-    /// Defaults to ``MetalSprockets/ShaderLogging/processDefault`` (the `MS_METAL_LOGGING` environment variable).
+    /// Defaults to `ShaderLogging.processDefault` (the `MS_METAL_LOGGING` environment variable).
     /// Takes effect when a view first renders; a view keeps the setting it started with.
     func metalShaderLogging(_ logging: ShaderLogging) -> some View {
         environment(\.metalShaderLogging, logging)
@@ -90,7 +90,7 @@ public extension View {
 }
 
 public extension View {
-    /// Attaches a ``ShaderStore`` to descendant ``RenderView``s.
+    /// Attaches a `ShaderStore` to descendant ``RenderView``s.
     ///
     /// When multiple `RenderView`s share the same store, they share compiled
     /// Metal libraries and specialized functions. The store also outlives any
@@ -127,9 +127,9 @@ internal struct RenderViewCaptureConfiguration: Equatable {
 public extension View {
     /// Wraps each rendered frame in an `MTLCaptureManager` GPU frame capture scope.
     ///
-    /// Mirrors ``MetalSprockets/Element/capture(_:target:destination:)`` but applies
+    /// Mirrors `Element.capture(_:target:destination:)` but applies
     /// to everything rendered inside a ``RenderView``. A capture is started and stopped
-    /// for every frame while enabled, so prefer ``MTLCaptureDestination/developerTools``
+    /// for every frame while enabled, so prefer `MTLCaptureDestination.developerTools`
     /// (Xcode) and toggle the modifier off when you have what you need.
     ///
     /// ```swift
@@ -142,7 +142,7 @@ public extension View {
     /// - Parameters:
     ///   - enabled: When `false`, the modifier is a no-op. Defaults to `true`.
     ///   - target: Whether to capture all work on the device or only on the
-    ///     current command queue. Defaults to ``MetalSprockets/CaptureTarget/device``.
+    ///     current command queue. Defaults to `CaptureTarget.device`.
     ///   - destination: The capture destination. Defaults to `.developerTools`.
     ///   - outputURL: Where to write the `.gputrace` file. Required for
     ///     `.gpuTraceDocument`, ignored otherwise.
@@ -268,9 +268,8 @@ public extension View {
 /// .metalColorPixelFormat(.bgra8Unorm_srgb)
 /// ```
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Types
 /// - ``RenderViewContext``
 /// - ``FrameUniforms``
 public struct RenderView <Content>: View where Content: Element {
@@ -291,12 +290,13 @@ public struct RenderView <Content>: View where Content: Element {
     ///
     /// - Parameters:
     ///   - colorPixelFormat: The pixel format of the color render target. When `nil` (the default) the
-    ///     value from the environment (``SwiftUI/View/metalColorPixelFormat(_:)``) is used, falling back
+    ///     value from the environment (``SwiftUICore/View/metalColorPixelFormat(_:)``) is used, falling back
     ///     to `MTKView`'s own default.
     ///   - depthStencilPixelFormat: The pixel format of the depth/stencil render target. Required for
     ///     depth testing. When `nil` (the default) the environment value is used.
     ///   - sampleCount: The number of samples used for MSAA. When `nil` (the default) the environment
     ///     value is used.
+    ///   - residency: How resources are made resident for each submission.
     ///   - maximumInFlightSubmissions: A positive limit. Frames are skipped at the limit, without blocking the UI.
     ///   - content: A closure that returns the elements to render each frame.
     ///     Receives the render context and drawable size as parameters.
@@ -806,7 +806,7 @@ internal final class RenderViewViewModelAllocationTracker: @unchecked Sendable {
 /// Process-wide defaults for ``RenderView`` diagnostics.
 ///
 /// These are the fallbacks used when a view has not set the equivalent environment value with
-/// ``SwiftUI/View/renderViewLogFrame(_:)`` or ``SwiftUI/View/renderViewFatalErrorOnError(_:)``.
+/// ``SwiftUICore/View/renderViewLogFrame(_:)`` or ``SwiftUICore/View/renderViewFatalErrorOnError(_:)``.
 public enum RenderViewDebugging {
     public static var logFrame: Bool {
         SystemEnvironment.current.renderViewLogFrameEnabled

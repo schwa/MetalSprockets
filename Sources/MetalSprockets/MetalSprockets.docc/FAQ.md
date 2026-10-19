@@ -27,70 +27,43 @@ public var body: some Element {
 ### Why This Happens
 The framework needs concrete type information to traverse the element tree. `any Element` creates a type-erased existential. This prevents traversal into child elements and calls to their lifecycle methods, such as `workloadEnter`/`workloadExit`.
 
+Debug builds assert when a body returns `any Element`. Release builds do not check.
+
 ### Solution
 Use `some Element` as the return type for your Element's body property. This preserves the concrete type information that tree traversal needs.
 
-### Related Issues
-- [#256](https://github.com/schwa/MetalSprockets/issues/256) - Framework should detect or warn when Element body returns 'any Element'
+## Where can I apply `.parameter()`?
 
-## Why am I getting "missingEnvironment("reflection")" errors?
-
-### Problem
-You get an error like `Missing environment value: reflection` when trying to use `.parameter()` modifiers.
-
-### Cause
-This happens when `.parameter()` modifiers are applied outside of a RenderPipeline or ComputePipeline context:
+Anywhere above the ``Draw`` or ``ComputeDispatch`` that uses it. Parameters flow down the tree like environment values. Each draw or dispatch resolves them by name against the reflection of its enclosing pipeline.
 
 ```swift
-// ❌ WRONG - Parameters applied outside the pipeline
-return RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
-    content
+try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
+    Draw { encoder in
+        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3)
+    }
+    .parameter("color", value: color)        // Only this draw
 }
-.parameter("uniforms", value: uniforms)  // Error: No reflection context here!
+.parameter("uniforms", value: uniforms)      // Every draw in the pipeline
 ```
 
-### Why This Happens
-The `.parameter()` modifier uses shader reflection data to find parameter bindings. This data is available only within the RenderPipeline or ComputePipeline content closure.
+An inner `.parameter()` overrides an outer one with the same name. Sibling elements never see each other's parameters.
 
-### Solution
-Apply `.parameter()` modifiers to elements inside the pipeline's content closure:
+Every draw must find each parameter it inherits. If a draw's pipeline has no binding with that name, the draw throws: `Parameter 'name' is not a binding of any stage the filter allows in this pipeline.` Apply the parameter closer to the draws that use it.
+
+## What happens when vertex and fragment shaders share a parameter name?
+
+By default, `.parameter()` binds the value to every stage that declares the name:
 
 ```swift
-// ✅ CORRECT - Parameters applied inside the pipeline
-return RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
-    content
-        .parameter("uniforms", value: uniforms)  // Reflection context available here
-}
+.parameter("uniforms", value: uniforms)  // Vertex and fragment both receive it
 ```
 
-Parameters can then access the pipeline's reflection data.
-
-## Why am I getting "Ambiguous parameter" errors?
-
-### Problem
-You get a fatal error like `Fatal error: Ambiguous parameter, found parameter named uniforms in both vertex (index: #1) and fragment (index: #0) shaders.`
-
-### Cause
-This occurs when vertex and fragment shaders share a parameter name, but the binding does not specify a function:
+To send a value to one stage only, pass `functionTypes`:
 
 ```swift
-// ❌ WRONG - Ambiguous, parameter exists in both shaders
-.parameter("uniforms", value: myUniforms)
+.parameter("uniforms", functionTypes: .vertex, value: vertexUniforms)
+.parameter("uniforms", functionTypes: .fragment, value: fragmentUniforms)
 ```
-
-### Why This Happens
-When vertex and fragment functions share parameter names, the framework cannot determine which function the binding targets. Metal shaders often share buffer indices and names between these stages.
-
-### Solution
-Explicitly specify the function type when binding parameters that exist in multiple shader stages:
-
-```swift
-// ✅ CORRECT - Explicitly specify function type
-.parameter("uniforms", functionType: .vertex, value: myUniforms)
-.parameter("uniforms", functionType: .fragment, value: myUniforms)
-```
-
-Each stage can use the same value or a different value. An explicit function type identifies the target stage.
 
 ## What is Ultraviolence
 

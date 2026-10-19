@@ -68,9 +68,8 @@ import os
 /// cannot be used by a pipeline built on another; pipelines check this during setup and throw rather than letting
 /// Metal fail obscurely. See #55.
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Shader Types
 /// - ``VertexShader``
 /// - ``FragmentShader``
 /// - ``ComputeKernel``
@@ -234,7 +233,7 @@ public extension ShaderLibrary {
     /// Creates a shader library by compiling Metal source code at runtime.
     ///
     /// Use this for prototyping or dynamically generated shaders. For production,
-    /// prefer pre-compiled `.metal` files loaded via ``init(bundle:)``.
+    /// prefer pre-compiled `.metal` files loaded via ``init(bundle:device:)``.
     ///
     /// The Metal library is compiled eagerly at init time so that compilation
     /// never happens during the render loop. On first use from inside a
@@ -285,7 +284,7 @@ public extension ShaderLibrary {
     ///   - name: The unqualified function name.
     ///   - namespace: An optional C++ namespace qualifying `name`.
     ///   - constants: Function constants to specialize the function with.
-    /// - Throws: ``MetalSprocketsError/resourceCreationFailure(_:)`` if no function of that name exists, or if it
+    /// - Throws: `MetalSprocketsError.resourceCreationFailure` if no function of that name exists, or if it
     ///   exists but has the wrong function type.
     func function<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T: ShaderProtocol {
         let scopedName = namespace.map { "\($0)::\(name)" } ?? name

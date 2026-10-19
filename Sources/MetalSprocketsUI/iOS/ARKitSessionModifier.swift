@@ -49,9 +49,8 @@ import SwiftUI
 /// - `viewMatrix`: Camera view matrix for 3D rendering
 /// - `projectionMatrix`: Camera projection matrix
 ///
-/// ## Topics
+/// ## See Also
 ///
-/// ### Related Types
 /// - ``YCbCrBillboardRenderPass``
 public struct ARFrameData {
     /// The Y (luminance) texture from the camera in r8Unorm format.

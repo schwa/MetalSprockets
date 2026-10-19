@@ -49,7 +49,7 @@ public extension Element {
     /// store, deduplicating compiled Metal libraries and specialized functions
     /// across views that mount inside the same store.
     ///
-    /// If no store is attached, ``RenderView`` provides a private one scoped to
+    /// If no store is attached, `RenderView` provides a private one scoped to
     /// its own lifetime.
     func shaderStore(_ store: ShaderStore) -> some Element {
         environment(\.shaderStore, store)
