@@ -1,6 +1,6 @@
 /// Marks an element that writes environment values for its children during the update phase.
 ///
-/// Subtree skipping (#370) uses this: once such an element changes, nothing below it may be skipped, because its
+/// Subtree skipping (#370) uses this: when such an element changes, the system cannot skip anything below it, because its
 /// descendants read the environment while their bodies run.
 internal protocol EnvironmentModifyingElement {}
 
@@ -34,7 +34,7 @@ internal protocol SetupElement: BodylessElement {
     func setupExit(_ node: Node) throws
 }
 
-/// A bodyless element that takes part in the workload phase, i.e. it encodes GPU work every frame.
+/// A bodyless element that takes part in the workload phase. That is, it encodes GPU work every frame.
 internal protocol WorkloadElement: BodylessElement {
     func workloadEnter(_ node: Node) throws
     func workloadExit(_ node: Node) throws

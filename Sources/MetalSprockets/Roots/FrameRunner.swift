@@ -48,7 +48,7 @@ package final class FrameRunner {
         try submitFrame(content, presenting: DrawablePresentation(drawable: drawable), residencySets: residencySets)
     }
 
-    /// Records, commits, and awaits `content`. Encoding errors throw without committing; GPU outcomes are in the result.
+    /// Records, commits, and awaits `content`. Encoding errors throw without a commit. GPU outcomes are in the result.
     @discardableResult
     nonisolated(nonsending) func run(_ content: some Element) async throws -> SubmissionResult {
         let submission = try await context.run(content, system: system)

@@ -77,10 +77,6 @@ public struct MSEnvironmentValues {
     /// ``values`` layered over ``inheritedValues``, maintained eagerly so lookups stay O(1).
     private(set) var effectiveValues: [Key: Box] = [:]
 
-    /// Re-reads the parent's effective values, leaving this environment's own values in place.
-    ///
-    /// Called on every node as the tree is traversed, so values written by ancestors during the
-    /// setup and workload phases become visible to descendants entered afterwards.
     /// Reads a value as inherited from the parent, ignoring any value written on this environment.
     ///
     /// Accumulating modifiers use this so they rebuild from the parent's current value each frame instead of reading
@@ -89,8 +85,8 @@ public struct MSEnvironmentValues {
         inheritedValues[.init(key)].map { unsafeDowncast($0, to: TypedBox<Key.Value>.self).value } ?? Key.defaultValue
     }
 
-    /// The parameter set, stored outside the dictionaries. Parameter modifiers write it on every draw every frame, and a
-    /// dictionary value of its own would make every such node copy and merge the whole environment each phase.
+    /// The parameter set, stored outside the dictionaries. Parameter modifiers write it on every draw every frame.
+    /// As a dictionary value, it makes every such node copy and merge the whole environment in each phase.
     private var ownParameterSet: ParameterSet??
     private var inheritedParameterSetStorage: ParameterSet?
 
@@ -102,6 +98,10 @@ public struct MSEnvironmentValues {
     /// The parameter set as inherited from the parent, ignoring this environment's own write.
     internal var inheritedParameterSet: ParameterSet? { inheritedParameterSetStorage }
 
+    /// Re-reads the parent's effective values, and keeps the values of this environment.
+    ///
+    /// The system calls this on every node during a traversal. As a result, values that ancestors write during the
+    /// setup and workload phases are visible to the descendants that come after them.
     internal mutating func inherit(from parent: Self) {
         inheritedValues = parent.effectiveValues
         inheritedParameterSetStorage = parent.parameterSet
@@ -157,7 +157,7 @@ public protocol MSEnvironmentKey {
     /// The type of value stored by this key.
     associatedtype Value
 
-    /// The default value used when no explicit value has been set.
+    /// The value to use when no value is set.
     static var defaultValue: Value { get }
 }
 

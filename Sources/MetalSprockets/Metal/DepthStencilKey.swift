@@ -5,9 +5,9 @@ import Metal
 /// so that descriptors with identical contents (but different object identity)
 /// hit the cache instead of forcing a rebuild every frame.
 ///
-/// Without this, helpers like `.depthCompare(function:writes:)` that allocate
-/// a fresh `MTLDepthStencilDescriptor` every call would defeat the per-node
-/// pipeline cache introduced in #333 — see #314.
+/// Helpers like `.depthCompare(function:writes:)` make a new
+/// `MTLDepthStencilDescriptor` on every call. Without this key, each new
+/// descriptor causes a miss in the per-node pipeline cache from #333. See #314.
 internal struct DepthStencilKey: Hashable {
     let depthCompareFunction: MTLCompareFunction
     let isDepthWriteEnabled: Bool

@@ -69,8 +69,8 @@ internal final class ImmersiveRuntime<Content: Element> {
 
     /// Waits for the compositor to leave the paused state.
     ///
-    /// `LayerRenderer.waitUntilRunning()` blocks the calling thread, so it runs off the renderer actor: blocking here
-    /// would stall the actor (and a cooperative pool thread) for the whole pause. See #386.
+    /// `LayerRenderer.waitUntilRunning()` blocks the calling thread, so it does not run on the renderer actor. A block
+    /// here stops the actor (and a cooperative pool thread) for the full pause. See #386.
     private func waitUntilRunning() async {
         nonisolated(unsafe) let layerRenderer = layerRenderer
         await Self.waitUntilRunning(layerRenderer)

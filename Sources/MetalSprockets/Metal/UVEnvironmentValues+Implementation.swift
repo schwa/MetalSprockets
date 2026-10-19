@@ -45,9 +45,9 @@ public extension MSEnvironmentValues {
 public extension Element {
     /// Attaches a ``ShaderStore`` to this element and its descendants.
     ///
-    /// ``ShaderLibrary`` values used inside the scope will share the attached
-    /// store, deduplicating compiled Metal libraries and specialized functions
-    /// across views that mount inside the same store.
+    /// ``ShaderLibrary`` values inside the scope share the attached store.
+    /// Views inside the same store share one copy of each compiled Metal
+    /// library and specialized function.
     ///
     /// If no store is attached, `RenderView` provides a private one scoped to
     /// its own lifetime.

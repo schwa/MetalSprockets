@@ -4,7 +4,7 @@ See how MetalSprockets simplifies Metal rendering with a side-by-side comparison
 
 ## Overview
 
-This article compares two ways to render a red triangle: traditional Metal and MetalSprockets. MetalSprockets reduces setup code while preserving control of the rendering pipeline.
+This article compares two ways to render a red triangle: traditional Metal and MetalSprockets. MetalSprockets needs less setup code, and you keep control of the render pipeline.
 
 ## Traditional Metal Approach
 
@@ -131,7 +131,7 @@ enum TraditionalRedTriangle {
 }
 ```
 
-This version requires manual management of:
+In this version, you manage all of these items yourself:
 - Device and command queue creation
 - Shader compilation and function lookup
 - Vertex descriptors
@@ -220,9 +220,9 @@ enum RedTriangleInline {
 
 ## What MetalSprockets Handles
 
-MetalSprockets automatically manages:
+MetalSprockets manages these items for you:
 
-- **Device and queue creation** — Uses system default or lets you inject your own
+- **Device and queue creation** — Uses the system default device, or a device that you supply
 - **Pipeline state caching** — Compiles once, reuses across frames
 - **Vertex descriptor inference** — Derives layout from shader attributes
 - **Parameter binding** — Uses reflection to bind by name
@@ -231,7 +231,7 @@ MetalSprockets automatically manages:
 
 ## What You Still Control
 
-MetalSprockets provides direct access to:
+MetalSprockets gives you direct access to:
 
 - **The render encoder** — Full control in ``Draw`` closures
 - **Shader source** — Write standard Metal Shading Language

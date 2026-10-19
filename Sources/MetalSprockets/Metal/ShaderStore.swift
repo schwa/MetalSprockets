@@ -13,9 +13,9 @@ import os
 /// ## Lifetime
 ///
 /// A `ShaderStore` holds strong references to every library and specialized
-/// function it has seen. They live as long as the store does. Create and own a
-/// store for as long as you want its shaders cached — typically for a scene,
-/// a feature, or the lifetime of one or more `RenderView`s.
+/// function it has seen. They live as long as the store does. Keep a store for as
+/// long as you want to cache its shaders. Usually this is for a scene, a
+/// feature, or the lifetime of one or more `RenderView`s.
 ///
 /// ## Scoping
 ///
@@ -50,8 +50,8 @@ public final class ShaderStore: Sendable {
 
     /// Adopts an already-compiled `State` into the store.
     ///
-    /// If the store already has a `State` for this ID, returns the existing one
-    /// and the caller should discard `candidate`. Otherwise inserts `candidate`
+    /// If the store already has a `State` for this ID, returns the existing one,
+    /// and the caller must discard `candidate`. Otherwise inserts `candidate`
     /// and returns it.
     internal func adopt(_ candidate: ShaderLibrary.State) -> ShaderLibrary.State {
         storage.withLock { storage in

@@ -2,8 +2,8 @@ import Metal
 
 /// Reference-counts allocations across recorded and in-flight submissions.
 ///
-/// An allocation joins the residency set on its first use and leaves after its last use retires, so the set tracks
-/// only live work instead of growing with every resource ever seen. Confined to the owning context's isolation.
+/// An allocation joins the residency set on its first use. It leaves after its last use retires. Thus the set holds only
+/// live work, and does not grow with every resource that it sees. Confined to the owning context's isolation.
 internal final class ResidencyTracker {
     private struct Entry {
         let allocation: any MTLAllocation

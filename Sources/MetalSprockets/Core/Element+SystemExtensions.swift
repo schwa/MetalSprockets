@@ -59,7 +59,7 @@ internal extension Element {
 
 /// Remembers element types that cannot hold a dynamic property, so their nodes skip reflection every frame (#496).
 ///
-/// A type is recorded only when one reflection found no dynamic property and no optional field. An optional field could
+/// A type is recorded only when one reflection found no dynamic property and no optional field. An optional field can
 /// hold a dynamic property in a later value, so such types are always reflected. A field declared as `Any` or another
 /// existential is not detected and is assumed to keep the kind of value it first held.
 /// Library elements that never hold a dynamic property, even behind an optional or `Any` field, so they are cached

@@ -40,9 +40,9 @@ public extension Element {
     /// - Parameters:
     ///   - depthBias: A constant offset added to each fragment's depth value.
     ///   - slopeScale: A scale applied to the fragment's depth slope before it is added to the bias.
-    ///   - clamp: The maximum (or, for negative values, minimum) bias that may be applied.
+    ///   - clamp: The maximum (or, for negative values, minimum) bias that the GPU applies.
     ///
-    /// - Note: Only draws inside this element are biased; siblings are not.
+    /// - Note: The bias applies only to draws inside this element. It does not apply to siblings.
     func depthBias(_ depthBias: Float, slopeScale: Float = 0, clamp: Float = 0) -> some Element {
         DepthBiasModifier(depthBias: depthBias, slopeScale: slopeScale, clamp: clamp, content: self)
     }

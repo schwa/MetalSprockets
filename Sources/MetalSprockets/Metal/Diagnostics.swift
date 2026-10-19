@@ -46,13 +46,14 @@ extension ShaderLogging {
 
 /// Ends a capture this element started once the submission it covers is finished or discarded.
 ///
-/// Metal 4 encodes during traversal but commits afterwards, so stopping at `workloadExit` (as the legacy modifier does)
-/// would stop before the work reaches the queue. The session is owned by the recording: its terminal handler keeps it
-/// alive through completion, and discarding the recording drops it, so a thrown workload still ends the capture.
+/// Metal 4 encodes during traversal but commits after it. If the capture stops at `workloadExit` (as the legacy
+/// modifier does), it stops before the work gets to the queue. The recording owns the session. Its terminal handler
+/// keeps the session alive until completion. If the recording is discarded, the session goes too. Thus a workload
+/// that throws still ends the capture.
 internal final class CaptureSession: Sendable {
     private let isFinished = OSAllocatedUnfairLock(initialState: false)
 
-    /// Stops the capture while the submission's resources are still alive; the capture layer serializes their state.
+    /// Stops the capture while the resources of the submission are still alive. The capture layer serializes their state.
     func finish() {
         guard !isFinished.withLock({ finished in defer { finished = true }; return finished }) else {
             return

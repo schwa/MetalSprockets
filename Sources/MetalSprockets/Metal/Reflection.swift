@@ -39,7 +39,7 @@ internal extension MSEnvironmentValues {
     /// shader bindings must therefore be a *descendant* of one of those elements. Use this instead
     /// of reading `reflection` directly so the failure carries that explanation.
     ///
-    /// - Parameter usage: How the caller is described to the user, e.g. `"parameter() modifiers"`.
+    /// - Parameter usage: The name of the caller in the message to the user. For example, `"parameter() modifiers"`.
     func requireReflection(for usage: String) throws -> Reflection {
         guard let reflection else {
             let hint = "\(usage) must be placed inside a RenderPipeline or ComputePipeline content block, not as a modifier on the pipeline itself."

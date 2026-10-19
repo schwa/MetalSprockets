@@ -64,9 +64,9 @@ import os
 /// let library = try ShaderLibrary(bundle: .myShaders(), device: renderer.device)
 /// ```
 ///
-/// On a single-GPU machine the default is always right. With more than one GPU, a library compiled on one device
-/// cannot be used by a pipeline built on another; pipelines check this during setup and throw rather than letting
-/// Metal fail obscurely. See #55.
+/// On a single-GPU machine the default is always right. With more than one GPU, a pipeline cannot use a library
+/// that was compiled on a different device. Pipelines look for this during setup and throw a clear error. Without this
+/// check, Metal fails with an unclear error. See #55.
 ///
 /// ## See Also
 ///
@@ -79,8 +79,8 @@ import os
 public struct ShaderLibrary: Identifiable {
     /// A value snapshot of the parts of `MTLCompileOptions` that affect the compiled result.
     ///
-    /// `MTLCompileOptions` is a mutable reference type, so it can't be part of a `Sendable`, value-comparable
-    /// identifier. Libraries are identified by this snapshot instead. See #365.
+    /// `MTLCompileOptions` is a mutable reference type, so it cannot be part of a `Sendable`, value-comparable
+    /// identifier. This snapshot identifies libraries instead. See #365.
     public struct CompileOptionsSignature: Hashable, Sendable {
         public var languageVersion: UInt
         public var libraryType: Int
@@ -124,13 +124,11 @@ public struct ShaderLibrary: Identifiable {
         }
     }
 
-    /// Box holding a `State` that may be swapped on first adoption by a `ShaderStore`.
+    /// A box that holds a `State`. A `ShaderStore` can swap the state when it first adopts the library.
     ///
-    /// Adoption is single-shot: once a `ShaderStore` is found in the ambient
-    /// environment and we've resolved which `State` to use (ours, or an
-    /// existing one already in the store), we never swap again for the lifetime
-    /// of this `ShaderLibrary`. Until then, we keep returning the locally-owned
-    /// `State` that was compiled at `init` time.
+    /// Adoption occurs one time only. The box finds a `ShaderStore` in the ambient environment. Then it selects
+    /// the `State` to use: its own, or one that is already in the store. After that, the state does not change for
+    /// the lifetime of this `ShaderLibrary`. Until then, the box returns the local `State` that `init` compiled.
     final class StateBox: Sendable {
         private struct Contents {
             var state: State
@@ -142,8 +140,7 @@ public struct ShaderLibrary: Identifiable {
             self.lock = OSAllocatedUnfairLock(initialState: Contents(state: state, adopted: false))
         }
 
-        /// Returns the `State` this library should use, attempting ambient-store
-        /// adoption on first call if possible.
+        /// Returns the `State` for this library. On the first call, it tries to adopt the ambient store.
         func resolve() -> State {
             // Fast path: already adopted (or no store was around on first attempt
             // and we're still using the private state — see slow path below).
@@ -261,7 +258,7 @@ public extension ShaderLibrary {
     /// Prefer ``function(type:named:namespace:constants:)`` everywhere else.
     ///
     /// - Parameters:
-    ///   - type: The shader type to produce, e.g. `VertexShader.self`.
+    ///   - type: The shader type to make. For example, `VertexShader.self`.
     ///   - name: The unqualified function name.
     ///   - namespace: An optional C++ namespace qualifying `name`.
     ///   - constants: Function constants to specialize the function with.
@@ -279,7 +276,7 @@ public extension ShaderLibrary {
     /// Results are cached per (name, function type, constants), so repeated lookups are cheap.
     ///
     /// - Parameters:
-    ///   - type: The shader type to produce, e.g. `VertexShader.self`. Its ``ShaderProtocol/functionType`` must match
+    ///   - type: The shader type to make. For example, `VertexShader.self`. Its ``ShaderProtocol/functionType`` must match
     ///     the Metal function's actual type.
     ///   - name: The unqualified function name.
     ///   - namespace: An optional C++ namespace qualifying `name`.

@@ -62,9 +62,9 @@ internal struct IdentifiedElement<Content, ID>: Element, BodylessContentElement,
 public extension Element {
     /// Binds an explicit identity to this element.
     ///
-    /// Structural identity is normally derived from an element's type and its position among
-    /// its siblings, so moving an element within a container gives it a new identity and forces
-    /// re-setup. Use `id(_:)` when identity should follow the data instead of the position:
+    /// Structural identity usually comes from the type of an element and its position among its siblings.
+    /// When an element moves in a container, it gets a new identity, and setup runs again.
+    /// To make identity follow the data instead of the position, use `id(_:)`:
     ///
     /// ```swift
     /// ForEach(passes) { pass in

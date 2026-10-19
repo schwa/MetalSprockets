@@ -129,8 +129,8 @@ internal final class RecordingScope {
         commands.commandBuffer.useResidencySet(residencySet)
     }
 
-    /// Retains a resource collection's lease for the submission. Order-independent: it does not touch the command
-    /// buffer, so it may run after an owner has ended it.
+    /// Retains a resource collection's lease for the submission. The order does not matter. It does not touch the command
+    /// buffer, so it can run after an owner ends the buffer.
     func retainResourceCollection(_ collection: ResourceCollection) {
         let lease = collection.acquire()
         resources.residencySets.append(collection.residencySet)

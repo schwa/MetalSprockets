@@ -32,22 +32,21 @@ package final class System: @unchecked Sendable {
 
     private(set) var traversalEvents: [TraversalEvent] = []
     private(set) var nodes: [StructuralIdentifier: Node] = [:]
-    /// The node stack for the traversal currently in flight. Owned by the phase doing the traversal; empty outside
-    /// one. Environment and state resolve through this context (see ``TraversalContext``).
+    /// The node stack for the traversal currently in flight. The phase that does the traversal owns it. Outside a
+    /// traversal, it is empty. Environment and state resolve through this context (see ``TraversalContext``).
     let traversalContext = TraversalContext()
-    /// Identifiers of nodes whose element should be re-evaluated on the next update.
+    /// Identifiers of nodes whose element the next update must evaluate again.
     ///
-    /// Wrapped in `OSAllocatedUnfairLock` because `markDirty(_:)` may be called
-    /// from non-main threads (e.g. `onCommandBufferCompleted` handlers writing
-    /// back to `@MSState`) concurrently with `System.update(root:)` on the
-    /// owning isolation. See #330.
+    /// An `OSAllocatedUnfairLock` protects this set. Code on other threads can call `markDirty(_:)` while
+    /// `System.update(root:)` runs on the owning isolation. For example, an `onCommandBufferCompleted` handler can
+    /// write to `@MSState`. See #330.
     private let _dirtyIdentifiers = OSAllocatedUnfairLock<Set<StructuralIdentifier>>(initialState: [])
 
     /// Identifiers of nodes that must be set up again on the next update.
     ///
-    /// Same rationale as `_dirtyIdentifiers`: invalidation can arrive from a non-owning isolation, and `Node` itself
-    /// is not thread-safe, so the request is recorded here and applied to the nodes on the owning isolation at the
-    /// start of `update(root:)`. See #385.
+    /// The reason is the same as for `_dirtyIdentifiers`. Invalidation can come from a different isolation, and `Node`
+    /// is not thread-safe. Thus the system records the request here. At the start of `update(root:)`, it applies the
+    /// request to the nodes on the owning isolation. See #385.
     private let _pendingSetupIdentifiers = OSAllocatedUnfairLock<Set<StructuralIdentifier>>(initialState: [])
 
     /// Read-only snapshot of the current dirty identifiers. Takes the lock.
@@ -72,7 +71,7 @@ package final class System: @unchecked Sendable {
 
     /// Requests that `node` be set up again on the next update.
     ///
-    /// Safe to call from any isolation; the flag is written to the node during the next update.
+    /// You can call this from any isolation. The next update writes the flag to the node.
     internal func markNeedsSetup(_ id: StructuralIdentifier) {
         _pendingSetupIdentifiers.withLock { _ = $0.insert(id) }
     }
@@ -293,8 +292,9 @@ package final class System: @unchecked Sendable {
 // MARK: - Node Processing
 
 internal extension System {
-    /// Determine whether to reuse an existing node or create a new one
-    /// `isEqualToPrevious` is the caller's `isEqual` result for the previous element, so it is not computed twice.
+    /// Reuses an existing node or makes a new one.
+    /// `isEqualToPrevious` is the `isEqual` result of the caller for the previous element. The function does not
+    /// calculate it again.
     /// `previousNode` is the previous traversal's node with the same identifier, or nil.
     func processNode(currentId: StructuralIdentifier, previousNode: Node?, element: any Element, isEqualToPrevious: Bool, newNodes: inout [StructuralIdentifier: Node]) -> Node {
         if let previousNode {

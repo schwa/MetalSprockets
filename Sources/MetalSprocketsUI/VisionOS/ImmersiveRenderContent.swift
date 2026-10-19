@@ -82,8 +82,8 @@ public struct ImmersiveRenderContent<Content: Element>: ImmersiveSpaceContent {
     /// - Parameters:
     ///   - progressive: Enable progressive rendering for complex scenes.
     ///   - maximumInFlightSubmissions: A positive limit. The render loop awaits capacity before submitting.
-    ///   - foveation: Render the periphery of the view at lower resolution when the device supports it. Turn it off
-    ///     to rule out foveation artifacts (blocky edges, especially on blended content); it costs GPU time.
+    ///   - foveation: Render the periphery of the view at lower resolution when the device supports it. It costs GPU time.
+    ///     To find out if foveation causes artifacts (blocky edges, usually on blended content), turn it off.
     ///   - content: A closure that returns the elements to render each frame.
     public init(progressive: Bool = false, maximumInFlightSubmissions: Int = 3, foveation: Bool = true, @ElementBuilder content: @Sendable @escaping (ImmersiveContext) throws -> Content) {
         self.progressive = progressive

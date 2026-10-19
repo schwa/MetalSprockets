@@ -10,7 +10,7 @@ import MetalSprocketsSupport
 public struct RenderAttachmentFormats: Hashable, Sendable {
     /// Colour attachment pixel formats, indexed by attachment index.
     ///
-    /// Trailing unused slots are omitted; unused slots in the middle are `.invalid`.
+    /// Unused slots at the end are not included. Unused slots in the middle are `.invalid`.
     public var colorPixelFormats: [MTLPixelFormat]
 
     /// The depth attachment pixel format, or `.invalid` if there is no depth attachment.

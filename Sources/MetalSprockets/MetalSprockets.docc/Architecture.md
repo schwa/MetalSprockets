@@ -2,13 +2,13 @@
 
 ## Overview
 
-MetalSprockets is a declarative Metal rendering framework for Swift, based on SwiftUI's architecture. Its API composes rendering pipelines while preserving Metal's performance and flexibility.
+MetalSprockets is a declarative Metal rendering framework for Swift. Its design comes from SwiftUI. You compose render pipelines from elements, and you keep the performance and control of Metal.
 
 ## Core Concepts
 
 ### 1. Element Protocol
 
-The `Element` protocol defines a unit of MetalSprockets composition, like SwiftUI's `View` protocol.
+The `Element` protocol defines one unit of composition. It is like the `View` protocol in SwiftUI.
 
 ```swift
 public protocol Element {
@@ -17,15 +17,15 @@ public protocol Element {
 }
 ```
 
-Elements compose hierarchically to form a rendering tree. Each element can either:
+Elements make a tree. Each element does one of these:
 
-- Return other elements via its `body` property (compositional elements)
-- Perform actual Metal operations (bodyless elements)
+- It returns other elements from its `body` property (compositional elements).
+- It does Metal operations itself (bodyless elements).
 
-### 2. BodylessElement
+### 2. Bodyless Elements
 
-`BodylessElement` represents elements that perform Metal operations rather than compose children.
-An element conforms to `SetupElement`, `WorkloadElement`, or both to specify its processing phases.
+A bodyless element does Metal operations. It does not compose children through a `body`.
+An element conforms to `SetupElement`, `WorkloadElement`, or both. The protocol tells the system which phases the element takes part in.
 These protocols are internal to the framework:
 
 ```swift
@@ -48,24 +48,23 @@ protocol WorkloadElement: BodylessElement {
 }
 ```
 
-These elements interact directly with Metal command encoders and perform rendering operations. Only `SetupElement`
-nodes ever report `needsSetup`, so a workload-only element costs nothing in the setup phase.
+Bodyless elements use Metal command encoders directly. Only a `SetupElement` node can report `needsSetup`. Thus an element that has only a workload costs nothing in the setup phase.
 
-### 3. Rendering Graph
+### 3. Render Graph
 
-The framework manages a graph that transforms your declarative element tree into Metal commands:
+The framework changes your element tree into Metal commands:
 
-- Elements are expanded into an internal graph structure
-- The graph handles state changes and selective rebuilding
-- Two-phase processing: setup (one-time) and workload (per-frame)
+- The system expands elements into an internal graph of nodes.
+- When state changes, the graph rebuilds only the parts that the change affects.
+- Each frame has a setup phase and a workload phase. Setup runs only for nodes that need it. The workload runs every frame.
 
 ### 4. State Management
 
-MetalSprockets provides SwiftUI-like property wrappers for state management:
+MetalSprockets has property wrappers like the ones in SwiftUI.
 
 #### @MSState
 
-Local state within an element:
+Local state in an element:
 
 ```swift
 @MSState private var rotation: Float = 0
@@ -73,7 +72,7 @@ Local state within an element:
 
 #### @MSBinding
 
-Two-way binding to external state:
+A two-way binding to state outside the element:
 
 ```swift
 @MSBinding var isEnabled: Bool
@@ -81,7 +80,7 @@ Two-way binding to external state:
 
 #### @MSObservedObject
 
-Observe changes in external objects:
+Observes changes in an external object:
 
 ```swift
 @MSObservedObject var viewModel: MyViewModel
@@ -89,7 +88,7 @@ Observe changes in external objects:
 
 #### @MSEnvironment
 
-Access values from the environment:
+Reads a value from the environment:
 
 ```swift
 @MSEnvironment(\.device) var device
@@ -97,7 +96,7 @@ Access values from the environment:
 
 ### 5. Environment System
 
-The environment propagates values down the element tree:
+The environment sends values down the element tree:
 
 ```swift
 public struct MSEnvironmentValues {
@@ -110,31 +109,31 @@ public struct MSEnvironmentValues {
 }
 ```
 
-Elements can read from and modify the environment for their children.
+An element can read the environment. It can also change the environment for its children.
 
 ## Module Structure
 
 ### Core Framework (MetalSprockets)
 
-The main framework containing:
+The main framework. It contains:
 
-- Element protocol and core types
-- State management system
-- Environment system
-- Built-in rendering elements
+- The `Element` protocol and the core types
+- The state management system
+- The environment system
+- The built-in render elements
 - Metal integration helpers
 
 ### UI Integration (MetalSprocketsUI)
 
-SwiftUI integration components:
+SwiftUI integration. It contains:
 
-- `RenderView`: SwiftUI view for Metal rendering
+- `RenderView`, a SwiftUI view for Metal rendering
 - `MTKView` integration
-- SwiftUI environment bridging
+- A bridge between the SwiftUI environment and the MetalSprockets environment
 
 ### Support Utilities (MetalSprocketsSupport)
 
-Supporting utilities and extensions:
+Support utilities and extensions. It contains:
 
 - Metal helpers and extensions
 - Error types (`MetalSprocketsError`)
@@ -143,55 +142,56 @@ Supporting utilities and extensions:
 
 ### Macros (MetalSprocketsMacros)
 
-The compiler plugin that implements `@MSEntry`. The macro generates the key type and accessor for a custom ``MSEnvironmentValues`` property. Import `MetalSprocketsSupport` to use it.
+The compiler plugin that implements `@MSEntry`. The macro generates the key type and the accessor for a custom ``MSEnvironmentValues`` property. To use the macro, import `MetalSprocketsSupport`.
 
 ### Shaders
 
 Metal shader libraries:
 
 - **MetalSprocketsShaders**: Shared Metal headers for MetalSprockets shaders
-- **MetalSprocketsUIShaders**: Shaders used by MetalSprocketsUI, such as `YCbCrBillboardRenderPass`
+- **MetalSprocketsUIShaders**: Shaders for MetalSprocketsUI, such as `YCbCrBillboardRenderPass`
 
-The `Example` folder contains a demo app that is not part of the package products.
+The `Example` folder contains a demo app. The demo app is not part of the package products.
 
 ## Rendering Pipeline
 
 ### 1. Setup Phase
 
-The setup phase occurs once when the element tree is built. `System.render(root:)` runs update, setup, and workload in order, rather than driving each phase separately:
+The system runs three phases in this order: update, setup, and workload. `System.render(root:)` runs all three:
 
 ```swift
 try system.render(root: root)
 ```
 
-- Creates Metal pipeline states
-- Allocates buffers
-- Loads textures and resources
-- Compiles shaders
+The setup phase does work that is too expensive for each frame:
+
+- It creates Metal pipeline states.
+- It allocates buffers.
+- It loads textures and other resources.
+- It compiles shaders.
 
 ### 2. Workload Phase
 
-The workload phase executes for each frame, as the last phase of `render(root:)`:
+The workload phase runs every frame. It is the last phase of `render(root:)`:
 
-- Encodes rendering commands
-- Updates uniforms and buffers
-- Executes compute kernels
-- Performs draw calls
+- It encodes render commands.
+- It updates uniforms and buffers.
+- It runs compute kernels.
+- It issues draw calls.
 
 ### 3. Element Lifecycle
 
-1. **Element Creation**: Elements are instantiated declaratively
-2. **Node Expansion**: Elements expand into nodes in the graph
-3. **Setup Processing**: One-time setup operations
-4. **Workload Processing**: Per-frame rendering operations
-5. **State Updates**: Property changes trigger selective rebuilding
+1. **Element creation**: Your code makes elements declaratively.
+2. **Node expansion**: The system expands elements into nodes in the graph.
+3. **Setup**: The system does the setup work that nodes need.
+4. **Workload**: The system encodes the work for the frame.
+5. **State updates**: When a property changes, the system rebuilds only the affected nodes.
 
+### 4. Environment Flow
 
-### 4. Environment Propagation
+Environment values go down the element tree:
 
-Environment values flow down the element tree:
-
-#### Environment Flow Example
+#### Example
 
 ```
 RootElement (env: device, commandQueue)
@@ -204,15 +204,15 @@ RootElement (env: device, commandQueue)
 
 #### Key Environment Values
 
-- **Device & Queue**: Set at the root level
-- **Command Buffer**: Created per frame
-- **Encoders**: Created by pass elements
-- **Descriptors**: Modified by modifier elements
-- **Custom Values**: User-defined values
+- **Device and queue**: The root sets them.
+- **Command buffer**: The root makes one for each frame.
+- **Encoders**: Pass elements make them.
+- **Descriptors**: Modifier elements change them.
+- **Custom values**: You define them.
 
 ### 5. Command Buffer Structure
 
-The root (``Runner``, ``OffscreenRenderer``, `RenderView`) owns a Metal 4 command buffer for each frame:
+The root (``Runner``, ``OffscreenRenderer``, or `RenderView`) owns one Metal 4 command buffer for each frame:
 
 ```
 MTL4CommandBuffer
@@ -224,15 +224,15 @@ MTL4CommandBuffer
     └── ComputeCommand (copies and fills)
 ```
 
-Commands inside a pass are not ordered automatically.
-Use ``EncoderBarrier``, ``QueueBarrier`` or ``Element/barrierAfterPass(after:beforeQueueStages:visibility:)`` to order them.
-Attach `onSubmissionCommitted` and `onCommandBufferCompleted` to observe commit and completion.
+The commands in a pass do not have an automatic order.
+To order them, use ``EncoderBarrier``, ``QueueBarrier``, or ``Element/barrierAfterPass(after:beforeQueueStages:visibility:)``.
+To observe commit and completion, attach `onSubmissionCommitted` and `onCommandBufferCompleted`.
 
 ## Key Patterns
 
 ### Composition
 
-Elements compose to build complex rendering pipelines:
+You make complex render pipelines from elements:
 
 ```swift
 struct MyScene: Element {
@@ -259,7 +259,7 @@ struct MyScene: Element {
 
 ### Modifiers
 
-Modifiers configure rendering state:
+Modifiers configure the render state:
 
 ```swift
 element
@@ -271,7 +271,7 @@ element
 
 ### Environment Injection
 
-Pass values down the tree:
+Send values down the tree:
 
 ```swift
 MyScene()
@@ -279,12 +279,14 @@ MyScene()
     .environment(\.myCustomValue, value)
 ```
 
-Elements have convenience modifiers for the device, render pass and pipeline descriptors, current drawable, and drawable size.
-`environment(_:_:)` supports custom keys. In SwiftUI, `RenderView` reads the device and command queue from the SwiftUI environment: `.environment(\.device, device)` and `.environment(\.commandQueue, queue)`.
+Elements have modifiers for the device, the render pass descriptor, the render pipeline descriptor, the current drawable, and the drawable size.
+For custom keys, use `environment(_:_:)`.
+
+In SwiftUI, `RenderView` reads the device and the command queue from the SwiftUI environment. Set them with `.environment(\.device, device)` and `.environment(\.commandQueue, queue)`.
 
 ### Conditional Rendering
 
-Dynamic content based on state:
+The content can change with state:
 
 ```swift
 var body: some Element {
@@ -300,7 +302,7 @@ var body: some Element {
 
 ### Shader Management
 
-The `ShaderLibrary` provides type-safe shader loading:
+`ShaderLibrary` loads shaders with type safety:
 
 ```swift
 let library = try ShaderLibrary(bundle: .module)
@@ -310,7 +312,7 @@ let fragmentShader = try library.function(type: FragmentShader.self, named: "fra
 
 ### Parameter Binding
 
-Parameters bind by name, using the pipeline's reflection. A value goes to every stage that declares the name, unless you pass `functionTypes`:
+Parameters bind by name. The system uses the reflection of the pipeline to find each binding. A value goes to every stage that declares the name. To select stages, pass `functionTypes`:
 
 ```swift
 Draw { encoder in /* ... */ }
@@ -318,46 +320,45 @@ Draw { encoder in /* ... */ }
     .parameter("material", functionTypes: .fragment, value: material)
 ```
 
-Use ``Element/parameters(_:)`` to set several values in one modifier.
+To set many values in one modifier, use ``Element/parameters(_:)``.
 
 ### Resource Management
 
-Automatic resource lifecycle management:
+The framework manages the lifecycle of resources:
 
-- Textures loaded on demand
-- Buffers allocated as needed
-- Pipeline states cached and reused
+- It loads textures when an element needs them.
+- It allocates buffers when an element needs them.
+- It caches pipeline states and uses them again.
 
 ## Threading Model
 
-Each `System` is confined to one isolation context:
+Each `System` stays in one isolation context:
 
-- **Owning isolation**: Element updates, setup, and command encoding run synchronously on the isolation that drives the system. For `RenderView`, this is the main thread through `MTKViewDelegate`.
-- **GPU**: Command buffer execution happens asynchronously after commit.
+- **Owning isolation**: Element updates, setup, and command encoding run synchronously on the isolation that drives the system. For `RenderView`, this is the main thread, through `MTKViewDelegate`.
+- **GPU**: The GPU runs the command buffer asynchronously after the commit.
 
 ### Rules
 
 `System` is `@unchecked Sendable` because each instance stays in one isolation. Do not share an instance across isolations.
 
-- The traversal context's node stack has no synchronization. Only the owning isolation may traverse.
-- `@MSEnvironment` resolves through the current traversal context, so it works only during a traversal.
-- `@MSState` writes from other threads are safe. For example, an `onCommandBufferCompleted` handler can write state. The system records the change under a lock and applies it at the next update.
+- The node stack of the traversal context has no synchronization. Only the owning isolation can do a traversal.
+- `@MSEnvironment` gets its value from the current traversal context. Thus it works only during a traversal.
+- You can write `@MSState` from other threads. For example, an `onCommandBufferCompleted` handler can write state. The system records the change under a lock. The next update applies it.
 
 ### SwiftUI Integration
 
-In `RenderView`, MetalKit's `MTKViewDelegate.draw(in:)` drives the render loop. This callback runs on the main thread, where all MetalSprockets processing occurs.
+In `RenderView`, the MetalKit callback `MTKViewDelegate.draw(in:)` drives the render loop. This callback runs on the main thread. All MetalSprockets work for the view occurs there.
 
-## Performance Considerations
+## Performance
 
-- **Selective Rebuilding**: Only affected parts rebuild when state changes
-- **Resource Caching**: Pipeline states and shaders are cached
-- **Command Buffer Optimization**: Commands are batched efficiently
+- **Selective rebuild**: When state changes, only the affected parts rebuild.
+- **Resource cache**: The system caches pipeline states and shaders.
 
 ## Extension Points
 
 ### Custom Elements
 
-Create custom elements by conforming to `Element`:
+To make a custom element, conform to `Element`:
 
 ```swift
 struct MyCustomElement: Element {
@@ -371,13 +372,13 @@ struct MyCustomElement: Element {
 
 The bodyless element protocols are internal. To encode Metal commands yourself, use the encoder closures:
 
-- ``Draw`` for draws with the enclosing pipeline's state bound
+- ``Draw`` for draws, with the state of the enclosing pipeline bound
 - ``RenderCommand`` for raw access to the render encoder
 - ``ComputeCommand`` for copies, fills, and other compute-encoder work
 
 ### Environment Keys
 
-Add custom environment values:
+To add a custom environment value:
 
 ```swift
 import MetalSprocketsSupport
@@ -391,30 +392,30 @@ You can also conform a key type to ``MSEnvironmentKey`` and write the accessor y
 
 ## Best Practices
 
-1. **Keep Elements Small**: Give each element one responsibility
-2. **Use Composition**: Build complex scenes from simple, reusable elements
-3. **Minimize State**: Only use state where necessary for performance
-4. **Use the Environment**: Share values across the tree through the environment
-5. **Cache Resources**: Reuse Metal resources when possible
-6. **Profile Performance**: Use Metal System Trace to identify bottlenecks
+1. **Keep elements small**: Give each element one responsibility.
+2. **Use composition**: Make complex scenes from small elements that you can use again.
+3. **Keep state small**: Use state only where it is necessary.
+4. **Use the environment**: Share values across the tree through the environment.
+5. **Cache resources**: Use Metal resources again when you can.
+6. **Measure performance**: To find bottlenecks, use Metal System Trace.
 
 ### Element and Modifier Equality
 
-The reconciler uses equality to decide whether it can reuse a previous subtree. For a clean subtree with a stable environment, equal elements can skip body evaluation and child traversal.
+The reconciler uses equality to decide if it can use a previous subtree again. A subtree can be clean and have a stable environment. In that subtree, equal elements skip body evaluation and child traversal.
 
-A custom `Equatable` conformance takes precedence over structural comparison. Equality must account for all inputs that affect the element or its children, including wrapped `content`.
+A custom `Equatable` conformance takes precedence over structural comparison. The equality must include all inputs that affect the element or its children. This includes the wrapped `content`.
 
-Guidelines for element authors:
+Rules for element authors:
 
-- Do not compare only a modifier's label or rendering settings while ignoring its `content`.
-- For struct wrappers, prefer the default structural comparison unless a complete custom comparison is necessary.
-- Keep `requiresSetup(comparedTo:)` separate from subtree equality. It controls setup work, not whether children need updates.
-- Add regression tests that keep modifier settings constant while changing child values and resource references across updates.
-- Include nested modifiers and unchanged-content cases in those tests.
+- Do not compare only the label or the render settings of a modifier. Also compare its `content`.
+- For struct wrappers, use the default structural comparison. Write a custom comparison only when it is necessary and complete.
+- Keep `requiresSetup(comparedTo:)` separate from subtree equality. It controls setup work. It does not control child updates.
+- Add regression tests. In these tests, keep the modifier settings the same, and change child values and resource references across updates.
+- Include nested modifiers and unchanged content in these tests.
 
-In issue #477, `DebugGroupModifier` compared only its label, and `DepthBiasModifier` compared only its bias settings. Both comparisons ignored `content`, so the reconciler could reuse stale children. Removing these conformances restored structural comparison, including `content`.
+In issue #477, `DebugGroupModifier` compared only its label. `DepthBiasModifier` compared only its bias settings. Both comparisons ignored `content`. As a result, the reconciler used stale children again. The fix removed these conformances, so structural comparison, including `content`, applies again.
 
-Regression coverage: `Tests/MetalSprocketsTests/ModifierContentReconciliationTests.swift`.
+The regression tests are in `Tests/MetalSprocketsTests/ModifierContentReconciliationTests.swift`.
 
 ## Comparison with SwiftUI
 

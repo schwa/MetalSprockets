@@ -15,8 +15,8 @@ public protocol ShaderLoader: Sendable {
     /// Returns the (possibly cached) function named `name`, specialized with `constants`.
     ///
     /// - Parameters:
-    ///   - name: The fully scoped function name, e.g. `MyNamespace::myFunction`.
-    ///   - type: The expected function type; part of the cache key.
+    ///   - name: The fully scoped function name. For example, `MyNamespace::myFunction`.
+    ///   - type: The expected function type. It is part of the cache key.
     ///   - constants: Function constants to specialize with.
     func shaderFunction(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> ShaderFunction
 

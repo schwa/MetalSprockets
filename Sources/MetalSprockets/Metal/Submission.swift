@@ -2,7 +2,7 @@ import Foundation
 
 /// GPU work that a root has committed to its Metal 4 queue.
 ///
-/// Dropping a submission does not cancel the work or release its resources; the root keeps them until the GPU is done.
+/// If you drop a submission, the work continues and keeps its resources. The root keeps them until the GPU is done.
 public struct Submission: Sendable {
     public enum Failure: Error, Equatable {
         case gpuFailure(domain: String, code: Int, message: String)
@@ -23,7 +23,7 @@ public struct Submission: Sendable {
     }
 
     /// Blocks until the terminal result is known or `timeout` passes, which reports `.timedOut`.
-    /// For synchronous code only; use ``value()`` from async code.
+    /// Use this only from synchronous code. From async code, use ``value()``.
     @discardableResult
     public func waitUntilCompleted(timeout: Duration = .seconds(5)) throws -> SubmissionResult {
         let semaphore = DispatchSemaphore(value: 0)

@@ -30,7 +30,8 @@ package struct StencilFace: Hashable, Sendable {
     }
 }
 
-/// Depth and stencil test state for draws; the value form of `MTLDepthStencilDescriptor`, usable as a cache key.
+/// Depth and stencil test state for draws. It is the value form of `MTLDepthStencilDescriptor`, and you can use it as
+/// a cache key.
 package struct DepthState: Hashable, Sendable {
     package var compare: MTLCompareFunction
     package var isWriteEnabled: Bool

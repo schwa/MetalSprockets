@@ -3,8 +3,8 @@ import MetalSprocketsSupport
 
 /// Visible-function tables for one compiled pipeline, filled from its function handles and reused across frames.
 ///
-/// Tables are immutable once filled, so reuse is safe while earlier submissions are in flight; each use still retains
-/// the table on the recording scope for residency and completion-bound lifetime. Confined to the owning context.
+/// After the tables are filled, they do not change. Thus reuse is safe while earlier submissions are on the GPU. Each
+/// use still retains the table on the recording scope, for residency and for its lifetime until completion. Confined to the owning context.
 internal final class FunctionTables {
     private struct Key: Hashable {
         let stage: MTLFunctionType

@@ -4,8 +4,8 @@ import MetalSprocketsSupport
 /// Catches shaders that were compiled on a different `MTLDevice` than the pipeline is being built on.
 ///
 /// Shader libraries are compiled eagerly, before any element tree exists, so they resolve their device at
-/// construction time — by default the system default device. On a machine with more than one GPU that can differ from
-/// the device the pipeline ends up on, and Metal's own diagnostic for the mismatch is poor. See #55.
+/// construction time — by default the system default device. On a machine with more than one GPU, that device can be
+/// different from the device of the pipeline. The Metal diagnostic for this mismatch is poor. See #55.
 internal enum ShaderDeviceCheck {
     static func validateLinkedFunctions(_ functions: [VisibleFunction], device: MTLDevice, label: String?) throws {
         try validate(functions.map { (name: $0.reference.name, function: $0.function) }, device: device, label: label)
@@ -20,7 +20,7 @@ internal enum ShaderDeviceCheck {
         }
     }
 
-    /// The name of the first stage whose device doesn't match, or `nil` when they all agree.
+    /// The name of the first stage whose device does not match, or `nil` when they all agree.
     static func mismatchedStage(_ stages: [(name: String, device: ObjectIdentifier)], pipelineDevice: ObjectIdentifier) -> String? {
         stages.first { $0.device != pipelineDevice }?.name
     }

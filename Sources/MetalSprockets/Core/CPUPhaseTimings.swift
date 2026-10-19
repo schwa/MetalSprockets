@@ -3,7 +3,7 @@ import Foundation
 /// CPU time spent in each phase of one frame, in seconds.
 ///
 /// - `content`: building the element tree in the caller's content closure. Only drivers that run that closure (such as
-///   `RenderView`) report it; it is `nil` otherwise.
+///   `RenderView`) report it. For other drivers, it is `nil`.
 /// - `update`: reconciling the new element tree against the previous frame's nodes.
 /// - `setup`: setup work for nodes that need it, such as pipeline creation.
 /// - `workload`: encoding GPU commands.

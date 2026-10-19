@@ -144,8 +144,8 @@ public extension View {
 
     /// Sets the preferred frame rate for rendering.
     ///
-    /// The system will attempt to render at this rate but may throttle
-    /// based on device capabilities and power state.
+    /// The system tries to render at this rate. It can render more slowly,
+    /// because of device capabilities and power state.
     func metalPreferredFramesPerSecond(_ value: Int) -> some View {
         self.environment(\.metalPreferredFramesPerSecond, value)
     }

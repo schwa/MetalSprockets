@@ -46,9 +46,9 @@ public extension EnvironmentValues {
 /// Resolved per-frame diagnostics settings for a ``RenderView``.
 ///
 /// There used to be two independent sources of truth here: SwiftUI environment values for the `MTKView`
-/// settings, and direct `SystemEnvironment` (i.e. `ProcessInfo`) reads for the debugging flags. Both now
-/// flow through the SwiftUI environment, with the process environment supplying the defaults, so a view
-/// can turn frame logging on for one `RenderView` without setting a variable for the whole process. See #269.
+/// settings, and direct `SystemEnvironment` (that is, `ProcessInfo`) reads for the debugging flags. Now both go
+/// through the SwiftUI environment, and the process environment supplies the defaults. Thus a view can turn on
+/// frame logging for one `RenderView`, without a variable for the whole process. See #269.
 internal struct RenderViewDiagnostics: Equatable {
     var logFrame: Bool
     var fatalErrorOnError: Bool
@@ -68,14 +68,14 @@ internal struct RenderViewDiagnostics: Equatable {
 public extension View {
     /// Logs a per-frame timing breakdown for descendant ``RenderView``s.
     ///
-    /// Defaults to whatever the `MS_RENDERVIEW_LOG_FRAME` environment variable says; this modifier overrides it.
+    /// The default comes from the `MS_RENDERVIEW_LOG_FRAME` environment variable. This modifier overrides it.
     func renderViewLogFrame(_ enabled: Bool = true) -> some View {
         environment(\.renderViewLogFrame, enabled)
     }
 
     /// Turns errors thrown while drawing into a `fatalError` for descendant ``RenderView``s.
     ///
-    /// Defaults to whatever the `MS_FATALERROR_ON_THROW` environment variable says; this modifier overrides it.
+    /// The default comes from the `MS_FATALERROR_ON_THROW` environment variable. This modifier overrides it.
     func renderViewFatalErrorOnError(_ enabled: Bool = true) -> some View {
         environment(\.renderViewFatalErrorOnError, enabled)
     }
@@ -83,7 +83,7 @@ public extension View {
     /// Sets where shader `os_log` messages from descendant ``RenderView``s go.
     ///
     /// Defaults to `ShaderLogging.processDefault` (the `MS_METAL_LOGGING` environment variable).
-    /// Takes effect when a view first renders; a view keeps the setting it started with.
+    /// It takes effect when a view first renders. After that, the view keeps its first setting.
     func metalShaderLogging(_ logging: ShaderLogging) -> some View {
         environment(\.metalShaderLogging, logging)
     }
@@ -128,9 +128,9 @@ public extension View {
     /// Wraps each rendered frame in an `MTLCaptureManager` GPU frame capture scope.
     ///
     /// Mirrors `Element.capture(_:target:destination:)` but applies
-    /// to everything rendered inside a ``RenderView``. A capture is started and stopped
-    /// for every frame while enabled, so prefer `MTLCaptureDestination.developerTools`
-    /// (Xcode) and toggle the modifier off when you have what you need.
+    /// to everything rendered inside a ``RenderView``. While it is enabled, a capture starts
+    /// and stops for every frame. Thus `MTLCaptureDestination.developerTools` (Xcode)
+    /// is better. Turn the modifier off when you have the capture that you need.
     ///
     /// ```swift
     /// RenderView { context, size in
@@ -160,9 +160,9 @@ public extension View {
 
 /// Identity-stable holder for a callback passed down the SwiftUI environment.
 ///
-/// A closure stored directly in an `@Entry` cannot be compared, so SwiftUI treats the environment value as changed on
-/// every update and invalidates every reader. A box created once per modifier instance (`@State`) keeps the
-/// environment value's identity — and therefore its equality — stable while its contents are refreshed in place.
+/// A closure in an `@Entry` cannot be compared. Thus SwiftUI sees a changed environment value on every update, and
+/// invalidates every reader. Each modifier instance makes one box (`@State`). The box keeps the identity of the
+/// environment value stable, and thus its equality, while the contents of the box change.
 /// See #380.
 @MainActor
 internal final class CallbackBox<Value>: Equatable {
@@ -301,8 +301,8 @@ public struct RenderView <Content>: View where Content: Element {
     ///   - content: A closure that returns the elements to render each frame.
     ///     Receives the render context and drawable size as parameters.
     ///
-    /// Values passed here take precedence over the equivalent environment modifiers, so a `RenderView`
-    /// that depends on a specific format cannot be broken by an ancestor view.
+    /// Values that you pass here take precedence over the equivalent environment modifiers. Thus an ancestor
+    /// view cannot break a `RenderView` that needs a specific format.
     public init(
         colorPixelFormat: MTLPixelFormat? = nil,
         depthStencilPixelFormat: MTLPixelFormat? = nil,
@@ -497,9 +497,9 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
     var lastError: Error?
 
-    /// Lazily created on first use. See #337 — keeping `init` cheap means
-    /// SwiftUI's per-body churn of unused RenderViewViewModel instances
-    /// doesn't pay for a `FrameRenderer` (and its `System`) each time.
+    /// Lazily created on first use. See #337. A cheap `init` means that SwiftUI
+    /// can make and discard RenderViewViewModel instances on each body update
+    /// without the cost of a `FrameRenderer` (and its `System`).
     @ObservationIgnored
     private var _frameRenderer: FrameRenderer?
     @ObservationIgnored
@@ -525,7 +525,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
         return runner
     }
 
-    /// Applied when the runner is created on the first frame; the log state belongs to the Metal 4 context.
+    /// Applied when the first frame creates the runner. The log state belongs to the Metal 4 context.
     @ObservationIgnored
     var shaderLogging: ShaderLogging = .processDefault
 
@@ -773,8 +773,8 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 // MARK: - Allocation tracking
 
 /// Tracks `RenderViewViewModel` allocations to catch regressions of per-frame churn
-/// (see issues #298 / #299). Intentionally always-on; cost is one atomic increment
-/// and a dictionary lookup per allocation.
+/// (see issues #298 / #299). It is always on. The cost is one atomic increment
+/// and one dictionary lookup for each allocation.
 internal final class RenderViewViewModelAllocationTracker: @unchecked Sendable {
     static let shared = RenderViewViewModelAllocationTracker()
 
@@ -844,7 +844,7 @@ public struct RenderViewContext {
     /// The frame's depth attachment, or `nil` if the view has no depth format.
     ///
     /// Readable only in a later pass (or after a copy), not in the pass that writes it. RenderView does not
-    /// change how the attachment is configured; to sample it, configure it yourself, e.g.
+    /// change the configuration of the attachment. To sample it, configure it yourself. For example:
     /// `.metalDepthStencilAttachmentTextureUsage([.renderTarget, .shaderRead])`,
     /// `.metalDepthStencilStorageMode(.private)` and `.metalDepthStoreAction(.store)`.
     /// Accessing a memoryless depth texture asserts.

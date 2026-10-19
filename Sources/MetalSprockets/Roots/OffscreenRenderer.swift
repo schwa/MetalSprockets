@@ -26,7 +26,7 @@ import MetalSupport
 /// let image = try rendering.cgImage
 /// ```
 ///
-/// Content supplies its own ``RenderPass``; the renderer provides its ``renderPassDescriptor`` through the environment.
+/// Content supplies its own ``RenderPass``. The renderer provides its ``renderPassDescriptor`` through the environment.
 /// ``render(_:)`` returns after the GPU finishes, so the texture is safe to read.
 public struct OffscreenRenderer {
     public var device: MTLDevice
@@ -106,7 +106,7 @@ public struct OffscreenRenderer {
 }
 
 public extension OffscreenRenderer {
-    /// Renders `content` and waits for the GPU. Earlier renderings keep their textures; reading them is safe.
+    /// Renders `content` and waits for the GPU. Earlier renderings keep their textures, and you can safely read them.
     func render<Content>(_ content: Content) throws -> Rendering where Content: Element {
         let wrapped = content
             .renderPassDescriptor(renderPassDescriptor)

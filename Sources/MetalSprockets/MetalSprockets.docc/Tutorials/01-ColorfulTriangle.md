@@ -136,7 +136,7 @@ struct ContentView: View {
 }
 ```
 
-This example uses `try!` for brevity. Production apps need error handling. A shader file bundled with the app is expected to load successfully.
+This example uses `try!` to keep the code short. Production apps need error handling. A shader file in the app bundle usually loads without errors.
 
 `ShaderLibrary` loads and compiles your `.metal` file. This example performs that expensive work once, when the view is created. It does not repeat the work in the per-frame `RenderView` closure.
 

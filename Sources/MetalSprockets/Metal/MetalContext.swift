@@ -48,8 +48,8 @@ internal final class MetalContext {
     private let terminalHandler: OSAllocatedUnfairLock<(@Sendable (SubmissionResult) -> Void)?>
     private let resultDelivery: ResultDelivery
 
-    /// A finite default deadline for a single submission. Lifecycle owners can override per context; this is a
-    /// conservative safety bound, not an operational frame budget.
+    /// A finite default deadline for a single submission. Lifecycle owners can override it for each context.
+    /// It is a conservative safety limit, not a frame budget.
     let submissionTimeout: Duration
 
     var isFaulted: Bool { faultState.withLock { $0 } }
@@ -218,8 +218,8 @@ internal final class MetalContext {
     }
 
     /// Blocks until a submission ends or the deadline passes, faulting the context on timeout or failure.
-    /// For synchronous roots only; async callers use `awaitResult`. Terminal results are delivered off the caller's
-    /// thread, so blocking here cannot deadlock delivery.
+    /// Use this only from synchronous roots. Async callers use `awaitResult`. Terminal results arrive on a different
+    /// thread from the caller, so a block here cannot deadlock delivery.
     @discardableResult
     func waitForResult(_ submission: Submission, timeout: Duration? = nil) throws -> SubmissionResult {
         let deadline = timeout ?? submissionTimeout
@@ -318,8 +318,8 @@ internal final class MetalContext {
         return created
     }
 
-    /// Signals `event` after all work committed to this context's queue so far. Cross-queue dependencies are explicit;
-    /// a queue barrier cannot order work on another queue.
+    /// Signals `event` after all work committed to this context's queue so far. Dependencies across queues must be explicit.
+    /// A queue barrier cannot order work on another queue.
     func signalEvent(_ event: any MTLEvent, value: UInt64) {
         commandQueue.signalEvent(event, value: value)
     }
@@ -329,9 +329,9 @@ internal final class MetalContext {
         commandQueue.waitForEvent(event, value: value)
     }
 
-    /// Retires completed submissions. By default it releases their residency immediately; `flushResidency: false` defers
-    /// the release into `pendingResidencyRelease`, which the next `commit` flushes right after acquiring the new frame's
-    /// allocations. Deferring keeps a steady scene from removing and re-adding the same allocations every frame.
+    /// Retires completed submissions. By default, it releases their residency immediately. With `flushResidency: false`,
+    /// the release goes into `pendingResidencyRelease`. The next `commit` flushes it after it acquires the allocations of
+    /// the new frame. Thus a steady scene does not remove and add the same allocations again every frame.
     func retireCompletedSubmissions(flushResidency: Bool = true) throws {
         for (identifier, submission) in inFlight where submission.completion.isRetiredSuccessfully {
             pendingResidencyRelease.append(contentsOf: submission.allocations)

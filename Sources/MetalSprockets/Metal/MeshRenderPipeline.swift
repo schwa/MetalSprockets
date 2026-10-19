@@ -23,7 +23,7 @@ import MetalSprocketsSupport
 /// }
 /// ```
 ///
-/// Requires mesh-shader support (Apple GPU Family 7 or Mac 2); other devices report a capability error.
+/// Requires mesh-shader support (Apple GPU Family 7 or Mac 2). Other devices report a capability error.
 ///
 /// ## See Also
 ///

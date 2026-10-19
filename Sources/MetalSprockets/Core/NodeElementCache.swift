@@ -1,15 +1,15 @@
 /// A framework-internal marker protocol for per-node, per-element caches.
 ///
-/// Elements whose `setupEnter` phase builds expensive Metal state (pipeline
-/// state objects, compiled descriptors, reflections) may want to reuse that
-/// state across frames when their inputs haven't changed. Rather than trying
-/// to make `requiresSetup(comparedTo:)` reason about environment-driven
-/// inputs it can't see, an element can:
+/// Some elements build expensive Metal state in `setupEnter` (pipeline state
+/// objects, compiled descriptors, reflections). These elements can reuse that
+/// state across frames when their inputs do not change.
+/// `requiresSetup(comparedTo:)` cannot see inputs that come from the
+/// environment. Instead, an element can:
 ///
 /// 1. Return `true` from `requiresSetup(comparedTo:)` so setup runs every frame.
 /// 2. Maintain a typed subclass of `NodeElementCache` via ``Node/cache(_:make:)``.
 /// 3. Key the cache on whatever inputs actually affect the built state
-///    (function identity, env-provided linked functions, label, etc.).
+///    (function identity, linked functions from the environment, label).
 ///
 /// On a cache hit the element restores its cached outputs into the node's
 /// environment and returns early — making the "rebuild" a dictionary read.

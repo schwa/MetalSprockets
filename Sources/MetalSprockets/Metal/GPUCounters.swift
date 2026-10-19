@@ -38,7 +38,7 @@ public struct GPUCounterSample: Sendable, Equatable {
     /// Elapsed GPU time for the pass, in seconds.
     ///
     /// Converted from GPU ticks with `MTLDevice.queryTimestampFrequency()`. `nil` when a timestamp is missing or
-    /// out of order; never a fabricated zero.
+    /// out of order. It is never a false zero.
     public var duration: TimeInterval?
 
     /// The vertex-stage interval of a render pass.
@@ -78,7 +78,7 @@ public extension Element {
     /// }
     /// ```
     ///
-    /// On Metal 4 a render pass reports its whole duration and a ``GPUCounterSample/vertex`` interval; the fragment
+    /// On Metal 4, a render pass reports its full duration and a ``GPUCounterSample/vertex`` interval. The fragment
     /// interval is always `nil`. Failed or discarded work reports nothing. `handler` runs on the completion executor.
     func gpuCounters(label: String? = nil, _ handler: @escaping @Sendable (GPUCounterSample) -> Void) -> some Element {
         GPUCountersModifier(content: self, label: label, handler: handler)

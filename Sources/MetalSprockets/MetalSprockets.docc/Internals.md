@@ -4,151 +4,150 @@ Implementation details for contributors and advanced users.
 
 ## Overview
 
-This document describes the MetalSprockets implementation. It is for contributors and developers who debug or extend the framework.
+This article describes the implementation of MetalSprockets. It is for contributors, and for developers who debug or extend the framework.
 
-For the public API architecture, see <doc:Architecture>.
+For the architecture of the public API, see <doc:Architecture>.
 
 ## System Class
 
-The `System` class is the central coordinator that manages the element tree, structural identity, and processing phases.
+The `System` class is the central coordinator. It manages the element tree, structural identity, and the processing phases.
 
 ### Key Components
 
-- **nodes**: Dictionary mapping identifiers to Node instances
-- **traversalEvents**: The enter/exit sequence recorded by the last update, replayed by the setup and workload phases
-- **traversalContext**: `TraversalContext` owning the stack of nodes being visited by the current phase
-- **dirtyIdentifiers**: Set of identifiers that need re-processing due to state changes. Lock-protected, because `@MSState` writes can arrive from other threads (for example, from `onCommandBufferCompleted` handlers)
+- **nodes**: A dictionary from identifiers to `Node` instances.
+- **traversalEvents**: The sequence of enter and exit events that the last update recorded. The setup and workload phases replay it.
+- **traversalContext**: The `TraversalContext` that holds the stack of nodes that the current phase visits.
+- **dirtyIdentifiers**: The identifiers of nodes that a state change makes dirty. A lock protects this set, because `@MSState` writes can come from other threads. For example, an `onCommandBufferCompleted` handler can write state.
 
 ## Structural Identity
 
-Each element's position in the tree determines its structural identity, as in SwiftUI. This provides:
+The position of an element in the tree gives its structural identity, as in SwiftUI. This identity gives:
 
 - Stable identity across frames
-- Efficient state preservation
-- Avoiding unnecessary setup operations (like shader recompilation)
+- State that stays with the element
+- No unnecessary setup work, such as shader compilation
+
+To make identity follow data instead of position, use the `id(_:)` modifier.
 
 ## Node System
 
-Nodes are the runtime representation of elements:
+Nodes are the runtime form of elements:
 
-- **Node**: Holds element instance, environment values, state properties
-- Each node has a stable `StructuralIdentifier`
-- Nodes persist across frames when structure is unchanged
-- Parent-child relationships tracked via `parentIdentifier`
+- A **node** holds the element instance, the environment values, and the state properties.
+- Each node has a stable `StructuralIdentifier`.
+- When the structure does not change, nodes stay across frames.
+- `parentIdentifier` records the parent of each node.
 
 ## Processing Phases
 
 ### Update Phase
 
-Walks the element tree and updates the node graph via `System.update(root:)`:
+`System.update(root:)` walks the element tree and updates the node graph:
 
-1. Traverse element tree depth-first using `visitChildren`
-2. Build structural identifiers using atom stack (stored in pre-order traversal order)
-3. Compare with previous frame's structural identifiers
-4. Create new nodes or reuse existing ones
-5. Apply environment values and state
+1. It walks the element tree depth-first with `visitChildren`.
+2. It builds structural identifiers with an atom stack, in pre-order.
+3. It compares them with the structural identifiers of the previous frame.
+4. It makes new nodes or uses existing nodes again.
+5. It applies environment values and state.
 
 ### Setup Phase
 
-Runs setup operations for elements that need initialization, as the second phase of `System.render(root:)`:
+The setup phase is the second phase of `System.render(root:)`. It does setup work for elements that need it:
 
-- Called via `setupEnter` and `setupExit` on elements that conform to `SetupElement`
-- Used for expensive operations like shader compilation
-- Only runs when element properties change
-- Results cached in environment values
+- The system calls `setupEnter` and `setupExit` on elements that conform to `SetupElement`.
+- Setup does expensive work, such as shader compilation.
+- Setup runs only when the properties of an element change.
+- The results go into environment values and node caches.
 
 ### Workload Phase
 
-Executes the actual rendering work, as the last phase of `System.render(root:)`:
+The workload phase is the last phase of `System.render(root:)`. It does the render work:
 
-- Called via `workloadEnter` and `workloadExit` on elements that conform to `WorkloadElement`
-- Creates and configures Metal encoders
-- Manages encoder lifetimes to obey Metal's single-encoder rule
-- Handles parent-child and sibling relationships
+- The system calls `workloadEnter` and `workloadExit` on elements that conform to `WorkloadElement`.
+- It creates and configures Metal encoders.
+- It manages the lifetime of encoders, so that only one encoder is open at a time.
+- It handles parent-child and sibling relations.
 
 ## Known Architectural Issues
 
 ### Hidden Global Dependency in Environment Access
 
-The framework has an architectural inconsistency in how environment values are accessed during the process phase.
+During the setup and workload phases, the framework reads environment values in two different ways.
 
 #### The Problem
 
-- `workloadEnter/Exit` and `setupEnter/Exit` methods receive a `node` parameter directly
-- However, `@MSEnvironment` property wrappers cannot access this parameter
-- Instead, they resolve through the `TraversalContext` reached via `System.current`
+- The `workloadEnter`, `workloadExit`, `setupEnter`, and `setupExit` methods get a `node` parameter directly.
+- The `@MSEnvironment` property wrapper cannot get this parameter.
+- Instead, it reads through the `TraversalContext`, which it finds through `System.current`.
 
-#### Why This Is Problematic
+#### Why This Is a Problem
 
-1. **Hidden coupling**: Elements appear to have local access but actually depend on global mutable state
-2. **Thread safety concerns**: Global mutable state complicates concurrent processing
-3. **Testing difficulties**: Tests must set up global state correctly
-4. **Refactoring hazard**: Easy to break by forgetting to push/pop the traversal context
+1. **Hidden coupling**: Elements seem to have local access, but they use global mutable state.
+2. **Thread safety**: Global mutable state makes concurrent processing difficult.
+3. **Tests**: Tests must set up the global state correctly.
+4. **Refactor risk**: If code does not push and pop the traversal context, it breaks.
 
-#### Potential Solutions
+#### Possible Solutions
 
-1. **Pass node explicitly**: Redesign @MSEnvironment to take node as parameter
-2. **Context object**: Pass a context containing both node and environment
-3. **Remove property wrapper**: Use explicit `node.environmentValues` access
-4. **Accept the tradeoff**: Document the dependency and keep the stack valid
+1. **Pass the node explicitly**: Change `@MSEnvironment` to take the node as a parameter.
+2. **Context object**: Pass a context that contains the node and the environment.
+3. **Remove the property wrapper**: Use `node.environmentValues` directly.
+4. **Accept the tradeoff**: Document the dependency, and keep the stack valid.
 
-This limitation keeps the implementation simple but leaves a global dependency.
+The current design keeps the implementation simple, but it has a global dependency.
 
-## Performance Considerations
+## Performance
 
 ### Current Optimizations
 
-- Structural identity avoids expensive comparisons
-- Setup phase results are cached
-- Nodes are reused when unchanged
-- Single-pass tree traversal
+- Structural identity prevents expensive comparisons.
+- The system caches the results of the setup phase.
+- The system uses unchanged nodes again.
+- The system skips clean subtrees when their environment is stable (#370).
 
-### Potential Optimizations
+### Possible Optimizations
 
-- Cache body results for unchanged elements
 - Parallel processing for independent branches
 - Incremental updates for large trees
-- More aggressive node pooling
+- More node pooling
 
 ## Design Decisions
 
 ### Why Structural Identity?
 
-1. **Stability**: Elements at the same position are considered "the same" across frames
-2. **Performance**: Avoids comparing closures and complex properties
-3. **Predictability**: Matches SwiftUI's mental model
-4. **Efficiency**: Setup operations only run when truly needed
+1. **Stability**: Elements at the same position are "the same" across frames.
+2. **Performance**: The system does not compare closures and complex properties.
+3. **Predictability**: It matches the mental model of SwiftUI.
+4. **Efficiency**: Setup runs only when it is necessary.
 
 ### Processing Order
 
-Depth-first traversal and sibling handling provide:
+The traversal is depth-first and visits siblings in order. This gives:
 
-- Metal's single-encoder rule is respected
-- Parent context is available to children
-- Predictable, consistent execution order
-- Efficient resource management
+- Only one Metal encoder at a time
+- Parent context that is available to children
+- An execution order that is the same every time
 
 ## Future Directions
 
 ### Planned Improvements
 
-- Pass the traversal context to elements explicitly instead of via `System.current`
-- Implement proper ElementModifier protocol
-- Add explicit ID support via `.id()` modifier
-- Performance optimizations for large graphs
+- Pass the traversal context to elements explicitly, instead of through `System.current`
+- A real `ElementModifier` protocol
+- Optimizations for large graphs
 
-### Long-term Vision
+### Long-Term Vision
 
-- Move towards fully reactive dependency tracking
-- Eliminate setup/workload distinction
-- Support for custom processing phases
-- Better debugging and profiling tools
+- Fully reactive dependency tracking
+- No separate setup and workload phases
+- Custom processing phases
+- Better tools for debugging and profiling
 
 ## References
 
 ### WWDC Sessions
 
-- [Demystify SwiftUI (WWDC 2021)](https://developer.apple.com/videos/play/wwdc2021/10022): SwiftUI's identity system
+- [Demystify SwiftUI (WWDC 2021)](https://developer.apple.com/videos/play/wwdc2021/10022): The identity system of SwiftUI
 
 ### Community Resources
 

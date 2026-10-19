@@ -84,8 +84,8 @@ internal struct RenderPipelineConfiguration {
     var linkedFunctions: [VisibleFunction] = []
     var vertexLinkedFunctions: [VisibleFunction] = []
     var fragmentLinkedFunctions: [VisibleFunction] = []
-    /// Caller-configured pipeline state (for example blending from `renderPipelineDescriptorTransformer`). Shaders,
-    /// layout and sample count are filled in; color formats only where the base leaves them `.invalid`.
+    /// Caller-configured pipeline state (for example blending from `renderPipelineDescriptorTransformer`). The cache
+    /// fills in shaders, layout, and sample count. It fills in color formats only where the base has `.invalid`.
     var baseDescriptor: MTL4RenderPipelineDescriptor?
     var label: String?
 
@@ -116,7 +116,7 @@ internal final class PipelineCache {
         /// The programmable stages that get argument tables: vertex+fragment, or object (if present)+mesh+fragment.
         let stages: [MTLFunctionType]
         let functionTables: FunctionTables
-        /// Built once per compiled pipeline; setup publishes it every frame.
+        /// Built once for each compiled pipeline. Setup publishes it every frame.
         let reflection: Reflection?
         let tableLabels: [MTLFunctionType: String]
 
@@ -179,7 +179,7 @@ internal final class PipelineCache {
         let label: String?
     }
 
-    /// Value identity for a private descriptor copy; Metal 4 descriptors implement `isEqual`/`hash` by value.
+    /// Value identity for a private descriptor copy. Metal 4 descriptors implement `isEqual` and `hash` by value.
     private struct DescriptorKey: Hashable {
         let descriptor: MTL4RenderPipelineDescriptor
 
@@ -321,7 +321,7 @@ internal final class PipelineCache {
         return linking
     }
 
-    /// Shared and stage-specific lists can name the same function; link it once.
+    /// Shared and stage-specific lists can name the same function. Link it once.
     private static func uniqued(_ functions: [VisibleFunction]) -> [VisibleFunction] {
         var seen: Set<ShaderFunction> = []
         return functions.filter { seen.insert($0.reference).inserted }
@@ -369,7 +369,7 @@ internal final class PipelineCache {
         }
     }
 
-    /// Handles resolve by export name, so two different linked functions visible under one name would be ambiguous.
+    /// Handles resolve by export name, so two different linked functions with one name are ambiguous.
     static func validateExportNames(_ linked: [ShaderFunction], label: String?) throws {
         var seen: [String: ShaderFunction] = [:]
         for function in linked {

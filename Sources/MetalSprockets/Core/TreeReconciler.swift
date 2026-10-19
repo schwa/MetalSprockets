@@ -12,8 +12,8 @@ internal struct Reconciliation {
 
 /// Diffs an element tree against the previous traversal and produces the new node dictionary and traversal events.
 ///
-/// One reconciler instance performs one pass; the mutable walk state (atom stack, sibling indices, previous-identifier
-/// iterator) is stored on the instance rather than captured by nested closures. The reconciler reads the previous
+/// One reconciler instance does one pass. The instance stores the mutable walk state (atom stack, sibling indices,
+/// previous-identifier iterator). Nested closures do not capture it. The reconciler reads the previous
 /// tree from its ``System`` and reuses or creates nodes, but it does not install the result — ``System/update(root:)``
 /// does that.
 internal final class TreeReconciler {
@@ -72,7 +72,7 @@ internal final class TreeReconciler {
     }
 
     /// Splice a whole unchanged subtree from the previous traversal, reusing its nodes and events verbatim.
-    /// Returns false if the subtree could not be located. See #370.
+    /// Returns false if the reconciler cannot find the subtree. See #370.
     private func spliceSubtree(_ id: StructuralIdentifier) -> Bool {
         guard let range = System.subtreeEventRange(for: id, in: system.traversalEvents) else {
             return false
@@ -96,9 +96,10 @@ internal final class TreeReconciler {
 
     /// Whether `candidate`, the previous traversal's node at this position, has identifier `currentId`.
     ///
-    /// A node's identifier is its parent node's identifier plus its own last atom, and identifiers never change. So when
-    /// the candidate's parent is the very node now being visited as the parent, the paths are equal exactly when the last
-    /// atoms are, and the shared prefix need not be compared atom by atom (#497). Otherwise compare in full.
+    /// A node's identifier is its parent node's identifier plus its own last atom, and identifiers never change.
+    /// Sometimes the parent of the candidate is the node that the reconciler visits as the parent now. Then the paths
+    /// are equal only when the last atoms are equal. It is not necessary to compare the shared prefix atom by atom
+    /// (#497). In all other cases, compare the full paths.
     private func matches(_ candidate: Node, currentId: StructuralIdentifier, atom: StructuralIdentifier.Atom) -> Bool {
         if let parent = system.traversalContext.currentNode, candidate.parentNode === parent {
             return candidate.id.atoms.count == currentId.atoms.count && candidate.id.atoms.last == atom
@@ -108,9 +109,9 @@ internal final class TreeReconciler {
 
     /// Process a single element.
     ///
-    /// `environmentStable` says no ancestor changed the environment this update. Only then may a subtree be
-    /// skipped: its elements read the environment while their bodies run, so a changed ancestor environment has
-    /// to force re-evaluation even when the elements themselves compare equal.
+    /// `environmentStable` says no ancestor changed the environment this update. Only then can the reconciler
+    /// skip a subtree. Its elements read the environment while their bodies run. Thus, if the environment of an
+    /// ancestor changes, the elements must run again, even when they compare equal.
     private func processElement(_ element: any Element, environmentStable: Bool = true, explicitID inheritedExplicitID: AnyElementID? = nil) throws {
         let typeInfo = ElementTypeInfo.of(element)
         // `.id()` and ForEach wrap content in an IdentifiedElement. It has no behaviour of its own, so it gets no node:

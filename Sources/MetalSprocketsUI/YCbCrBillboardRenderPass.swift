@@ -21,8 +21,8 @@ import MetalSprockets
 /// ```
 ///
 /// Camera textures are valid only while their `CVMetalTexture`s live. Pass those as `owners` (the `frameData`
-/// initializer does this), so they stay alive until the GPU has finished reading, not just until the next camera
-/// frame arrives.
+/// initializer does this), so they stay alive until the GPU finishes reading. Without this, they stay alive only until
+/// the next camera frame arrives.
 ///
 /// ## Texture Coordinates
 ///

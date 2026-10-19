@@ -41,7 +41,7 @@ public protocol MSDynamicProperty {
     /// Restore persisted storage, register dependencies, or read the environment here.
     nonmutating func update(in context: MSDynamicPropertyContext) throws
 
-    /// Persists anything the System should carry over to the next update.
+    /// Keeps the values that the System must carry over to the next update.
     nonmutating func persist(in context: MSDynamicPropertyContext) throws
 }
 
@@ -60,7 +60,7 @@ public extension MSDynamicProperty {
 /// The per-node context handed to an ``MSDynamicProperty`` during an element's update.
 ///
 /// A context is scoped to one property on one node: ``label`` identifies the property, and the
-/// persistence methods are keyed so several properties on the same element don't collide.
+/// persistence methods use keys, so that two properties on the same element do not collide.
 public struct MSDynamicPropertyContext {
     internal let node: Node
 
@@ -88,7 +88,7 @@ public struct MSDynamicPropertyContext {
         node.stateProperties[key]
     }
 
-    /// Stores a value that should survive until the next update of this node.
+    /// Stores a value that must stay until the next update of this node.
     ///
     /// - Parameters:
     ///   - value: The value to store, or `nil` to clear the slot.

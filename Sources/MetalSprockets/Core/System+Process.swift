@@ -108,8 +108,8 @@ internal extension System {
 internal extension System {
     /// Refreshes a node's inherited environment from the node above it on the active stack.
     ///
-    /// Runs on every node entered during a traversal, including nodes that take no part in the
-    /// current phase, so values written by an ancestor propagate through intermediate nodes.
+    /// Runs on every node that a traversal enters, including nodes that take no part in the current phase.
+    /// As a result, values that an ancestor writes go through the intermediate nodes.
     func inheritEnvironmentFromActiveParent(_ node: Node) {
         guard let parentNode = traversalContext.parentNode else {
             return

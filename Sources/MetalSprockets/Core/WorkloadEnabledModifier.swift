@@ -19,8 +19,8 @@ public extension Element {
     ///
     /// When `enabled` is `false`, neither this element nor any of its descendants
     /// have their workload phase run (no draws, dispatches, or blits). The setup
-    /// phase still runs, so pipeline states and other setup-phase resources stay
-    /// built — toggling the flag is cheap and does not cause a rebuild.
+    /// phase still runs, so pipeline states and other setup resources stay
+    /// available. A change to the flag is cheap and does not cause a rebuild.
     ///
     /// Useful for debug toggles, A/B comparisons, and effect bypass switches
     /// where you want to keep everything warm but temporarily suppress output.

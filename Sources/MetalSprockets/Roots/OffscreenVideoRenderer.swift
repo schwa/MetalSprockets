@@ -29,9 +29,9 @@ public final class OffscreenVideoRenderer {
         try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, clearDepth: clearDepth, shaderLogging: shaderLogging, waitUntilReady: nil)
     }
 
-    /// Designated init. `waitUntilReady` is the back-pressure strategy; when
-    /// `nil`, the default KVO-based implementation is used against the
-    /// writer's own `AVAssetWriterInput`.
+    /// Designated init. `waitUntilReady` is the back-pressure strategy. When it
+    /// is `nil`, the renderer uses the default KVO implementation on the
+    /// `AVAssetWriterInput` of the writer.
     internal init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault, waitUntilReady: (() async -> Void)?) throws {
         self.size = size
         self.frameRate = frameRate

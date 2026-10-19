@@ -4,7 +4,7 @@ Create your first Metal render using declarative Swift.
 
 ## Overview
 
-MetalSprockets builds GPU render graphs with SwiftUI patterns. This guide introduces the core concepts.
+MetalSprockets builds GPU render graphs with SwiftUI patterns. This guide gives the core concepts.
 
 ### The Element Protocol
 
@@ -57,7 +57,7 @@ let vertexShader: VertexShader = library.myVertexFunction
 let fragmentShader: FragmentShader = library.myFragmentFunction
 ```
 
-Use dynamic member lookup with type annotation to get the correct shader type.
+Use dynamic member lookup with a type annotation. The annotation selects the shader type.
 
 ### Passing Data to Shaders
 
@@ -71,7 +71,7 @@ Draw { encoder in
 .parameter("transform", value: modelMatrix)
 ```
 
-MetalSprockets uses reflection to match parameter names to shader uniforms automatically.
+MetalSprockets uses reflection to match each parameter name to a shader argument.
 
 ### Displaying in SwiftUI
 
@@ -91,7 +91,7 @@ struct ContentView: View {
 }
 ```
 
-The closure runs every frame. Access timing information via `context.frameUniforms.time`.
+The closure runs every frame. To get the time, use `context.frameUniforms.time`.
 
 ## See Also
 

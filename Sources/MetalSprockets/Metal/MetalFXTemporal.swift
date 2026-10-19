@@ -7,7 +7,7 @@ import MetalSprocketsSupport
 ///
 /// History lives in the scaler, which persists across frames and is rebuilt (with history discarded) only when a format
 /// or size changes. Set `reset` for a frame whose history must not be used, such as after a camera cut. Place it
-/// outside passes; ordering with earlier producers and later consumers is handled. Not available on visionOS.
+/// outside passes. It orders itself with earlier producers and later consumers. Not available on visionOS.
 public struct MetalFXTemporal: Element, SetupElement, WorkloadElement {
     public typealias Body = Never
 

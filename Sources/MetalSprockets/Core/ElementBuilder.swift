@@ -3,8 +3,8 @@
 /// A result builder for composing multiple elements into a single element tree.
 ///
 /// `ElementBuilder` enables the declarative syntax used in MetalSprockets.
-/// You typically don't use it directly — it's applied automatically to
-/// `body` properties and content closures.
+/// Usually you do not use it directly. Swift applies it to `body` properties
+/// and content closures.
 ///
 /// ## Overview
 ///

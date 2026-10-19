@@ -3,8 +3,8 @@ import Synchronization
 /// Protocol conformances of an element type, checked once per type instead of on every node every frame (RFC 0006).
 ///
 /// Conformance depends only on the type, and a node's identifier includes its element's type, so a node keeps the same
-/// info for its whole life. Hot paths call through the cached metatypes, whose static helpers cast the element to its
-/// concrete type (`as! Self`), instead of casting to a protocol existential (`as? any P`), which looks up conformance.
+/// info for its whole life. Hot paths call through the cached metatypes. Their static helpers cast the element to its
+/// concrete type (`as! Self`). A cast to a protocol existential (`as? any P`) looks up conformance, which is slower.
 internal struct ElementTypeInfo: @unchecked Sendable {
     let bodylessType: (any BodylessElement.Type)?
     let setupType: (any SetupElement.Type)?

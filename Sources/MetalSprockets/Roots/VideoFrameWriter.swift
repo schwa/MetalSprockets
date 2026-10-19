@@ -77,8 +77,8 @@ internal final class VideoFrameWriter {
 
     /// Default production implementation of ``waitUntilReady``: awaits
     /// `AVAssetWriterInput.isReadyForMoreMediaData` via KVO, returning
-    /// immediately if the input is already ready. Also returns when the writer leaves `.writing` (failed or
-    /// cancelled), since the input then never becomes ready; `append` checks the status afterwards. See #321, #532.
+    /// immediately if the input is already ready. It also returns when the writer leaves `.writing` (failed
+    /// or cancelled), because the input then never becomes ready. `append` reads the status after this call. See #321, #532.
     static func defaultWaitUntilReady(_ input: AVAssetWriterInput, writer: AVAssetWriter) async {
         func isDone() -> Bool {
             input.isReadyForMoreMediaData || writer.status != .writing

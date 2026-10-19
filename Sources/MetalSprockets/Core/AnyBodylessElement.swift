@@ -1,8 +1,8 @@
 /// A leaf element with no body that runs caller-supplied closures at the setup and workload phase boundaries.
 ///
 /// This is the escape hatch for elements that need to do work during a phase but have nothing to render on their own.
-/// Instead of declaring a bespoke `Element` type that conforms to ``SetupElement``/``WorkloadElement`` just to hang one
-/// closure off it, build one of these with the `on…` modifiers and return it as an element's `body`:
+/// You do not need a new `Element` type that conforms to ``SetupElement`` or ``WorkloadElement`` for one closure.
+/// Make an `AnyBodylessElement` with the `on…` modifiers, and return it as the `body` of an element:
 ///
 /// ```swift
 /// public var body: some Element {

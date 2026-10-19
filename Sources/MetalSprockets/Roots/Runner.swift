@@ -26,7 +26,7 @@ import MetalSupport
 /// When `maximumInFlightSubmissions` is reached, submission waits for the oldest outstanding work before recording
 /// starts. Elements can index per-frame resources with ``MSEnvironmentValues/submissionIndex``.
 ///
-/// `Runner` is not thread-safe; use it from one isolation domain.
+/// `Runner` is not thread-safe. Use it from one isolation domain.
 public final class Runner {
     public let device: MTLDevice
     public let commandQueue: any MTL4CommandQueue
@@ -68,7 +68,8 @@ public final class Runner {
         }
     }
 
-    /// Submits `content` without waiting for its completion; waits for earlier work if the in-flight limit is reached.
+    /// Submits `content` and does not wait for completion. If the in-flight limit is reached, it waits for
+    /// earlier work.
     public func submit<Content>(_ content: Content) throws -> Submission where Content: Element {
         try context.submit(content, system: system)
     }

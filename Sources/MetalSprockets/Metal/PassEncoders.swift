@@ -174,8 +174,9 @@ internal final class ComputePassEncoder {
         try activeEncoder().writeTimestamp(granularity: .precise, counterHeap: heap, index: index)
     }
 
-    /// Writes a precise timestamp, or returns the location of the previous one if `owner` wrote it and nothing has been
-    /// encoded since. A compute encoder records only the first of two back-to-back precise timestamps; the rest read 0.
+    /// Writes a precise timestamp, or returns the location of the previous one. It returns the previous one if `owner`
+    /// wrote it and there is no encoded work after it. A compute encoder records only the first of two adjacent precise
+    /// timestamps. The others read 0.
     func writeSharedTimestamp(owner: AnyObject, location: GPUTimingLocation, into heap: any MTL4CounterHeap) throws -> GPUTimingLocation {
         if let last = lastSharedTimestamp, last.owner == ObjectIdentifier(owner), isActive {
             return last.location
@@ -315,7 +316,8 @@ internal final class RenderPassEncoder {
         return encoder
     }
 
-    /// Before any draw, the timestamp is taken before `stage` begins; after draws, once earlier draws finish `stage`.
+    /// Before the first draw, the timestamp comes before `stage` starts. After draws, it comes when the earlier draws
+    /// finish `stage`.
     func writeTimestamp(afterStage stage: MTLRenderStages, into heap: any MTL4CounterHeap, index: Int) throws {
         try activeEncoder().writeTimestamp(granularity: .precise, after: stage, counterHeap: heap, index: index)
     }

@@ -2,9 +2,9 @@ import os
 
 /// Delivers terminal submission results serially and in submission-identifier order.
 ///
-/// Native completion arrives on unordered Metal queues. Results wait here until every earlier identifier has been
-/// delivered, then exactly one thread drains the ready prefix. Handlers run outside the lock, so a handler that causes
-/// another result to arrive only enqueues it for the active drainer instead of recursing or deadlocking.
+/// Native completion arrives on unordered Metal queues. Results wait here until all earlier identifiers are
+/// delivered. Then exactly one thread drains the ready prefix. Handlers run outside the lock. If a handler causes
+/// another result to arrive, the result goes into the queue for the active drainer. There is no recursion or deadlock.
 internal final class ResultDelivery: Sendable {
     private struct Contents {
         var nextIdentifier: UInt64 = 1

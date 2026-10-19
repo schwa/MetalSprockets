@@ -556,4 +556,4 @@ fragment float4 cubeFragmentShader(VertexOut in [[stage_in]]) {
 1. **MVP matrices** — The Model-View-Projection pipeline transforms 3D geometry to screen coordinates
 2. **Depth testing** — Use `.depthCompare()` and `.metalDepthStencilPixelFormat()` for correct 3D occlusion
 3. **3D vertices** — Working with `SIMD3<Float>` positions and generating cube geometry
-4. **Uniforms** — Passing structured data (matrices) to shaders via buffer bindings
+4. **Uniforms** — Send structured data (matrices) to shaders through buffer bindings

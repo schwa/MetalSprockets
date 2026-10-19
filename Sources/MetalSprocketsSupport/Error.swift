@@ -10,7 +10,7 @@ public indirect enum MetalSprocketsError: Error, Equatable {
     case validationError(String)
     case configurationError(String)
     case unexpectedError(Self)
-    /// Wraps an error with a hint to help the user understand what might be wrong.
+    /// Wraps an error with a hint that tells the user what can be wrong.
     case withHint(Self, hint: String)
 }
 

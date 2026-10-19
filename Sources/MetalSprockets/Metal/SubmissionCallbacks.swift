@@ -35,9 +35,9 @@ public extension Element {
     /// Runs `action` on the calling isolation (for example the `@MainActor`) with the submission's terminal result, so
     /// it can write `@MSState` directly without a manual actor hop.
     ///
-    /// Unlike ``onCommandBufferCompleted(_:)``, `action` is not `@Sendable`: it may capture isolated state such as an
-    /// element's `self`. The hop is asynchronous: `action` runs in a `Task` on `isolation` after the GPU work finishes,
-    /// so it never blocks the completion executor, and its ordering against other submissions is not guaranteed. Work
+    /// Unlike ``onCommandBufferCompleted(_:)``, `action` is not `@Sendable`. It can capture isolated state, such as the
+    /// `self` of an element. The hop is asynchronous. After the GPU work finishes, `action` runs in a `Task` on
+    /// `isolation`. Thus it never blocks the completion executor. Its order relative to other submissions can change. Work
     /// that fails during encoding reports nothing.
     ///
     /// ```swift
@@ -64,7 +64,7 @@ public extension Element {
     /// per-frame resource ring can reclaim its slot without leaking. Use it to recycle instance buffers, build scratch
     /// buffers and acceleration structures once the GPU can no longer reference them.
     ///
-    /// `action` may run on a completion executor or during teardown; do not assume the caller's actor.
+    /// `action` can run on a completion executor or during teardown. Do not assume the actor of the caller.
     func onSubmissionFinished(_ action: @escaping @Sendable () -> Void) -> some Element {
         ScopeModifier(content: self) { scope in
             let sentinel = SubmissionFinishSentinel(action)

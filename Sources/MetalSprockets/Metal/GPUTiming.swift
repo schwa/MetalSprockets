@@ -24,8 +24,8 @@ public struct GPUTiming: Sendable, Equatable {
 
 public extension Element {
     /// Measures the GPU time of the passes in this subtree, from the start of the first ``RenderPass`` or
-    /// ``ComputePass`` to the end of the last. Results are delivered by the nearest enclosing ``onGPUTimings(_:)``;
-    /// with none, this does nothing.
+    /// ``ComputePass`` to the end of the last. The nearest enclosing ``onGPUTimings(_:)`` gets the results.
+    /// If there is no such modifier, this modifier does nothing.
     ///
     /// Apple GPUs time at pass boundaries only, so place this on or above a pass. Inside a pass it measures nothing and
     /// logs a warning. To time a smaller piece of work, put it in its own pass.
@@ -105,8 +105,8 @@ internal struct GPUTimingLocation: Equatable {
     let index: Int
 }
 
-/// One `gpuTimed` interval. `start` and `end` are where its timestamps were actually written, which can be another
-/// entry's slot when two writes share a point on a compute encoder.
+/// One `gpuTimed` interval. `start` and `end` are where its timestamps are written. When two writes share a point on
+/// a compute encoder, this can be the slot of another entry.
 internal final class GPUTimingEntry {
     let label: String
     let reserved: GPUTimingLocation
@@ -128,8 +128,8 @@ internal final class GPUTimingEntry {
     }
 }
 
-/// Collects the intervals of one submission. Written during encoding, read on the completion executor after encoding
-/// ends; the lock covers the hand-off.
+/// Collects the intervals of one submission. Encoding writes it. After encoding ends, the completion executor reads it.
+/// The lock protects the hand-off.
 internal final class GPUTimingCollector: @unchecked Sendable {
     private struct State {
         var heaps: [any MTL4CounterHeap] = []

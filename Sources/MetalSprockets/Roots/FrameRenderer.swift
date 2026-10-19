@@ -39,7 +39,7 @@ package final class FrameRenderer: @unchecked Sendable {
         self.system = system
     }
 
-    /// Marks every node as needing setup again, e.g. after a drawable-size or sample-count change.
+    /// Marks every node for setup again. For example, use it after a change to the drawable size or sample count.
     package func invalidateSetup() {
         system.markAllNodesNeedingSetup()
     }

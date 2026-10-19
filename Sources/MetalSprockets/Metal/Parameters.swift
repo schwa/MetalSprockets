@@ -69,7 +69,7 @@ public extension Element {
 // MARK: - Several parameters in one modifier
 
 /// Shader parameters collected for ``Element/parameters(_:)``. Each `set` matches the `.parameter` overload with the
-/// same labels; later calls override earlier ones with the same name.
+/// same labels. A later call overrides an earlier call with the same name.
 public struct ShaderParameters {
     internal var parameterSet = ParameterSet()
 

@@ -4,7 +4,7 @@
 ///
 /// Use `Group` when you need to return multiple elements from a property or
 /// apply modifiers to a collection of elements. The order of elements within
-/// a `Group` matters, just as it does in a `body` property.
+/// a `Group` matters, as it does in a `body` property.
 ///
 /// ## Overview
 ///

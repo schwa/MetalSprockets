@@ -1,12 +1,12 @@
 # MetalSprockets FAQ
 
-## Why is not my Element rendering anything / Why does Metal debugger show "empty render encoder"?
+## Why does my element not render? Why does the Metal debugger show "empty render encoder"?
 
 ### Problem
-Your custom Element compiles but does not render. The Metal debugger shows "empty render encoder" because no draw commands reach it.
+Your custom element compiles, but it does not render. The Metal debugger shows "empty render encoder", because no draw commands get to the encoder.
 
 ### Cause
-This typically happens when an Element's `body` property returns `any Element` instead of `some Element`:
+Usually, the `body` property of the element returns `any Element` instead of `some Element`:
 
 ```swift
 // ❌ WRONG - This compiles but doesn't work
@@ -25,16 +25,16 @@ public var body: some Element {
 ```
 
 ### Why This Happens
-The framework needs concrete type information to traverse the element tree. `any Element` creates a type-erased existential. This prevents traversal into child elements and calls to their lifecycle methods, such as `workloadEnter`/`workloadExit`.
+The framework needs concrete type information to walk the element tree. `any Element` is a type-erased existential. With it, the framework cannot walk into the child elements. It also cannot call their lifecycle methods, such as `workloadEnter` and `workloadExit`.
 
 Debug builds assert when a body returns `any Element`. Release builds do not check.
 
 ### Solution
-Use `some Element` as the return type for your Element's body property. This preserves the concrete type information that tree traversal needs.
+Use `some Element` as the return type of the `body` property. This keeps the concrete type information that the tree walk needs.
 
 ## Where can I apply `.parameter()`?
 
-Anywhere above the ``Draw`` or ``ComputeDispatch`` that uses it. Parameters flow down the tree like environment values. Each draw or dispatch resolves them by name against the reflection of its enclosing pipeline.
+You can apply it anywhere above the ``Draw`` or ``ComputeDispatch`` that uses it. Parameters go down the tree like environment values. Each draw or dispatch finds its parameters by name, in the reflection of its enclosing pipeline.
 
 ```swift
 try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
@@ -46,9 +46,9 @@ try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
 .parameter("uniforms", value: uniforms)      // Every draw in the pipeline
 ```
 
-An inner `.parameter()` overrides an outer one with the same name. Sibling elements never see each other's parameters.
+An inner `.parameter()` overrides an outer one with the same name. Sibling elements never see the parameters of other siblings.
 
-Every draw must find each parameter it inherits. If a draw's pipeline has no binding with that name, the draw throws: `Parameter 'name' is not a binding of any stage the filter allows in this pipeline.` Apply the parameter closer to the draws that use it.
+Each draw must find every parameter that it inherits. If the pipeline of a draw has no binding with that name, the draw throws this error: `Parameter 'name' is not a binding of any stage the filter allows in this pipeline.` To prevent the error, apply the parameter nearer to the draws that use it.
 
 ## What happens when vertex and fragment shaders share a parameter name?
 
@@ -65,10 +65,10 @@ To send a value to one stage only, pass `functionTypes`:
 .parameter("uniforms", functionTypes: .fragment, value: fragmentUniforms)
 ```
 
-## What is Ultraviolence
+## What is Ultraviolence?
 
-MetalSprockets originally used the codename "Ultraviolence". References to "Ultraviolence" in old commits, documentation, or issues refer to this project.
+"Ultraviolence" is the old codename of MetalSprockets. Old commits, documentation, and issues use this name.
 
-## What is the relationship to Apple Game Sprockets?
+## What is the relation to Apple Game Sprockets?
 
-The MetalSprockets name is inspired by Apple's Game Sprockets, a games framework from the classic Mac OS era.
+The name MetalSprockets comes from Apple Game Sprockets. Game Sprockets was a games framework for the classic Mac OS.

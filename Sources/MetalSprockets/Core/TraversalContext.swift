@@ -3,10 +3,10 @@ import Foundation
 /// The stack of nodes currently being visited by a traversal phase.
 ///
 /// Owned by the phase running the traversal (reconciliation, setup, workload) and reached through
-/// ``System/traversalContext``. Property wrappers such as `@MSEnvironment` and `@MSState` resolve their values through
-/// this context — via ``currentNode`` and ``parentNode`` — rather than indexing a stack held on ``System``.
+/// ``System/traversalContext``. Property wrappers such as `@MSEnvironment` and `@MSState` get their values from
+/// this context, through ``currentNode`` and ``parentNode``. They do not use a stack on ``System``.
 ///
-/// The context is empty outside a traversal; resolving environment or state then is a programmer error.
+/// Outside a traversal, the context is empty. To read environment or state at that time is a programmer error.
 internal final class TraversalContext {
     private var stack: [Node] = []
 

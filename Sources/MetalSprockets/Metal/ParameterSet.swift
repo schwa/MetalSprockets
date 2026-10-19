@@ -43,8 +43,8 @@ internal struct StageTables {
 /// Named and indexed shader inputs resolved against reflected pipeline bindings into per-stage argument tables.
 ///
 /// Every `makeTables` call leases cleared tables, so a draw or dispatch can never inherit a stale binding
-/// from a sibling or an earlier draw. Buffers and textures register residency through the recording scope; values are
-/// copied into the scope's scratch storage.
+/// from a sibling or an earlier draw. Buffers and textures register residency through the recording scope. Values go
+/// into the scratch storage of the scope.
 internal struct ParameterSet {
     enum Failure: Error, Equatable {
         case missingBinding(String)

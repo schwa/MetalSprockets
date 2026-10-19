@@ -6,9 +6,9 @@ import os
 /// GPU timestamps for one render or compute pass, sampled into a Metal 4 counter heap.
 ///
 /// Mapping from the legacy stage-boundary samples:
-/// - Render: the pass start is taken before the vertex stage begins, the vertex end after all draws finish the vertex
-///   stage, and the pass end after they finish the fragment stage. `vertex` is start to vertex end. Metal 4 has no
-///   start-of-fragment sample, so `fragment` is always nil; no value is invented for it.
+/// - Render: the pass start comes before the vertex stage starts. The vertex end comes after all draws finish the
+///   vertex stage. The pass end comes after the draws finish the fragment stage. `vertex` is start to vertex end.
+///   Metal 4 has no start-of-fragment sample, so `fragment` is always nil. The sampler does not make up a value.
 /// - Compute: start and end of the encoder.
 /// Ticks convert with `queryTimestampFrequency()`. A zero or reversed timestamp makes the interval nil, never zero.
 internal final class TimestampSampler: @unchecked Sendable {
@@ -177,7 +177,7 @@ internal extension ComputePassEncoder {
 }
 
 /// Samples the first render or compute pass in its content and reports a `GPUCounterSample` after the submission
-/// completes. Failed, cancelled or discarded work reports nothing; the heap returns to the pool either way.
+/// completes. Failed, cancelled, or discarded work reports nothing. In all cases, the heap goes back to the pool.
 internal final class GPUCountersCache: NodeElementCache {
     var sampler: TimestampSampler?
 }
