@@ -1,0 +1,41 @@
+# Detect takeover of docs.metalsprockets.com.
+name: Domain Check
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DOMAIN: docs.metalsprockets.com
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: DNS points at GitHub Pages
+        run: |
+          cname=$(dig +short CNAME "$DOMAIN")
+          echo "CNAME: $cname"
+          [ "$cname" = "schwa.github.io." ] || { echo "::error::Unexpected CNAME '$cname'"; exit 1; }
+
+      - name: Pages config claims the domain
+        run: |
+          pages=$(gh api "repos/${{ github.repository }}/pages")
+          echo "$pages" | jq .
+          [ "$(echo "$pages" | jq -r .cname)" = "$DOMAIN" ] || { echo "::error::Pages cname mismatch"; exit 1; }
+          [ "$(echo "$pages" | jq -r .protected_domain_state)" = "verified" ] || { echo "::error::Domain not verified"; exit 1; }
+
+      - name: Site serves our content
+        run: |
+          headers=$(curl -sSI "https://$DOMAIN/")
+          echo "$headers" | grep -qi '^server: GitHub.com' || { echo "::error::Not served by GitHub"; echo "$headers"; exit 1; }
+          body=$(curl -sSfL "https://$DOMAIN/")
+          echo "$body" | grep -q '<title>MetalSprockets Documentation</title>' || { echo "::error::Unexpected content"; echo "$body" | head -50; exit 1; }
+          curl -sSf -o /dev/null "https://$DOMAIN/data/documentation/metalsprockets.json" || { echo "::error::DocC data missing"; exit 1; }
