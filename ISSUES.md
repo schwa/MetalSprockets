@@ -10684,3 +10684,23 @@ Actual: 0 fps, blank.
 - `2026-10-19T01:57:32Z`: (2026-10-02T16:43:33Z) Reopened: code fix is in and macOS/visionOS compile + Metal4 tests pass, but the actual 0-fps symptom is device-only (compositor path, not exercised by tests or simulator). Keep open until verified on Apple Vision Pro.
 
 ---
+
+## 534: A new linked function rebuilds the whole compute pipeline on the frame path
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:performance,effort:m,needs-design
+created: 2026-10-20T20:03:50Z
++++
+
+PipelineCache.computePipeline builds a new MTL4 compute pipeline (static linking) the first time a kernel is used with a new set of linked functions, synchronously, while encoding the frame. For a large kernel that is a long stall: in MetalSprocketsParticles (#209 there) any new user function or stitched stack in the update kernel costs ~360 ms on its first frame, while compiling the function itself takes 4-7 ms.
+
+Options:
+1. Async build: start the pipeline build off the frame path (e.g. a prepare/warm API taking kernel + linked functions) and let callers keep the previous pipeline, or skip the dispatch, until it is ready.
+2. Link into an existing pipeline: compile the kernel pipeline once and add visible functions without recompiling the kernel (Metal's binary-function / dynamic-linking path), if Metal 4 supports this for compute pipelines.
+
+Option 2 removes the cost; option 1 hides it. Repro: MetalSprocketsParticles StitchingSpikeTests.firstFrameCost with STITCHING_TIMINGS=1.
+
+---
