@@ -149,11 +149,11 @@ internal final class PipelineCache {
         let reflection: Reflection?
         let tableLabels: [MTLFunctionType: String]
 
-        init(state: any MTLComputePipelineState, bindings: PipelineBindings) {
+        init(state: any MTLComputePipelineState, bindings: PipelineBindings, reflection: MTLComputePipelineReflection? = nil, binaryFunctions: [String: any MTL4BinaryFunction] = [:]) {
             self.state = state
             self.bindings = bindings
-            functionTables = FunctionTables(compute: state)
-            reflection = state.reflection.map(Reflection.init)
+            functionTables = FunctionTables(compute: state, binaryFunctions: binaryFunctions)
+            self.reflection = (reflection ?? state.reflection).map(Reflection.init)
             tableLabels = ParameterSet.tableLabels(pipelineLabel: state.label, stages: [.kernel])
         }
     }
@@ -193,10 +193,24 @@ internal final class PipelineCache {
         let label: String?
     }
 
+    private struct ComputeBaseKey: Hashable {
+        let kernel: ShaderFunction
+        let label: String?
+    }
+
+    /// A kernel pipeline built once with binary linking, so new linked functions do not rebuild the kernel.
+    private enum ComputeBase {
+        case binary(any MTLComputePipelineState, MTLComputePipelineReflection)
+        /// The kernel calls linked functions directly (`extern`), which needs static linking.
+        case staticOnly
+    }
+
     private let device: any MTLDevice
     let compiler: any MTL4Compiler
     private var renderPipelines: [RenderKey: RenderPipeline] = [:]
     private var computePipelines: [ComputeKey: ComputePipeline] = [:]
+    private var computeBases: [ComputeBaseKey: ComputeBase] = [:]
+    private var binaryFunctions: [ShaderFunction: any MTL4BinaryFunction] = [:]
     private var meshPipelines: [MeshKey: RenderPipeline] = [:]
 
     private(set) var compilationCount = 0
@@ -339,6 +353,14 @@ internal final class PipelineCache {
         try validate([key.kernel] + key.linked, label: label)
         try Self.validateExportNames(key.linked, label: label)
         try ShaderDeviceCheck.validateLinkedFunctions(linkedFunctions, device: device, label: label)
+        if !key.linked.isEmpty, case let .binary(base, reflection) = try computeBase(kernel: key.kernel, label: label) {
+            let binaries = try key.linked.map { try binaryFunction($0) }
+            let state = try base.makeComputePipelineState(additionalBinaryFunctions: binaries)
+            let named = Dictionary(zip(key.linked.map(\.exportName), binaries)) { first, _ in first }
+            let pipeline = ComputePipeline(state: state, bindings: PipelineBindings([(.kernel, reflection.bindings)]), reflection: reflection, binaryFunctions: named)
+            computePipelines[key] = pipeline
+            return pipeline
+        }
         let descriptor = MTL4ComputePipelineDescriptor()
         descriptor.label = label
         descriptor.computeFunctionDescriptor = try key.kernel.makeFunctionDescriptor()
@@ -354,6 +376,40 @@ internal final class PipelineCache {
         let pipeline = ComputePipeline(state: state, bindings: PipelineBindings([(.kernel, reflection.bindings)]))
         computePipelines[key] = pipeline
         return pipeline
+    }
+
+    private func computeBase(kernel: ShaderFunction, label: String?) throws -> ComputeBase {
+        let key = ComputeBaseKey(kernel: kernel, label: label)
+        if let cached = computeBases[key] {
+            return cached
+        }
+        let descriptor = MTL4ComputePipelineDescriptor()
+        descriptor.label = label
+        descriptor.computeFunctionDescriptor = try kernel.makeFunctionDescriptor()
+        descriptor.supportBinaryLinking = true
+        descriptor.options = Self.reflectingOptions()
+        let base: ComputeBase
+        // Any failure falls back to static linking, which reports the real error if there is one.
+        if let state = try? compiler.makeComputePipelineState(descriptor: descriptor), let reflection = state.reflection {
+            compilationCount += 1
+            base = .binary(state, reflection)
+        } else {
+            base = .staticOnly
+        }
+        computeBases[key] = base
+        return base
+    }
+
+    private func binaryFunction(_ function: ShaderFunction) throws -> any MTL4BinaryFunction {
+        if let cached = binaryFunctions[function] {
+            return cached
+        }
+        let descriptor = MTL4BinaryFunctionDescriptor()
+        descriptor.name = function.exportName
+        descriptor.functionDescriptor = try function.makeFunctionDescriptor()
+        let binary = try compiler.makeBinaryFunction(descriptor: descriptor, compilerTaskOptions: nil)
+        binaryFunctions[function] = binary
+        return binary
     }
 
     static func validateDevice(expected: ObjectIdentifier, actual: ObjectIdentifier, label: String?) throws {

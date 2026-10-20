@@ -86,6 +86,20 @@ struct FunctionTableTests {
     }
 
     @Test(.timeLimit(.minutes(1)))
+    func newLinkedFunctionsReuseTheKernelPipeline() async throws {
+        let library = try await device.makeLibrary(source: VisibleFunctionTableTests.computeTableSource, options: nil)
+        let kernel = try ComputeKernel(library: library, name: "compute_main")
+        let plusOne = try VisibleFunction(library: library, name: "plus_one")
+        let timesTwo = try VisibleFunction(library: library, name: "times_two")
+        let runner = try FrameRunner(device: device)
+        #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne], table: [plusOne]) == (0..<64).map { UInt32($0) + 1 })
+        #expect(try await computeRun(runner: runner, kernel: kernel, linked: [timesTwo], table: [timesTwo]) == (0..<64).map { UInt32($0) * 2 })
+        #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne, timesTwo], table: [timesTwo]) == (0..<64).map { UInt32($0) * 2 })
+        // Only the kernel compiles; each new linked set adds binary functions to it.
+        #expect(runner.context.pipelines.compilationCount == 1)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func tablesStayResidentForTheirPipelineLifetime() async throws {
         let library = try await device.makeLibrary(source: VisibleFunctionTableTests.computeTableSource, options: nil)
         let plusOne = try VisibleFunction(library: library, name: "plus_one")

@@ -10688,11 +10688,13 @@ Actual: 0 fps, blank.
 ## 534: A new linked function rebuilds the whole compute pipeline on the frame path
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
-labels: area:performance,effort:m,needs-design
+labels: area:performance, effort:m, needs-design
 created: 2026-10-20T20:03:50Z
+updated: 2026-10-21T00:28:56Z
+closed: 2026-10-21T00:28:56Z
 +++
 
 PipelineCache.computePipeline builds a new MTL4 compute pipeline (static linking) the first time a kernel is used with a new set of linked functions, synchronously, while encoding the frame. For a large kernel that is a long stall: in MetalSprocketsParticles (#209 there) any new user function or stitched stack in the update kernel costs ~360 ms on its first frame, while compiling the function itself takes 4-7 ms.
@@ -10702,5 +10704,74 @@ Options:
 2. Link into an existing pipeline: compile the kernel pipeline once and add visible functions without recompiling the kernel (Metal's binary-function / dynamic-linking path), if Metal 4 supports this for compute pipelines.
 
 Option 2 removes the cost; option 1 hides it. Repro: MetalSprocketsParticles StitchingSpikeTests.firstFrameCost with STITCHING_TIMINGS=1.
+
+---
+
+## 535: Pipeline and binary-function caches never evict
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:performance, needs-design
+created: 2026-10-21T00:26:17Z
++++
+
+PipelineCache keeps every compiled pipeline (render, mesh, compute), every compute base pipeline, and every binary function (#534) for the life of the context. Nothing is ever removed.
+
+Workloads that keep making new shaders or linked functions (user-edited particle functions, stitched stacks, live shader editing) grow the cache without bound. Pipelines and binary functions that are never used again keep their GPU memory.
+
+Same applies to FunctionTables: each pipeline keeps every visible function table it has built.
+
+Expected: entries that are no longer used can be released.
+Actual: memory only grows until the MetalContext is destroyed.
+
+---
+
+## 536: Failed binary-linking base build is silent and costs an extra compile
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: area:performance
+created: 2026-10-21T00:26:48Z
++++
+
+When PipelineCache builds a compute base pipeline with supportBinaryLinking (#534) and the build fails, it silently falls back to static linking for that kernel.
+
+- The failed build is a full kernel compile that is thrown away, so the first use of that kernel costs two compiles.
+- Nothing is logged, so there is no way to tell that a kernel is on the slow static path or why.
+
+Expected: the fallback and its reason are visible (log or diagnostic).
+Actual: silent; only the extra compile time shows it.
+
+---
+
+## 537: Kernels that call linked functions directly (extern) fail to link
+
++++
+status: new
+priority: medium
+kind: bug
+created: 2026-10-21T00:26:48Z
++++
+
+A compute kernel that declares a linked function with extern and calls it directly fails to build, even when the function is passed with .linkedFunctions(_:). This happens with static linking, before #534.
+
+Repro:
+1. Kernel library: `extern uint transform(uint v);` and `kernel void direct_main(device uint *out [[buffer(0)]], uint tid [[thread_position_in_grid]]) { out[tid] = transform(tid); }`
+2. Separate library: `[[visible]] uint transform(uint v) { return v + 5; }`
+3. ComputePipeline(computeKernel: direct_main) { ComputeDispatch ... }.linkedFunctions([transform])
+
+Expected: the pipeline builds and out[i] == i + 5.
+Actual:
+```
+Error Domain=MTLLibraryErrorDomain Code=3 "Undefined symbol(s) for architecture 'air64':
+  '_Z9transformj', referenced from:
+      direct_main in program_object_0
+error: symbol(s) not found for target 'air64-apple-macosx27.0.0'
+```
+Also reproduced in a standalone MTL4Compiler script with MTL4StaticLinkingDescriptor, so it may be a Metal behaviour or a missing step, not only a MetalSprockets bug. Calls through visible_function_table work.
 
 ---
