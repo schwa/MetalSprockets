@@ -10815,3 +10815,21 @@ Workaround there: set both stages every frame (empty list for the unused stage),
 Not confirmed from inside MetalSprockets; repro is MetalSprocketsParticles ShadingPipelineTests.perPixelAfterPerVertexOnOneRenderer with the workaround reverted (EmitterDraw.linkedShading setting only the active stage). Expected: environment values that are not set on a frame should not leak from an earlier frame, or the docs should say they persist.
 
 ---
+
+## 540: Binary-linked visible functions can't be inlined; per-pixel calls get slower
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:performance,effort:m
+created: 2026-10-21T01:20:45Z
++++
+
+After #538, render pipelines binary-link their visible functions. That removed the first-frame rebuild (a new custom shading function in MetalSprocketsParticles: 50-100 ms down to ~8 ms), but the calls apparently can no longer be inlined. MetalSprocketsParticles' Foil Confetti preset, whose sprites call a visible shading function per pixel, measures 0.12 ms GPU before and ~0.175 ms after (+45%), in alternating runs on the same machine. Per-vertex calls showed no measurable change.
+
+Ask: let callers choose per pipeline (or per linked function) between static linking (inlinable; rebuilt when the set changes) and binary linking (no rebuild; a real call). MetalSprocketsParticles would statically link its built-in shading functions (always linked, so their build cost is paid once) and binary-link user functions.
+
+Repro: MetalSprocketsParticles particles-bench --presets --preset foil --repeats 5, against the commit before the #538 update.
+
+---
