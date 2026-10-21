@@ -61,6 +61,10 @@ private struct RecordedVideoInfo {
     var videoTrackCount: Int
     var naturalSize: CGSize?
     var formatDescriptionMediaType: CMMediaType?
+    // The track's color tags: primaries, transfer function and YCbCr matrix.
+    var colorPrimaries: String?
+    var transferFunction: String?
+    var matrix: String?
 }
 
 private func inspect(url: URL) async throws -> RecordedVideoInfo {
@@ -70,11 +74,13 @@ private func inspect(url: URL) async throws -> RecordedVideoInfo {
 
     var naturalSize: CGSize?
     var mediaType: CMMediaType?
+    var extensions: [String: Any] = [:]
     if let track = videoTracks.first {
         naturalSize = try await track.load(.naturalSize)
         let formatDescriptions = try await track.load(.formatDescriptions)
         if let first = formatDescriptions.first {
             mediaType = CMFormatDescriptionGetMediaType(first)
+            extensions = (CMFormatDescriptionGetExtensions(first) as? [String: Any]) ?? [:]
         }
     }
 
@@ -82,7 +88,10 @@ private func inspect(url: URL) async throws -> RecordedVideoInfo {
         duration: duration,
         videoTrackCount: videoTracks.count,
         naturalSize: naturalSize,
-        formatDescriptionMediaType: mediaType
+        formatDescriptionMediaType: mediaType,
+        colorPrimaries: extensions[kCMFormatDescriptionExtension_ColorPrimaries as String] as? String,
+        transferFunction: extensions[kCMFormatDescriptionExtension_TransferFunction as String] as? String,
+        matrix: extensions[kCMFormatDescriptionExtension_YCbCrMatrix as String] as? String
     )
 }
 
@@ -170,6 +179,21 @@ func testVideoRendererReplacesExistingFile() async throws {
     let info = try await inspect(url: url)
     #expect(info.videoTrackCount == 1)
     #expect(info.naturalSize == CGSize(width: 320, height: 240))
+}
+
+@Test("The movie is tagged Rec. 709 with the sRGB transfer function", .requiresMetal4)
+func testVideoRendererTagsColorSpace() async throws {
+    let url = makeTempOutputURL(suffix: "color")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let renderer = try OffscreenVideoRenderer(size: CGSize(width: 320, height: 240), outputURL: url)
+    for _ in 0..<3 {
+        try await renderer.render(try makeTriangle(color: [1, 0, 0, 1]))
+    }
+    try await renderer.finalize()
+    let info = try await inspect(url: url)
+    #expect(info.colorPrimaries == kCMFormatDescriptionColorPrimaries_ITU_R_709_2 as String)
+    #expect(info.transferFunction == kCMFormatDescriptionTransferFunction_sRGB as String)
+    #expect(info.matrix == kCMFormatDescriptionYCbCrMatrix_ITU_R_709_2 as String)
 }
 
 @Test("Render targets get the requested usages", .requiresMetal4)

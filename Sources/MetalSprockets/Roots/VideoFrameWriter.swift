@@ -37,10 +37,17 @@ internal final class VideoFrameWriter {
 
         assetWriter = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
 
+        // Frames are sRGB-encoded BGRA, so the movie is tagged Rec. 709 primaries and matrix with the sRGB transfer
+        // function. Untagged movies are shown with a guessed transfer function, which shifts their gamma.
         let videoSettings: [String: Any] = [
             AVVideoCodecKey: videoCodec,
             AVVideoWidthKey: Int(size.width),
-            AVVideoHeightKey: Int(size.height)
+            AVVideoHeightKey: Int(size.height),
+            AVVideoColorPropertiesKey: [
+                AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
+                AVVideoTransferFunctionKey: AVVideoTransferFunction_IEC_sRGB,
+                AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2,
+            ],
         ]
 
         assetWriterInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
@@ -155,6 +162,10 @@ internal final class VideoFrameWriter {
 
         let region = MTLRegionMake2D(0, 0, Int(size.width), Int(size.height))
         texture.getBytes(baseAddress, bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer), from: region, mipmapLevel: 0)
+        // The same color space as the output settings, so the encoder converts nothing.
+        CVBufferSetAttachment(pixelBuffer, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, .shouldPropagate)
+        CVBufferSetAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_sRGB, .shouldPropagate)
+        CVBufferSetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_709_2, .shouldPropagate)
 
         let presentationTime = CMTime(value: CMTimeValue(frameNumber), timescale: CMTimeScale(frameRate))
 
