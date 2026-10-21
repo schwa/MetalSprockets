@@ -10775,3 +10775,39 @@ error: symbol(s) not found for target 'air64-apple-macosx27.0.0'
 Also reproduced in a standalone MTL4Compiler script with MTL4StaticLinkingDescriptor, so it may be a Metal behaviour or a missing step, not only a MetalSprockets bug. Calls through visible_function_table work.
 
 ---
+
+## 538: Render pipelines rebuild on the frame path for each new linked function
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:performance, effort:m
+created: 2026-10-21T00:47:27Z
++++
+
+#534 binary-links compute pipelines, so a new linked function no longer rebuilds the kernel. Render pipelines are still statically linked: PipelineCache.renderPipeline builds a new MTL4 render pipeline the first time a vertex/fragment pair is used with a new set of vertex or fragment linked functions, synchronously while encoding.
+
+Measured in MetalSprocketsParticles (#219 there, StitchingSpikeTests.firstFrameShadingCost with STITCHING_TIMINGS=1): a new custom shading function linked into the particle vertex shader costs 50-100 ms on its first frame, ~34 ms when linked into the fragment shader; a warm frame is ~5 ms.
+
+Ask: the same binary linking for render pipelines (vertex and fragment stages), so adding a visible function to a stage does not recompile the vertex and fragment functions.
+
+---
+
+## 539: Stage-specific linked functions seem to carry over between frames
+
++++
+status: new
+priority: medium
+kind: bug
+labels: area:api,effort:s
+created: 2026-10-21T00:47:28Z
++++
+
+Seen in MetalSprocketsParticles (#219 there). A RenderPipeline got .linkedFunctions(fs, functionType: .vertex) on one frame. On a later frame the same tree position instead got .linkedFunctions(gs, functionType: .fragment), with no vertex call. The pipeline then appeared to see both the old vertex list and the new fragment list. When fs and gs came from different MTLLibrary instances (two runtimes with their own ShaderLibrary), validateLinkedFunctions threw "Linked function 'X' has conflicting definitions".
+
+Workaround there: set both stages every frame (empty list for the unused stage), which fixes it. That suggests the environment value for the stage that is not written persists from the previous frame's node instead of resetting.
+
+Not confirmed from inside MetalSprockets; repro is MetalSprocketsParticles ShadingPipelineTests.perPixelAfterPerVertexOnOneRenderer with the workaround reverted (EmitterDraw.linkedShading setting only the active stage). Expected: environment values that are not set on a frame should not leak from an earlier frame, or the docs should say they persist.
+
+---
