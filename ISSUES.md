@@ -10839,11 +10839,13 @@ Repro: MetalSprocketsParticles particles-bench --presets --preset foil --repeats
 ## 541: PipelineCache adds binary functions to an existing pipeline, which crashes under Metal API validation
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: area:metal4, effort:m
 created: 2026-10-21T12:34:03Z
+updated: 2026-10-21T13:34:53Z
+closed: 2026-10-21T13:34:53Z
 +++
 
 PipelineCache.computePipeline and the render path link .binary VisibleFunctions by building a base pipeline (supportBinaryLinking) and then calling makeComputePipelineState(additionalBinaryFunctions:) / makeRenderPipelineState(additionalBinaryFunctions:). Under Metal API validation (MTLDebugDevice, on by default in Xcode Debug runs) this crashes: a segfault in the minimal repro, '-[__NSArrayM insertObject:atIndex:]: object cannot be nil' in newComputePipelineStateWithBinaryFunctions, or '-[MTLDebugFunction vendorPrivate]' in MetalSprocketsParticles' demo.
@@ -10860,6 +10862,7 @@ Fix: build binary-linked pipelines with the dynamic linking descriptor. Measure 
 
 - `2026-10-21T12:40:45Z`: Repro moved to ~/Desktop/BinaryFunctionRepro (SwiftPM; ./run-matrix.sh; FEEDBACK.md filed text). Matrix on macOS 27.0.1 (26A434), Xcode 27.0 (27A266a), M5 Max, under MTL_DEBUG_LAYER=1: compute+additionalBinaryFunctions CRASH (SIGBUS); compute+dynamicLinkingDescriptor ok; render+additionalBinaryFunctions ok; render+dynamicLinkingDescriptor ok. So the validation crash is compute-only, in newComputePipelineStateWithBinaryFunctions:. Fix scope: the compute path in PipelineCache.computePipeline must link at creation via MTL4PipelineStageDynamicLinkingDescriptor; render can stay as is for validation (but see #542). No Xcode/forum known issue found.
 - `2026-10-21T12:48:58Z`: Repro in tests (#543): xcb test -e MTL_DEBUG_LAYER=1. Only the compute path crashes (newComputePipelineStateWithBinaryFunctions); render binary linking passes under validation. FunctionTableTests and VisibleFunctionTableTests are skipped under validation with .disabledUnderValidation("... (#541)"); remove the trait when fixed.
+- `2026-10-21T13:30:54Z`: Fixed for compute: PipelineCache.computePipeline now creates the pipeline with MTL4PipelineStageDynamicLinkingDescriptor.binaryLinkedFunctions. Cost (heavy kernel, 10 new binary sets): ~0.08-0.12 ms per set vs ~0.01-0.015 ms with additionalBinaryFunctions; base kernel compile ~82 ms, so the kernel is not recompiled. Render path unchanged: it passes under validation in tests; follow-up #546. FunctionTableTests and VisibleFunctionTableTests run under validation again.
 
 ---
 
@@ -10927,5 +10930,19 @@ created: 2026-10-21T12:49:05Z
 +++
 
 MetalContext.init creates an MTLLogState when ShaderLogging.systemDefault is set (MS_METAL_LOGGING). After any log state exists, Metal refuses captures for the rest of the process ('Capturing Shader logging is not supported'). So a user with MS_METAL_LOGGING on cannot use Xcode GPU capture or MetalSprockets capture scopes, and gets an error only at capture time. Found while adding layered test runs (#543): the tests already skip log-state tests under capture. Decide whether to warn, skip the log state under capture, or document it.
+
+---
+
+## 546: Render pipelines still add binary functions with makeRenderPipelineState(additionalBinaryFunctions:)
+
++++
+status: new
+priority: medium
+kind: none
+labels: area:metal4, effort:s
+created: 2026-10-21T13:30:54Z
++++
+
+#541 moved compute pipelines to MTL4PipelineStageDynamicLinkingDescriptor because the additionalBinaryFunctions path crashes under Metal API validation. The render path in PipelineCache.renderPipeline still uses makeRenderPipelineState(additionalBinaryFunctions:). It passes under validation in this repo's tests (FunctionTableTests, PipelineCacheTests with MTL_DEBUG_LAYER=1), so it was left alone. But the original #541 report saw '-[MTLDebugFunction vendorPrivate]' in MetalSprocketsParticles, which may come from a render case the tests do not cover (for example stitched functions). Add a test for that case under validation. If it crashes, move render to MTL4RenderPipelineDynamicLinkingDescriptor the same way. Measured cost for compute: about 0.1 ms per new binary set, against about 0.01 ms before; the kernel is not recompiled.
 
 ---

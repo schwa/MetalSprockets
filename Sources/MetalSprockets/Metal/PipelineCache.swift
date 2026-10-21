@@ -423,11 +423,17 @@ internal final class PipelineCache {
         try validate([baseKey.kernel] + allLinked, label: label)
         try Self.validateExportNames(allLinked, label: label)
         try ShaderDeviceCheck.validateLinkedFunctions(linkedFunctions, device: device, label: label)
-        if !key.binary.isEmpty, case let .binary(base, reflection) = try computeBase(baseKey) {
+        if !key.binary.isEmpty, case .binary(_, let reflection) = try computeBase(baseKey) {
             let binaries = try key.binary.map { try binaryFunction($0) }
-            let state = try base.makeComputePipelineState(additionalBinaryFunctions: binaries)
+            // Pass the binary functions at creation. Adding them to the base pipeline with
+            // makeComputePipelineState(additionalBinaryFunctions:) crashes under Metal API validation (#541).
+            // This is a pipeline creation, not a kernel compile, so compilationCount does not count it.
+            let linking = MTL4PipelineStageDynamicLinkingDescriptor()
+            linking.binaryLinkedFunctions = binaries
+            let state = try compiler.makeComputePipelineState(descriptor: try makeComputeDescriptor(baseKey), dynamicLinkingDescriptor: linking, compilerTaskOptions: nil)
             let named = Dictionary(zip(key.binary.map(\.exportName), binaries)) { first, _ in first }
-            let pipeline = ComputePipeline(state: state, bindings: PipelineBindings([(.kernel, reflection.bindings)]), reflection: reflection, base: base, binaryFunctions: named)
+            // The state holds the static functions too, so table lookups need no base.
+            let pipeline = ComputePipeline(state: state, bindings: PipelineBindings([(.kernel, reflection.bindings)]), reflection: reflection, binaryFunctions: named)
             computePipelines[key] = pipeline
             return pipeline
         }
@@ -452,14 +458,7 @@ internal final class PipelineCache {
         if let cached = computeBases[key] {
             return cached
         }
-        let descriptor = MTL4ComputePipelineDescriptor()
-        descriptor.label = key.label
-        descriptor.computeFunctionDescriptor = try key.kernel.makeFunctionDescriptor()
-        if !key.staticLinked.isEmpty {
-            descriptor.staticLinkingDescriptor = try Self.staticLinking(key.staticLinked)
-        }
-        descriptor.supportBinaryLinking = true
-        descriptor.options = Self.reflectingOptions()
+        let descriptor = try makeComputeDescriptor(key)
         let base: ComputeBase
         // Any failure falls back to static linking, which reports the real error if there is one.
         if let state = try? compiler.makeComputePipelineState(descriptor: descriptor), let reflection = state.reflection {
@@ -470,6 +469,19 @@ internal final class PipelineCache {
         }
         computeBases[key] = base
         return base
+    }
+
+    /// The descriptor for a kernel pipeline that accepts binary-linked functions.
+    private func makeComputeDescriptor(_ key: ComputeBaseKey) throws -> MTL4ComputePipelineDescriptor {
+        let descriptor = MTL4ComputePipelineDescriptor()
+        descriptor.label = key.label
+        descriptor.computeFunctionDescriptor = try key.kernel.makeFunctionDescriptor()
+        if !key.staticLinked.isEmpty {
+            descriptor.staticLinkingDescriptor = try Self.staticLinking(key.staticLinked)
+        }
+        descriptor.supportBinaryLinking = true
+        descriptor.options = Self.reflectingOptions()
+        return descriptor
     }
 
     private func binaryFunction(_ function: ShaderFunction) throws -> any MTL4BinaryFunction {
