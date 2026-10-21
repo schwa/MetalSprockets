@@ -4943,12 +4943,13 @@ Easy to demonstrate with a `Runner` test: run the same element tree N times, cou
 ## 347: Replace isPOD with BitwiseCopyable where possible
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m, deferred
 created: 2026-05-18T04:25:45Z
-updated: 2026-10-06T06:21:09Z
+updated: 2026-10-21T14:35:59Z
+closed: 2026-10-21T14:35:59Z
 +++
 
 Swift 6's `BitwiseCopyable` protocol covers most of what our `isPOD`/`_isPOD` helper checks (trivially copyable, no refs, no ARC), but as a compile-time constraint rather than a runtime check.
@@ -4966,6 +4967,7 @@ Decide: convert what we can to generic `BitwiseCopyable` constraints, keep `isPO
 
 - `2026-08-08T16:23:40Z`: parameter(_:value:) and parameter(_:values:) are now constrained to BitwiseCopyable, so the POD check happens at compile time; the runtime isPOD/isPODArray/isArray asserts and the (now unused) helpers in MetalSprocketsSupport are gone. MetalSupport still ships runtime equivalents if an erased check is ever needed.
 - `2026-08-08T22:00:16Z`: Reverted: the BitwiseCopyable constraint on parameter(_:value:)/(_:values:) broke downstream callers (MetalSprocketsAddOns) passing C/Metal header structs. Back to some Any with runtime POD asserts for now.
+- `2026-10-21T14:35:59Z`: Banned by maintainer (2026-10-21): BitwiseCopyable adoption has been very problematic. Do not attempt.
 
 ---
 
@@ -6200,12 +6202,13 @@ cSettings: [
 ## 396: Default metallib output name implies a debug build
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
-labels: area:metal, area:plugin, effort:xs, blocked
+labels: area:metal, area:plugin, effort:xs
 created: 2026-08-25T22:45:15Z
-updated: 2026-10-16T18:48:53Z
+updated: 2026-10-21T14:46:18Z
+closed: 2026-10-21T14:46:18Z
 +++
 
 MetalCompilerPlugin names its default output `debug.metallib` in every build configuration. Release builds therefore ship a metallib whose filename incorrectly suggests that it contains debug output.
@@ -6218,6 +6221,7 @@ Actual: Debug and Release builds both produce `debug.metallib`.
 Rename the default output to a configuration-neutral filename.
 
 - `2026-10-07T14:27:55Z`: Auto-fixer punt: the default 'debug.metallib' name is produced by MetalCompilerPlugin (external package github.com/schwa/MetalCompilerPlugin), not this repo. This repo only consumes it (ShaderLibrary loads default.metallib and falls back to debug.metallib). The configuration-neutral rename must land in the MetalCompilerPlugin repo, then this repo's fallback can be updated to match. Suggest moving/retitling this issue against that package, or fix it there and bump the dependency.
+- `2026-10-21T14:46:18Z`: Fixed upstream: MetalCompilerPlugin 0.4.x (commit 61e2441, 'Use one default Metal library') defaults to default.metallib, and this repo pins 0.4.1. The built MetalSprocketsUIShaders bundle contains default.metallib. ShaderLibrary still falls back to debug.metallib (ShaderLibrary.swift:220) for bundles built with older plugin versions; left in place.
 
 ---
 
@@ -8585,9 +8589,9 @@ Found while porting MetalSprocketsAddOns. Not covered in Documentation/Porting-t
 status: open
 priority: low
 kind: enhancement
-labels: area:api, area:metal4, effort:s, deferred
+labels: area:api, area:metal4, effort:s
 created: 2026-09-30T16:32:51Z
-updated: 2026-10-06T06:28:54Z
+updated: 2026-10-21T14:35:59Z
 +++
 
 Follow-up to #454 (closed will not-fix; the isOptional flag was reverted).
@@ -8987,9 +8991,9 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 status: open
 priority: low
 kind: bug
-labels: area:metal4, effort:s, needs-decision, deferred
+labels: area:metal4, effort:s, needs-decision
 created: 2026-10-02T15:54:58Z
-updated: 2026-10-21T14:25:12Z
+updated: 2026-10-21T14:42:35Z
 +++
 
 Draw.swift (around line 75) calls setCullMode(.none), setTriangleFillMode(.fill), setFrontFacing(.clockwise) and setVertexAmplificationCount(1) before every draw, so state set inside one Draw closure does not leak to the next.
@@ -9117,9 +9121,9 @@ Re-sized to effort:l and deferred: macro plus StateBox change plus migration is 
 status: open
 priority: medium
 kind: enhancement
-labels: area:metal4, area:performance, effort:l, needs-decision, deferred
+labels: area:metal4, area:performance, effort:l, needs-decision
 created: 2026-10-03T00:16:32Z
-updated: 2026-10-16T18:45:17Z
+updated: 2026-10-21T14:42:43Z
 +++
 
 Potential performance issue, not measured.
@@ -9302,9 +9306,9 @@ On device, the first frames after opening an immersive space (ImmersiveRenderCon
 status: open
 priority: low
 kind: enhancement
-labels: effort:m, area:api, deferred
+labels: effort:m, area:api
 created: 2026-10-07T01:51:42Z
-updated: 2026-10-21T13:56:53Z
+updated: 2026-10-21T14:42:49Z
 +++
 
 RenderView configures its Metal context through SwiftUI view modifiers backed by EnvironmentValues (`.device`, `.commandQueue`, `.shaderStore`, `.metalShaderLogging`, `.renderViewLogFrame`, `.renderViewFatalErrorOnError`). Runner and OffscreenRenderer configure the same underlying context through init parameters (device, commandQueue, shaderLogging, residency, maximumInFlightSubmissions; plus size/colorUsage/depthUsage/clearDepth for OffscreenRenderer).
@@ -9386,13 +9390,14 @@ This needs a guarantee that recording frame N+k (k = maximumInFlightSubmissions)
 ## 486: Per-frame CPU cost is high for many draw elements
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
-labels: area:performance, effort:l, deferred
+labels: area:performance, effort:l
 depends: 489, 495, 496, 497, 498, 501, 506, 507, 513, 514, 515, 516, 519
 created: 2026-10-16T12:46:24Z
-updated: 2026-10-16T18:45:18Z
+updated: 2026-10-21T14:44:40Z
+closed: 2026-10-21T14:44:40Z
 +++
 
 A client app (a scene graph built on MetalSprockets) dropped to about 6 fps when one frame had about 180 non-instanced draws. The CPU time is spent reconciling the element tree. Metal encoding and the GPU are not the bottleneck.
@@ -9432,6 +9437,7 @@ Related: #476 (argument tables rebuilt for every draw).
 - `2026-10-16T14:00:31Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 - `2026-10-16T14:47:53Z`: Retitled: StructuralIdentifier hashing is now ~6% of frame samples; see RFC 0006 for current breakdown.
 - `2026-10-16T17:51:27Z`: Autoresearch session (RFC 0006, 'Autoresearch session'): per-frame CPU geomean 5.10 -> 2.86 ms (cubes 1000: 6.71 -> 3.39 ms; draws 100/pass: 3.87 -> 2.42 ms), Release, offscreen benchmark. Landed as three commits: 'Element equality through cached Equatable metatypes', 'Argument tables without per-draw dictionaries or arrays', 'Cheaper reconciliation, dispatch and identity'. Real-app gap still tracked in #507.
+- `2026-10-21T14:44:40Z`: Closing: target met in the offscreen benchmark (Release, 1000 cubes 3.39 ms/frame, about 3.4 us per draw vs the 0.1 ms target). Not re-measured in Debug or in the client app. Remaining work: #501, #513, #518, #519, #521, #522, #523, #507 and RFC 0006.
 
 ---
 
@@ -9597,9 +9603,9 @@ Expected
 status: open
 priority: medium
 kind: task
-labels: area:timing, area:metal4, effort:s, deferred
+labels: area:timing, area:metal4, effort:s
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-21T13:56:53Z
+updated: 2026-10-21T14:43:30Z
 +++
 
 Follow-up to #448.
@@ -9622,9 +9628,9 @@ Expected
 status: open
 priority: low
 kind: task
-labels: area:timing, area:metal4, effort:s, deferred
+labels: area:timing, area:metal4, effort:s
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-21T13:56:53Z
+updated: 2026-10-21T14:43:35Z
 +++
 
 Follow-up to #448.
@@ -10248,9 +10254,9 @@ Expected
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:metal4, effort:m, deferred
+labels: area:performance, area:metal4, effort:m
 created: 2026-10-16T15:41:08Z
-updated: 2026-10-16T18:45:18Z
+updated: 2026-10-21T14:43:45Z
 +++
 
 Part of RFC 0006.
@@ -10368,9 +10374,9 @@ Review RFCs, experiments, and scripts in the repo. Remove or archive anything th
 status: open
 priority: low
 kind: enhancement
-labels: area:performance, effort:m, deferred
+labels: area:performance, effort:m
 created: 2026-10-16T17:51:05Z
-updated: 2026-10-16T18:45:18Z
+updated: 2026-10-21T14:43:50Z
 +++
 
 Part of RFC 0006. Found in the autoresearch session.
@@ -10535,9 +10541,9 @@ Concerns found
 status: open
 priority: low
 kind: enhancement
-labels: area:architecture, effort:xs, deferred
+labels: area:architecture, effort:xs
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-21T13:56:54Z
+updated: 2026-10-21T14:44:06Z
 +++
 
 From the RFC 0006 performance work.
@@ -10557,9 +10563,9 @@ What is wrong
 status: open
 priority: low
 kind: enhancement
-labels: area:architecture, effort:xs, deferred
+labels: area:architecture, effort:xs
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-21T13:56:54Z
+updated: 2026-10-21T14:44:10Z
 +++
 
 From the RFC 0006 performance work.
@@ -10578,9 +10584,9 @@ What is wrong
 status: open
 priority: low
 kind: enhancement
-labels: area:architecture, effort:s, deferred
+labels: area:architecture, effort:s
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-21T13:56:54Z
+updated: 2026-10-21T14:44:15Z
 +++
 
 From the RFC 0006 performance work.
@@ -10750,9 +10756,9 @@ Option 2 removes the cost; option 1 hides it. Repro: MetalSprocketsParticles Sti
 status: new
 priority: medium
 kind: enhancement
-labels: area:performance, needs-design, deferred
+labels: area:performance, needs-design
 created: 2026-10-21T00:26:17Z
-updated: 2026-10-21T13:56:53Z
+updated: 2026-10-21T14:44:22Z
 +++
 
 PipelineCache keeps every compiled pipeline (render, mesh, compute), every compute base pipeline, and every binary function (#534) for the life of the context. Nothing is ever removed.
