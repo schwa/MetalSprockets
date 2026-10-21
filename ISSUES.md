@@ -1268,9 +1268,9 @@ closed: 2026-08-08T16:11:15Z
 status: open
 priority: low
 kind: feature
-labels: source:todo, effort:m, deferred, area:api
+labels: source:todo, effort:m, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:56Z
+updated: 2026-10-21T14:19:50Z
 +++
 
 Currently, `onWorkloadExit` is only available on `AnyBodylessElement`, while `onWorkloadEnter` is available as a general modifier for all Elements through `WorkloadModifier`.
@@ -8986,9 +8986,9 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 status: open
 priority: low
 kind: bug
-labels: area:metal4, effort:s, deferred
+labels: area:metal4, effort:s
 created: 2026-10-02T15:54:58Z
-updated: 2026-10-06T06:28:54Z
+updated: 2026-10-21T14:19:49Z
 +++
 
 Draw.swift (around line 75) calls setCullMode(.none), setTriangleFillMode(.fill), setFrontFacing(.clockwise) and setVertexAmplificationCount(1) before every draw, so state set inside one Draw closure does not leak to the next.
@@ -9991,9 +9991,9 @@ Suggested:
 status: open
 priority: low
 kind: enhancement
-labels: area:performance, effort:s, deferred
+labels: area:performance, effort:s
 created: 2026-10-16T14:07:47Z
-updated: 2026-10-16T15:05:29Z
+updated: 2026-10-21T14:19:49Z
 +++
 
 Follow-up to #496.
@@ -10029,12 +10029,12 @@ Add a toggle in the demo viewer to switch between rendering cubes with instancin
 ## 505: Add warmup frames to benchmarking
 
 +++
-status: new
-priority: medium
-kind: enhancement
-labels: deferred
+status: open
+priority: low
+kind: task
+labels: effort:s, area:tooling
 created: 2026-10-16T14:29:17Z
-updated: 2026-10-16T15:05:29Z
+updated: 2026-10-21T14:19:50Z
 +++
 
 Benchmarks should render a configurable number of warmup frames before measuring, so pipeline compilation, resource allocation, and caching don't skew results.
