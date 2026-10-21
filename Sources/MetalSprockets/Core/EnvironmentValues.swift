@@ -56,8 +56,9 @@ public struct MSEnvironmentValues {
         var value: Any.Type
     }
 
-    /// A stored value. Boxed with its static type so reads use `unsafeDowncast` instead of a dynamic cast from `Any`:
-    /// a key's value type is fixed, so the box for a key always has that key's `Value` type (#515).
+    /// A stored value. Boxed with its static type so reads use a class cast instead of a dynamic cast from `Any`:
+    /// a key's value type is fixed, so the box for a key always has that key's `Value` type (#515). The cast is
+    /// checked, so a wrong box traps instead of being undefined behaviour (#525).
     class Box: CustomStringConvertible {
         var description: String { "" }
     }
@@ -82,7 +83,8 @@ public struct MSEnvironmentValues {
     /// Accumulating modifiers use this so they rebuild from the parent's current value each frame instead of reading
     /// their own stale write back.
     internal func inheritedValue<Key: MSEnvironmentKey>(_ key: Key.Type) -> Key.Value {
-        inheritedValues[.init(key)].map { unsafeDowncast($0, to: TypedBox<Key.Value>.self).value } ?? Key.defaultValue
+        // swiftlint:disable:next force_cast
+        inheritedValues[.init(key)].map { ($0 as! TypedBox<Key.Value>).value } ?? Key.defaultValue
     }
 
     /// The parameter set, stored outside the dictionaries. Parameter modifiers write it on every draw every frame.
@@ -174,7 +176,8 @@ public extension MSEnvironmentValues {
             guard let box = effectiveValues[.init(key)] else {
                 return Key.defaultValue
             }
-            return unsafeDowncast(box, to: TypedBox<Key.Value>.self).value
+            // swiftlint:disable:next force_cast
+            return (box as! TypedBox<Key.Value>).value
         }
         set {
             setValue(TypedBox(newValue), forKey: .init(key))

@@ -10538,12 +10538,13 @@ Concerns found
 ## 525: Environment reads use unsafeDowncast
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:architecture, effort:xs
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-21T14:44:06Z
+updated: 2026-10-21T14:49:17Z
+closed: 2026-10-21T14:49:17Z
 +++
 
 From the RFC 0006 performance work.
@@ -10554,6 +10555,8 @@ What is wrong
 
 ## Proposed (per Jonathan)
 - Use a checked class cast (as! TypedBox<Value>). It checks the object's class, not a protocol conformance, so it should be cheap. Measure with Experiments/ReconciliationBenchmark before and after.
+
+- `2026-10-21T14:49:17Z`: Switched both reads to 'as! TypedBox<Value>'. ReconciliationBenchmark, Release, 3 runs each, cpu ms: draws 100/pass 2.54-2.57 before vs 2.59-2.66 after, 400/pass 10.51-10.91 vs 10.60-10.85; cubes 1000 3.52-3.84 vs 3.55-3.60. About 0-3% on draws, within noise on cubes.
 
 ---
 
