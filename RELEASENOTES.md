@@ -1,5 +1,9 @@
 # Release Notes
 
+## Unreleased
+
+- The iOS and visionOS Simulators are not supported. Their SDKs have no Metal 4 APIs, so MetalSprockets does not build for them (#473).
+
 ## 0.2.3
 
 ### Performance

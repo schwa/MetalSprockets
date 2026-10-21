@@ -9025,18 +9025,20 @@ Recommendation: A (possibly with B as a stopgap). Needs a decision on the leak b
 ## 473: No Metal 4 support in Simulator
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
-labels: effort:m, area:metal4, deferred
+labels: effort:m, area:metal4
 created: 2026-10-02T16:32:33Z
-updated: 2026-10-06T06:28:54Z
+updated: 2026-10-21T14:35:59Z
+closed: 2026-10-21T14:35:59Z
 +++
 
 Metal 4 APIs are unavailable in the iOS/visionOS Simulator. Code paths relying on Metal 4 fail or can't be exercised there; need a fallback or to document/guard the limitation.
 
 - `2026-10-05T22:29:40Z`: Umbrella for simulator support. Concrete build failures: #467 (visionOS Simulator), #478 (iOS Simulator).
 - `2026-10-05T23:14:22Z`: Consolidated #467 (visionOS Simulator) and #478 (iOS Simulator) here as duplicates. The Simulator SDKs' MTL4*.h headers are empty stubs, so nearly all of the Metal layer fails to compile, not just the counter APIs. Decision needed: (a) document 'device/macOS only' in README + release notes, or (b) compile-only Simulator stub where elements throw 'Metal 4 unavailable' at runtime.
+- `2026-10-21T14:35:59Z`: Documented (option a): README Requirements and RELEASENOTES Unreleased say the Simulator is not supported. A compile-only Simulator stub (option b) is not planned.
 
 ---
 

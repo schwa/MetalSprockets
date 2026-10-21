@@ -28,6 +28,7 @@ MetalSprockets supports SwiftUI (`RenderView`), ARKit, visionOS immersive spaces
 - macOS 26, iOS 26, or visionOS 26 or later
 - Swift 6.2+ and Xcode 26.6+ (CI uses Xcode 26.6; developed with Xcode 27)
 - **Apple GPUs only:** Intel Macs are not supported.
+- **No Simulator:** the iOS and visionOS Simulator SDKs have no Metal 4 APIs, so MetalSprockets does not build for the Simulator. Use a device or a Mac.
 
 ---
 
