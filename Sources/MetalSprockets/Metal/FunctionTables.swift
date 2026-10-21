@@ -17,7 +17,8 @@ internal final class FunctionTables {
     private(set) var creationCount = 0
     private(set) var resources: ResourceCollection?
 
-    init(render state: any MTLRenderPipelineState, binaryFunctions: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [:]) {
+    /// `base` is the pipeline that `state` extends with binary functions. Static functions resolve by name only there.
+    init(render state: any MTLRenderPipelineState, base: (any MTLRenderPipelineState)? = nil, binaryFunctions: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [:]) {
         makeTable = { stage, count in
             let descriptor = MTLVisibleFunctionTableDescriptor()
             descriptor.functionCount = count
@@ -28,11 +29,12 @@ internal final class FunctionTables {
                 return state.functionHandle(function: binary, stage: Self.renderStage(stage))
             }
             return state.functionHandle(withName: name, stage: Self.renderStage(stage))
+                ?? base?.functionHandle(withName: name, stage: Self.renderStage(stage))
         }
     }
 
     /// Name lookup does not find binary-linked functions, so those resolve through `binaryFunctions`.
-    init(compute state: any MTLComputePipelineState, binaryFunctions: [String: any MTL4BinaryFunction] = [:]) {
+    init(compute state: any MTLComputePipelineState, base: (any MTLComputePipelineState)? = nil, binaryFunctions: [String: any MTL4BinaryFunction] = [:]) {
         makeTable = { _, count in
             let descriptor = MTLVisibleFunctionTableDescriptor()
             descriptor.functionCount = count
@@ -42,7 +44,7 @@ internal final class FunctionTables {
             if let binary = binaryFunctions[name] {
                 return state.functionHandle(function: binary)
             }
-            return state.functionHandle(withName: name)
+            return state.functionHandle(withName: name) ?? base?.functionHandle(withName: name)
         }
     }
 

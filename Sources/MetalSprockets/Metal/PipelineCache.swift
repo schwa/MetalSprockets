@@ -120,11 +120,11 @@ internal final class PipelineCache {
         let reflection: Reflection?
         let tableLabels: [MTLFunctionType: String]
 
-        init(state: any MTLRenderPipelineState, bindings: PipelineBindings, stages: [MTLFunctionType] = [.vertex, .fragment], reflection: MTLRenderPipelineReflection? = nil, binaryFunctions: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [:]) {
+        init(state: any MTLRenderPipelineState, bindings: PipelineBindings, stages: [MTLFunctionType] = [.vertex, .fragment], reflection: MTLRenderPipelineReflection? = nil, base: (any MTLRenderPipelineState)? = nil, binaryFunctions: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [:]) {
             self.state = state
             self.bindings = bindings
             self.stages = stages
-            functionTables = FunctionTables(render: state, binaryFunctions: binaryFunctions)
+            functionTables = FunctionTables(render: state, base: base, binaryFunctions: binaryFunctions)
             self.reflection = (reflection ?? state.reflection).map(Reflection.init)
             tableLabels = ParameterSet.tableLabels(pipelineLabel: state.label, stages: stages)
         }
@@ -149,10 +149,10 @@ internal final class PipelineCache {
         let reflection: Reflection?
         let tableLabels: [MTLFunctionType: String]
 
-        init(state: any MTLComputePipelineState, bindings: PipelineBindings, reflection: MTLComputePipelineReflection? = nil, binaryFunctions: [String: any MTL4BinaryFunction] = [:]) {
+        init(state: any MTLComputePipelineState, bindings: PipelineBindings, reflection: MTLComputePipelineReflection? = nil, base: (any MTLComputePipelineState)? = nil, binaryFunctions: [String: any MTL4BinaryFunction] = [:]) {
             self.state = state
             self.bindings = bindings
-            functionTables = FunctionTables(compute: state, binaryFunctions: binaryFunctions)
+            functionTables = FunctionTables(compute: state, base: base, binaryFunctions: binaryFunctions)
             self.reflection = (reflection ?? state.reflection).map(Reflection.init)
             tableLabels = ParameterSet.tableLabels(pipelineLabel: state.label, stages: [.kernel])
         }
@@ -167,12 +167,14 @@ internal final class PipelineCache {
 
     private struct RenderKey: Hashable {
         let base: RenderBaseKey
-        let vertexLinked: [ShaderFunction]
-        let fragmentLinked: [ShaderFunction]
+        let vertexBinary: [ShaderFunction]
+        let fragmentBinary: [ShaderFunction]
     }
 
-    /// Everything in a render pipeline's identity except its linked functions.
+    /// Everything in a render pipeline's identity except its binary-linked functions.
     private struct RenderBaseKey: Hashable {
+        let vertexStatic: [ShaderFunction]
+        let fragmentStatic: [ShaderFunction]
         let vertex: ShaderFunction
         let fragment: ShaderFunction
         let colorPixelFormats: [MTLPixelFormat]
@@ -200,13 +202,13 @@ internal final class PipelineCache {
     }
 
     private struct ComputeKey: Hashable {
-        let kernel: ShaderFunction
-        let linked: [ShaderFunction]
-        let label: String?
+        let base: ComputeBaseKey
+        let binary: [ShaderFunction]
     }
 
     private struct ComputeBaseKey: Hashable {
         let kernel: ShaderFunction
+        let staticLinked: [ShaderFunction]
         let label: String?
     }
 
@@ -241,6 +243,8 @@ internal final class PipelineCache {
         let vertexLinked = Self.uniqued(configuration.linkedFunctions + configuration.vertexLinkedFunctions)
         let fragmentLinked = Self.uniqued(configuration.linkedFunctions + configuration.fragmentLinkedFunctions)
         let baseKey = RenderBaseKey(
+            vertexStatic: Self.references(vertexLinked, .static),
+            fragmentStatic: Self.references(fragmentLinked, .static),
             vertex: configuration.vertex.reference,
             fragment: configuration.fragment.reference,
             colorPixelFormats: configuration.colorPixelFormats,
@@ -251,38 +255,38 @@ internal final class PipelineCache {
             descriptor: (configuration.baseDescriptor?.copy() as? MTL4RenderPipelineDescriptor).map(DescriptorKey.init),
             label: configuration.label
         )
-        let key = RenderKey(base: baseKey, vertexLinked: vertexLinked.map(\.reference), fragmentLinked: fragmentLinked.map(\.reference))
+        let key = RenderKey(base: baseKey, vertexBinary: Self.references(vertexLinked, .binary), fragmentBinary: Self.references(fragmentLinked, .binary))
         if let cached = renderPipelines[key] {
             return cached
         }
         let allLinked = Self.uniqued(vertexLinked + fragmentLinked)
         try validate([baseKey.vertex, baseKey.fragment] + allLinked.map(\.reference), label: configuration.label)
-        try Self.validateExportNames(key.vertexLinked, label: configuration.label)
-        try Self.validateExportNames(key.fragmentLinked, label: configuration.label)
+        try Self.validateExportNames(vertexLinked.map(\.reference), label: configuration.label)
+        try Self.validateExportNames(fragmentLinked.map(\.reference), label: configuration.label)
         try ShaderDeviceCheck.validateLinkedFunctions(allLinked, device: device, label: configuration.label)
-        if !allLinked.isEmpty, case let .binary(base, reflection) = try renderBase(baseKey) {
-            let vertexBinaries = try key.vertexLinked.map { try binaryFunction($0) }
-            let fragmentBinaries = try key.fragmentLinked.map { try binaryFunction($0) }
+        let hasBinary = !key.vertexBinary.isEmpty || !key.fragmentBinary.isEmpty
+        if hasBinary, case let .binary(base, reflection) = try renderBase(baseKey) {
+            let vertexBinaries = try key.vertexBinary.map { try binaryFunction($0) }
+            let fragmentBinaries = try key.fragmentBinary.map { try binaryFunction($0) }
             let functions = MTL4RenderPipelineBinaryFunctionsDescriptor()
             functions.vertexAdditionalBinaryFunctions = vertexBinaries
             functions.fragmentAdditionalBinaryFunctions = fragmentBinaries
             let state = try base.makeRenderPipelineState(additionalBinaryFunctions: functions)
             let named: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [
-                .vertex: Dictionary(zip(key.vertexLinked.map(\.exportName), vertexBinaries)) { first, _ in first },
-                .fragment: Dictionary(zip(key.fragmentLinked.map(\.exportName), fragmentBinaries)) { first, _ in first }
+                .vertex: Dictionary(zip(key.vertexBinary.map(\.exportName), vertexBinaries)) { first, _ in first },
+                .fragment: Dictionary(zip(key.fragmentBinary.map(\.exportName), fragmentBinaries)) { first, _ in first }
             ]
             let bindings = PipelineBindings([(.vertex, reflection.vertexBindings), (.fragment, reflection.fragmentBindings)])
-            let pipeline = RenderPipeline(state: state, bindings: bindings, reflection: reflection, binaryFunctions: named)
+            let pipeline = RenderPipeline(state: state, bindings: bindings, reflection: reflection, base: base, binaryFunctions: named)
             renderPipelines[key] = pipeline
             return pipeline
         }
+        // No binary functions, or the shaders need static linking: link everything statically.
         let descriptor = try makeRenderDescriptor(baseKey)
-        if !key.vertexLinked.isEmpty {
-            descriptor.vertexStaticLinkingDescriptor = try Self.staticLinking(key.vertexLinked)
-        }
-        if !key.fragmentLinked.isEmpty {
-            descriptor.fragmentStaticLinkingDescriptor = try Self.staticLinking(key.fragmentLinked)
-        }
+        let vertexAll = baseKey.vertexStatic + key.vertexBinary
+        let fragmentAll = baseKey.fragmentStatic + key.fragmentBinary
+        descriptor.vertexStaticLinkingDescriptor = vertexAll.isEmpty ? nil : try Self.staticLinking(vertexAll)
+        descriptor.fragmentStaticLinkingDescriptor = fragmentAll.isEmpty ? nil : try Self.staticLinking(fragmentAll)
         // Depth and stencil formats are not MTL4RenderPipelineDescriptor state; they key the cache so pipelines built
         // for different pass layouts stay distinct, and render-state parity (#426) validates them against passes.
         let state = try compiler.makeRenderPipelineState(descriptor: descriptor)
@@ -306,6 +310,12 @@ internal final class PipelineCache {
         }
         descriptor.rasterSampleCount = key.rasterSampleCount
         descriptor.vertexDescriptor = key.vertexLayout?.descriptor
+        if !key.vertexStatic.isEmpty {
+            descriptor.vertexStaticLinkingDescriptor = try Self.staticLinking(key.vertexStatic)
+        }
+        if !key.fragmentStatic.isEmpty {
+            descriptor.fragmentStaticLinkingDescriptor = try Self.staticLinking(key.fragmentStatic)
+        }
         descriptor.options = Self.reflectingOptions()
         return descriptor
     }
@@ -387,7 +397,12 @@ internal final class PipelineCache {
         return linking
     }
 
+    private static func references(_ functions: [VisibleFunction], _ linking: VisibleFunction.Linking) -> [ShaderFunction] {
+        functions.filter { $0.linking == linking }.map(\.reference)
+    }
+
     /// Shared and stage-specific lists can name the same function. Link it once.
+    /// If the lists disagree on its linking, the first occurrence wins.
     private static func uniqued(_ functions: [VisibleFunction]) -> [VisibleFunction] {
         var seen: Set<ShaderFunction> = []
         return functions.filter { seen.insert($0.reference).inserted }
@@ -398,28 +413,31 @@ internal final class PipelineCache {
     }
 
     func computePipeline(kernel: ComputeKernel, linkedFunctions: [VisibleFunction] = [], label: String? = nil) throws -> ComputePipeline {
-        let key = ComputeKey(kernel: kernel.reference, linked: linkedFunctions.map(\.reference), label: label)
+        let linkedFunctions = Self.uniqued(linkedFunctions)
+        let baseKey = ComputeBaseKey(kernel: kernel.reference, staticLinked: Self.references(linkedFunctions, .static), label: label)
+        let key = ComputeKey(base: baseKey, binary: Self.references(linkedFunctions, .binary))
         if let cached = computePipelines[key] {
             return cached
         }
-        try validate([key.kernel] + key.linked, label: label)
-        try Self.validateExportNames(key.linked, label: label)
+        let allLinked = linkedFunctions.map(\.reference)
+        try validate([baseKey.kernel] + allLinked, label: label)
+        try Self.validateExportNames(allLinked, label: label)
         try ShaderDeviceCheck.validateLinkedFunctions(linkedFunctions, device: device, label: label)
-        if !key.linked.isEmpty, case let .binary(base, reflection) = try computeBase(kernel: key.kernel, label: label) {
-            let binaries = try key.linked.map { try binaryFunction($0) }
+        if !key.binary.isEmpty, case let .binary(base, reflection) = try computeBase(baseKey) {
+            let binaries = try key.binary.map { try binaryFunction($0) }
             let state = try base.makeComputePipelineState(additionalBinaryFunctions: binaries)
-            let named = Dictionary(zip(key.linked.map(\.exportName), binaries)) { first, _ in first }
-            let pipeline = ComputePipeline(state: state, bindings: PipelineBindings([(.kernel, reflection.bindings)]), reflection: reflection, binaryFunctions: named)
+            let named = Dictionary(zip(key.binary.map(\.exportName), binaries)) { first, _ in first }
+            let pipeline = ComputePipeline(state: state, bindings: PipelineBindings([(.kernel, reflection.bindings)]), reflection: reflection, base: base, binaryFunctions: named)
             computePipelines[key] = pipeline
             return pipeline
         }
+        // No binary functions, or the kernel needs static linking: link everything statically.
         let descriptor = MTL4ComputePipelineDescriptor()
         descriptor.label = label
-        descriptor.computeFunctionDescriptor = try key.kernel.makeFunctionDescriptor()
-        if !key.linked.isEmpty {
-            let linking = MTL4StaticLinkingDescriptor()
-            linking.functionDescriptors = try key.linked.map { try $0.makeFunctionDescriptor() }
-            descriptor.staticLinkingDescriptor = linking
+        descriptor.computeFunctionDescriptor = try baseKey.kernel.makeFunctionDescriptor()
+        let staticAll = baseKey.staticLinked + key.binary
+        if !staticAll.isEmpty {
+            descriptor.staticLinkingDescriptor = try Self.staticLinking(staticAll)
         }
         descriptor.options = Self.reflectingOptions()
         let state = try compiler.makeComputePipelineState(descriptor: descriptor)
@@ -430,14 +448,16 @@ internal final class PipelineCache {
         return pipeline
     }
 
-    private func computeBase(kernel: ShaderFunction, label: String?) throws -> ComputeBase {
-        let key = ComputeBaseKey(kernel: kernel, label: label)
+    private func computeBase(_ key: ComputeBaseKey) throws -> ComputeBase {
         if let cached = computeBases[key] {
             return cached
         }
         let descriptor = MTL4ComputePipelineDescriptor()
-        descriptor.label = label
-        descriptor.computeFunctionDescriptor = try kernel.makeFunctionDescriptor()
+        descriptor.label = key.label
+        descriptor.computeFunctionDescriptor = try key.kernel.makeFunctionDescriptor()
+        if !key.staticLinked.isEmpty {
+            descriptor.staticLinkingDescriptor = try Self.staticLinking(key.staticLinked)
+        }
         descriptor.supportBinaryLinking = true
         descriptor.options = Self.reflectingOptions()
         let base: ComputeBase

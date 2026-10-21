@@ -217,9 +217,27 @@ public struct MeshShader: ShaderProtocol {
 public struct VisibleFunction: ShaderProtocol {
     public static let functionType: MTLFunctionType = .visible
     public let reference: ShaderFunction
+    /// How pipelines link this function. Defaults to `.binary`.
+    public var linking: Linking = .binary
+
+    /// How a pipeline links a visible function.
+    public enum Linking: Sendable, Hashable {
+        /// Compiled once on its own and added to the pipeline without rebuilding it. Calls cannot be inlined.
+        case binary
+        /// Compiled into the pipeline, so the compiler can inline calls. Changing the set of static functions rebuilds
+        /// the pipeline.
+        case `static`
+    }
 
     public init(_ reference: ShaderFunction) throws {
         try reference.validate(type: Self.functionType)
         self.reference = reference
+    }
+
+    /// Returns a copy of this function that pipelines link with `linking`.
+    public func linking(_ linking: Linking) -> Self {
+        var copy = self
+        copy.linking = linking
+        return copy
     }
 }

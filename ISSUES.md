@@ -10819,11 +10819,13 @@ Not confirmed from inside MetalSprockets; repro is MetalSprocketsParticles Shadi
 ## 540: Binary-linked visible functions can't be inlined; per-pixel calls get slower
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
-labels: area:performance,effort:m
+labels: area:performance, effort:m
 created: 2026-10-21T01:20:45Z
+updated: 2026-10-21T01:36:34Z
+closed: 2026-10-21T01:36:34Z
 +++
 
 After #538, render pipelines binary-link their visible functions. That removed the first-frame rebuild (a new custom shading function in MetalSprocketsParticles: 50-100 ms down to ~8 ms), but the calls apparently can no longer be inlined. MetalSprocketsParticles' Foil Confetti preset, whose sprites call a visible shading function per pixel, measures 0.12 ms GPU before and ~0.175 ms after (+45%), in alternating runs on the same machine. Per-vertex calls showed no measurable change.

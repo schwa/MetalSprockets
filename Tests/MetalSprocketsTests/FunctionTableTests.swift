@@ -99,6 +99,39 @@ struct FunctionTableTests {
         #expect(runner.context.pipelines.compilationCount == 1)
     }
 
+    // #540
+    @Test(.timeLimit(.minutes(1)))
+    func staticAndBinaryLinkedFunctionsMix() async throws {
+        let library = try await device.makeLibrary(source: VisibleFunctionTableTests.computeTableSource, options: nil)
+        let kernel = try ComputeKernel(library: library, name: "compute_main")
+        let plusOne = try VisibleFunction(library: library, name: "plus_one").linking(.static)
+        let timesTwo = try VisibleFunction(library: library, name: "times_two")
+        let runner = try FrameRunner(device: device)
+        #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne], table: [plusOne]) == (0..<64).map { UInt32($0) + 1 })
+        #expect(runner.context.pipelines.compilationCount == 1)
+        #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne, timesTwo], table: [plusOne]) == (0..<64).map { UInt32($0) + 1 })
+        #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne, timesTwo], table: [timesTwo]) == (0..<64).map { UInt32($0) * 2 })
+        // The base with plusOne statically linked compiles once; timesTwo extends it.
+        #expect(runner.context.pipelines.compilationCount == 2)
+    }
+
+    // #540
+    @Test func staticLinkedFunctionsRebuildTheRenderPipeline() throws {
+        let library = try device.makeLibrary(source: VisibleFunctionTableTests.fragmentTableSource, options: nil)
+        let vertex = try VertexShader(library: library, name: "vertex_main")
+        let fragment = try FragmentShader(library: library, name: "fragment_main")
+        let red = try VisibleFunction(library: library, name: "red_visible").linking(.static)
+        let green = try VisibleFunction(library: library, name: "green_visible")
+        let context = try MetalContext(device: device)
+        for linked in [[red], [red, green], [green]] {
+            let configuration = RenderPipelineConfiguration(vertex: vertex, fragment: fragment, colorPixelFormats: [.bgra8Unorm], vertexDescriptor: vertex.inferredVertexDescriptor(), fragmentLinkedFunctions: linked)
+            let pipeline = try context.pipelines.renderPipeline(configuration)
+            _ = try pipeline.functionTables.table(named: "colorTable", stage: .fragment, functions: linked)
+        }
+        // [red]: static-only pipeline. [red, green]: base with red static. [green]: base with nothing static.
+        #expect(context.pipelines.compilationCount == 3)
+    }
+
     // #538
     @Test func newLinkedFunctionsReuseTheRenderPipeline() throws {
         let library = try device.makeLibrary(source: VisibleFunctionTableTests.fragmentTableSource, options: nil)
