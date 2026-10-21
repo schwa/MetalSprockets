@@ -10951,12 +10951,13 @@ MetalContext.init creates an MTLLogState when ShaderLogging.systemDefault is set
 ## 546: Render pipelines still add binary functions with makeRenderPipelineState(additionalBinaryFunctions:)
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:metal4, effort:s
 created: 2026-10-21T13:30:54Z
-updated: 2026-10-21T13:40:16Z
+updated: 2026-10-21T13:49:54Z
+closed: 2026-10-21T13:49:54Z
 +++
 
 #541 moved compute pipelines to MTL4PipelineStageDynamicLinkingDescriptor because the additionalBinaryFunctions path crashes under Metal API validation. The render path in PipelineCache.renderPipeline still uses makeRenderPipelineState(additionalBinaryFunctions:). It passes under validation in this repo's tests (FunctionTableTests, PipelineCacheTests with MTL_DEBUG_LAYER=1), so it was left alone. But the original #541 report saw '-[MTLDebugFunction vendorPrivate]' in MetalSprocketsParticles, which may come from a render case the tests do not cover (for example stitched functions). Add a test for that case under validation. If it crashes, move render to MTL4RenderPipelineDynamicLinkingDescriptor the same way. Measured cost for compute: about 0.1 ms per new binary set, against about 0.01 ms before; the kernel is not recompiled.
