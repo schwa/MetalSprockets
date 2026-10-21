@@ -10859,6 +10859,7 @@ Repro in this repo's tests: run the binary-linking tests (FunctionTableTests, Pi
 Fix: build binary-linked pipelines with the dynamic linking descriptor. Measure the cost: today a cached base pipeline is reused and only the binaries are added; with the descriptor each new binary set creates a pipeline from the descriptor. Benchmarks in MetalSprocketsParticles (user functions, stitched modules) show whether that matters.
 
 - `2026-10-21T12:40:45Z`: Repro moved to ~/Desktop/BinaryFunctionRepro (SwiftPM; ./run-matrix.sh; FEEDBACK.md filed text). Matrix on macOS 27.0.1 (26A434), Xcode 27.0 (27A266a), M5 Max, under MTL_DEBUG_LAYER=1: compute+additionalBinaryFunctions CRASH (SIGBUS); compute+dynamicLinkingDescriptor ok; render+additionalBinaryFunctions ok; render+dynamicLinkingDescriptor ok. So the validation crash is compute-only, in newComputePipelineStateWithBinaryFunctions:. Fix scope: the compute path in PipelineCache.computePipeline must link at creation via MTL4PipelineStageDynamicLinkingDescriptor; render can stay as is for validation (but see #542). No Xcode/forum known issue found.
+- `2026-10-21T12:48:58Z`: Repro in tests (#543): xcb test -e MTL_DEBUG_LAYER=1. Only the compute path crashes (newComputePipelineStateWithBinaryFunctions); render binary linking passes under validation. FunctionTableTests and VisibleFunctionTableTests are skipped under validation with .disabledUnderValidation("... (#541)"); remove the trait when fixed.
 
 ---
 
@@ -10881,19 +10882,50 @@ Repro in this repo's tests: run the binary-linking tests with MTL_CAPTURE_ENABLE
 Not yet found: a public API path where capture wraps binary functions (tried sync, async, pipelineIndependent, both linking paths). Still to try: binary functions from an MTL4Archive, and render pipelines. Report to Apple with the repro. Until there is a path that works, decide whether binary linking must fall back to static linking when a pipeline cannot take the binary functions.
 
 - `2026-10-21T12:40:45Z`: Render confirmed too. Matrix (~/Desktop/BinaryFunctionRepro, macOS 27.0.1, Xcode 27.0 27A266a, M5 Max) under MTL_CAPTURE_ENABLED=1: compute additional, compute dynamic, render additional, render dynamic all crash with '-[AGXG17XFamilyBinaryFunction baseObject]: unrecognized selector' (GPUToolsCapture unwrapNSArray). CaptureMTL4Compiler.makeBinaryFunction returns the unwrapped driver object (sync, async, pipelineIndependent all the same). No public path works under capture. Searched Xcode 26-27 release notes and developer forums: no known issue; Xcode 26 notes list unsupported Metal 4 debugger features and binary functions are not among them. Feedback text ready in FEEDBACK.md; MetalSprockets cannot fix this one without avoiding binary linking.
+- `2026-10-21T12:48:58Z`: Confirmed in this repo's tests (#543): render pipelines crash too, in PipelineCache.renderPipeline (FunctionTableTests, VisibleFunctionTableTests, PipelineCacheTests.renderPipelineIdentityCoversLinkedFunctionStage). Those tests are skipped under capture with .disabledUnderCapture("... (#542)"); remove the trait when this is fixed. Note: under API validation alone, render binary linking passes; only compute crashes (#541).
 
 ---
 
 ## 543: Run GPU tests under Metal API validation and GPU frame capture
 
 +++
-status: new
+status: closed
 priority: high
 kind: task
 labels: area:testing, effort:s
 created: 2026-10-21T12:34:06Z
+updated: 2026-10-21T13:28:06Z
+closed: 2026-10-21T13:28:06Z
 +++
 
 The suite never runs with MTL_DEBUG_LAYER=1 or MTL_CAPTURE_ENABLED=1, so failures that only happen in Xcode Debug runs (both layers are on by default there) never fail a test. Binary-linked pipelines crash under both layers, and nothing caught it. Port MetalSprocketsGLTF's .metalValidation trait (sets the env var before the device exists and checks the device class), add a capture variant, and apply both to the pipeline and function-table suites.
+
+---
+
+## 544: Metal layer test runs are manual; CI never runs them
+
++++
+status: new
+priority: low
+kind: none
+labels: area:testing, effort:s
+created: 2026-10-21T12:49:05Z
++++
+
+Scripts/test-metal-layers.sh (#543) runs the suite under MTL_DEBUG_LAYER=1, MTL_CAPTURE_ENABLED=1, and both. Nothing runs it automatically. CI runners have no Metal 4 device (#444), so most GPU tests skip there anyway. Decide whether to run it in CI, in a pre-push hook, or as a documented release step.
+
+---
+
+## 545: MetalContext creates a log state when shader logging is on, which breaks GPU frame capture
+
++++
+status: new
+priority: low
+kind: none
+labels: area:metal4
+created: 2026-10-21T12:49:05Z
++++
+
+MetalContext.init creates an MTLLogState when ShaderLogging.systemDefault is set (MS_METAL_LOGGING). After any log state exists, Metal refuses captures for the rest of the process ('Capturing Shader logging is not supported'). So a user with MS_METAL_LOGGING on cannot use Xcode GPU capture or MetalSprockets capture scopes, and gets an error only at capture time. Found while adding layered test runs (#543): the tests already skip log-state tests under capture. Decide whether to warn, skip the log state under capture, or document it.
 
 ---

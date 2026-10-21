@@ -93,7 +93,9 @@ struct ProcessInfoExtensionsTests {
 struct CommandBufferLoggingTests {
     @Test(
         "addMetalSprocketsLogging attaches a log state", .requiresMetal4,
-        .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Metal log state unavailable on CI runners")
+        .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Metal log state unavailable on CI runners"),
+        // Creating any MTLLogState makes Metal refuse captures for the rest of the process.
+        .disabledUnderCapture("Shader logging disables GPU capture process-wide")
     )
     func testAddMetalSprocketsLogging() throws {
         let descriptor = MTLCommandBufferDescriptor()

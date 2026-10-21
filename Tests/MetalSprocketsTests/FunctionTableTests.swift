@@ -13,7 +13,7 @@ private func functionTablesSupported() -> Bool {
 
 /// Legacy VisibleFunctionTableTests scenes and diagnostics on the Metal 4 candidate, against unchanged references.
 @MainActor
-@Suite("Metal 4 visible-function tables", .requiresMetal4, .enabled(if: functionTablesSupported(), "Requires Metal 4, Apple 7 and function pointers"))
+@Suite("Metal 4 visible-function tables", .requiresMetal4, .enabled(if: functionTablesSupported(), "Requires Metal 4, Apple 7 and function pointers"), .disabledUnderValidation("Binary linking crashes under API validation (#541)"), .disabledUnderCapture("Binary linking crashes under GPU frame capture (#542)"))
 struct FunctionTableTests {
     private let device = MTLCreateSystemDefaultDevice()!
 

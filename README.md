@@ -197,7 +197,11 @@ Set these variables in Xcode's scheme editor or your shell. The values `yes`, `t
 | `MS_RENDERVIEW_LOG_FRAME` | Log frame rendering information in RenderView |
 | `MS_DUMP_SNAPSHOTS` | Dump system snapshots to JSONL files in `$TMPDIR/metal-sprockets_snapshots/` for debugging the element tree |
 
+---
 
+## Testing
+
+Run the tests with `xcb test`. Xcode Debug runs also turn on Metal API validation and GPU frame capture, and some failures happen only under those layers. To run the suite under each layer, use `Scripts/test-metal-layers.sh`. To run one layer, set its variable for the whole run, for example `xcb test -e MTL_DEBUG_LAYER=1` or `xcb test -e MTL_CAPTURE_ENABLED=1`.
 
 ---
 
