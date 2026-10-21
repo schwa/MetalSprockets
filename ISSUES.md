@@ -10035,15 +10035,18 @@ Add a toggle in the demo viewer to switch between rendering cubes with instancin
 ## 505: Add warmup frames to benchmarking
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:s, area:tooling
 created: 2026-10-16T14:29:17Z
-updated: 2026-10-21T14:19:50Z
+updated: 2026-10-21T14:26:50Z
+closed: 2026-10-21T14:26:50Z
 +++
 
 Benchmarks should render a configurable number of warmup frames before measuring, so pipeline compilation, resource allocation, and caching don't skew results.
+
+- `2026-10-21T14:26:50Z`: ReconciliationBenchmark already skipped 3 hard-coded warmup frames. Added --warmup N (default 3) and print it in the header. Other benchmarks (Example app profiling) not changed.
 
 ---
 

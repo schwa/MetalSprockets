@@ -1,6 +1,8 @@
 // Per-frame CPU cost with many draw elements (#486, #487).
-// Usage: ReconciliationBenchmark [--scenario cubes|draws|static] [--frames N] [--counts 10,50,100] [--moving N]
-//                                [--half-modifiers] [--flat]
+// Usage: ReconciliationBenchmark [--scenario cubes|draws|static] [--frames N] [--warmup N] [--counts 10,50,100]
+//                                [--moving N] [--half-modifiers] [--flat]
+//   --warmup: frames rendered and not measured before each count (default 3), so pipeline compilation, allocation
+//             and caching are not counted.
 //   cubes (default): the Example app's Render demo, one Draw per cube in a ForEach. Default count 1000.
 //   draws: the #486 repro, two passes with a deeper modifier stack per draw.
 //   static: the cubes scene where only the first --moving cubes (default 10) change each frame; the rest are
@@ -58,6 +60,7 @@ struct Options {
 
     var scenario = Scenario.cubes
     var frames = 60
+    var warmup = 3
     var moving = 10
     var halfModifiers = false
     var flat = false
@@ -73,6 +76,7 @@ struct Options {
                 }
                 self.scenario = scenario
             case "--frames": frames = Int(iterator.next() ?? "") ?? frames
+            case "--warmup": warmup = max(0, Int(iterator.next() ?? "") ?? warmup)
             case "--moving": moving = Int(iterator.next() ?? "") ?? moving
             case "--half-modifiers": halfModifiers = true
             case "--flat": flat = true
@@ -258,21 +262,20 @@ let configuration = "debug"
 let configuration = "release"
 #endif
 let counts = options.counts ?? (options.scenario == .draws ? [10, 50, 100, 200, 400] : [1_000])
-print("# scenario=\(options.scenario.rawValue) config=\(configuration) frames=\(options.frames) moving=\(options.moving) halfModifiers=\(options.halfModifiers) flat=\(options.flat)")
+print("# scenario=\(options.scenario.rawValue) config=\(configuration) frames=\(options.frames) warmup=\(options.warmup) moving=\(options.moving) halfModifiers=\(options.halfModifiers) flat=\(options.flat)")
 print("# medians in ms; perDraw in microseconds of total CPU")
 print("count,draws,frame,content,update,setup,workload,cpu,gpu,perDrawUs")
 
 for count in counts {
     var frame: [Double] = [], content: [Double] = [], update: [Double] = [], setup: [Double] = [], workload: [Double] = [], gpu: [Double] = []
     var draws = 0
-    // Warm-up frames so first-frame pipeline creation is not counted.
-    for index in 0 ..< (options.frames + 3) {
+    for index in 0 ..< (options.frames + options.warmup) {
         let start = ContinuousClock.now
         let (element, drawCount) = try makeRoot(count: count, frame: index)
         let built = ContinuousClock.now
         let rendering = try renderer.render(element)
         let end = ContinuousClock.now
-        guard index >= 3, let phases = rendering.cpuPhaseTimings else {
+        guard index >= options.warmup, let phases = rendering.cpuPhaseTimings else {
             continue
         }
         draws = drawCount
