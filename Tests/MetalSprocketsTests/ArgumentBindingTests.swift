@@ -204,6 +204,34 @@ struct ArgumentBindingTests {
         #expect(context.inFlightCount == 0)
     }
 
+    // #457: nil skips the binding, so an undeclared name is fine; a non-nil value still requires it.
+    @Test
+    func nilOptionalParametersSkipTheBinding() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let context = try MetalContext(device: device)
+        let library = try device.makeLibrary(source: Self.computeSource, options: nil)
+        let pipeline = try context.pipelines.computePipeline(kernel: ComputeKernel(library: library, name: "simple"))
+        let output = try #require(device.makeBuffer(length: 16, options: .storageModeShared))
+        func tables(_ parameters: ShaderParameters) throws {
+            let recording = try context.submit { scope in
+                _ = try parameters.parameterSet.makeTables(for: pipeline.bindings, stages: [.kernel], scope: scope)
+            }
+            try context.waitForResult(recording)
+            try context.retireCompletedSubmissions()
+        }
+        var skipped = ShaderParameters()
+        skipped.set("output", buffer: output)
+        skipped.set("absentBuffer", buffer: nil)
+        skipped.set("absentSampler", samplerState: nil)
+        skipped.set("absentStructure", accelerationStructure: nil)
+        try tables(skipped)
+        var misspelled = ShaderParameters()
+        misspelled.set("output", buffer: output)
+        misspelled.set("absentBuffer", buffer: output)
+        #expect(throws: ParameterSet.Failure.missingBinding("absentBuffer")) { try tables(misspelled) }
+        #expect(context.inFlightCount == 0)
+    }
+
     @Test
     func everyBindingCallProducesFreshTablesSoStateCannotLeak() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())

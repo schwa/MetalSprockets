@@ -8586,12 +8586,13 @@ Found while porting MetalSprocketsAddOns. Not covered in Documentation/Porting-t
 ## 457: Investigate optional-value parameter overloads (nil skips the binding)
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:api, area:metal4, effort:s
 created: 2026-09-30T16:32:51Z
-updated: 2026-10-21T14:35:59Z
+updated: 2026-10-21T16:35:29Z
+closed: 2026-10-21T16:35:29Z
 +++
 
 Follow-up to #454 (closed will not-fix; the isOptional flag was reverted).
@@ -8608,6 +8609,8 @@ Open questions:
 - Scope: buffer, sampler and acceleration structure (and texture semantics), maybe not values.
 
 Done when: decide yes/no; if yes, add the overloads, a test for nil-skips and non-nil-still-throws, and update the API snapshot.
+
+- `2026-10-21T16:35:29Z`: Buffer, sampler and acceleration structure parameters now take optionals; nil skips the binding. Textures keep nil-clears-the-slot; values are left out because Optional<T> is BitwiseCopyable and binds raw bytes today.
 
 ---
 
