@@ -172,6 +172,19 @@ func testVideoRendererReplacesExistingFile() async throws {
     #expect(info.naturalSize == CGSize(width: 320, height: 240))
 }
 
+@Test("Render targets get the requested usages", .requiresMetal4)
+func testVideoRendererTextureUsages() throws {
+    let url = makeTempOutputURL(suffix: "usages")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let renderer = try OffscreenVideoRenderer(size: CGSize(width: 64, height: 64), outputURL: url, colorUsage: [.shaderRead, .shaderWrite], depthUsage: .shaderRead)
+    // .renderTarget is added when left out.
+    #expect(renderer.colorTexture.usage == [.renderTarget, .shaderRead, .shaderWrite])
+    #expect(renderer.depthTexture.usage == [.renderTarget, .shaderRead])
+    let defaults = try OffscreenVideoRenderer(size: CGSize(width: 64, height: 64), outputURL: url)
+    #expect(defaults.colorTexture.usage == [.renderTarget, .shaderRead])
+    #expect(defaults.depthTexture.usage == .renderTarget)
+}
+
 // MARK: - Back-pressure seam (#321 / #336)
 
 /// Verifies that the injected `waitUntilReady` strategy is actually awaited

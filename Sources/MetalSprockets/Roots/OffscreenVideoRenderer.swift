@@ -25,14 +25,38 @@ public final class OffscreenVideoRenderer {
     var residentAllocationCount: Int { runner.context.residentAllocationCount }
 
     /// `clearDepth` is the depth each frame starts from: 1 for the usual depth convention, 0 for reverse-Z.
-    public convenience init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault) throws {
-        try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, clearDepth: clearDepth, shaderLogging: shaderLogging, waitUntilReady: nil)
+    /// `colorUsage` and `depthUsage` are the usages of the render targets, as in `OffscreenRenderer`. Add usages for
+    /// passes that read or write them outside the render pass, such as post-processing; `.renderTarget` is always
+    /// included.
+    public convenience init(
+        size: CGSize,
+        frameRate: Double = 30.0,
+        outputURL: URL,
+        pixelFormat: MTLPixelFormat = .bgra8Unorm,
+        videoCodec: AVVideoCodecType = .h264,
+        colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead],
+        depthUsage: MTLTextureUsage = [.renderTarget],
+        clearDepth: Double = 1,
+        shaderLogging: ShaderLogging = .processDefault
+    ) throws {
+        try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, colorUsage: colorUsage, depthUsage: depthUsage, clearDepth: clearDepth, shaderLogging: shaderLogging, waitUntilReady: nil)
     }
 
     /// Designated init. `waitUntilReady` is the back-pressure strategy. When it
     /// is `nil`, the renderer uses the default KVO implementation on the
     /// `AVAssetWriterInput` of the writer.
-    internal init(size: CGSize, frameRate: Double = 30.0, outputURL: URL, pixelFormat: MTLPixelFormat = .bgra8Unorm, videoCodec: AVVideoCodecType = .h264, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault, waitUntilReady: (() async -> Void)?) throws {
+    internal init(
+        size: CGSize,
+        frameRate: Double = 30.0,
+        outputURL: URL,
+        pixelFormat: MTLPixelFormat = .bgra8Unorm,
+        videoCodec: AVVideoCodecType = .h264,
+        colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead],
+        depthUsage: MTLTextureUsage = [.renderTarget],
+        clearDepth: Double = 1,
+        shaderLogging: ShaderLogging = .processDefault,
+        waitUntilReady: (() async -> Void)?
+    ) throws {
         self.size = size
         self.frameRate = frameRate
         self.outputURL = outputURL
@@ -53,7 +77,7 @@ public final class OffscreenVideoRenderer {
             height: Int(size.height),
             mipmapped: false
         )
-        colorTextureDescriptor.usage = [.renderTarget, .shaderRead]
+        colorTextureDescriptor.usage = colorUsage.union(.renderTarget)
         colorTexture = try device.makeTexture(descriptor: colorTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create video color texture"))
         colorTexture.label = "Video Color Texture"
 
@@ -63,7 +87,7 @@ public final class OffscreenVideoRenderer {
             height: Int(size.height),
             mipmapped: false
         )
-        depthTextureDescriptor.usage = [.renderTarget]
+        depthTextureDescriptor.usage = depthUsage.union(.renderTarget)
         depthTexture = try device.makeTexture(descriptor: depthTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create video depth texture"))
         depthTexture.label = "Video Depth Texture"
         let resources = try ResourceCollection(device: device)
