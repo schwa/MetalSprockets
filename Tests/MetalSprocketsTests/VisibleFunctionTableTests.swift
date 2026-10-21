@@ -4,7 +4,7 @@ import MetalSprocketsSupport
 import Testing
 
 @MainActor
-@Suite("VisibleFunctionTable Tests", .disabledUnderCapture("Binary linking crashes under GPU frame capture (#542)"))
+@Suite("VisibleFunctionTable Tests")
 struct VisibleFunctionTableTests {
     // A shader with a visible_function_table<float4()> bound in the fragment stage.
     // `red_visible` and `green_visible` are [[visible]] functions that can be plugged

@@ -10869,11 +10869,13 @@ Fix: build binary-linked pipelines with the dynamic linking descriptor. Measure 
 ## 542: Binary-linked pipelines crash under Xcode GPU Frame Capture: CaptureMTL4Compiler returns unwrapped binary functions
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 labels: area:metal4, effort:m, needs-design
 created: 2026-10-21T12:34:05Z
+updated: 2026-10-21T13:39:28Z
+closed: 2026-10-21T13:39:28Z
 +++
 
 Under GPU Frame Capture (CaptureMTLDevice; on by default when running from Xcode), MTL4Compiler.makeBinaryFunction returns a raw AGXG17XFamilyBinaryFunction instead of a capture-wrapped object, both sync and async, with or without .pipelineIndependent. Every capture pipeline call that takes it then throws '-[AGXG17XFamilyBinaryFunction baseObject]: unrecognized selector' (unwrapNSArray in GPUToolsCapture). This happens with both the additionalBinaryFunctions path and MTL4PipelineStageDynamicLinkingDescriptor. MetalSprocketsParticles' demo crashes this way in Xcode whenever an emitter has a user function or stitched module; outside Xcode it runs.
@@ -10886,6 +10888,7 @@ Not yet found: a public API path where capture wraps binary functions (tried syn
 
 - `2026-10-21T12:40:45Z`: Render confirmed too. Matrix (~/Desktop/BinaryFunctionRepro, macOS 27.0.1, Xcode 27.0 27A266a, M5 Max) under MTL_CAPTURE_ENABLED=1: compute additional, compute dynamic, render additional, render dynamic all crash with '-[AGXG17XFamilyBinaryFunction baseObject]: unrecognized selector' (GPUToolsCapture unwrapNSArray). CaptureMTL4Compiler.makeBinaryFunction returns the unwrapped driver object (sync, async, pipelineIndependent all the same). No public path works under capture. Searched Xcode 26-27 release notes and developer forums: no known issue; Xcode 26 notes list unsupported Metal 4 debugger features and binary functions are not among them. Feedback text ready in FEEDBACK.md; MetalSprockets cannot fix this one without avoiding binary linking.
 - `2026-10-21T12:48:58Z`: Confirmed in this repo's tests (#543): render pipelines crash too, in PipelineCache.renderPipeline (FunctionTableTests, VisibleFunctionTableTests, PipelineCacheTests.renderPipelineIdentityCoversLinkedFunctionStage). Those tests are skipped under capture with .disabledUnderCapture("... (#542)"); remove the trait when this is fixed. Note: under API validation alone, render binary linking passes; only compute crashes (#541).
+- `2026-10-21T13:39:08Z`: Workaround: PipelineCache.allowsBinaryLinking is false under capture (device class name prefix 'Capture'; no public API reports capture: MTLCaptureManager.supportsDestination returns false for both destinations with MTL_CAPTURE_ENABLED=1). Linked functions then link statically and a warning is logged once per PipelineCache. MetalDebugLayersTests.pipelineCacheDetectsCapture fails if the class name changes (only in layered runs, #544). Function-table tests run under capture again; three tests that assert binary-linking reuse are skipped under capture. Apple report and removal tracked in #547.
 
 ---
 
@@ -10944,5 +10947,19 @@ created: 2026-10-21T13:30:54Z
 +++
 
 #541 moved compute pipelines to MTL4PipelineStageDynamicLinkingDescriptor because the additionalBinaryFunctions path crashes under Metal API validation. The render path in PipelineCache.renderPipeline still uses makeRenderPipelineState(additionalBinaryFunctions:). It passes under validation in this repo's tests (FunctionTableTests, PipelineCacheTests with MTL_DEBUG_LAYER=1), so it was left alone. But the original #541 report saw '-[MTLDebugFunction vendorPrivate]' in MetalSprocketsParticles, which may come from a render case the tests do not cover (for example stitched functions). Add a test for that case under validation. If it crashes, move render to MTL4RenderPipelineDynamicLinkingDescriptor the same way. Measured cost for compute: about 0.1 ms per new binary set, against about 0.01 ms before; the kernel is not recompiled.
+
+---
+
+## 547: Report the capture binary-function bug to Apple and remove the #542 workaround when fixed
+
++++
+status: new
+priority: low
+kind: none
+labels: area:metal4, effort:s
+created: 2026-10-21T13:39:08Z
++++
+
+Under GPU frame capture, MTL4Compiler.makeBinaryFunction returns an unwrapped AGXG17XFamilyBinaryFunction, and any pipeline call that takes it raises '-[AGXG17XFamilyBinaryFunction baseObject]: unrecognized selector'. #542 works around it: PipelineCache.allowsBinaryLinking is false when the device class name starts with 'Capture', so linked functions link statically. Steps: 1) File Feedback with a standalone repro (makeBinaryFunction + makeComputePipelineState with a dynamic linking descriptor, run with MTL_CAPTURE_ENABLED=1) and put the FB number here. 2) When an OS or Xcode fixes it, remove allowsBinaryLinking and the '.disabledUnderCapture(... #542)' test traits. Not yet tried: binary functions loaded from an MTL4Archive.
 
 ---

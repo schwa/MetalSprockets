@@ -13,7 +13,7 @@ private func functionTablesSupported() -> Bool {
 
 /// Legacy VisibleFunctionTableTests scenes and diagnostics on the Metal 4 candidate, against unchanged references.
 @MainActor
-@Suite("Metal 4 visible-function tables", .requiresMetal4, .enabled(if: functionTablesSupported(), "Requires Metal 4, Apple 7 and function pointers"), .disabledUnderCapture("Binary linking crashes under GPU frame capture (#542)"))
+@Suite("Metal 4 visible-function tables", .requiresMetal4, .enabled(if: functionTablesSupported(), "Requires Metal 4, Apple 7 and function pointers"))
 struct FunctionTableTests {
     private let device = MTLCreateSystemDefaultDevice()!
 
@@ -85,7 +85,7 @@ struct FunctionTableTests {
         #expect(!runner.context.residencySet.containsAllocation(try pipeline.functionTables.table(named: "transforms", stage: .kernel, functions: [plusOne])))
     }
 
-    @Test(.timeLimit(.minutes(1)))
+    @Test(.timeLimit(.minutes(1)), .disabledUnderCapture("Binary linking is off under GPU frame capture (#542)"))
     func newLinkedFunctionsReuseTheKernelPipeline() async throws {
         let library = try await device.makeLibrary(source: VisibleFunctionTableTests.computeTableSource, options: nil)
         let kernel = try ComputeKernel(library: library, name: "compute_main")
@@ -133,7 +133,8 @@ struct FunctionTableTests {
     }
 
     // #538
-    @Test func newLinkedFunctionsReuseTheRenderPipeline() throws {
+    @Test(.disabledUnderCapture("Binary linking is off under GPU frame capture (#542)"))
+    func newLinkedFunctionsReuseTheRenderPipeline() throws {
         let library = try device.makeLibrary(source: VisibleFunctionTableTests.fragmentTableSource, options: nil)
         let vertex = try VertexShader(library: library, name: "vertex_main")
         let fragment = try FragmentShader(library: library, name: "fragment_main")

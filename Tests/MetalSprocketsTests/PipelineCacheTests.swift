@@ -83,7 +83,7 @@ struct PipelineCacheTests {
         #expect(context.pipelines.compilationCount == 5)
     }
 
-    @Test(.disabledUnderCapture("Binary linking crashes under GPU frame capture (#542)"))
+    @Test(.disabledUnderCapture("Binary linking is off under GPU frame capture (#542)"))
     func renderPipelineIdentityCoversLinkedFunctionStage() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         guard device.supportsFamily(.apple7) else { return }

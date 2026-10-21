@@ -230,8 +230,16 @@ internal final class PipelineCache {
 
     private(set) var compilationCount = 0
 
+    /// False under GPU frame capture, where binary-linked pipelines crash (#542). Then every linked function links
+    /// statically, so each new set of linked functions compiles a new pipeline.
+    let allowsBinaryLinking: Bool
+
     init(device: any MTLDevice) throws {
         self.device = device
+        allowsBinaryLinking = !Self.isCaptureDevice(device)
+        if !allowsBinaryLinking {
+            logger?.warning("GPU frame capture is active. Linked functions link statically, so new linked functions recompile pipelines (#542).")
+        }
         let descriptor = MTL4CompilerDescriptor()
         descriptor.label = "MetalSprockets compiler"
         compiler = try device.makeCompiler(descriptor: descriptor)
@@ -265,7 +273,7 @@ internal final class PipelineCache {
         try Self.validateExportNames(fragmentLinked.map(\.reference), label: configuration.label)
         try ShaderDeviceCheck.validateLinkedFunctions(allLinked, device: device, label: configuration.label)
         let hasBinary = !key.vertexBinary.isEmpty || !key.fragmentBinary.isEmpty
-        if hasBinary, case let .binary(base, reflection) = try renderBase(baseKey) {
+        if hasBinary, allowsBinaryLinking, case let .binary(base, reflection) = try renderBase(baseKey) {
             let vertexBinaries = try key.vertexBinary.map { try binaryFunction($0) }
             let fragmentBinaries = try key.fragmentBinary.map { try binaryFunction($0) }
             let functions = MTL4RenderPipelineBinaryFunctionsDescriptor()
@@ -423,7 +431,7 @@ internal final class PipelineCache {
         try validate([baseKey.kernel] + allLinked, label: label)
         try Self.validateExportNames(allLinked, label: label)
         try ShaderDeviceCheck.validateLinkedFunctions(linkedFunctions, device: device, label: label)
-        if !key.binary.isEmpty, case .binary(_, let reflection) = try computeBase(baseKey) {
+        if !key.binary.isEmpty, allowsBinaryLinking, case .binary(_, let reflection) = try computeBase(baseKey) {
             let binaries = try key.binary.map { try binaryFunction($0) }
             // Pass the binary functions at creation. Adding them to the base pipeline with
             // makeComputePipelineState(additionalBinaryFunctions:) crashes under Metal API validation (#541).
@@ -494,6 +502,14 @@ internal final class PipelineCache {
         let binary = try compiler.makeBinaryFunction(descriptor: descriptor, compilerTaskOptions: nil)
         binaryFunctions[function] = binary
         return binary
+    }
+
+    /// Under capture, MTL4Compiler.makeBinaryFunction returns functions that the capture layer cannot unwrap, and any
+    /// pipeline call that takes them raises an Objective-C exception (#542). Swift cannot catch that, and Metal has no
+    /// public API that reports capture is on (MTLCaptureManager.supportsDestination is false), so this checks the
+    /// class name of the capture layer's device wrapper. That name is private and can change.
+    static func isCaptureDevice(_ device: any MTLDevice) -> Bool {
+        String(describing: type(of: device)).hasPrefix("Capture")
     }
 
     static func validateDevice(expected: ObjectIdentifier, actual: ObjectIdentifier, label: String?) throws {
