@@ -1265,12 +1265,13 @@ closed: 2026-08-08T16:11:15Z
 ## 152: Add onWorkloadExit modifier for all Elements
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: source:todo, effort:m, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-10-21T14:19:50Z
+updated: 2026-10-21T14:26:09Z
+closed: 2026-10-21T14:26:09Z
 +++
 
 Currently, `onWorkloadExit` is only available on `AnyBodylessElement`, while `onWorkloadEnter` is available as a general modifier for all Elements through `WorkloadModifier`.
