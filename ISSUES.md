@@ -10751,10 +10751,12 @@ Actual: silent; only the extra compile time shows it.
 ## 537: Kernels that call linked functions directly (extern) fail to link
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 created: 2026-10-21T00:26:48Z
+updated: 2026-10-21T13:54:52Z
+closed: 2026-10-21T13:54:52Z
 +++
 
 A compute kernel that declares a linked function with extern and calls it directly fails to build, even when the function is passed with .linkedFunctions(_:). This happens with static linking, before #534.
@@ -10773,6 +10775,8 @@ Error Domain=MTLLibraryErrorDomain Code=3 "Undefined symbol(s) for architecture 
 error: symbol(s) not found for target 'air64-apple-macosx27.0.0'
 ```
 Also reproduced in a standalone MTL4Compiler script with MTL4StaticLinkingDescriptor, so it may be a Metal behaviour or a missing step, not only a MetalSprockets bug. Calls through visible_function_table work.
+
+- `2026-10-21T13:54:53Z`: User error. A plain 'extern' declaration makes makeLibrary require the symbol, so the kernel library fails to build ('Undefined symbol'). Declare it '[[visible]] uint transform(uint v);' and it links through .linkedFunctions with binary and static linking, under validation and capture too. The linked function itself must also be [[visible]]. Regression test: FunctionTableTests.kernelCallsLinkedFunctionDirectly.
 
 ---
 

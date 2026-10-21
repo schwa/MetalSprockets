@@ -115,6 +115,37 @@ struct FunctionTableTests {
         #expect(runner.context.pipelines.compilationCount == 2)
     }
 
+    // #537: a kernel calls a linked function from another library directly. The declaration must be [[visible]];
+    // a plain extern declaration fails in makeLibrary with an undefined symbol.
+    @Test(.timeLimit(.minutes(1)), arguments: [VisibleFunction.Linking.binary, .static])
+    func kernelCallsLinkedFunctionDirectly(linking: VisibleFunction.Linking) async throws {
+        let kernelLibrary = try await device.makeLibrary(source: """
+            #include <metal_stdlib>
+            using namespace metal;
+            [[visible]] uint transform(uint v);
+            kernel void direct_main(device uint *out [[buffer(0)]], uint tid [[thread_position_in_grid]]) { out[tid] = transform(tid); }
+            """, options: nil)
+        let functionLibrary = try await device.makeLibrary(source: """
+            #include <metal_stdlib>
+            using namespace metal;
+            [[visible]] uint transform(uint v) { return v + 5; }
+            """, options: nil)
+        let kernel = try ComputeKernel(library: kernelLibrary, name: "direct_main")
+        let transform = try VisibleFunction(library: functionLibrary, name: "transform").linking(linking)
+        let count = 64
+        let output = try #require(device.makeBuffer(length: MemoryLayout<UInt32>.stride * count, options: .storageModeShared))
+        let content = try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                try ComputeDispatch(threadsPerGrid: MTLSize(width: count, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 8, height: 1, depth: 1))
+                    .parameter("out", buffer: output)
+            }.linkedFunctions([transform])
+        }
+        let result = try await FrameRunner(device: device).run(content)
+        #expect(result.outcome == .completed)
+        let values = Array(UnsafeBufferPointer(start: output.contents().bindMemory(to: UInt32.self, capacity: count), count: count))
+        #expect(values == (0..<count).map { UInt32($0) + 5 })
+    }
+
     // #540
     @Test func staticLinkedFunctionsRebuildTheRenderPipeline() throws {
         let library = try device.makeLibrary(source: VisibleFunctionTableTests.fragmentTableSource, options: nil)
