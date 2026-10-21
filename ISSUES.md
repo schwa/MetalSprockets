@@ -11142,13 +11142,17 @@ created: 2026-10-21T14:59:43Z
 ## 551: gpuTimed docs suggest a separate pass to time smaller work, but consecutive passes overlap on the GPU
 
 +++
-status: new
+status: closed
 priority: low
 kind: documentation
 labels: area:timing, effort:xs
 created: 2026-10-21T15:01:22Z
+updated: 2026-10-21T15:05:31Z
+closed: 2026-10-21T15:05:31Z
 +++
 
 gpuTimed's doc comment (GPUTiming.swift) says: 'To time a smaller piece of work, put it in its own pass.' The #491 and #492 probes show consecutive Metal 4 encoders in one command buffer overlap: per-encoder intervals include time spent waiting for or running alongside earlier encoders (compute: a 64K-thread dispatch read 3-5.5 ms instead of ~29 us; render: 21, 978, 1925, ... us for alternating cheap/expensive draws). Only per-dispatch timestamps inside one compute encoder (#491) or separate submissions gave per-item numbers. Update the doc: a separate pass's interval can include overlap with neighbouring passes; insert a barrier between the passes if isolated numbers are needed (verify that a queue barrier removes the overlap before documenting it).
+
+- `2026-10-21T15:05:31Z`: Verified with the #491/#492 probes: a queue barrier between encoders (compute: small 28 us instead of 3-5.5 ms; render: cheap 17 us / expensive ~767 us per pass) or a producer barrier at the end of the earlier encoder removes the overlap. The doc now says intervals are a profile of the real frame, that a barrier between passes gives isolated numbers while investigating, and that the barrier should not stay in production code. Note: a QueueBarrier element inside the timed pass would not help, because the pass's start timestamp is written before the pass content.
 
 ---

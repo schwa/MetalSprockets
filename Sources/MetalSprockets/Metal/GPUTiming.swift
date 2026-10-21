@@ -30,6 +30,12 @@ public extension Element {
     /// Apple GPUs time at pass boundaries only, so place this on or above a pass. Inside a pass it measures nothing and
     /// logs a warning. To time a smaller piece of work, put it in its own pass.
     ///
+    /// Consecutive passes can run at the same time on the GPU, so a pass's interval can include time spent waiting for
+    /// or overlapping with earlier passes. Read these intervals as a profile of the real frame, not as isolated costs.
+    /// While investigating, a barrier between the passes (for example
+    /// ``Element/barrierAfterPass(after:beforeQueueStages:visibility:)`` on the pass before) gives an isolated number.
+    /// Do not keep such a barrier in production code: it serializes the passes and makes the frame slower.
+    ///
     /// ```swift
     /// Group {
     ///     RenderPass { ... }.gpuTimed("shadows")

@@ -192,7 +192,7 @@ modules:
         - Parameters:
           - keyPath: A writable key path to the environment value.
           - value: The value to set.
-      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:81
+      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:135
     - decl: |
         public func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element
       doc: |-
@@ -225,7 +225,7 @@ modules:
         - Parameters:
           - keyPath: A writable key path to the environment value.
           - value: The value to set.
-      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:67
+      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:119
     - decl: public func eraseToAnyElement() -> AnyElement
       source: Sources/MetalSprockets/Core/AnyElement.swift:21
     - decl: |
@@ -256,6 +256,12 @@ modules:
         Apple GPUs time at pass boundaries only, so place this on or above a pass. Inside a pass it measures nothing and
         logs a warning. To time a smaller piece of work, put it in its own pass.
 
+        Consecutive passes can run at the same time on the GPU, so a pass's interval can include time spent waiting for
+        or overlapping with earlier passes. Read these intervals as a profile of the real frame, not as isolated costs.
+        While investigating, a barrier between the passes (for example
+        ``Element/barrierAfterPass(after:beforeQueueStages:visibility:)`` on the pass before) gives an isolated number.
+        Do not keep such a barrier in production code: it serializes the passes and makes the frame slower.
+
         ```swift
         Group {
             RenderPass { ... }.gpuTimed("shadows")
@@ -264,7 +270,7 @@ modules:
         .gpuTimed("frame")
         .onGPUTimings { timings in ... }
         ```
-      source: Sources/MetalSprockets/Metal/GPUTiming.swift:41
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:47
     - decl: |
         public func id<ID>(_ id: ID) -> some Element where ID : Hashable
       doc: |-
@@ -283,7 +289,7 @@ modules:
 
         - Parameter id: A hashable value identifying this element.
         - Returns: An element with the explicit identity applied.
-      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:78
+      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:79
     - decl: |
         public func linkedFunctions(_ functions: [VisibleFunction]) -> some Element
       doc: |-
@@ -438,7 +444,7 @@ modules:
 
         Failed or discarded work reports nothing. Intervals the GPU did not record (for example a `gpuTimed` subtree that
         encoded no pass) are left out. `handler` runs on the completion executor.
-      source: Sources/MetalSprockets/Metal/GPUTiming.swift:50
+      source: Sources/MetalSprockets/Metal/GPUTiming.swift:56
     - decl: |
         public func onSetupEnter(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element
       source: Sources/MetalSprockets/Metal/SetupModifier.swift:20
@@ -624,7 +630,7 @@ modules:
         - Parameters:
           - keyPath: A writable key path to the environment value.
           - transform: A closure that modifies the inherited value in place.
-      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:112
+      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:167
     - decl: |
         @ElementBuilder public func useComputeResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage) -> some Element
       source: Sources/MetalSprockets/Support/Support.swift:43
@@ -642,7 +648,7 @@ modules:
     - decl: |
         public func useResidencySet(_ residencySet: any MTLResidencySet) -> some Element
       doc: Attaches an externally owned residency set to every submission this subtree encodes into.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:222
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:229
     - decl: |
         @ElementBuilder public func useResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       source: Sources/MetalSprockets/Support/Support.swift:17
@@ -655,7 +661,7 @@ modules:
     - decl: |
         public func useResourceCollection(_ collection: ResourceCollection) -> some Element
       doc: Keeps `collection` resident for every submission this subtree encodes into.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:217
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:224
     - decl: |
         public func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       doc: Keeps `resources` resident and alive for the submission.
@@ -822,7 +828,7 @@ modules:
           }
       }
       ```
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:163
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:165
   - decl: 'public protocol ShaderLoader : Sendable'
     doc: |-
       The port through which ``ShaderLibrary`` obtains provenance-bearing functions.
@@ -1076,7 +1082,7 @@ modules:
     - decl: 'public init<ID>(_ id: ID) where ID : Hashable'
       source: Sources/MetalSprockets/Core/IdentifiedElement.swift:16
     - decl: 'public var description: String { get }'
-      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:26
+      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:27
   - decl: public struct CPUPhaseTimings
     doc: |-
       CPU time spent in each phase of one frame, in seconds.
@@ -1743,17 +1749,17 @@ modules:
       - ``MSEnvironmentKey``
       - ``MSState``
       - ``MSBinding``
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:216
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:219
     members:
     - decl: 'public init(_ keyPath: KeyPath<MSEnvironmentValues, Value>)'
       doc: |-
         Creates an environment property wrapper for the specified key path.
 
         - Parameter keyPath: A key path to the environment value to read.
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:233
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:236
     - decl: 'public var wrappedValue: Value { get }'
       doc: The current value from the environment.
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:218
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:221
   - decl: public struct MSEnvironmentValues
     doc: |-
       A collection of environment values propagated through the element tree.
@@ -1824,7 +1830,7 @@ modules:
     - decl: 'public var currentDrawable: CAMetalDrawable? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:33
     - decl: 'public var debugDescription: String { get }'
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:258
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:261
     - decl: 'public var depthAttachment: MTLTexture? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:31
     - decl: 'public var depthStencilDescriptor: MTLDepthStencilDescriptor? { get set }'
@@ -1876,7 +1882,7 @@ modules:
     - decl: 'public var vertexDescriptor: MTLVertexDescriptor? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:23
     - decl: 'public subscript<Key>(key: Key.Type) -> Key.Value where Key : MSEnvironmentKey { get set }'
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:172
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:174
   - decl: '@propertyWrapper public struct MSObservedObject<ObjectType> where ObjectType : ObservableObject'
     source: Sources/MetalSprockets/Core/ObservedObject.swift:4
     members:
@@ -2826,7 +2832,7 @@ modules:
     source: Sources/MetalSprockets/Core/Element.swift:45
   - decl: public associatedtype Value
     doc: The type of value stored by this key.
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:165
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:167
   - decl: 'public init(_ reference: ShaderFunction) throws'
     doc: Creates a shader from a function with explicit library provenance.
     source: Sources/MetalSprockets/Metal/Shaders.swift:40
@@ -2851,7 +2857,7 @@ modules:
     source: Sources/MetalSprockets/Metal/Shaders.swift:37
   - decl: 'public static var defaultValue: Value { get }'
     doc: The value to use when no value is set.
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:168
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:170
   - decl: 'public static var functionType: MTLFunctionType { get }'
     doc: The Metal function type this shader represents.
     source: Sources/MetalSprockets/Metal/Shaders.swift:32
