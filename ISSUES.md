@@ -5991,9 +5991,9 @@ It is also the only thing that makes the class look internally synchronized, whi
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l, area:architecture, needs-decision
+labels: effort:l, area:architecture, needs-decision, deferred
 created: 2026-08-08T23:14:01Z
-updated: 2026-10-16T18:48:52Z
+updated: 2026-10-21T13:56:52Z
 +++
 
 Ten call sites reach traversal state through the `@TaskLocal System.current` rather than being handed the context they need: `MSEnvironment` (EnvironmentValues.swift:170), `EnvironmentReader`, `Element` body evaluation (Element.swift:82), `StateBox.resolveSystem()`, `Element+SystemExtensions`, and the modifiers in `RenderPipelineDescriptorTransformer`, `RenderPassDescriptorModifier`, `MSAAModifier`, `GPUCounters`, plus ambient `ShaderStore` lookup in `ShaderLibrary`.
@@ -6023,9 +6023,9 @@ Decision needed: (a) split this: file the easy group as a subtask (effort:s) and
 status: open
 priority: low
 kind: enhancement
-labels: effort:l, area:architecture
+labels: effort:l, area:architecture, deferred
 created: 2026-08-08T23:14:01Z
-updated: 2026-10-16T18:48:53Z
+updated: 2026-10-21T13:56:53Z
 +++
 
 #292 proposed splitting `System` into a `TreeReconciler` (done, #372), a `PhaseRunner` that drives setup/workload over a frozen traversal event list, and a thin `System` facade composing the two.
@@ -9077,16 +9077,32 @@ Done when a pipeline element can register its persistent buffers in its own `Res
 status: open
 priority: medium
 kind: enhancement
-labels: area:metal4, area:performance, effort:s, needs-decision
+labels: area:metal4, area:performance, needs-decision, effort:l, deferred
 created: 2026-10-02T22:35:16Z
-updated: 2026-10-16T18:48:53Z
+updated: 2026-10-21T14:01:17Z
 +++
 
 MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure () -> Value. A default like '@MSState var mesh: MTKMesh = .teapot()', or an assignment to an @MSState in init, runs every time the element struct is rebuilt. That is usually every frame. The persisted StateBox wins and the new value is discarded, but the allocation still happens. In MetalSprocketsExamples this builds a teapot MTKMesh, a sphere, a 2048x2048 texture and a sampler every frame in BouncingTeapots, and MetalCanvas allocated 16 MB of buffers per frame (MetalSprocketsExamples #438). Proposal: add init(wrappedValue: @autoclosure @escaping () -> Value) and evaluate it only when no persisted state exists, like SwiftUI State. Assignments in init are harder to fix; at least document that they run every rebuild.
 
-- `2026-10-02T22:35:30Z`: Prior art: https://github.com/pointfreeco/swiftui-lazy-state, a lazily initialized @State for SwiftUI. Its API and behavior are a good model for a lazy @MSState.
-- `2026-10-05T22:42:35Z`: Tried the proposed init(wrappedValue: @autoclosure @escaping () -> Value) with a lazy StateBox (pending initializer evaluated on first read, outside the lock; snapshot shows '<not yet evaluated>'). Lazy evaluation works: a test counting evaluations across 5 rebuilds went 5 -> 1. Punting: an autoclosure-only init(wrappedValue:) breaks assigning the property in an initializer (e.g. OnChange: self.hasInitialized = false fails with 'used before being initialized'), which is a public source break for users who do the same. Keeping both init(wrappedValue: Value) and the autoclosure overload is ambiguous at every '@MSState var x = ...' site. Decision needed: (a) autoclosure-only, accept the source break and migrate in-init assignments to _x = MSState(wrappedValue:); or (b) keep init(wrappedValue:) as is and add a separate lazy API, e.g. @MSState(lazy: .teapot()) var mesh: MTKMesh. Either is ~1h once chosen; the StateBox change and test are ready to redo.
-- `2026-10-07T14:25:00Z`: Auto-fixer punt: the StateBox lazy change + test are ready, but shipping requires choosing a public API shape: (a) autoclosure-only init(wrappedValue:) \u2014 fixes it cleanly but is a source break for users who assign @MSState in an initializer; or (b) additive, non-breaking @MSState(lazy: .teapot()). This is a maintainer API decision, not inferable from code. Recommend (b) (non-breaking, ~1h to land). Tell me which and I'll implement.
+\- `2026-10-02T22:35:30Z`: Prior art: https://github.com/pointfreeco/swiftui-lazy-state, a lazily initialized @State for SwiftUI. Its API and behavior are a good model for a lazy @MSState.
+\- `2026-10-05T22:42:35Z`: Tried the proposed init(wrappedValue: @autoclosure @escaping () -> Value) with a lazy StateBox (pending initializer evaluated on first read, outside the lock; snapshot shows '<not yet evaluated>'). Lazy evaluation works: a test counting evaluations across 5 rebuilds went 5 -> 1. Punting: an autoclosure-only init(wrappedValue:) breaks assigning the property in an initializer (e.g. OnChange: self.hasInitialized = false fails with 'used before being initialized'), which is a public source break for users who do the same. Keeping both init(wrappedValue: Value) and the autoclosure overload is ambiguous at every '@MSState var x = ...' site. Decision needed: (a) autoclosure-only, accept the source break and migrate in-init assignments to _x = MSState(wrappedValue:); or (b) keep init(wrappedValue:) as is and add a separate lazy API, e.g. @MSState(lazy: .teapot()) var mesh: MTKMesh. Either is ~1h once chosen; the StateBox change and test are ready to redo.
+\- `2026-10-07T14:25:00Z`: Auto-fixer punt: the StateBox lazy change + test are ready, but shipping requires choosing a public API shape: (a) autoclosure-only init(wrappedValue:) \u2014 fixes it cleanly but is a source break for users who assign @MSState in an initializer; or (b) additive, non-breaking @MSState(lazy: .teapot()). This is a maintainer API decision, not inferable from code. Recommend (b) (non-breaking, ~1h to land). Tell me which and I'll implement.
+\- `2026-10-21T14:01:18Z`: Proposed direction (2026-10-21): make @MSState a macro, like SwiftUI 27's @State, instead of either option above.
+
+What SwiftUI 27 does (from the SDK swiftinterface; macro implementation not public, so partly inferred):
+- @State is a macro (SwiftUIMacros.StateMacro) that generates the backing storage as SwiftUI.LazyState<Value>, a public but undocumented type since iOS 17 with storage .thunk(() -> Value) or .value(Value).
+- Declaration defaults appear to go through State._makeStorage(_ makeInitialValue: @escaping () -> Value), so '@State var model = Model()' is evaluated once per identity. Assignments in init go through _makeStorage(initialValue:) and are eager.
+- Accepted source breaks: assigning a @State in init before other stored properties are set fails ('used before being initialized'); composing another property wrapper can collide ('invalid redeclaration of synthesized property'); private memberwise init is no longer synthesized. Apple calls default-value-plus-init-assignment an anti-pattern.
+
+Prior art: pointfreeco/swiftui-lazy-state. @LazyState expands to SwiftUI.LazyState and is used as '_model = LazyState { Model(region: region) }' in init, for initial values that depend on init parameters. Requires private, reference type, no inline default. Once created, the state ignores new parameters until identity changes.
+
+For MetalSprockets:
+- An @MSState macro makes declaration defaults lazy with no consumer source change, so existing code like BouncingTeapots benefits automatically.
+- Init assignment keeps working through a generated eager storage path.
+- Optional later: a pointfree-style lazy init form (_x = MSState { ... }) for parameter-dependent values.
+- Costs: the same edge-case source breaks Apple accepted; a real macro in MetalSprocketsMacros; the lazy StateBox change prototyped above (initializer run on first read outside the lock, snapshot shows not-yet-evaluated).
+
+Re-sized to effort:l and deferred: macro plus StateBox change plus migration is not a small fix.
 
 ---
 
@@ -9281,9 +9297,9 @@ On device, the first frames after opening an immersive space (ImmersiveRenderCon
 status: open
 priority: low
 kind: enhancement
-labels: effort:m, area:api
+labels: effort:m, area:api, deferred
 created: 2026-10-07T01:51:42Z
-updated: 2026-10-16T18:48:53Z
+updated: 2026-10-21T13:56:53Z
 +++
 
 RenderView configures its Metal context through SwiftUI view modifiers backed by EnvironmentValues (`.device`, `.commandQueue`, `.shaderStore`, `.metalShaderLogging`, `.renderViewLogFrame`, `.renderViewFatalErrorOnError`). Runner and OffscreenRenderer configure the same underlying context through init parameters (device, commandQueue, shaderLogging, residency, maximumInFlightSubmissions; plus size/colorUsage/depthUsage/clearDepth for OffscreenRenderer).
@@ -9576,9 +9592,9 @@ Expected
 status: open
 priority: medium
 kind: task
-labels: area:timing, area:metal4, effort:s
+labels: area:timing, area:metal4, effort:s, deferred
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-16T18:48:53Z
+updated: 2026-10-21T13:56:53Z
 +++
 
 Follow-up to #448.
@@ -9601,9 +9617,9 @@ Expected
 status: open
 priority: low
 kind: task
-labels: area:timing, area:metal4, effort:s
+labels: area:timing, area:metal4, effort:s, deferred
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-16T18:48:53Z
+updated: 2026-10-21T13:56:53Z
 +++
 
 Follow-up to #448.
@@ -10504,9 +10520,9 @@ Concerns found
 status: open
 priority: low
 kind: enhancement
-labels: area:architecture, effort:xs
+labels: area:architecture, effort:xs, deferred
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-16T18:52:34Z
+updated: 2026-10-21T13:56:54Z
 +++
 
 From the RFC 0006 performance work.
@@ -10526,9 +10542,9 @@ What is wrong
 status: open
 priority: low
 kind: enhancement
-labels: area:architecture, effort:xs
+labels: area:architecture, effort:xs, deferred
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-16T18:52:34Z
+updated: 2026-10-21T13:56:54Z
 +++
 
 From the RFC 0006 performance work.
@@ -10547,9 +10563,9 @@ What is wrong
 status: open
 priority: low
 kind: enhancement
-labels: area:architecture, effort:s
+labels: area:architecture, effort:s, deferred
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-16T18:52:34Z
+updated: 2026-10-21T13:56:54Z
 +++
 
 From the RFC 0006 performance work.
@@ -10566,13 +10582,17 @@ What is wrong
 ## 528: Verify MetalSprockets ForEach/_ConditionalContent don't clash with SwiftUI 27 ContentBuilder
 
 +++
-status: new
+status: closed
 priority: low
 kind: task
 created: 2026-10-17T11:47:12Z
+updated: 2026-10-21T14:02:04Z
+closed: 2026-10-21T14:02:04Z
 +++
 
 SDK 27 makes SwiftUI's ViewBuilder (now ContentBuilder) unconstrained. Apple notes that types shadowing SwiftUI names can now be 'ambiguous use' errors. MetalSprockets defines ForEach and _ConditionalContent. No breakage seen so far. To do: add a test file that imports SwiftUI and MetalSprockets, uses ForEach and if/else in both a SwiftUI body and a RenderView closure, and build it with Xcode 27.
+
+- `2026-10-21T14:02:04Z`: Won't do: name clashes would show up at build time wherever SwiftUI and MetalSprockets are used together, which happens routinely.
 
 ---
 
@@ -10582,7 +10602,9 @@ SDK 27 makes SwiftUI's ViewBuilder (now ContentBuilder) unconstrained. Apple not
 status: new
 priority: low
 kind: enhancement
+labels: deferred
 created: 2026-10-17T11:49:19Z
+updated: 2026-10-21T13:56:53Z
 +++
 
 Use SwiftUI 27's ContentBuilder pattern so nonsensical nesting (e.g. ComputeDispatch inside RenderPipeline) fails to compile. See RFCs/0007-typed-content-domains.md.
@@ -10713,8 +10735,9 @@ Option 2 removes the cost; option 1 hides it. Repro: MetalSprocketsParticles Sti
 status: new
 priority: medium
 kind: enhancement
-labels: area:performance, needs-design
+labels: area:performance, needs-design, deferred
 created: 2026-10-21T00:26:17Z
+updated: 2026-10-21T13:56:53Z
 +++
 
 PipelineCache keeps every compiled pipeline (render, mesh, compute), every compute base pipeline, and every binary function (#534) for the life of the context. Nothing is ever removed.
@@ -10731,11 +10754,12 @@ Actual: memory only grows until the MetalContext is destroyed.
 ## 536: Failed binary-linking base build is silent and costs an extra compile
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
-labels: area:performance
+labels: area:performance, effort:xs
 created: 2026-10-21T00:26:48Z
+updated: 2026-10-21T14:08:18Z
 +++
 
 When PipelineCache builds a compute base pipeline with supportBinaryLinking (#534) and the build fails, it silently falls back to static linking for that kernel.
