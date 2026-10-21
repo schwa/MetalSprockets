@@ -9863,12 +9863,13 @@ Remaining: inherit still copies the parent's effective dictionary for every node
 ## 499: Scripts/ has no single entry point; tasks are separate shell/Python scripts
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: area:tooling, effort:s
 created: 2026-10-16T13:52:36Z
-updated: 2026-10-16T18:48:54Z
+updated: 2026-10-21T14:15:42Z
+closed: 2026-10-21T14:15:42Z
 +++
 
 What is missing
@@ -9878,6 +9879,8 @@ What is missing
 
 Expected
 - One place (a justfile, or one per area if that reads better) that lists and runs these tasks, with the existing scripts' options still reachable.
+
+- `2026-10-21T14:15:41Z`: Added recipes to the existing tracked .justfile (the issue missed it): test-metal-layers, test-validation, build-example, benchmark, profile-benchmark, profile-app, profile-summary, api-snapshot, api-check. Existing recipes unchanged; 'just' lists them all. Note: 'just api-check' reports .public-api.yaml is out of date; not touched here.
 
 ---
 

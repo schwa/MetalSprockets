@@ -96,3 +96,30 @@ check-docs-diagnostics:
             --output-path /tmp/MetalSprockets.doccarchive >/dev/null 2>&1
         jq -r '.diagnostics[] | if .source then "\(.source | sub("file://"; "")):\(.range.start.line): \(.summary)" else "\(.summary)" end' /tmp/docc-diagnostics.json 2>/dev/null
     done
+
+test-metal-layers:
+    Scripts/test-metal-layers.sh
+
+test-validation:
+    xcb test -e MTL_DEBUG_LAYER=1
+
+build-example:
+    xcb build MetalSprockets-Example
+
+benchmark *args:
+    xcb run ReconciliationBenchmark -c Release -- {{args}}
+
+profile-benchmark *args:
+    Scripts/profile-benchmark.sh {{args}}
+
+profile-app *args:
+    Scripts/profile-app.sh {{args}}
+
+profile-summary *args:
+    Scripts/profile_summary.py {{args}}
+
+api-snapshot:
+    Scripts/api-snapshot.sh
+
+api-check:
+    Scripts/api-snapshot.sh --check
