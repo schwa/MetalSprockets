@@ -11090,11 +11090,13 @@ Under GPU frame capture, MTL4Compiler.makeBinaryFunction returns an unwrapped AG
 ## 548: testVideoRendererBackPressureSeam crashes intermittently: its readiness seam does not wait, so append hits a writer that is not ready
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 labels: area:testing, effort:s
 created: 2026-10-21T14:55:46Z
+updated: 2026-10-21T16:41:36Z
+closed: 2026-10-21T16:41:36Z
 +++
 
 Seen once in 4 runs under MTL_DEBUG_LAYER=1 + MTL_CAPTURE_ENABLED=1 (while working on #518): the test process aborts with NSInternalInconsistencyException '-[AVAssetWriterInputPixelBufferAdaptor appendPixelBuffer:withPresentationTime:] A pixel buffer cannot be appended when readyForMoreMediaData is NO.' Stack: VideoFrameWriter.append (VideoFrameWriter.swift:167) <- OffscreenVideoRenderer.render <- testVideoRendererBackPressureSeam (OffscreenVideoRendererTests.swift:181).
@@ -11102,6 +11104,8 @@ Seen once in 4 runs under MTL_DEBUG_LAYER=1 + MTL_CAPTURE_ENABLED=1 (while worki
 The test replaces waitUntilReady with a closure that only counts and yields, so nothing waits for isReadyForMoreMediaData. When the writer is slow (both Metal layers on), append runs while the input is not ready and AVFoundation raises an Objective-C exception, which kills the whole test process.
 
 Fix options: make the test seam wait for readiness too (or wrap the real wait), or have VideoFrameWriter check input.isReadyForMoreMediaData after the seam and throw instead of appending. The second also protects any custom waiter.
+
+- `2026-10-21T16:41:36Z`: VideoFrameWriter.append now runs the default readiness wait after any injected waiter and throws if the input is still not ready, so append never hits a writer that is not ready. No new regression test: the crash is timing-dependent and aborts the process. Checked with 6 runs of the video tests under MTL_DEBUG_LAYER=1 MTL_CAPTURE_ENABLED=1, all passing.
 
 ---
 

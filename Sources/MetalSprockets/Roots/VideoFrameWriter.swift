@@ -21,6 +21,9 @@ internal final class VideoFrameWriter {
     /// Awaits until the input can accept another frame. Tests inject a strategy to drive back-pressure. See #321 / #336.
     let waitUntilReady: () async -> Void
 
+    /// The default wait, run after `waitUntilReady` so an injected waiter cannot append to an input that is not ready.
+    private let waitForInput: () async -> Void
+
     private(set) var frameNumber = 0
 
     init(size: CGSize, frameRate: Double, outputURL: URL, videoCodec: AVVideoCodecType, waitUntilReady: (() async -> Void)?) throws {
@@ -66,13 +69,10 @@ internal final class VideoFrameWriter {
         }
         assetWriter.startSession(atSourceTime: .zero)
 
-        if let waitUntilReady {
-            self.waitUntilReady = waitUntilReady
-        } else {
-            let input = assetWriterInput
-            let writer = assetWriter
-            self.waitUntilReady = { await Self.defaultWaitUntilReady(input, writer: writer) }
-        }
+        let input = assetWriterInput
+        let writer = assetWriter
+        waitForInput = { await Self.defaultWaitUntilReady(input, writer: writer) }
+        self.waitUntilReady = waitUntilReady ?? waitForInput
     }
 
     /// Default production implementation of ``waitUntilReady``: awaits
@@ -159,9 +159,15 @@ internal final class VideoFrameWriter {
         let presentationTime = CMTime(value: CMTimeValue(frameNumber), timescale: CMTimeScale(frameRate))
 
         await waitUntilReady()
+        // An injected waiter may return before the input is ready, and appending then raises an Objective-C exception
+        // (#548). The default wait returns at once when the input is ready.
+        await waitForInput()
 
         if assetWriter.status == .failed || assetWriter.status == .cancelled {
             throw assetWriter.error ?? MetalSprocketsError.validationError("Asset writer stopped (status \(assetWriter.status.rawValue)) before frame \(frameNumber)")
+        }
+        guard assetWriterInput.isReadyForMoreMediaData else {
+            throw MetalSprocketsError.validationError("Asset writer input is not ready for frame \(frameNumber) (status \(assetWriter.status.rawValue))")
         }
 
         guard pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: presentationTime) else {
