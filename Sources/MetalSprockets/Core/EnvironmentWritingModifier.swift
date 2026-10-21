@@ -11,24 +11,76 @@ internal struct EnvironmentWritingModifier<Content: Element>: Element, BodylessE
     // Declared last so the memberwise initializer doesn't end with a closure argument,
     // which SwiftLint's trailing-closure rules would then complain about either way.
     var value: Any?
+    /// True for `.environment(keyPath, value)`, which writes without reading the inherited value. Directly nested plain
+    /// writers collapse into the outermost one's node (#518). `transformEnvironment` reads the inherited value, so it
+    /// keeps its own node.
+    var isPlainWrite = false
 
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
-        try visit(content)
+        if isPlainWrite, let next = content as? any PlainEnvironmentWriterChain, next.isPlainWrite {
+            try visit(next.innermostContent)
+        } else {
+            try visit(content)
+        }
     }
 
     func configureNodeBodyless(_ node: Node) throws {
         // A reused node can hold a write to a different key from an earlier frame (#539).
         node.environmentValues.removeOwnValues()
-        modify(&node.environmentValues)
+        applyWrites(&node.environmentValues)
     }
 
     nonisolated func requiresSetup(comparedTo old: EnvironmentWritingModifier<Content>) -> Bool {
+        if ownWriteRequiresSetup(comparedTo: old) {
+            return true
+        }
+        // A collapsed chain has one node, so the outermost writer compares the writers nested in it.
+        if isPlainWrite, let next = content as? any PlainEnvironmentWriterChain, next.isPlainWrite {
+            return next.chainRequiresSetup(comparedTo: old.content)
+        }
+        return false
+    }
+
+    nonisolated private func ownWriteRequiresSetup(comparedTo old: Self) -> Bool {
         // Environment changes might affect setup if they change pipeline-relevant values.
         guard let keyPath, let valuesAreEqual, keyPath == old.keyPath else {
             // Opaque closure form (or a different key path): stay conservative.
             return true
         }
         return !valuesAreEqual(value, old.value)
+    }
+}
+
+/// A chain of plain environment writers, walked from the outermost writer's node (#518).
+internal protocol PlainEnvironmentWriterChain {
+    var isPlainWrite: Bool { get }
+    /// The first element in the chain that is not a plain writer.
+    var innermostContent: any Element { get }
+    /// Applies this writer and then every plain writer nested in it, so writes nearer the content win.
+    func applyWrites(_ values: inout MSEnvironmentValues)
+    nonisolated func chainRequiresSetup(comparedTo old: any Element) -> Bool
+}
+
+extension EnvironmentWritingModifier: PlainEnvironmentWriterChain {
+    var innermostContent: any Element {
+        if let next = content as? any PlainEnvironmentWriterChain, next.isPlainWrite {
+            return next.innermostContent
+        }
+        return content
+    }
+
+    func applyWrites(_ values: inout MSEnvironmentValues) {
+        modify(&values)
+        if isPlainWrite, let next = content as? any PlainEnvironmentWriterChain, next.isPlainWrite {
+            next.applyWrites(&values)
+        }
+    }
+
+    nonisolated func chainRequiresSetup(comparedTo old: any Element) -> Bool {
+        guard let old = old as? Self else {
+            return true
+        }
+        return requiresSetup(comparedTo: old)
     }
 }
 
@@ -65,9 +117,11 @@ public extension Element {
     ///   - keyPath: A writable key path to the environment value.
     ///   - value: The value to set.
     func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element {
-        EnvironmentWritingModifier(content: self) { environmentValues in
+        var modifier = EnvironmentWritingModifier(content: self) { environmentValues in
             environmentValues[keyPath: keyPath] = value
         }
+        modifier.isPlainWrite = true
+        return modifier
     }
 
     /// Sets an equatable environment value for this element and its descendants.
@@ -91,7 +145,8 @@ public extension Element {
                 }
                 return lhs == rhs
             },
-            value: value
+            value: value,
+            isPlainWrite: true
         )
     }
 

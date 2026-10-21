@@ -10371,12 +10371,13 @@ Review RFCs, experiments, and scripts in the repo. Remove or archive anything th
 ## 518: Chains of .environment writers each create a node and copy the environment
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:performance, effort:m
 created: 2026-10-16T17:51:05Z
-updated: 2026-10-21T14:43:50Z
+updated: 2026-10-21T14:56:04Z
+closed: 2026-10-21T14:56:04Z
 +++
 
 Part of RFC 0006. Found in the autoresearch session.
@@ -10390,6 +10391,8 @@ Notes
 
 Expected
 - A chain of environment writers costs about one node, and transformEnvironment still receives the value inherited from above it.
+
+- `2026-10-21T14:56:04Z`: Plain .environment(keyPath, value) writers (both overloads) now set isPlainWrite; directly nested plain writers collapse into the outermost one's node: it applies every write outermost first, visits the first non-writer, and compares the whole chain in requiresSetup. transformEnvironment and other closure writers keep their own node. Benchmark (Release, draws scenario, cpu ms): 100/pass 2.54-2.66 before vs 2.34-2.46 after; 400/pass 10.5-11.4 vs 9.3-9.9 (about 8-10%). Node paths change for elements under such chains (one node fewer per collapsed writer).
 
 ---
 
@@ -11040,5 +11043,23 @@ closed: 2026-10-21T13:40:16Z
 Under GPU frame capture, MTL4Compiler.makeBinaryFunction returns an unwrapped AGXG17XFamilyBinaryFunction, and any pipeline call that takes it raises '-[AGXG17XFamilyBinaryFunction baseObject]: unrecognized selector'. #542 works around it: PipelineCache.allowsBinaryLinking is false when the device class name starts with 'Capture', so linked functions link statically. Steps: 1) File Feedback with a standalone repro (makeBinaryFunction + makeComputePipelineState with a dynamic linking descriptor, run with MTL_CAPTURE_ENABLED=1) and put the FB number here. 2) When an OS or Xcode fixes it, remove allowsBinaryLinking and the '.disabledUnderCapture(... #542)' test traits. Not yet tried: binary functions loaded from an MTL4Archive.
 
 - `2026-10-21T13:40:16Z`: Done (reported by user).
+
+---
+
+## 548: testVideoRendererBackPressureSeam crashes intermittently: its readiness seam does not wait, so append hits a writer that is not ready
+
++++
+status: new
+priority: medium
+kind: bug
+labels: area:testing, effort:s
+created: 2026-10-21T14:55:46Z
++++
+
+Seen once in 4 runs under MTL_DEBUG_LAYER=1 + MTL_CAPTURE_ENABLED=1 (while working on #518): the test process aborts with NSInternalInconsistencyException '-[AVAssetWriterInputPixelBufferAdaptor appendPixelBuffer:withPresentationTime:] A pixel buffer cannot be appended when readyForMoreMediaData is NO.' Stack: VideoFrameWriter.append (VideoFrameWriter.swift:167) <- OffscreenVideoRenderer.render <- testVideoRendererBackPressureSeam (OffscreenVideoRendererTests.swift:181).
+
+The test replaces waitUntilReady with a closure that only counts and yields, so nothing waits for isReadyForMoreMediaData. When the writer is slow (both Metal layers on), append runs while the input is not ready and AVFoundation raises an Objective-C exception, which kills the whole test process.
+
+Fix options: make the test seam wait for readiness too (or wrap the real wait), or have VideoFrameWriter check input.isReadyForMoreMediaData after the seam and throw instead of appending. The second also protects any custom waiter.
 
 ---
