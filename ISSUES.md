@@ -9648,12 +9648,13 @@ Expected
 ## 493: Counter heap creation fails after 32 live heaps, and the failure fails the frame
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:timing, area:metal4, effort:s
 created: 2026-10-16T13:23:24Z
-updated: 2026-10-16T18:48:53Z
+updated: 2026-10-21T14:12:29Z
+closed: 2026-10-21T14:12:29Z
 +++
 
 Found while adding .gpuTimed (#448).

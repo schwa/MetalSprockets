@@ -60,10 +60,12 @@ internal final class GPUTimingHeapPool: @unchecked Sendable {
 
     let device: any MTLDevice
     let ticksPerSecond: UInt64
+    private let makeHeap: CounterHeapFactory
     private let pool = OSAllocatedUnfairLock<[any MTL4CounterHeap]>(uncheckedState: [])
     private let createdCount = OSAllocatedUnfairLock(initialState: 0)
+    private let hasWarned = OSAllocatedUnfairLock(initialState: false)
 
-    init(device: any MTLDevice) throws {
+    init(device: any MTLDevice, makeHeap: CounterHeapFactory? = nil) throws {
         guard device.supportsFamily(.metal4) else {
             throw MetalSprocketsError.deviceCababilityFailure("Device '\(device.name)' does not support Metal 4 counter heaps.")
         }
@@ -73,6 +75,7 @@ internal final class GPUTimingHeapPool: @unchecked Sendable {
         }
         self.device = device
         ticksPerSecond = frequency
+        self.makeHeap = makeHeap ?? CounterHeapFactory { try device.makeCounterHeap(descriptor: $0) }
     }
 
     var heapCount: Int { createdCount.withLock { $0 } }
@@ -84,11 +87,24 @@ internal final class GPUTimingHeapPool: @unchecked Sendable {
         let descriptor = MTL4CounterHeapDescriptor()
         descriptor.type = .timestamp
         descriptor.count = Self.heapCapacity
-        let heap = try device.makeCounterHeap(descriptor: descriptor)
+        let heap = try makeHeap.make(descriptor)
         heap.label = "MetalSprockets GPU timings"
         heap.invalidateCounterRange(0..<Self.heapCapacity)
         createdCount.withLock { $0 += 1 }
         return heap
+    }
+
+    /// Metal limits how many counter heaps can exist (32 were seen on an M5 Max). When creation fails, timings are
+    /// dropped and the frame still renders (#493). Logs once per pool.
+    func checkOutIfAvailable() -> (any MTL4CounterHeap)? {
+        do {
+            return try checkOut()
+        } catch {
+            if !hasWarned.withLock({ warned in defer { warned = true }; return warned }) {
+                logger?.warning("Could not create a GPU timestamp heap, so GPU timings are skipped: \(error)")
+            }
+            return nil
+        }
     }
 
     func checkIn(_ heap: any MTL4CounterHeap) {
@@ -155,9 +171,12 @@ internal final class GPUTimingCollector: @unchecked Sendable {
     }
 
     /// Reserves a start and end slot for `label`, leasing another heap when the current one is full.
-    func reserve(_ label: String, scope: RecordingScope) throws -> GPUTimingEntry {
+    /// Returns nil if no heap is available; the interval is then not measured.
+    func reserve(_ label: String, scope: RecordingScope) throws -> GPUTimingEntry? {
         if state.withLockUnchecked({ $0.nextIndex + 2 > GPUTimingHeapPool.heapCapacity }) {
-            let heap = try pool.checkOut()
+            guard let heap = pool.checkOutIfAvailable() else {
+                return nil
+            }
             try scope.retainObject(heap)
             state.withLockUnchecked { state in
                 state.heaps.append(heap)
@@ -270,7 +289,7 @@ internal struct GPUTimingsModifier<Content>: Element, WorkloadElement, BodylessC
         let scope = try node.environmentValues.recordingScope.orThrow(.missingEnvironment("recordingScope"))
         let cache = node.cache(GPUTimingsCache.self) { GPUTimingsCache() }
         if cache.pool == nil {
-            cache.pool = try GPUTimingHeapPool(device: context.device)
+            cache.pool = try GPUTimingHeapPool(device: context.device, makeHeap: node.environmentValues.counterHeapFactory)
         }
         let pool = try cache.pool.orThrow(.generic("GPU timing heap pool missing"))
         let collector = GPUTimingCollector(pool: pool)
@@ -313,7 +332,9 @@ internal struct GPUTimedModifier<Content>: Element, WorkloadElement, BodylessCon
             return
         }
         let scope = try node.environmentValues.recordingScope.orThrow(.missingEnvironment("recordingScope"))
-        let entry = try collector.reserve(label, scope: scope)
+        guard let entry = try collector.reserve(label, scope: scope) else {
+            return
+        }
         // Start from the parent's list: this node's own write from the previous frame would otherwise accumulate.
         node.environmentValues.gpuTimingPassRequests = node.environmentValues.inheritedValue(GPUTimingPassRequestsKey.self) + [GPUTimingPassRequest(collector: collector, entry: entry)]
     }

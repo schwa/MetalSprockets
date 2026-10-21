@@ -180,4 +180,24 @@ struct GPUTimingTests {
         _ = try renderer().render(content)
         #expect(collected.batches.first?.map(\.label) == ["pass"])
     }
+
+    // #493: Metal limits live counter heaps. When creation fails, the frame still renders and the timing is dropped.
+    @Test(.timeLimit(.minutes(1)))
+    func `running out of counter heaps drops timings but renders the frame`() throws {
+        struct Exhausted: Error {}
+        let collected = Collected()
+        let counterSamples = OSAllocatedUnfairLock(initialState: 0)
+        let content = try RenderPass { try pipeline { triangle() } }
+            .gpuTimed("pass")
+            .onGPUTimings { collected.append($0) }
+            .gpuCounters { _ in counterSamples.withLock { $0 += 1 } }
+            .environment(\.counterHeapFactory, CounterHeapFactory { _ in throw Exhausted() })
+        let renderer = try renderer()
+        for _ in 0..<2 {
+            _ = try renderer.render(content)
+        }
+        #expect(collected.batches.count == 2)
+        #expect(collected.batches.flatMap(\.self).isEmpty)
+        #expect(counterSamples.withLock { $0 } == 0)
+    }
 }

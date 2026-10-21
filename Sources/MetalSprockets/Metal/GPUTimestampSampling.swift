@@ -27,10 +27,12 @@ internal final class TimestampSampler: @unchecked Sendable {
 
     let device: any MTLDevice
     let ticksPerSecond: UInt64
+    private let makeHeap: CounterHeapFactory
     private let pool = OSAllocatedUnfairLock<[Heap]>(uncheckedState: [])
     private let createdCount = OSAllocatedUnfairLock(initialState: 0)
+    private let hasWarned = OSAllocatedUnfairLock(initialState: false)
 
-    init(device: any MTLDevice) throws {
+    init(device: any MTLDevice, makeHeap: CounterHeapFactory? = nil) throws {
         guard device.supportsFamily(.metal4) else {
             throw MetalSprocketsError.deviceCababilityFailure("Device '\(device.name)' does not support Metal 4 counter heaps.")
         }
@@ -40,6 +42,7 @@ internal final class TimestampSampler: @unchecked Sendable {
         }
         self.device = device
         ticksPerSecond = frequency
+        self.makeHeap = makeHeap ?? CounterHeapFactory { try device.makeCounterHeap(descriptor: $0) }
     }
 
     var heapCount: Int { createdCount.withLock { $0 } }
@@ -52,7 +55,7 @@ internal final class TimestampSampler: @unchecked Sendable {
         let descriptor = MTL4CounterHeapDescriptor()
         descriptor.type = .timestamp
         descriptor.count = Index.count
-        let heap = try device.makeCounterHeap(descriptor: descriptor)
+        let heap = try makeHeap.make(descriptor)
         heap.label = "MetalSprockets timestamps"
         heap.invalidateCounterRange(0..<Index.count)
         createdCount.withLock { $0 += 1 }
@@ -77,6 +80,19 @@ internal final class TimestampSampler: @unchecked Sendable {
 
     func lease() throws -> Lease {
         Lease(heap: try checkOut(), sampler: self)
+    }
+
+    /// Nil when Metal cannot create another counter heap. The sample is then skipped and the frame still renders
+    /// (#493). Logs once per sampler.
+    func leaseIfAvailable() -> Lease? {
+        do {
+            return try lease()
+        } catch {
+            if !hasWarned.withLock({ warned in defer { warned = true }; return warned }) {
+                logger?.warning("Could not create a GPU timestamp heap, so GPU counter samples are skipped: \(error)")
+            }
+            return nil
+        }
     }
 
     private func checkIn(_ heap: Heap) {
@@ -137,7 +153,18 @@ internal final class TimestampRequest {
     var isClaimed: Bool { owner != nil }
 }
 
+/// Creates the counter heaps for `gpuCounters` and `onGPUTimings`. Tests replace it to simulate heap exhaustion (#493).
+internal struct CounterHeapFactory: @unchecked Sendable {
+    let make: (MTL4CounterHeapDescriptor) throws -> any MTL4CounterHeap
+
+    init(_ make: @escaping (MTL4CounterHeapDescriptor) throws -> any MTL4CounterHeap) {
+        self.make = make
+    }
+}
+
 internal extension MSEnvironmentValues {
+    /// Read once, when a timing modifier first creates its heap pool. Nil uses the device.
+    @MSEntry var counterHeapFactory: CounterHeapFactory?
     @MSEntry var timestampRequest: TimestampRequest?
     /// The open "Render Pass" / "Compute Pass" signpost interval, ended when the pass exits.
     @MSEntry var passSignpostInterval: OSSignpostIntervalState?
@@ -192,10 +219,12 @@ internal struct GPUCountersModifier<Content>: Element, WorkloadElement, Bodyless
         let scope = try node.environmentValues.recordingScope.orThrow(.missingEnvironment("recordingScope"))
         let cache = node.cache(GPUCountersCache.self) { GPUCountersCache() }
         if cache.sampler == nil {
-            cache.sampler = try TimestampSampler(device: context.device)
+            cache.sampler = try TimestampSampler(device: context.device, makeHeap: node.environmentValues.counterHeapFactory)
         }
         let sampler = try cache.sampler.orThrow(.generic("Timestamp sampler missing"))
-        let lease = try sampler.lease()
+        guard let lease = sampler.leaseIfAvailable() else {
+            return
+        }
         let request = TimestampRequest(heap: lease.heap)
         node.environmentValues.timestampRequest = request
         try scope.retainObject(lease.heap.heap)
