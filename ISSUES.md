@@ -10307,6 +10307,7 @@ Expected
 
 - `2026-10-16T15:56:09Z`: Partly addressed: collapsed chains are walked via a metatype cached in ElementTypeInfo (static requirements cast to the concrete type) instead of as? any CollapsibleWorkloadModifier; that cast was ~58% of ParameterModifier.workloadEnter in the benchmark. Cubes cpu 7.2 -> 6.8-6.9 ms. Still open: the ParameterSet is rebuilt every frame (a few allocations per draw), now a few percent.
 - `2026-10-16T17:51:28Z`: Autoresearch session: collapsed chains are walked in place through pointers and the Content metatype instead of copying the rest of the chain at each level (-3.4%). The ParameterSet itself is still rebuilt every frame.
+- `2026-10-21T16:32:56Z`: Tried: reviewed ParameterModifier.applyCollapsed and ParameterSet. Punting: skipping the per-frame rebuild needs to know that bindings are unchanged, but ParameterModifier stores an apply closure and value entries are .bytes closures, so nothing can be compared. That is #521 (deferred). Unblocker: decide #521 (store bindings as data, e.g. an Equatable entry with value bytes), then a node can cache its ParameterSet and reuse it when the entries and the inherited set are equal.
 
 ---
 
