@@ -337,10 +337,13 @@ internal final class PipelineCache {
         descriptor.supportFragmentBinaryLinking = true
         let base: RenderBase
         // Any failure falls back to static linking, which reports the real error if there is one.
-        if let state = try? compiler.makeRenderPipelineState(descriptor: descriptor), let reflection = state.reflection {
+        do {
+            let state = try compiler.makeRenderPipelineState(descriptor: descriptor)
+            let reflection = try state.reflection.orThrow(.resourceCreationFailure("Metal 4 render pipeline returned no reflection"))
             compilationCount += 1
             base = .binary(state, reflection)
-        } else {
+        } catch {
+            Self.logStaticFallback(label: key.label, function: key.vertex.name + "/" + key.fragment.name, error: error)
             base = .staticOnly
         }
         renderBases[key] = base
@@ -469,14 +472,24 @@ internal final class PipelineCache {
         let descriptor = try makeComputeDescriptor(key)
         let base: ComputeBase
         // Any failure falls back to static linking, which reports the real error if there is one.
-        if let state = try? compiler.makeComputePipelineState(descriptor: descriptor), let reflection = state.reflection {
+        do {
+            let state = try compiler.makeComputePipelineState(descriptor: descriptor)
+            let reflection = try state.reflection.orThrow(.resourceCreationFailure("Metal 4 compute pipeline returned no reflection"))
             compilationCount += 1
             base = .binary(state, reflection)
-        } else {
+        } catch {
+            Self.logStaticFallback(label: key.label, function: key.kernel.name, error: error)
             base = .staticOnly
         }
         computeBases[key] = base
         return base
+    }
+
+    /// Bases are cached by key, so this logs once per pipeline. The failed build is a full compile that is thrown
+    /// away, and every new set of linked functions for this pipeline then compiles a new pipeline (#536).
+    private static func logStaticFallback(label: String?, function: String, error: any Error) {
+        let pipeline = label.map { "pipeline '\($0)'" } ?? "pipeline for '\(function)'"
+        logger?.warning("Binary linking failed for \(pipeline), so its linked functions link statically and each new set recompiles it. Reason: \(error)")
     }
 
     /// The descriptor for a kernel pipeline that accepts binary-linked functions.

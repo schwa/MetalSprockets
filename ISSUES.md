@@ -10755,12 +10755,13 @@ Actual: memory only grows until the MetalContext is destroyed.
 ## 536: Failed binary-linking base build is silent and costs an extra compile
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:performance, effort:xs
 created: 2026-10-21T00:26:48Z
-updated: 2026-10-21T14:08:18Z
+updated: 2026-10-21T14:14:34Z
+closed: 2026-10-21T14:14:34Z
 +++
 
 When PipelineCache builds a compute base pipeline with supportBinaryLinking (#534) and the build fails, it silently falls back to static linking for that kernel.
@@ -10770,6 +10771,8 @@ When PipelineCache builds a compute base pipeline with supportBinaryLinking (#53
 
 Expected: the fallback and its reason are visible (log or diagnostic).
 Actual: silent; only the extra compile time shows it.
+
+- `2026-10-21T14:14:34Z`: Fixed by logging a warning with the reason when the binary-linking base build fails (render and compute), once per pipeline since bases are cached. The extra compile is not avoided: whether the base can binary-link is only known by trying. No test: no known shader makes the base build fail while static linking succeeds (#537 turned out to be user error), and the change is log-only.
 
 ---
 
