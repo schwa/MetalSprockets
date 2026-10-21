@@ -10671,12 +10671,12 @@ SDK 27 makes SwiftUI's ViewBuilder (now ContentBuilder) unconstrained. Apple not
 ## 529: RFC 0007: typed content domains for ElementBuilder
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
-labels: deferred
+labels: deferred, area:api, effort:xl
 created: 2026-10-17T11:49:19Z
-updated: 2026-10-21T13:56:53Z
+updated: 2026-10-21T16:43:44Z
 +++
 
 Use SwiftUI 27's ContentBuilder pattern so nonsensical nesting (e.g. ComputeDispatch inside RenderPipeline) fails to compile. See RFCs/0007-typed-content-domains.md.
@@ -10804,12 +10804,12 @@ Option 2 removes the cost; option 1 hides it. Repro: MetalSprocketsParticles Sti
 ## 535: Pipeline and binary-function caches never evict
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: area:performance, needs-design
+labels: area:performance, needs-design, effort:l
 created: 2026-10-21T00:26:17Z
-updated: 2026-10-21T14:44:22Z
+updated: 2026-10-21T16:43:45Z
 +++
 
 PipelineCache keeps every compiled pipeline (render, mesh, compute), every compute base pipeline, and every binary function (#534) for the life of the context. Nothing is ever removed.
@@ -11112,11 +11112,12 @@ Fix options: make the test seam wait for readiness too (or wrap the real wait), 
 ## 549: Pass-level compute timestamps sometimes under-report the pass duration
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
 labels: area:timing, area:metal4, effort:m
 created: 2026-10-21T14:59:32Z
+updated: 2026-10-21T16:43:45Z
 +++
 
 Found while measuring #491 (Apple M5 Max, macOS 27, Xcode 27 RC; probe /tmp/probe491/probe.swift).
@@ -11133,19 +11134,24 @@ In some frames Instruments shows the encoder as 2 intervals (for example 2 x 465
 Expected: a compute pass's GPU duration is right every frame, or the bad frame is dropped.
 Possible fix: write a timestamp after every dispatch in a timed compute pass and use first-to-last, or sum the per-dispatch intervals. Measure the cost (about 0.7% in the probe).
 
+- `2026-10-21T16:43:45Z`: Triage: related to #550; both rely on per-dispatch timestamps, so a fix here may share code with it.
+
 ---
 
 ## 550: Allow gpuTimed inside compute passes at dispatch boundaries
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
 labels: area:timing, area:metal4, effort:m
 created: 2026-10-21T14:59:43Z
+updated: 2026-10-21T16:43:45Z
 +++
 
 #491 showed per-dispatch precise timestamps in one Metal 4 compute encoder match Instruments (within about 1 us) and are stable, at about 0.7% cost. Today gpuTimed inside a pass logs a warning and measures nothing (GPUTimedModifier). Allow it inside a ComputePass: write a shared timestamp before the first and after the last dispatch of the subtree (writeSharedTimestamp already avoids adjacent duplicates). Render passes stay pass-level until #492 is understood. Document the small serialization cost.
+
+- `2026-10-21T16:43:45Z`: Triage: related to #549 (same per-dispatch timestamp mechanism).
 
 ---
 
