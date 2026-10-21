@@ -31,9 +31,8 @@ modules:
       }
       ```
 
-      ## Topics
+      ## See Also
 
-      ### Core Elements
       - ``RenderPass``
       - ``RenderPipeline``
       - ``Draw``
@@ -43,7 +42,7 @@ modules:
       - ``MSState``
       - ``MSBinding``
       - ``MSEnvironment``
-    source: Sources/MetalSprockets/Core/Element.swift:44
+    source: Sources/MetalSprockets/Core/Element.swift:43
     members:
     - decl: |
         public func barrierAfterPass(after: MTLStages, beforeQueueStages: MTLStages, visibility: MTL4VisibilityOptions = .device) -> some Element
@@ -137,12 +136,15 @@ modules:
         - Parameters:
           - depthBias: A constant offset added to each fragment's depth value.
           - slopeScale: A scale applied to the fragment's depth slope before it is added to the bias.
-          - clamp: The maximum (or, for negative values, minimum) bias that may be applied.
+          - clamp: The maximum (or, for negative values, minimum) bias that the GPU applies.
 
-        - Note: Only draws inside this element are biased; siblings are not.
+        - Note: The bias applies only to draws inside this element. It does not apply to siblings.
       source: Sources/MetalSprockets/Metal/DepthBiasModifier.swift:46
     - decl: |
         public func depthCompare(function: MTLCompareFunction, enabled: Bool) -> some Element
+      source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:135
+    - decl: |
+        public func depthCompare(function: MTLCompareFunction, writes: Bool) -> some Element
       doc: |-
         Configures depth testing for draws in this subtree.
 
@@ -150,12 +152,12 @@ modules:
         RenderPipeline(vertexShader: vs, fragmentShader: fs) {
             Draw { encoder in ... }
         }
-        .depthCompare(function: .less, enabled: true)
+        .depthCompare(function: .less, writes: true)
         ```
 
         - Parameters:
           - function: The comparison function (e.g., `.less`, `.lessEqual`).
-          - enabled: Whether depth writing is enabled.
+          - writes: Whether passing fragments write depth. Use `false` to test without writing (e.g. transparent passes).
 
         - Note: Also requires `.metalDepthStencilPixelFormat(.depth32Float)` on your `RenderView`.
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:130
@@ -190,7 +192,7 @@ modules:
         - Parameters:
           - keyPath: A writable key path to the environment value.
           - value: The value to set.
-      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:79
+      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:81
     - decl: |
         public func environment<Value>(_ keyPath: WritableKeyPath<MSEnvironmentValues, Value>, _ value: Value) -> some Element
       doc: |-
@@ -223,7 +225,7 @@ modules:
         - Parameters:
           - keyPath: A writable key path to the environment value.
           - value: The value to set.
-      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:65
+      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:67
     - decl: public func eraseToAnyElement() -> AnyElement
       source: Sources/MetalSprockets/Core/AnyElement.swift:21
     - decl: |
@@ -241,15 +243,15 @@ modules:
         }
         ```
 
-        On Metal 4 a render pass reports its whole duration and a ``GPUCounterSample/vertex`` interval; the fragment
+        On Metal 4, a render pass reports its full duration and a ``GPUCounterSample/vertex`` interval. The fragment
         interval is always `nil`. Failed or discarded work reports nothing. `handler` runs on the completion executor.
       source: Sources/MetalSprockets/Metal/GPUCounters.swift:83
     - decl: |
         public func gpuTimed(_ label: String) -> some Element
       doc: |-
         Measures the GPU time of the passes in this subtree, from the start of the first ``RenderPass`` or
-        ``ComputePass`` to the end of the last. Results are delivered by the nearest enclosing ``onGPUTimings(_:)``;
-        with none, this does nothing.
+        ``ComputePass`` to the end of the last. The nearest enclosing ``onGPUTimings(_:)`` gets the results.
+        If there is no such modifier, this modifier does nothing.
 
         Apple GPUs time at pass boundaries only, so place this on or above a pass. Inside a pass it measures nothing and
         logs a warning. To time a smaller piece of work, put it in its own pass.
@@ -268,9 +270,9 @@ modules:
       doc: |-
         Binds an explicit identity to this element.
 
-        Structural identity is normally derived from an element's type and its position among
-        its siblings, so moving an element within a container gives it a new identity and forces
-        re-setup. Use `id(_:)` when identity should follow the data instead of the position:
+        Structural identity usually comes from the type of an element and its position among its siblings.
+        When an element moves in a container, it gets a new identity, and setup runs again.
+        To make identity follow the data instead of the position, use `id(_:)`:
 
         ```swift
         ForEach(passes) { pass in
@@ -341,7 +343,7 @@ modules:
 
         - Note: MSAA increases memory usage and has a performance cost. Higher sample
           counts provide better quality but at greater cost. 4x is a common balance.
-      source: Sources/MetalSprockets/Metal/MSAAModifier.swift:207
+      source: Sources/MetalSprockets/Metal/MSAAModifier.swift:206
     - decl: |
         public func onChange<V>(of value: V, initial: Bool = false, perform action: @escaping (V, V) -> Void) -> some Element where V : Equatable
       doc: |-
@@ -398,9 +400,9 @@ modules:
         Runs `action` on the calling isolation (for example the `@MainActor`) with the submission's terminal result, so
         it can write `@MSState` directly without a manual actor hop.
 
-        Unlike ``onCommandBufferCompleted(_:)``, `action` is not `@Sendable`: it may capture isolated state such as an
-        element's `self`. The hop is asynchronous: `action` runs in a `Task` on `isolation` after the GPU work finishes,
-        so it never blocks the completion executor, and its ordering against other submissions is not guaranteed. Work
+        Unlike ``onCommandBufferCompleted(_:)``, `action` is not `@Sendable`. It can capture isolated state, such as the
+        `self` of an element. The hop is asynchronous. After the GPU work finishes, `action` runs in a `Task` on
+        `isolation`. Thus it never blocks the completion executor. Its order relative to other submissions can change. Work
         that fails during encoding reports nothing.
 
         ```swift
@@ -459,11 +461,15 @@ modules:
         per-frame resource ring can reclaim its slot without leaking. Use it to recycle instance buffers, build scratch
         buffers and acceleration structures once the GPU can no longer reference them.
 
-        `action` may run on a completion executor or during teardown; do not assume the caller's actor.
+        `action` can run on a completion executor or during teardown. Do not assume the actor of the caller.
       source: Sources/MetalSprockets/Metal/SubmissionCallbacks.swift:68
     - decl: |
         public func onWorkloadEnter(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element
-      source: Sources/MetalSprockets/Metal/WorkloadModifier.swift:21
+      source: Sources/MetalSprockets/Metal/WorkloadModifier.swift:27
+    - decl: |
+        public func onWorkloadExit(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element
+      doc: Runs `action` when the workload phase leaves this element, after its content.
+      source: Sources/MetalSprockets/Metal/WorkloadModifier.swift:32
     - decl: |
         public func parameter(_ name: String, functionType: MTLFunctionType?, accelerationStructure: any MTLAccelerationStructure) -> some Element
       source: Sources/MetalSprockets/Metal/Parameters.swift:153
@@ -587,11 +593,11 @@ modules:
       doc: |-
         Attaches a ``ShaderStore`` to this element and its descendants.
 
-        ``ShaderLibrary`` values used inside the scope will share the attached
-        store, deduplicating compiled Metal libraries and specialized functions
-        across views that mount inside the same store.
+        ``ShaderLibrary`` values inside the scope share the attached store.
+        Views inside the same store share one copy of each compiled Metal
+        library and specialized function.
 
-        If no store is attached, ``RenderView`` provides a private one scoped to
+        If no store is attached, `RenderView` provides a private one scoped to
         its own lifetime.
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:54
     - decl: |
@@ -606,7 +612,7 @@ modules:
       doc: |-
         Transforms an environment value for this element and its descendants.
 
-        Unlike ``environment(_:_:)``, the transform receives the inherited value and can
+        Unlike ``Element/environment(_:_:)-1rm5p``, the transform receives the inherited value and can
         modify it in place:
 
         ```swift
@@ -618,13 +624,13 @@ modules:
         - Parameters:
           - keyPath: A writable key path to the environment value.
           - transform: A closure that modifies the inherited value in place.
-      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:110
+      source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:112
     - decl: |
         @ElementBuilder public func useComputeResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage) -> some Element
       source: Sources/MetalSprockets/Support/Support.swift:43
     - decl: |
         public func useComputeResource(_ resource: any MTLResource, usage: MTLResourceUsage) -> some Element
-      doc: Keeps `resource` resident and alive for the submission. See ``useResource(_:usage:stages:)``.
+      doc: Keeps `resource` resident and alive for the submission. See ``Element/useResource(_:usage:stages:)-9b6tt``.
       source: Sources/MetalSprockets/Support/Support.swift:38
     - decl: |
         @ElementBuilder public func useComputeResources(_ resources: [any MTLResource]?, usage: MTLResourceUsage) -> some Element
@@ -636,7 +642,7 @@ modules:
     - decl: |
         public func useResidencySet(_ residencySet: any MTLResidencySet) -> some Element
       doc: Attaches an externally owned residency set to every submission this subtree encodes into.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:221
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:222
     - decl: |
         @ElementBuilder public func useResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       source: Sources/MetalSprockets/Support/Support.swift:17
@@ -649,7 +655,7 @@ modules:
     - decl: |
         public func useResourceCollection(_ collection: ResourceCollection) -> some Element
       doc: Keeps `collection` resident for every submission this subtree encodes into.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:216
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:217
     - decl: |
         public func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       doc: Keeps `resources` resident and alive for the submission.
@@ -668,7 +674,7 @@ modules:
     - decl: |
         public func vertexDescriptor(_ vertexDescriptor: MDLVertexDescriptor) -> some Element
       doc: Sets the vertex descriptor from a Model I/O descriptor.
-      source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:151
+      source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:156
     - decl: |
         public func vertexDescriptor(_ vertexDescriptor: MTLVertexDescriptor?) -> some Element
       doc: |-
@@ -680,7 +686,7 @@ modules:
         }
         .vertexDescriptor(MyVertex.descriptor)
         ```
-      source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:146
+      source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:151
     - decl: |
         public func vertexValues<Value>(_ values: [Value], index: Int) -> some Element
       doc: |-
@@ -741,8 +747,8 @@ modules:
 
         When `enabled` is `false`, neither this element nor any of its descendants
         have their workload phase run (no draws, dispatches, or blits). The setup
-        phase still runs, so pipeline states and other setup-phase resources stay
-        built — toggling the flag is cheap and does not cause a rebuild.
+        phase still runs, so pipeline states and other setup resources stay
+        available. A change to the flag is cheap and does not cause a rebuild.
 
         Useful for debug toggles, A/B comparisons, and effect bypass switches
         where you want to keep everything warm but temporarily suppress output.
@@ -791,11 +797,10 @@ modules:
       Both requirements have default no-op implementations, so conformers only implement the phase
       they need.
 
-      ## Topics
+      ## See Also
 
-      ### Related Types
       - ``MSDynamicPropertyContext``
-    source: Sources/MetalSprockets/Core/DynamicProperty.swift:39
+    source: Sources/MetalSprockets/Core/DynamicProperty.swift:38
   - decl: public protocol MSEnvironmentKey
     doc: |-
       A key for accessing values in the environment.
@@ -817,7 +822,7 @@ modules:
           }
       }
       ```
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:157
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:163
   - decl: 'public protocol ShaderLoader : Sendable'
     doc: |-
       The port through which ``ShaderLibrary`` obtains provenance-bearing functions.
@@ -849,16 +854,15 @@ modules:
       let fragmentShader: FragmentShader = library.myFragmentFunction
       ```
 
-      ## Topics
+      ## See Also
 
-      ### Shader Types
       - ``VertexShader``
       - ``FragmentShader``
       - ``ComputeKernel``
       - ``ObjectShader``
       - ``MeshShader``
       - ``VisibleFunction``
-    source: Sources/MetalSprockets/Metal/Shaders.swift:31
+    source: Sources/MetalSprockets/Metal/Shaders.swift:30
     members:
     - decl: 'public init(library: MTLLibrary? = nil, name: String, constants: FunctionConstants = FunctionConstants(), specializedName: String? = nil, device: MTLDevice? = nil) throws'
       doc: |-
@@ -866,18 +870,24 @@ modules:
 
         - Parameters:
           - library: The library to search. When `nil`, `device`'s default library is used.
+          - name: The function name.
+          - constants: Function constant values used to specialize the function.
+          - specializedName: A name for the specialized function. Defaults to `name`.
           - device: The device whose default library is searched. Defaults to the system default device, which is only
             the right choice when the renderer uses that device too (see #55).
-      source: Sources/MetalSprockets/Metal/Shaders.swift:70
+      source: Sources/MetalSprockets/Metal/Shaders.swift:75
     - decl: 'public init(source: String, logging: Bool = false, device: MTLDevice? = nil) throws'
       doc: |-
         Compiles a shader from Metal source.
 
-        - Parameter device: The device to compile on. Defaults to the system default device, which is only the right
+        - Parameters:
+          - source: Metal Shading Language source. The first function of this shader's type is used.
+          - logging: Enables shader `os_log` output.
+          - device: The device to compile on. Defaults to the system default device, which is only the right
           choice when the renderer uses that device too (see #55).
-      source: Sources/MetalSprockets/Metal/Shaders.swift:55
+      source: Sources/MetalSprockets/Metal/Shaders.swift:57
     - decl: 'public static func == (lhs: Self, rhs: Self) -> Bool'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:47
+      source: Sources/MetalSprockets/Metal/Shaders.swift:46
   - decl: public final class MetalShaderLoader
     doc: 'The real ``ShaderLoader``: an `MTLLibrary` plus a cache of specialized functions.'
     source: Sources/MetalSprockets/Metal/ShaderLoader.swift:43
@@ -964,7 +974,7 @@ modules:
       When `maximumInFlightSubmissions` is reached, submission waits for the oldest outstanding work before recording
       starts. Elements can index per-frame resources with ``MSEnvironmentValues/submissionIndex``.
 
-      `Runner` is not thread-safe; use it from one isolation domain.
+      `Runner` is not thread-safe. Use it from one isolation domain.
     source: Sources/MetalSprockets/Roots/Runner.swift:30
     members:
     - decl: 'public init(device: MTLDevice? = nil, commandQueue: (any MTL4CommandQueue)? = nil, shaderLogging: ShaderLogging = .processDefault, residency: ResidencyConfiguration = ResidencyConfiguration(), maximumInFlightSubmissions: Int = 3) throws'
@@ -975,7 +985,9 @@ modules:
           - device: The device to use. Defaults to the system default device, which must support Metal 4.
           - commandQueue: A Metal 4 queue on `device`. Defaults to a new queue.
           - shaderLogging: Where shader `os_log` messages go. Defaults to ``ShaderLogging/processDefault``.
-      source: Sources/MetalSprockets/Roots/Runner.swift:48
+          - residency: How resources are made resident for each submission.
+          - maximumInFlightSubmissions: The most submissions that can be on the GPU at once.
+      source: Sources/MetalSprockets/Roots/Runner.swift:50
     - decl: 'public let commandQueue: any MTL4CommandQueue'
       source: Sources/MetalSprockets/Roots/Runner.swift:32
     - decl: 'public let device: MTLDevice'
@@ -989,10 +1001,12 @@ modules:
         Encodes `content`, commits it, and waits for the GPU to finish.
 
         Throws if encoding fails, or if the GPU reports a failure or does not finish within the deadline.
-      source: Sources/MetalSprockets/Roots/Runner.swift:60
+      source: Sources/MetalSprockets/Roots/Runner.swift:62
     - decl: 'public func submit<Content>(_ content: Content) throws -> Submission where Content : Element'
-      doc: Submits `content` without waiting for its completion; waits for earlier work if the in-flight limit is reached.
-      source: Sources/MetalSprockets/Roots/Runner.swift:70
+      doc: |-
+        Submits `content` and does not wait for completion. If the in-flight limit is reached, it waits for
+        earlier work.
+      source: Sources/MetalSprockets/Roots/Runner.swift:73
   - decl: public final class ShaderCache
     source: Sources/MetalSprockets/Metal/ShaderCache.swift:5
     members:
@@ -1011,9 +1025,9 @@ modules:
       ## Lifetime
 
       A `ShaderStore` holds strong references to every library and specialized
-      function it has seen. They live as long as the store does. Create and own a
-      store for as long as you want its shaders cached — typically for a scene,
-      a feature, or the lifetime of one or more ``RenderView``s.
+      function it has seen. They live as long as the store does. Keep a store for as
+      long as you want to cache its shaders. Usually this is for a scene, a
+      feature, or the lifetime of one or more `RenderView`s.
 
       ## Scoping
 
@@ -1031,7 +1045,7 @@ modules:
       }
       ```
 
-      If no store is attached, ``RenderView`` creates a private one scoped to its
+      If no store is attached, `RenderView` creates a private one scoped to its
       own lifetime. Shaders compiled inside that `RenderView` die with it — no
       process-global cache, no long-lived retention.
 
@@ -1068,7 +1082,7 @@ modules:
       CPU time spent in each phase of one frame, in seconds.
 
       - `content`: building the element tree in the caller's content closure. Only drivers that run that closure (such as
-        `RenderView`) report it; it is `nil` otherwise.
+        `RenderView`) report it. For other drivers, it is `nil`.
       - `update`: reconciling the new element tree against the previous frame's nodes.
       - `setup`: setup work for nodes that need it, such as pipeline creation.
       - `workload`: encoding GPU commands.
@@ -1093,7 +1107,7 @@ modules:
       Raw access to the Metal 4 compute encoder inside a ``ComputePass``, without a pipeline.
 
       Use it for copies, fills and other pipeline-free commands (the replacement for `BlitPass`). The encoder performs no
-      hazard tracking: declare every referenced resource with ``Element/useComputeResources(_:usage:)``, and order
+      hazard tracking: declare every referenced resource with ``Element/useComputeResources(_:usage:)-1knuz``, and order
       dependent commands with ``EncoderBarrier``.
 
       ```swift
@@ -1154,14 +1168,14 @@ modules:
           }
       }
       ```
-    source: Sources/MetalSprockets/Metal/Shaders.swift:96
+    source: Sources/MetalSprockets/Metal/Shaders.swift:101
     members:
     - decl: 'public init(_ reference: ShaderFunction) throws'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:100
+      source: Sources/MetalSprockets/Metal/Shaders.swift:105
     - decl: 'public let reference: ShaderFunction'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:98
+      source: Sources/MetalSprockets/Metal/Shaders.swift:103
     - decl: 'public static let functionType: MTLFunctionType'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:97
+      source: Sources/MetalSprockets/Metal/Shaders.swift:102
   - decl: 'public struct ComputePass<Content> where Content : Element'
     doc: |-
       A container that opens a Metal 4 compute encoder for its content.
@@ -1182,7 +1196,7 @@ modules:
     doc: |-
       Issues draw calls with the enclosing ``RenderPipeline``.
 
-      Before `encodeGeometry` runs, the pipeline, its argument tables (from ``Element/parameter(_:functionTypes:value:)``
+      Before `encodeGeometry` runs, the pipeline, its argument tables (from ``Element/parameter(_:functionTypes:value:)-6o0zh``
       and related modifiers), depth/stencil state, depth bias, viewport and scissor are already bound. Cull mode, triangle
       fill mode, front-facing winding and vertex amplification count are reset to Metal's defaults. Every draw sets that
       state, so nothing leaks from one draw to the next.
@@ -1196,7 +1210,7 @@ modules:
       ```
 
       Metal 4 encoders have no `setVertexBytes` or `setFragmentTexture`. Pass data with the parameter and vertex
-      modifiers instead, and declare anything referenced only by the closure with ``Element/useResource(_:usage:stages:)``.
+      modifiers instead, and declare anything referenced only by the closure with ``Element/useResource(_:usage:stages:)-9b6tt``.
     source: Sources/MetalSprockets/Metal/Draw.swift:23
     members:
     - decl: public typealias Body = Never
@@ -1331,14 +1345,14 @@ modules:
           Draw { encoder in ... }
       }
       ```
-    source: Sources/MetalSprockets/Metal/Shaders.swift:144
+    source: Sources/MetalSprockets/Metal/Shaders.swift:149
     members:
     - decl: 'public init(_ reference: ShaderFunction) throws'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:148
+      source: Sources/MetalSprockets/Metal/Shaders.swift:153
     - decl: 'public let reference: ShaderFunction'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:146
+      source: Sources/MetalSprockets/Metal/Shaders.swift:151
     - decl: 'public static let functionType: MTLFunctionType'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:145
+      source: Sources/MetalSprockets/Metal/Shaders.swift:150
   - decl: public struct FunctionConstantInfo
     doc: |-
       Describes one function constant declared by a shader function.
@@ -1487,7 +1501,7 @@ modules:
         Elapsed GPU time for the pass, in seconds.
 
         Converted from GPU ticks with `MTLDevice.queryTimestampFrequency()`. `nil` when a timestamp is missing or
-        out of order; never a fabricated zero.
+        out of order. It is never a false zero.
       source: Sources/MetalSprockets/Metal/GPUCounters.swift:42
     - decl: 'public var endTimestamp: MTLTimestamp'
       doc: Raw GPU timestamp taken at the end of the pass, in GPU ticks.
@@ -1536,7 +1550,7 @@ modules:
 
       Use `Group` when you need to return multiple elements from a property or
       apply modifiers to a collection of elements. The order of elements within
-      a `Group` matters, just as it does in a `body` property.
+      a `Group` matters, as it does in a `body` property.
 
       ## Overview
 
@@ -1643,12 +1657,11 @@ modules:
       )
       ```
 
-      ## Topics
+      ## See Also
 
-      ### Related Types
       - ``MSState``
       - ``MSEnvironment``
-    source: Sources/MetalSprockets/Core/Binding.swift:55
+    source: Sources/MetalSprockets/Core/Binding.swift:54
     members:
     - decl: 'public init(get: @escaping () -> Value, set: @escaping (Value) -> Void)'
       doc: |-
@@ -1657,34 +1670,34 @@ modules:
         - Parameters:
           - get: A closure that returns the current value.
           - set: A closure that updates the value.
-      source: Sources/MetalSprockets/Core/Binding.swift:65
+      source: Sources/MetalSprockets/Core/Binding.swift:64
     - decl: 'public var wrappedValue: Value { get nonmutating set }'
       doc: The current value of the binding.
-      source: Sources/MetalSprockets/Core/Binding.swift:71
+      source: Sources/MetalSprockets/Core/Binding.swift:70
     - decl: 'public static func == (lhs: `Self`, rhs: `Self`) -> Bool'
-      source: Sources/MetalSprockets/Core/Binding.swift:76
+      source: Sources/MetalSprockets/Core/Binding.swift:75
   - decl: public struct MSDynamicPropertyContext
     doc: |-
       The per-node context handed to an ``MSDynamicProperty`` during an element's update.
 
       A context is scoped to one property on one node: ``label`` identifies the property, and the
-      persistence methods are keyed so several properties on the same element don't collide.
-    source: Sources/MetalSprockets/Core/DynamicProperty.swift:65
+      persistence methods use keys, so that two properties on the same element do not collide.
+    source: Sources/MetalSprockets/Core/DynamicProperty.swift:64
     members:
     - decl: 'public var environmentValues: MSEnvironmentValues { get }'
       doc: The environment values visible to this node.
-      source: Sources/MetalSprockets/Core/DynamicProperty.swift:78
+      source: Sources/MetalSprockets/Core/DynamicProperty.swift:77
     - decl: 'public let label: String'
       doc: |-
         The declared name of the property this context belongs to, including the property
         wrapper's leading underscore (for example `_rotation`).
-      source: Sources/MetalSprockets/Core/DynamicProperty.swift:70
+      source: Sources/MetalSprockets/Core/DynamicProperty.swift:69
     - decl: public func invalidate()
       doc: |-
         Marks this node as needing to be re-evaluated and set up on the next update.
 
         Call this when the property's value changes outside the update pass.
-      source: Sources/MetalSprockets/Core/DynamicProperty.swift:104
+      source: Sources/MetalSprockets/Core/DynamicProperty.swift:103
     - decl: 'public func persistedValue(forKey key: String) -> Any?'
       doc: |-
         Returns a value previously stored with ``setPersistedValue(_:forKey:)``.
@@ -1693,27 +1706,54 @@ modules:
         the node keeps its structural identity.
 
         - Parameter key: The storage key. Use ``label`` unless the property needs several slots.
-      source: Sources/MetalSprockets/Core/DynamicProperty.swift:88
+      source: Sources/MetalSprockets/Core/DynamicProperty.swift:87
     - decl: 'public func setPersistedValue(_ value: Any?, forKey key: String)'
       doc: |-
-        Stores a value that should survive until the next update of this node.
+        Stores a value that must stay until the next update of this node.
 
         - Parameters:
           - value: The value to store, or `nil` to clear the slot.
           - key: The storage key. Use ``label`` unless the property needs several slots.
-      source: Sources/MetalSprockets/Core/DynamicProperty.swift:97
+      source: Sources/MetalSprockets/Core/DynamicProperty.swift:96
   - decl: '@propertyWrapper public struct MSEnvironment<Value>'
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:211
+    doc: |-
+      A property wrapper that reads a value from the element's environment.
+
+      `MSEnvironment` is analogous to SwiftUI's `@Environment`. Use it to access
+      shared context that flows down from parent elements.
+
+      ## Overview
+
+      Read built-in environment values:
+
+      ```swift
+      struct MyElement: Element {
+          @MSEnvironment(\.device) var device
+          @MSEnvironment(\.renderCommandEncoder) var encoder
+
+          var body: some Element {
+              // Use device and encoder...
+          }
+      }
+      ```
+
+      ## See Also
+
+      - ``MSEnvironmentValues``
+      - ``MSEnvironmentKey``
+      - ``MSState``
+      - ``MSBinding``
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:216
     members:
     - decl: 'public init(_ keyPath: KeyPath<MSEnvironmentValues, Value>)'
       doc: |-
         Creates an environment property wrapper for the specified key path.
 
         - Parameter keyPath: A key path to the environment value to read.
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:228
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:233
     - decl: 'public var wrappedValue: Value { get }'
       doc: The current value from the environment.
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:213
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:218
   - decl: public struct MSEnvironmentValues
     doc: |-
       A collection of environment values propagated through the element tree.
@@ -1762,12 +1802,11 @@ modules:
       }
       ```
 
-      ## Topics
+      ## See Also
 
-      ### Related Types
       - ``MSEnvironment``
       - ``MSEnvironmentKey``
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:54
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:53
     members:
     - decl: 'public var colorAttachment0: (MTLTexture, Int)? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:30
@@ -1785,7 +1824,7 @@ modules:
     - decl: 'public var currentDrawable: CAMetalDrawable? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:33
     - decl: 'public var debugDescription: String { get }'
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:253
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:258
     - decl: 'public var depthAttachment: MTLTexture? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:31
     - decl: 'public var depthStencilDescriptor: MTLDepthStencilDescriptor? { get set }'
@@ -1837,7 +1876,7 @@ modules:
     - decl: 'public var vertexDescriptor: MTLVertexDescriptor? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:23
     - decl: 'public subscript<Key>(key: Key.Type) -> Key.Value where Key : MSEnvironmentKey { get set }'
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:166
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:172
   - decl: '@propertyWrapper public struct MSObservedObject<ObjectType> where ObjectType : ObservableObject'
     source: Sources/MetalSprockets/Core/ObservedObject.swift:4
     members:
@@ -1888,35 +1927,34 @@ modules:
       ChildElement(rotation: $rotation)  // Pass binding to child
       ```
 
-      ## Topics
+      ## See Also
 
-      ### Related Types
       - ``MSBinding``
       - ``MSEnvironment``
-    source: Sources/MetalSprockets/Core/State.swift:43
+    source: Sources/MetalSprockets/Core/State.swift:42
     members:
     - decl: 'public init(wrappedValue: Value)'
       doc: |-
         Creates a state property with the specified initial value.
 
         - Parameter wrappedValue: The initial value for the state.
-      source: Sources/MetalSprockets/Core/State.swift:50
+      source: Sources/MetalSprockets/Core/State.swift:49
     - decl: 'public var projectedValue: MSBinding<Value> { get }'
       doc: |-
         A binding to the state value.
 
         Use this to pass mutable access to child elements.
-      source: Sources/MetalSprockets/Core/State.swift:67
+      source: Sources/MetalSprockets/Core/State.swift:66
     - decl: 'public var wrappedValue: Value { get nonmutating set }'
       doc: The current value of the state.
-      source: Sources/MetalSprockets/Core/State.swift:55
+      source: Sources/MetalSprockets/Core/State.swift:54
     - decl: 'public func persist(in context: MSDynamicPropertyContext)'
-      source: Sources/MetalSprockets/Core/State.swift:85
+      source: Sources/MetalSprockets/Core/State.swift:84
     - decl: 'public func update(in context: MSDynamicPropertyContext)'
       doc: |-
         Restores the `StateBox` the node is holding so the value survives the element struct
         being recreated.
-      source: Sources/MetalSprockets/Core/State.swift:75
+      source: Sources/MetalSprockets/Core/State.swift:74
   - decl: 'public struct MeshRenderPipeline<Content> where Content : Element'
     doc: |-
       A render pipeline using object (optional), mesh and fragment shaders, compiled through the Metal 4 compiler.
@@ -1939,20 +1977,19 @@ modules:
       }
       ```
 
-      Requires mesh-shader support (Apple GPU Family 7 or Mac 2); other devices report a capability error.
+      Requires mesh-shader support (Apple GPU Family 7 or Mac 2). Other devices report a capability error.
 
-      ## Topics
+      ## See Also
 
-      ### Related Types
       - ``MeshShader``
       - ``ObjectShader``
       - ``RenderPipeline``
-    source: Sources/MetalSprockets/Metal/MeshRenderPipeline.swift:34
+    source: Sources/MetalSprockets/Metal/MeshRenderPipeline.swift:33
     members:
     - decl: public typealias Body = Never
-      source: Sources/MetalSprockets/Metal/MeshRenderPipeline.swift:35
+      source: Sources/MetalSprockets/Metal/MeshRenderPipeline.swift:34
     - decl: 'public init(label: String? = nil, objectShader: ObjectShader? = nil, meshShader: MeshShader, fragmentShader: FragmentShader, @ElementBuilder content: () throws -> Content) throws'
-      source: Sources/MetalSprockets/Metal/MeshRenderPipeline.swift:43
+      source: Sources/MetalSprockets/Metal/MeshRenderPipeline.swift:42
   - decl: public struct MeshShader
     doc: |-
       A mesh shader function for GPU-driven geometry generation.
@@ -1967,14 +2004,14 @@ modules:
           // Mesh draw commands
       }
       ```
-    source: Sources/MetalSprockets/Metal/Shaders.swift:193
+    source: Sources/MetalSprockets/Metal/Shaders.swift:198
     members:
     - decl: 'public init(_ reference: ShaderFunction) throws'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:197
+      source: Sources/MetalSprockets/Metal/Shaders.swift:202
     - decl: 'public let reference: ShaderFunction'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:195
+      source: Sources/MetalSprockets/Metal/Shaders.swift:200
     - decl: 'public static let functionType: MTLFunctionType'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:194
+      source: Sources/MetalSprockets/Metal/Shaders.swift:199
   - decl: public struct MetalFXSpatial
     doc: |-
       Upscales `inputTexture` into `outputTexture` with the Metal 4 MetalFX spatial scaler.
@@ -1994,7 +2031,7 @@ modules:
 
       History lives in the scaler, which persists across frames and is rebuilt (with history discarded) only when a format
       or size changes. Set `reset` for a frame whose history must not be used, such as after a camera cut. Place it
-      outside passes; ordering with earlier producers and later consumers is handled. Not available on visionOS.
+      outside passes. It orders itself with earlier producers and later consumers. Not available on visionOS.
     source: Sources/MetalSprockets/Metal/MetalFXTemporal.swift:11
     members:
     - decl: public typealias Body = Never
@@ -2035,14 +2072,14 @@ modules:
           // Mesh draw commands
       }
       ```
-    source: Sources/MetalSprockets/Metal/Shaders.swift:169
+    source: Sources/MetalSprockets/Metal/Shaders.swift:174
     members:
     - decl: 'public init(_ reference: ShaderFunction) throws'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:173
+      source: Sources/MetalSprockets/Metal/Shaders.swift:178
     - decl: 'public let reference: ShaderFunction'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:171
+      source: Sources/MetalSprockets/Metal/Shaders.swift:176
     - decl: 'public static let functionType: MTLFunctionType'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:170
+      source: Sources/MetalSprockets/Metal/Shaders.swift:175
   - decl: public struct OffscreenRenderer
     doc: |-
       Renders MetalSprockets elements to an offscreen texture.
@@ -2066,7 +2103,7 @@ modules:
       let image = try rendering.cgImage
       ```
 
-      Content supplies its own ``RenderPass``; the renderer provides its ``renderPassDescriptor`` through the environment.
+      Content supplies its own ``RenderPass``. The renderer provides its ``renderPassDescriptor`` through the environment.
       ``render(_:)`` returns after the GPU finishes, so the texture is safe to read.
     source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:31
     members:
@@ -2103,7 +2140,7 @@ modules:
     - decl: 'public var size: CGSize'
       source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:33
     - decl: 'public func render<Content>(_ content: Content) throws -> Rendering where Content : Element'
-      doc: Renders `content` and waits for the GPU. Earlier renderings keep their textures; reading them is safe.
+      doc: Renders `content` and waits for the GPU. Earlier renderings keep their textures, and you can safely read them.
       source: Sources/MetalSprockets/Roots/OffscreenRenderer.swift:110
   - decl: '@dynamicMemberLookup public struct ProjectedValue<ObjectType> where ObjectType : ObservableObject'
     source: Sources/MetalSprockets/Core/ObservedObject.swift:58
@@ -2140,7 +2177,7 @@ modules:
     doc: |-
       The attachment pixel formats and sample count of the render pass currently in scope.
 
-      Descriptor producers (root runners, offscreen renderers, ``MSAAModifier``, and the
+      Descriptor producers (root runners, offscreen renderers, `MSAAModifier`, and the
       render-pass-descriptor modifiers) publish this alongside
       ``MSEnvironmentValues/renderPassDescriptor`` so that pipelines can be configured without
       reaching into the descriptor's textures. See #362.
@@ -2155,7 +2192,7 @@ modules:
       doc: |-
         Colour attachment pixel formats, indexed by attachment index.
 
-        Trailing unused slots are omitted; unused slots in the middle are `.invalid`.
+        Unused slots at the end are not included. Unused slots in the middle are `.invalid`.
       source: Sources/MetalSprockets/Metal/RenderAttachmentFormats.swift:14
     - decl: 'public var depthPixelFormat: MTLPixelFormat'
       doc: The depth attachment pixel format, or `.invalid` if there is no depth attachment.
@@ -2328,56 +2365,55 @@ modules:
       let library = try ShaderLibrary(bundle: .myShaders(), device: renderer.device)
       ```
 
-      On a single-GPU machine the default is always right. With more than one GPU, a library compiled on one device
-      cannot be used by a pipeline built on another; pipelines check this during setup and throw rather than letting
-      Metal fail obscurely. See #55.
+      On a single-GPU machine the default is always right. With more than one GPU, a pipeline cannot use a library
+      that was compiled on a different device. Pipelines look for this during setup and throw a clear error. Without this
+      check, Metal fails with an unclear error. See #55.
 
-      ## Topics
+      ## See Also
 
-      ### Shader Types
       - ``VertexShader``
       - ``FragmentShader``
       - ``ComputeKernel``
       - ``MeshShader``
       - ``ObjectShader``
-    source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:80
+    source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:79
     members:
     - decl: public struct CompileOptionsSignature
       doc: |-
         A value snapshot of the parts of `MTLCompileOptions` that affect the compiled result.
 
-        `MTLCompileOptions` is a mutable reference type, so it can't be part of a `Sendable`, value-comparable
-        identifier. Libraries are identified by this snapshot instead. See #365.
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:85
+        `MTLCompileOptions` is a mutable reference type, so it cannot be part of a `Sendable`, value-comparable
+        identifier. This snapshot identifies libraries instead. See #365.
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:84
       members:
       - decl: 'public init(_ options: MTLCompileOptions)'
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:92
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:91
       - decl: 'public var installName: String?'
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:89
-      - decl: 'public var languageVersion: UInt'
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:86
-      - decl: 'public var libraryType: Int'
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:87
-      - decl: 'public var optimizationLevel: Int'
         source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:88
+      - decl: 'public var languageVersion: UInt'
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:85
+      - decl: 'public var libraryType: Int'
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:86
+      - decl: 'public var optimizationLevel: Int'
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:87
       - decl: 'public var preprocessorMacros: [String : String]'
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:90
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:89
     - decl: public enum ID
       doc: |-
         `@unchecked` only because of the `MTLLibrary` payload, which Metal does not declare `Sendable` but which is
         immutable once created. All other payloads are value types or immutable snapshots.
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:103
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:102
       members:
       - decl: public case bundle(Bundle)
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:104
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:103
       - decl: public case library(MTLLibrary)
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:105
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:104
       - decl: public case source(String, CompileOptionsSignature?)
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:106
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:105
       - decl: 'public func hash(into hasher: inout Hasher)'
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:342
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:338
       - decl: 'public static func == (lhs: ShaderLibrary.ID, rhs: ShaderLibrary.ID) -> Bool'
-        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:357
+        source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:353
     - decl: 'public init(bundle: Bundle, device: MTLDevice? = nil) throws'
       doc: |-
         Creates a shader library from a bundle's compiled Metal library.
@@ -2395,7 +2431,7 @@ modules:
           - device: The device to load the library on. Defaults to the system default device, which is only the right
             choice when the renderer uses that device too (see #55).
         - Throws: `MetalSprocketsError.resourceCreationFailure` if the library cannot be loaded.
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:220
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:216
     - decl: 'public init(library: MTLLibrary)'
       doc: |-
         Creates a shader library from an existing Metal library.
@@ -2405,7 +2441,7 @@ modules:
         The library is eagerly wrapped in backing state. On first use from inside
         a rendering context, the backing state is adopted by the ambient
         ``ShaderStore`` (if any), enabling deduplication across views.
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:200
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:196
     - decl: 'public init(loader: ShaderLoader)'
       doc: |-
         Creates a shader library backed by a custom ``ShaderLoader``.
@@ -2415,13 +2451,13 @@ modules:
         against it by an ambient ``ShaderStore``.
 
         - Parameter loader: The port used for all function lookups.
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:189
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:185
     - decl: 'public init(source: String, options: MTLCompileOptions? = nil, device: MTLDevice? = nil) throws'
       doc: |-
         Creates a shader library by compiling Metal source code at runtime.
 
         Use this for prototyping or dynamically generated shaders. For production,
-        prefer pre-compiled `.metal` files loaded via ``init(bundle:)``.
+        prefer pre-compiled `.metal` files loaded via ``init(bundle:device:)``.
 
         The Metal library is compiled eagerly at init time so that compilation
         never happens during the render loop. On first use from inside a
@@ -2434,15 +2470,15 @@ modules:
           - device: The device to compile on. Defaults to the system default device, which is only the right choice
             when the renderer uses that device too (see #55).
         - Throws: An error if compilation fails.
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:250
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:246
     - decl: 'public var id: ID { get }'
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:172
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:168
     - decl: 'public subscript(dynamicMember name: String) -> VertexShader { get throws }'
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:322
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:318
     - decl: 'public subscript(dynamicMember name: String) -> FragmentShader { get throws }'
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:328
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:324
     - decl: 'public subscript(dynamicMember name: String) -> ComputeKernel { get throws }'
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:316
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:312
     - decl: 'public func function<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) throws -> T where T : ShaderProtocol'
       doc: |-
         Looks up a shader function by name and wraps it in the requested shader type.
@@ -2450,16 +2486,16 @@ modules:
         Results are cached per (name, function type, constants), so repeated lookups are cheap.
 
         - Parameters:
-          - type: The shader type to produce, e.g. `VertexShader.self`. Its ``ShaderProtocol/functionType`` must match
+          - type: The shader type to make. For example, `VertexShader.self`. Its ``ShaderProtocol/functionType`` must match
             the Metal function's actual type.
           - name: The unqualified function name.
           - namespace: An optional C++ namespace qualifying `name`.
           - constants: Function constants to specialize the function with.
-        - Throws: ``MetalSprocketsError/resourceCreationFailure(_:)`` if no function of that name exists, or if it
+        - Throws: `MetalSprocketsError.resourceCreationFailure` if no function of that name exists, or if it
           exists but has the wrong function type.
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:290
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:286
     - decl: 'public func namespaced(_ name: String) -> ShaderNamespace'
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:334
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:330
     - decl: 'public func requiredFunction<T>(type: T.Type, named name: String, namespace: String? = nil, constants: FunctionConstants = FunctionConstants()) -> T where T : ShaderProtocol'
       doc: |-
         Looks up a shader function, trapping if it cannot be found.
@@ -2468,11 +2504,11 @@ modules:
         Prefer ``function(type:named:namespace:constants:)`` everywhere else.
 
         - Parameters:
-          - type: The shader type to produce, e.g. `VertexShader.self`.
+          - type: The shader type to make. For example, `VertexShader.self`.
           - name: The unqualified function name.
           - namespace: An optional C++ namespace qualifying `name`.
           - constants: Function constants to specialize the function with.
-      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:269
+      source: Sources/MetalSprockets/Metal/ShaderLibrary.swift:265
   - decl: public struct ShaderLogging
     doc: |-
       Where messages from shader `os_log` calls go.
@@ -2512,7 +2548,7 @@ modules:
   - decl: public struct ShaderParameters
     doc: |-
       Shader parameters collected for ``Element/parameters(_:)``. Each `set` matches the `.parameter` overload with the
-      same labels; later calls override earlier ones with the same name.
+      same labels. A later call overrides an earlier call with the same name.
     source: Sources/MetalSprockets/Metal/Parameters.swift:73
     members:
     - decl: 'public mutating func set(_ name: String, functionTypes: FunctionTypes = [], accelerationStructure: any MTLAccelerationStructure)'
@@ -2579,7 +2615,7 @@ modules:
     doc: |-
       GPU work that a root has committed to its Metal 4 queue.
 
-      Dropping a submission does not cancel the work or release its resources; the root keeps them until the GPU is done.
+      If you drop a submission, the work continues and keeps its resources. The root keeps them until the GPU is done.
     source: Sources/MetalSprockets/Metal/Submission.swift:6
     members:
     - decl: public enum Failure
@@ -2601,7 +2637,7 @@ modules:
     - decl: '@discardableResult public func waitUntilCompleted(timeout: Duration = .seconds(5)) throws -> SubmissionResult'
       doc: |-
         Blocks until the terminal result is known or `timeout` passes, which reports `.timedOut`.
-        For synchronous code only; use ``value()`` from async code.
+        Use this only from synchronous code. From async code, use ``value()``.
       source: Sources/MetalSprockets/Metal/Submission.swift:28
   - decl: public struct SubmissionResult
     doc: |-
@@ -2675,14 +2711,14 @@ modules:
           Draw { encoder in ... }
       }
       ```
-    source: Sources/MetalSprockets/Metal/Shaders.swift:120
+    source: Sources/MetalSprockets/Metal/Shaders.swift:125
     members:
     - decl: 'public init(_ reference: ShaderFunction) throws'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:124
+      source: Sources/MetalSprockets/Metal/Shaders.swift:129
     - decl: 'public let reference: ShaderFunction'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:122
+      source: Sources/MetalSprockets/Metal/Shaders.swift:127
     - decl: 'public static let functionType: MTLFunctionType'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:121
+      source: Sources/MetalSprockets/Metal/Shaders.swift:126
     - decl: public func inferredVertexDescriptor() -> MTLVertexDescriptor?
       source: Sources/MetalSprockets/Metal/VertexShader+Extensions.swift:5
   - decl: public struct VisibleFunction
@@ -2694,14 +2730,32 @@ modules:
       and mesh shader pipelines.
 
       - Note: TODO - Not really a "Shader". Sounds like we have a grand renaming coming.
-    source: Sources/MetalSprockets/Metal/Shaders.swift:212
+    source: Sources/MetalSprockets/Metal/Shaders.swift:217
     members:
+    - decl: public enum Linking
+      doc: How a pipeline links a visible function.
+      source: Sources/MetalSprockets/Metal/Shaders.swift:224
+      members:
+      - decl: public case binary
+        doc: Compiled once on its own and added to the pipeline without rebuilding it. Calls cannot be inlined.
+        source: Sources/MetalSprockets/Metal/Shaders.swift:226
+      - decl: public case `static`
+        doc: |-
+          Compiled into the pipeline, so the compiler can inline calls. Changing the set of static functions rebuilds
+          the pipeline.
+        source: Sources/MetalSprockets/Metal/Shaders.swift:229
     - decl: 'public init(_ reference: ShaderFunction) throws'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:216
+      source: Sources/MetalSprockets/Metal/Shaders.swift:232
+    - decl: 'public var linking: Linking'
+      doc: How pipelines link this function. Defaults to `.binary`.
+      source: Sources/MetalSprockets/Metal/Shaders.swift:221
     - decl: 'public let reference: ShaderFunction'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:214
+      source: Sources/MetalSprockets/Metal/Shaders.swift:219
     - decl: 'public static let functionType: MTLFunctionType'
-      source: Sources/MetalSprockets/Metal/Shaders.swift:213
+      source: Sources/MetalSprockets/Metal/Shaders.swift:218
+    - decl: 'public func linking(_ linking: Linking) -> VisibleFunction'
+      doc: Returns a copy of this function that pipelines link with `linking`.
+      source: Sources/MetalSprockets/Metal/Shaders.swift:238
   - decl: public enum CaptureTarget
     doc: What a ``Element/capture(_:target:destination:outputURL:)`` scope records.
     source: Sources/MetalSprockets/Metal/CaptureModifier.swift:8
@@ -2717,8 +2771,8 @@ modules:
       A result builder for composing multiple elements into a single element tree.
 
       `ElementBuilder` enables the declarative syntax used in MetalSprockets.
-      You typically don't use it directly — it's applied automatically to
-      `body` properties and content closures.
+      Usually you do not use it directly. Swift applies it to `body` properties
+      and content closures.
 
       ## Overview
 
@@ -2769,64 +2823,64 @@ modules:
       source: Sources/MetalSprockets/Core/ElementBuilder.swift:43
   - decl: 'public associatedtype Body : Element'
     doc: The type of element returned by the `body` property.
-    source: Sources/MetalSprockets/Core/Element.swift:46
+    source: Sources/MetalSprockets/Core/Element.swift:45
   - decl: public associatedtype Value
     doc: The type of value stored by this key.
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:159
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:165
   - decl: 'public init(_ reference: ShaderFunction) throws'
     doc: Creates a shader from a function with explicit library provenance.
-    source: Sources/MetalSprockets/Metal/Shaders.swift:41
+    source: Sources/MetalSprockets/Metal/Shaders.swift:40
   - decl: '@ElementBuilder public var body: Body { get throws }'
     doc: |-
       The content and behavior of this element.
 
       Implement this property to compose child elements. Use the ``ElementBuilder``
       result builder to combine multiple elements.
-    source: Sources/MetalSprockets/Core/Element.swift:52
+    source: Sources/MetalSprockets/Core/Element.swift:51
   - decl: 'public var body: Never { get } where Self.Body == Never'
-    source: Sources/MetalSprockets/Core/Element.swift:60
+    source: Sources/MetalSprockets/Core/Element.swift:59
   - decl: 'public var libraryID: ShaderLibrary.ID { get }'
     doc: Identity of the underlying library, used to dedupe libraries in a ``ShaderStore``.
     source: Sources/MetalSprockets/Metal/ShaderLoader.swift:13
   - decl: 'public var function: MTLFunction { get }'
     doc: The underlying Metal function.
-    source: Sources/MetalSprockets/Metal/Shaders.swift:36
+    source: Sources/MetalSprockets/Metal/Shaders.swift:35
   - decl: 'public var function: MTLFunction { get }'
-    source: Sources/MetalSprockets/Metal/Shaders.swift:45
+    source: Sources/MetalSprockets/Metal/Shaders.swift:44
   - decl: 'public var reference: ShaderFunction { get }'
-    source: Sources/MetalSprockets/Metal/Shaders.swift:38
+    source: Sources/MetalSprockets/Metal/Shaders.swift:37
   - decl: 'public static var defaultValue: Value { get }'
-    doc: The default value used when no explicit value has been set.
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:162
+    doc: The value to use when no value is set.
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:168
   - decl: 'public static var functionType: MTLFunctionType { get }'
     doc: The Metal function type this shader represents.
-    source: Sources/MetalSprockets/Metal/Shaders.swift:33
+    source: Sources/MetalSprockets/Metal/Shaders.swift:32
   - decl: 'public func persist(in context: MSDynamicPropertyContext) throws'
-    doc: Persists anything the System should carry over to the next update.
-    source: Sources/MetalSprockets/Core/DynamicProperty.swift:46
+    doc: Keeps the values that the System must carry over to the next update.
+    source: Sources/MetalSprockets/Core/DynamicProperty.swift:45
   - decl: 'public func persist(in context: MSDynamicPropertyContext) throws'
-    source: Sources/MetalSprockets/Core/DynamicProperty.swift:54
+    source: Sources/MetalSprockets/Core/DynamicProperty.swift:53
   - decl: 'public func update(in context: MSDynamicPropertyContext) throws'
     doc: |-
       Prepares the property for this update, before the element's body is evaluated.
 
       Restore persisted storage, register dependencies, or read the environment here.
-    source: Sources/MetalSprockets/Core/DynamicProperty.swift:43
+    source: Sources/MetalSprockets/Core/DynamicProperty.swift:42
   - decl: 'public func update(in context: MSDynamicPropertyContext) throws'
-    source: Sources/MetalSprockets/Core/DynamicProperty.swift:50
+    source: Sources/MetalSprockets/Core/DynamicProperty.swift:49
   - decl: 'public func declaredConstants(forFunctionNamed name: String) throws -> [String : FunctionConstantInfo]'
     doc: |-
       Returns the function constants declared by the function named `name`.
 
-      - Throws: ``MetalSprocketsError/configurationError(_:)`` if no such function exists.
+      - Throws: `MetalSprocketsError.configurationError` if no such function exists.
     source: Sources/MetalSprockets/Metal/ShaderLoader.swift:26
   - decl: 'public func shaderFunction(named name: String, type: MTLFunctionType, constants: FunctionConstants) throws -> ShaderFunction'
     doc: |-
       Returns the (possibly cached) function named `name`, specialized with `constants`.
 
       - Parameters:
-        - name: The fully scoped function name, e.g. `MyNamespace::myFunction`.
-        - type: The expected function type; part of the cache key.
+        - name: The fully scoped function name. For example, `MyNamespace::myFunction`.
+        - type: The expected function type. It is part of the cache key.
         - constants: Function constants to specialize with.
     source: Sources/MetalSprockets/Metal/ShaderLoader.swift:21
   extensions:
@@ -2852,10 +2906,10 @@ modules:
     - decl: extension Never
       members:
       - decl: public extension Never
-        source: Sources/MetalSprockets/Core/Element.swift:55
+        source: Sources/MetalSprockets/Core/Element.swift:54
         members:
         - decl: public typealias Body = Never
-          source: Sources/MetalSprockets/Core/Element.swift:56
+          source: Sources/MetalSprockets/Core/Element.swift:55
     - decl: extension Optional
       members:
       - decl: 'public extension Optional where Wrapped : Element'
@@ -2918,7 +2972,7 @@ modules:
     - decl: public case validationError(String)
       source: Sources/MetalSprocketsSupport/Error.swift:10
     - decl: 'public case withHint(`Self`, hint: String)'
-      doc: Wraps an error with a hint to help the user understand what might be wrong.
+      doc: Wraps an error with a hint that tells the user what can be wrong.
       source: Sources/MetalSprocketsSupport/Error.swift:14
     - decl: 'public var description: String { get }'
       source: Sources/MetalSprocketsSupport/Error.swift:18
@@ -3072,10 +3126,10 @@ modules:
         GPU execution time of the most recent completed frame, in seconds.
 
         This is `nil` until the first submission completes (typically one frame behind), and when Metal reports no
-        valid timing. Comes from ``MetalSprockets/SubmissionResult/gpuDuration``.
+        valid timing. Comes from `SubmissionResult.gpuDuration`.
       source: Sources/MetalSprocketsUI/FrameTiming.swift:44
     - decl: 'public var gpuTimings: [GPUTiming]'
-      doc: The ``MetalSprockets/GPUTiming`` intervals from `gpuTimed` elements in the most recent completed frame.
+      doc: The `GPUTiming` intervals from `gpuTimed` elements in the most recent completed frame.
       source: Sources/MetalSprocketsUI/FrameTiming.swift:47
     - decl: 'public var maxDeltaTime: TimeInterval'
       doc: The maximum delta time over the rolling window, in seconds.
@@ -3111,11 +3165,14 @@ modules:
     members:
     - decl: '@MainActor public init(statistics: FrameTimingStatistics, options: FrameTimingDisplayOptions = .default, targetFramesPerSecond: Double? = nil)'
       doc: |-
-        - Parameter targetFramesPerSecond: The frame rate the FPS readout is colour-coded against. Defaults to the
-          display's maximum refresh rate, so a 120 Hz display isn't marked green at 60 FPS.
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:73
+        - Parameters:
+          - statistics: The frame timing statistics to show.
+          - options: Which readouts to show.
+          - targetFramesPerSecond: The frame rate the FPS readout is colour-coded against. Defaults to the
+            display's maximum refresh rate, so that a 120 Hz display does not show green at 60 FPS.
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:76
     - decl: '@MainActor public var body: some View { get }'
-      source: Sources/MetalSprocketsUI/FrameTimingView.swift:79
+      source: Sources/MetalSprocketsUI/FrameTimingView.swift:82
   - decl: public struct FrameUniforms
     doc: |-
       Per-frame timing and viewport information.
@@ -3140,23 +3197,23 @@ modules:
       }
       .parameter("time", value: context.frameUniforms.time)
       ```
-    source: Sources/MetalSprocketsUI/RenderView.swift:856
+    source: Sources/MetalSprocketsUI/RenderView.swift:881
     members:
     - decl: 'public init(index: UInt32, time: Float, deltaTime: Float, viewportSize: SIMD2<UInt32>)'
       doc: Creates frame uniforms with the specified values.
-      source: Sources/MetalSprocketsUI/RenderView.swift:870
+      source: Sources/MetalSprocketsUI/RenderView.swift:895
     - decl: 'public var deltaTime: Float'
       doc: Time in seconds since the previous frame (useful for frame-rate independent animation).
-      source: Sources/MetalSprocketsUI/RenderView.swift:864
+      source: Sources/MetalSprocketsUI/RenderView.swift:889
     - decl: 'public var index: UInt32'
       doc: The zero-based frame number, incrementing each frame.
-      source: Sources/MetalSprocketsUI/RenderView.swift:858
+      source: Sources/MetalSprocketsUI/RenderView.swift:883
     - decl: 'public var time: Float'
       doc: Elapsed time in seconds since rendering started.
-      source: Sources/MetalSprocketsUI/RenderView.swift:861
+      source: Sources/MetalSprocketsUI/RenderView.swift:886
     - decl: 'public var viewportSize: SIMD2<UInt32>'
       doc: The drawable size in pixels as `[width, height]`.
-      source: Sources/MetalSprocketsUI/RenderView.swift:867
+      source: Sources/MetalSprocketsUI/RenderView.swift:892
   - decl: '@MainActor public struct OverlayBadgeModifier'
     doc: |-
       Styles a small floating readout that sits on top of rendered content.
@@ -3234,12 +3291,11 @@ modules:
       .metalColorPixelFormat(.bgra8Unorm_srgb)
       ```
 
-      ## Topics
+      ## See Also
 
-      ### Related Types
       - ``RenderViewContext``
       - ``FrameUniforms``
-    source: Sources/MetalSprocketsUI/RenderView.swift:276
+    source: Sources/MetalSprocketsUI/RenderView.swift:275
     members:
     - decl: '@MainActor public init(colorPixelFormat: MTLPixelFormat? = nil, depthStencilPixelFormat: MTLPixelFormat? = nil, sampleCount: Int? = nil, residency: ResidencyConfiguration = ResidencyConfiguration(), maximumInFlightSubmissions: Int = 3, @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content)'
       doc: |-
@@ -3247,18 +3303,19 @@ modules:
 
         - Parameters:
           - colorPixelFormat: The pixel format of the color render target. When `nil` (the default) the
-            value from the environment (``SwiftUI/View/metalColorPixelFormat(_:)``) is used, falling back
+            value from the environment (``SwiftUICore/View/metalColorPixelFormat(_:)``) is used, falling back
             to `MTKView`'s own default.
           - depthStencilPixelFormat: The pixel format of the depth/stencil render target. Required for
             depth testing. When `nil` (the default) the environment value is used.
           - sampleCount: The number of samples used for MSAA. When `nil` (the default) the environment
             value is used.
+          - residency: How resources are made resident for each submission.
           - maximumInFlightSubmissions: A positive limit. Frames are skipped at the limit, without blocking the UI.
           - content: A closure that returns the elements to render each frame.
             Receives the render context and drawable size as parameters.
 
-        Values passed here take precedence over the equivalent environment modifiers, so a `RenderView`
-        that depends on a specific format cannot be broken by an ancestor view.
+        Values that you pass here take precedence over the equivalent environment modifiers. Thus an ancestor
+        view cannot break a `RenderView` that needs a specific format.
       source: Sources/MetalSprocketsUI/RenderView.swift:306
     - decl: '@MainActor public var body: some View { get }'
       source: Sources/MetalSprocketsUI/RenderView.swift:322
@@ -3277,14 +3334,24 @@ modules:
           // Use rotation in your rendering...
       }
       ```
-    source: Sources/MetalSprocketsUI/RenderView.swift:824
+    source: Sources/MetalSprocketsUI/RenderView.swift:835
     members:
+    - decl: 'public var depthTexture: MTLTexture? { get }'
+      doc: |-
+        The frame's depth attachment, or `nil` if the view has no depth format.
+
+        Readable only in a later pass (or after a copy), not in the pass that writes it. RenderView does not
+        change the configuration of the attachment. To sample it, configure it yourself. For example:
+        `.metalDepthStencilAttachmentTextureUsage([.renderTarget, .shaderRead])`,
+        `.metalDepthStencilStorageMode(.private)` and `.metalDepthStoreAction(.store)`.
+        Accessing a memoryless depth texture asserts.
+      source: Sources/MetalSprocketsUI/RenderView.swift:851
     - decl: 'public var frameTimingStatistics: FrameTimingStatistics { get }'
       doc: Frame timing statistics computed over a rolling window.
-      source: Sources/MetalSprocketsUI/RenderView.swift:829
+      source: Sources/MetalSprocketsUI/RenderView.swift:840
     - decl: 'public var frameUniforms: FrameUniforms { get }'
       doc: Per-frame timing and viewport information.
-      source: Sources/MetalSprocketsUI/RenderView.swift:826
+      source: Sources/MetalSprocketsUI/RenderView.swift:837
   - decl: public struct YCbCrBillboardRenderPass
     doc: |-
       Renders YCbCr video textures as a full-screen billboard.
@@ -3305,8 +3372,8 @@ modules:
       ```
 
       Camera textures are valid only while their `CVMetalTexture`s live. Pass those as `owners` (the `frameData`
-      initializer does this), so they stay alive until the GPU has finished reading, not just until the next camera
-      frame arrives.
+      initializer does this), so they stay alive until the GPU finishes reading. Without this, they stay alive only until
+      the next camera frame arrives.
 
       ## Texture Coordinates
 
@@ -3336,13 +3403,13 @@ modules:
       Process-wide defaults for ``RenderView`` diagnostics.
 
       These are the fallbacks used when a view has not set the equivalent environment value with
-      ``SwiftUI/View/renderViewLogFrame(_:)`` or ``SwiftUI/View/renderViewFatalErrorOnError(_:)``.
-    source: Sources/MetalSprocketsUI/RenderView.swift:799
+      ``SwiftUICore/View/renderViewLogFrame(_:)`` or ``SwiftUICore/View/renderViewFatalErrorOnError(_:)``.
+    source: Sources/MetalSprocketsUI/RenderView.swift:810
     members:
     - decl: 'public static var fatalErrorOnCatch: Bool { get }'
-      source: Sources/MetalSprocketsUI/RenderView.swift:804
+      source: Sources/MetalSprocketsUI/RenderView.swift:815
     - decl: 'public static var logFrame: Bool { get }'
-      source: Sources/MetalSprocketsUI/RenderView.swift:800
+      source: Sources/MetalSprocketsUI/RenderView.swift:811
   extensions:
   - extended_module: MetalSprockets
     symbols:
@@ -3404,22 +3471,22 @@ modules:
           doc: |-
             Sets where shader `os_log` messages from descendant ``RenderView``s go.
 
-            Defaults to ``MetalSprockets/ShaderLogging/processDefault`` (the `MS_METAL_LOGGING` environment variable).
-            Takes effect when a view first renders; a view keeps the setting it started with.
+            Defaults to `ShaderLogging.processDefault` (the `MS_METAL_LOGGING` environment variable).
+            It takes effect when a view first renders. After that, the view keeps its first setting.
           source: Sources/MetalSprocketsUI/RenderView.swift:87
         - decl: |
             @MainActor public func renderViewFatalErrorOnError(_ enabled: Bool = true) -> some View
           doc: |-
             Turns errors thrown while drawing into a `fatalError` for descendant ``RenderView``s.
 
-            Defaults to whatever the `MS_FATALERROR_ON_THROW` environment variable says; this modifier overrides it.
+            The default comes from the `MS_FATALERROR_ON_THROW` environment variable. This modifier overrides it.
           source: Sources/MetalSprocketsUI/RenderView.swift:79
         - decl: |
             @MainActor public func renderViewLogFrame(_ enabled: Bool = true) -> some View
           doc: |-
             Logs a per-frame timing breakdown for descendant ``RenderView``s.
 
-            Defaults to whatever the `MS_RENDERVIEW_LOG_FRAME` environment variable says; this modifier overrides it.
+            The default comes from the `MS_RENDERVIEW_LOG_FRAME` environment variable. This modifier overrides it.
           source: Sources/MetalSprocketsUI/RenderView.swift:72
       - decl: public extension View
         source: Sources/MetalSprocketsUI/RenderView.swift:92
@@ -3427,7 +3494,7 @@ modules:
         - decl: |
             @MainActor public func shaderStore(_ store: ShaderStore) -> some View
           doc: |-
-            Attaches a ``ShaderStore`` to descendant ``RenderView``s.
+            Attaches a `ShaderStore` to descendant ``RenderView``s.
 
             When multiple `RenderView`s share the same store, they share compiled
             Metal libraries and specialized functions. The store also outlives any
@@ -3449,12 +3516,12 @@ modules:
             scoped to its own lifetime.
           source: Sources/MetalSprocketsUI/RenderView.swift:113
       - decl: public extension View
-        source: Sources/MetalSprocketsUI/MTKView+Environment.swift:43
+        source: Sources/MetalSprocketsUI/MTKView+Environment.swift:44
         members:
         - decl: |
             @MainActor public func metalAutoResizeDrawable(_ value: Bool) -> some View
           doc: Sets whether the drawable automatically resizes with the view.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:153
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:162
         - decl: |
             @MainActor public func metalClearColor(_ value: MTLClearColor) -> some View
           doc: |-
@@ -3464,15 +3531,15 @@ modules:
             RenderView { ... }
                 .metalClearColor(MTLClearColor(red: 0.1, green: 0.1, blue: 0.2, alpha: 1.0))
             ```
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:122
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:131
         - decl: |
             @MainActor public func metalClearDepth(_ value: Double) -> some View
           doc: 'Sets the value used to clear the depth buffer (default: 1.0).'
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:127
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:136
         - decl: |
             @MainActor public func metalClearStencil(_ value: UInt32) -> some View
           doc: Sets the value used to clear the stencil buffer.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:132
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:141
         - decl: |
             @MainActor public func metalColorPixelFormat(_ value: MTLPixelFormat) -> some View
           doc: |-
@@ -3489,15 +3556,15 @@ modules:
             ```
 
             - Note: `RenderView(colorPixelFormat:)` sets the same thing and takes precedence over this modifier.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:80
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:81
         - decl: |
             @MainActor public func metalColorspace(_ value: CGColorSpace?) -> some View
           doc: Sets the color space for the drawable (macOS only).
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:166
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:175
         - decl: |
             @MainActor public func metalDepthStencilAttachmentTextureUsage(_ value: MTLTextureUsage) -> some View
           doc: Sets the texture usage for depth/stencil attachments.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:53
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:54
         - decl: |
             @MainActor public func metalDepthStencilPixelFormat(_ value: MTLPixelFormat) -> some View
           doc: |-
@@ -3515,11 +3582,19 @@ modules:
             ```
 
             - Note: `RenderView(depthStencilPixelFormat:)` sets the same thing and takes precedence over this modifier.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:98
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:99
         - decl: |
             @MainActor public func metalDepthStencilStorageMode(_ value: MTLStorageMode) -> some View
           doc: Sets the storage mode for depth/stencil textures.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:103
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:104
+        - decl: |
+            @MainActor public func metalDepthStoreAction(_ value: MTLStoreAction) -> some View
+          doc: |-
+            Sets the store action for the frame's depth attachment. MTKView defaults to `.dontCare`.
+
+            Use `.store` (with a non-memoryless storage mode and `.shaderRead` usage) to read
+            ``RenderViewContext/depthTexture`` in a later pass.
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:112
         - decl: |
             @MainActor public func metalEnableSetNeedsDisplay(_ value: Bool) -> some View
           doc: |-
@@ -3527,7 +3602,7 @@ modules:
 
             When `true`, you must call `setNeedsDisplay()` to trigger redraws.
             When `false` (default), the view redraws continuously.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:148
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:157
         - decl: |
             @MainActor public func metalFramebufferOnly(_ value: Bool) -> some View
           doc: |-
@@ -3535,30 +3610,30 @@ modules:
 
             When `true`, Metal can optimize the textures for rendering only.
             Set to `false` if you need to sample from the drawable.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:48
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:49
         - decl: |
             @MainActor public func metalIsPaused(_ value: Bool) -> some View
           doc: |-
             Pauses or resumes rendering.
 
             When `true`, the render loop stops and no frames are drawn.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:160
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:169
         - decl: |
             @MainActor public func metalMultisampleColorAttachmentTextureUsage(_ value: MTLTextureUsage) -> some View
           doc: Sets the texture usage for multisample color attachments.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:58
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:59
         - decl: |
             @MainActor public func metalPreferredFramesPerSecond(_ value: Int) -> some View
           doc: |-
             Sets the preferred frame rate for rendering.
 
-            The system will attempt to render at this rate but may throttle
-            based on device capabilities and power state.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:140
+            The system tries to render at this rate. It can render more slowly,
+            because of device capabilities and power state.
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:149
         - decl: |
             @MainActor public func metalPresentsWithTransaction(_ value: Bool) -> some View
           doc: Sets whether drawable presentation is synchronized with Core Animation transactions.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:63
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:64
         - decl: |
             @MainActor public func metalSampleCount(_ value: Int) -> some View
           doc: |-
@@ -3567,13 +3642,13 @@ modules:
             Common values: 1 (no MSAA), 2, 4, 8
 
             - Note: `RenderView(sampleCount:)` sets the same thing and takes precedence over this modifier.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:112
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:121
         - decl: |
             @MainActor public func metalWantsExtendedDynamicRangeContent(_ value: Bool) -> some View
           doc: |-
             Sets `CAMetalLayer.wantsExtendedDynamicRangeContent`, so values above 1 in a float drawable (e.g.
             `.rgba16Float` with an extended linear color space) use the display's EDR headroom.
-          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:173
+          source: Sources/MetalSprocketsUI/MTKView+Environment.swift:182
       - decl: public extension View
         source: Sources/MetalSprocketsUI/RenderView.swift:196
         members:
@@ -3604,10 +3679,10 @@ modules:
           doc: |-
             Wraps each rendered frame in an `MTLCaptureManager` GPU frame capture scope.
 
-            Mirrors ``MetalSprockets/Element/capture(_:target:destination:)`` but applies
-            to everything rendered inside a ``RenderView``. A capture is started and stopped
-            for every frame while enabled, so prefer ``MTLCaptureDestination/developerTools``
-            (Xcode) and toggle the modifier off when you have what you need.
+            Mirrors `Element.capture(_:target:destination:)` but applies
+            to everything rendered inside a ``RenderView``. While it is enabled, a capture starts
+            and stops for every frame. Thus `MTLCaptureDestination.developerTools` (Xcode)
+            is better. Turn the modifier off when you have the capture that you need.
 
             ```swift
             RenderView { context, size in
@@ -3619,7 +3694,7 @@ modules:
             - Parameters:
               - enabled: When `false`, the modifier is a no-op. Defaults to `true`.
               - target: Whether to capture all work on the device or only on the
-                current command queue. Defaults to ``MetalSprockets/CaptureTarget/device``.
+                current command queue. Defaults to `CaptureTarget.device`.
               - destination: The capture destination. Defaults to `.developerTools`.
               - outputURL: Where to write the `.gputrace` file. Required for
                 `.gpuTraceDocument`, ignored otherwise.
