@@ -72,7 +72,11 @@ internal enum DynamicPropertyCache {
     static func mayHaveDynamicProperties(_ element: some Element) -> Bool {
         let key = ObjectIdentifier(type(of: element))
         if typesWithout.withLock({ $0.contains(key) }) {
+            #if DEBUG
+            return checkCachedType(element, key: key)
+            #else
             return false
+            #endif
         }
         if element is any WithoutDynamicProperties {
             typesWithout.withLock { _ = $0.insert(key) }
@@ -92,4 +96,21 @@ internal enum DynamicPropertyCache {
         }
         return false
     }
+
+    #if DEBUG
+    private static let warnedTypes = Mutex<Set<ObjectIdentifier>>([])
+
+    /// Mirror cannot tell that a field is declared `Any` or another existential, so a type can be cached from a value
+    /// whose field held something else. If a later value holds a dynamic property there, release builds skip it and its
+    /// state resets every frame (#503). Debug builds check every cached value, warn once, and visit it anyway.
+    private static func checkCachedType(_ element: some Element, key: ObjectIdentifier) -> Bool {
+        guard Mirror(reflecting: element).children.contains(where: { $0.value is any MSDynamicProperty }) else {
+            return false
+        }
+        if warnedTypes.withLock({ $0.insert(key).inserted }) {
+            logger?.warning("\(type(of: element)) stores a dynamic property in an Any or existential field. Release builds skip it, so its state resets every frame. Declare the field with its concrete type.")
+        }
+        return true
+    }
+    #endif
 }

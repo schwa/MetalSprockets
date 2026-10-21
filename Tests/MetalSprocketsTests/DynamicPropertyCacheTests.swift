@@ -29,6 +29,17 @@ struct DynamicPropertyCacheTests {
         #expect(DynamicPropertyCache.mayHaveDynamicProperties(Stateful()))
     }
 
+    private struct WithExistential: Element {
+        var payload: Any
+        var body: some Element { EmptyElement() }
+    }
+
+    // #503: the first value caches the type; a later value holds a dynamic property in the same Any field.
+    @Test func `a dynamic property stored in an Any field is still visited`() {
+        #expect(DynamicPropertyCache.mayHaveDynamicProperties(WithExistential(payload: 1)) == false)
+        #expect(DynamicPropertyCache.mayHaveDynamicProperties(WithExistential(payload: MSState(wrappedValue: 0))))
+    }
+
     // Not cached, so this only checks the answer; existing @MSState tests cover state through configureNode.
     @Test func `a type with an optional field reports no dynamic properties`() {
         #expect(DynamicPropertyCache.mayHaveDynamicProperties(WithOptional()) == false)

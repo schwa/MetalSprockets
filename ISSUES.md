@@ -9988,12 +9988,13 @@ Suggested:
 ## 503: Dynamic property cache can miss a dynamic property stored in an Any or existential field
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:performance, effort:s
 created: 2026-10-16T14:07:47Z
-updated: 2026-10-21T14:19:49Z
+updated: 2026-10-21T14:25:04Z
+closed: 2026-10-21T14:25:04Z
 +++
 
 Follow-up to #496.
@@ -10008,6 +10009,8 @@ Expected
 
 Notes
 - Swift's underscored _forEachField(of:options:body:) lists declared field types, not current values, which would show which fields are Any or existential. Not verified here; it may need an @_spi(Reflection) import.
+
+- `2026-10-21T14:25:04Z`: Fixed for debug builds: values of cached types are re-checked, so a dynamic property in an Any/existential field is still visited, and a warning is logged once per type. Release keeps the fast path and still skips it. _forEachField (declared field types) is not usable from SwiftPM code.
 
 ---
 
