@@ -9600,12 +9600,13 @@ Expected
 ## 491: Unknown whether per-dispatch GPU timestamps on Metal 4 compute encoders are accurate
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:timing, area:metal4, effort:s
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-21T14:43:30Z
+updated: 2026-10-21T14:59:37Z
+closed: 2026-10-21T14:59:37Z
 +++
 
 Follow-up to #448.
@@ -9620,17 +9621,33 @@ Expected
 - Per-dispatch timestamps compared against Instruments (Metal System Trace) for dispatches of very different sizes.
 - A decision on whether .gpuTimed can be allowed inside compute passes.
 
+\- `2026-10-21T14:59:37Z`: Measured 2026-10-21 (Apple M5 Max, macOS 27, Xcode 27 RC). Probe: /tmp/probe491/probe.swift (throwaway). One MTL4 compute encoder, 6 dispatches of very different cost (1K threads x 16 iterations up to 1M threads x 4096 iterations), writeTimestamp(.precise) before the first dispatch and after each one. Recorded with `xctrace record --template 'Metal System Trace'` and compared with the metal-gpu-intervals table.
+
+Per-dispatch timestamps are accurate:
+- Instruments splits the encoder into one GPU interval per dispatch when timestamps sit between dispatches. Medians, probe vs Instruments: tiny 2.7 vs 2.9 us, large 5966.1 vs 5966.8 us, small 28.6 vs 28.4 us, medium 375.4 vs 375.0 us, large2 2984.2 vs 2983.2 us.
+- Scaling is right: 4096 iterations = 2.0x 2048; 256 iterations = 1/8 of 2048; 64K threads = 1/13 of 1M.
+- Stable over 30 frames: sum 9358-9558 us. No zero reads with one timestamp between dispatches.
+- An encoder barrier between dispatches gives the same numbers.
+- Cost: the per-dispatch sum is about 0.7% above the same encoder with no inner timestamps (9360 vs 9292 us in Instruments).
+
+Separate encoders per dispatch are not usable for this: consecutive Metal 4 compute encoders overlap, so each encoder's interval includes waiting (small 64K-thread dispatch reads 3-5.5 ms in both the probe and Instruments).
+
+Recommendation: allow gpuTimed inside compute passes, at dispatch boundaries only (one shared timestamp between adjacent dispatches, as writeSharedTimestamp already does), and document that it adds a little serialization.
+
+Found a separate problem, filed as #549: timestamps only at the start and end of a compute encoder sometimes under-report badly (385, 1570, 2442, 3454 us against a real 9292 us, about 4 frames in 30, with or without a final barrier). That is how pass-level compute timing writes them today.
+
 ---
 
 ## 492: Render-encoder timestamps between draws read 0 after the first few
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: area:timing, area:metal4, effort:s
 created: 2026-10-16T13:23:23Z
-updated: 2026-10-21T14:43:35Z
+updated: 2026-10-21T15:01:14Z
+closed: 2026-10-21T15:01:14Z
 +++
 
 Follow-up to #448.
@@ -9653,6 +9670,24 @@ Unknown
 
 Expected
 - A probe on current code that varies those factors, with results recorded here.
+
+\- `2026-10-21T15:01:14Z`: Measured on current code paths with raw Metal 4 APIs (Apple M5 Max, macOS 27, Xcode 27 RC). Probe: /tmp/probe492/probe.swift (throwaway). Full-screen triangles into a 1024x1024 rgba16Float target, alternating cheap (8 iterations) and expensive (512 iterations) fragment shaders. Also recorded with xctrace Metal System Trace.
+
+Inside one render encoder, per-draw timestamps carry no per-draw information:
+- Start (after .vertex) and end (after .fragment) around each draw: 4 draws -> all 8 written but only 3 distinct values; every "draw" reads the whole pass (3666 us each). 16 or 64 draws -> only the first 9 writes are non-zero, still 3 distinct values.
+- One timestamp between draws: first 5 non-zero, 2 distinct values.
+- Same start and end stage (fragment/fragment or vertex/vertex): first 5 non-zero, 2 distinct values.
+- .relaxed granularity: same as .precise.
+- One heap per draw: same as one shared heap (first 9 non-zero), so the cap is not per heap. 64 heaps also hit the ~32 live-heap limit (#493).
+So the cap is per encoder and the values are stage boundaries of the whole pass, not draws.
+
+Other layouts:
+- One render encoder per draw, one command buffer: all timestamps written, but consecutive encoders overlap, so intervals grow (21, 978, 1925, ... us). Not per-draw time.
+- One command buffer per draw, waiting for each: accurate per draw (cheap 17-19 us, expensive about 767 us), at the cost of a full submission per draw.
+
+Instruments (Metal System Trace, metal-gpu-intervals) shows the same thing: a 16-draw encoder is one Vertex interval (~31 us) and one Fragment interval (~1252 us). No per-draw intervals. The fragment interval for 16 overlapping full-screen draws is about one expensive draw, which suggests the tile-based GPU shades the passes' draws together per tile (probably hidden-surface removal for the opaque overdraw). That is a guess; not verified.
+
+Answer: per-draw GPU time inside a render pass is not available at runtime with Metal 4 timestamps, and Metal System Trace does not show it either. Only GPU frame capture's shader profiler or separate submissions give per-draw numbers. Keep gpuTimed at pass level for render passes; to time a draw, put it in its own pass (and accept that consecutive passes can overlap unless separately submitted).
 
 ---
 
@@ -11061,5 +11096,59 @@ Seen once in 4 runs under MTL_DEBUG_LAYER=1 + MTL_CAPTURE_ENABLED=1 (while worki
 The test replaces waitUntilReady with a closure that only counts and yields, so nothing waits for isReadyForMoreMediaData. When the writer is slow (both Metal layers on), append runs while the input is not ready and AVFoundation raises an Objective-C exception, which kills the whole test process.
 
 Fix options: make the test seam wait for readiness too (or wrap the real wait), or have VideoFrameWriter check input.isReadyForMoreMediaData after the seam and throw instead of appending. The second also protects any custom waiter.
+
+---
+
+## 549: Pass-level compute timestamps sometimes under-report the pass duration
+
++++
+status: new
+priority: medium
+kind: bug
+labels: area:timing, area:metal4, effort:m
+created: 2026-10-21T14:59:32Z
++++
+
+Found while measuring #491 (Apple M5 Max, macOS 27, Xcode 27 RC; probe /tmp/probe491/probe.swift).
+
+One MTL4 compute encoder with 6 dispatches, writeTimestamp(.precise) only before the first and after the last dispatch, which is how gpuCounters and gpuTimed time a ComputePass (ComputePassEncoder.beginTimestamps/endTimestamps, GPUTiming begin/endGPUTimings). Instruments (Metal System Trace) shows the encoder at about 9292 us every frame.
+
+Per-frame totals over 30 frames, us:
+- start/end only: 9292 x26, then 385, 3454, 2442, 1570
+- start/end with an encoder barrier before the end timestamp: 9292 x24, then 379, 1436, 2415, 3407, 3414
+- a timestamp after every dispatch, summed: 9358-9558, never low
+
+In some frames Instruments shows the encoder as 2 intervals (for example 2 x 4651 us), so a guess is that the GPU splits the encoder and the start or end timestamp covers only part of it. Not verified.
+
+Expected: a compute pass's GPU duration is right every frame, or the bad frame is dropped.
+Possible fix: write a timestamp after every dispatch in a timed compute pass and use first-to-last, or sum the per-dispatch intervals. Measure the cost (about 0.7% in the probe).
+
+---
+
+## 550: Allow gpuTimed inside compute passes at dispatch boundaries
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: area:timing, area:metal4, effort:m
+created: 2026-10-21T14:59:43Z
++++
+
+#491 showed per-dispatch precise timestamps in one Metal 4 compute encoder match Instruments (within about 1 us) and are stable, at about 0.7% cost. Today gpuTimed inside a pass logs a warning and measures nothing (GPUTimedModifier). Allow it inside a ComputePass: write a shared timestamp before the first and after the last dispatch of the subtree (writeSharedTimestamp already avoids adjacent duplicates). Render passes stay pass-level until #492 is understood. Document the small serialization cost.
+
+---
+
+## 551: gpuTimed docs suggest a separate pass to time smaller work, but consecutive passes overlap on the GPU
+
++++
+status: new
+priority: low
+kind: documentation
+labels: area:timing, effort:xs
+created: 2026-10-21T15:01:22Z
++++
+
+gpuTimed's doc comment (GPUTiming.swift) says: 'To time a smaller piece of work, put it in its own pass.' The #491 and #492 probes show consecutive Metal 4 encoders in one command buffer overlap: per-encoder intervals include time spent waiting for or running alongside earlier encoders (compute: a 64K-thread dispatch read 3-5.5 ms instead of ~29 us; render: 21, 978, 1925, ... us for alternating cheap/expensive draws). Only per-dispatch timestamps inside one compute encoder (#491) or separate submissions gave per-item numbers. Update the doc: a separate pass's interval can include overlap with neighbouring passes; insert a barrier between the passes if isolated numbers are needed (verify that a queue barrier removes the overlap before documenting it).
 
 ---
