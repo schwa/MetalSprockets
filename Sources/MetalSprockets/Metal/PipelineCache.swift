@@ -120,12 +120,12 @@ internal final class PipelineCache {
         let reflection: Reflection?
         let tableLabels: [MTLFunctionType: String]
 
-        init(state: any MTLRenderPipelineState, bindings: PipelineBindings, stages: [MTLFunctionType] = [.vertex, .fragment]) {
+        init(state: any MTLRenderPipelineState, bindings: PipelineBindings, stages: [MTLFunctionType] = [.vertex, .fragment], reflection: MTLRenderPipelineReflection? = nil, binaryFunctions: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [:]) {
             self.state = state
             self.bindings = bindings
             self.stages = stages
-            functionTables = FunctionTables(render: state)
-            reflection = state.reflection.map(Reflection.init)
+            functionTables = FunctionTables(render: state, binaryFunctions: binaryFunctions)
+            self.reflection = (reflection ?? state.reflection).map(Reflection.init)
             tableLabels = ParameterSet.tableLabels(pipelineLabel: state.label, stages: stages)
         }
     }
@@ -166,17 +166,29 @@ internal final class PipelineCache {
     }
 
     private struct RenderKey: Hashable {
-        let vertex: ShaderFunction
-        let fragment: ShaderFunction
+        let base: RenderBaseKey
         let vertexLinked: [ShaderFunction]
         let fragmentLinked: [ShaderFunction]
+    }
+
+    /// Everything in a render pipeline's identity except its linked functions.
+    private struct RenderBaseKey: Hashable {
+        let vertex: ShaderFunction
+        let fragment: ShaderFunction
         let colorPixelFormats: [MTLPixelFormat]
         let depthPixelFormat: MTLPixelFormat
         let stencilPixelFormat: MTLPixelFormat
         let rasterSampleCount: Int
         let vertexLayout: VertexLayoutKey?
-        let base: DescriptorKey?
+        let descriptor: DescriptorKey?
         let label: String?
+    }
+
+    /// A render pipeline built once with binary linking, so new linked functions do not rebuild its shaders.
+    private enum RenderBase {
+        case binary(any MTLRenderPipelineState, MTLRenderPipelineReflection)
+        /// A shader calls linked functions directly (`extern`), which needs static linking.
+        case staticOnly
     }
 
     /// Value identity for a private descriptor copy. Metal 4 descriptors implement `isEqual` and `hash` by value.
@@ -210,6 +222,7 @@ internal final class PipelineCache {
     private var renderPipelines: [RenderKey: RenderPipeline] = [:]
     private var computePipelines: [ComputeKey: ComputePipeline] = [:]
     private var computeBases: [ComputeBaseKey: ComputeBase] = [:]
+    private var renderBases: [RenderBaseKey: RenderBase] = [:]
     private var binaryFunctions: [ShaderFunction: any MTL4BinaryFunction] = [:]
     private var meshPipelines: [MeshKey: RenderPipeline] = [:]
 
@@ -227,46 +240,49 @@ internal final class PipelineCache {
         let layout = (configuration.vertexDescriptor?.copy() as? MTLVertexDescriptor).map(VertexLayoutKey.init)
         let vertexLinked = Self.uniqued(configuration.linkedFunctions + configuration.vertexLinkedFunctions)
         let fragmentLinked = Self.uniqued(configuration.linkedFunctions + configuration.fragmentLinkedFunctions)
-        let key = RenderKey(
+        let baseKey = RenderBaseKey(
             vertex: configuration.vertex.reference,
             fragment: configuration.fragment.reference,
-            vertexLinked: vertexLinked.map(\.reference),
-            fragmentLinked: fragmentLinked.map(\.reference),
             colorPixelFormats: configuration.colorPixelFormats,
             depthPixelFormat: configuration.depthPixelFormat,
             stencilPixelFormat: configuration.stencilPixelFormat,
             rasterSampleCount: configuration.rasterSampleCount,
             vertexLayout: layout,
-            base: (configuration.baseDescriptor?.copy() as? MTL4RenderPipelineDescriptor).map(DescriptorKey.init),
+            descriptor: (configuration.baseDescriptor?.copy() as? MTL4RenderPipelineDescriptor).map(DescriptorKey.init),
             label: configuration.label
         )
+        let key = RenderKey(base: baseKey, vertexLinked: vertexLinked.map(\.reference), fragmentLinked: fragmentLinked.map(\.reference))
         if let cached = renderPipelines[key] {
             return cached
         }
         let allLinked = Self.uniqued(vertexLinked + fragmentLinked)
-        try validate([key.vertex, key.fragment] + allLinked.map(\.reference), label: configuration.label)
+        try validate([baseKey.vertex, baseKey.fragment] + allLinked.map(\.reference), label: configuration.label)
         try Self.validateExportNames(key.vertexLinked, label: configuration.label)
         try Self.validateExportNames(key.fragmentLinked, label: configuration.label)
         try ShaderDeviceCheck.validateLinkedFunctions(allLinked, device: device, label: configuration.label)
-        let descriptor = (key.base?.descriptor.copy() as? MTL4RenderPipelineDescriptor) ?? MTL4RenderPipelineDescriptor()
-        descriptor.label = configuration.label ?? descriptor.label
-        descriptor.vertexFunctionDescriptor = try key.vertex.makeFunctionDescriptor()
-        descriptor.fragmentFunctionDescriptor = try key.fragment.makeFunctionDescriptor()
-        for (index, format) in configuration.colorPixelFormats.enumerated() {
-            // A format the caller configured explicitly wins over the pass's.
-            let attachment = descriptor.colorAttachments[index]
-            let explicit = attachment?.pixelFormat ?? .invalid
-            Self.configure(attachment, format: explicit == .invalid ? format : explicit)
+        if !allLinked.isEmpty, case let .binary(base, reflection) = try renderBase(baseKey) {
+            let vertexBinaries = try key.vertexLinked.map { try binaryFunction($0) }
+            let fragmentBinaries = try key.fragmentLinked.map { try binaryFunction($0) }
+            let functions = MTL4RenderPipelineBinaryFunctionsDescriptor()
+            functions.vertexAdditionalBinaryFunctions = vertexBinaries
+            functions.fragmentAdditionalBinaryFunctions = fragmentBinaries
+            let state = try base.makeRenderPipelineState(additionalBinaryFunctions: functions)
+            let named: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [
+                .vertex: Dictionary(zip(key.vertexLinked.map(\.exportName), vertexBinaries)) { first, _ in first },
+                .fragment: Dictionary(zip(key.fragmentLinked.map(\.exportName), fragmentBinaries)) { first, _ in first }
+            ]
+            let bindings = PipelineBindings([(.vertex, reflection.vertexBindings), (.fragment, reflection.fragmentBindings)])
+            let pipeline = RenderPipeline(state: state, bindings: bindings, reflection: reflection, binaryFunctions: named)
+            renderPipelines[key] = pipeline
+            return pipeline
         }
-        descriptor.rasterSampleCount = configuration.rasterSampleCount
-        descriptor.vertexDescriptor = layout?.descriptor
+        let descriptor = try makeRenderDescriptor(baseKey)
         if !key.vertexLinked.isEmpty {
             descriptor.vertexStaticLinkingDescriptor = try Self.staticLinking(key.vertexLinked)
         }
         if !key.fragmentLinked.isEmpty {
             descriptor.fragmentStaticLinkingDescriptor = try Self.staticLinking(key.fragmentLinked)
         }
-        descriptor.options = Self.reflectingOptions()
         // Depth and stencil formats are not MTL4RenderPipelineDescriptor state; they key the cache so pipelines built
         // for different pass layouts stay distinct, and render-state parity (#426) validates them against passes.
         let state = try compiler.makeRenderPipelineState(descriptor: descriptor)
@@ -275,6 +291,42 @@ internal final class PipelineCache {
         let pipeline = RenderPipeline(state: state, bindings: PipelineBindings([(.vertex, reflection.vertexBindings), (.fragment, reflection.fragmentBindings)]))
         renderPipelines[key] = pipeline
         return pipeline
+    }
+
+    private func makeRenderDescriptor(_ key: RenderBaseKey) throws -> MTL4RenderPipelineDescriptor {
+        let descriptor = (key.descriptor?.descriptor.copy() as? MTL4RenderPipelineDescriptor) ?? MTL4RenderPipelineDescriptor()
+        descriptor.label = key.label ?? descriptor.label
+        descriptor.vertexFunctionDescriptor = try key.vertex.makeFunctionDescriptor()
+        descriptor.fragmentFunctionDescriptor = try key.fragment.makeFunctionDescriptor()
+        for (index, format) in key.colorPixelFormats.enumerated() {
+            // A format the caller configured explicitly wins over the pass's.
+            let attachment = descriptor.colorAttachments[index]
+            let explicit = attachment?.pixelFormat ?? .invalid
+            Self.configure(attachment, format: explicit == .invalid ? format : explicit)
+        }
+        descriptor.rasterSampleCount = key.rasterSampleCount
+        descriptor.vertexDescriptor = key.vertexLayout?.descriptor
+        descriptor.options = Self.reflectingOptions()
+        return descriptor
+    }
+
+    private func renderBase(_ key: RenderBaseKey) throws -> RenderBase {
+        if let cached = renderBases[key] {
+            return cached
+        }
+        let descriptor = try makeRenderDescriptor(key)
+        descriptor.supportVertexBinaryLinking = true
+        descriptor.supportFragmentBinaryLinking = true
+        let base: RenderBase
+        // Any failure falls back to static linking, which reports the real error if there is one.
+        if let state = try? compiler.makeRenderPipelineState(descriptor: descriptor), let reflection = state.reflection {
+            compilationCount += 1
+            base = .binary(state, reflection)
+        } else {
+            base = .staticOnly
+        }
+        renderBases[key] = base
+        return base
     }
 
     func meshRenderPipeline(_ configuration: MeshRenderPipelineConfiguration) throws -> RenderPipeline {

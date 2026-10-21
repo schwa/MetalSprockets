@@ -98,10 +98,11 @@ struct PipelineCacheTests {
         let fragmentOnly = try context.pipelines.renderPipeline(configuration(fragmentLinked: [red]))
         let vertexOnly = try context.pipelines.renderPipeline(configuration(vertexLinked: [red]))
         #expect(fragmentOnly.state !== vertexOnly.state)
-        #expect(context.pipelines.compilationCount == 2)
-        #expect(fragmentOnly.state.functionHandle(withName: "red_visible", stage: .fragment) != nil)
-        #expect(fragmentOnly.state.functionHandle(withName: "red_visible", stage: .vertex) == nil)
-        #expect(vertexOnly.state.functionHandle(withName: "red_visible", stage: .fragment) == nil)
+        // Both extend one binary-linking base pipeline (#538).
+        #expect(context.pipelines.compilationCount == 1)
+        _ = try fragmentOnly.functionTables.table(named: "colorTable", stage: .fragment, functions: [red])
+        #expect(throws: (any Error).self) { try fragmentOnly.functionTables.table(named: "colorTable", stage: .vertex, functions: [red]) }
+        #expect(throws: (any Error).self) { try vertexOnly.functionTables.table(named: "colorTable", stage: .fragment, functions: [red]) }
     }
 
     @Test

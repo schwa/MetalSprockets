@@ -91,4 +91,32 @@ struct EnvironmentPropagationTests {
 
         #expect(TestMonitor.shared.updates == ["setup:from update"])
     }
+
+    private struct StageRecorder: Element, WorkloadElement {
+        var body: Never {
+            fatalError()
+        }
+
+        func workloadEnter(_ node: Node) throws {
+            let vertex = node.environmentValues.vertexLinkedFunctions?.count ?? -1
+            let fragment = node.environmentValues.fragmentLinkedFunctions?.count ?? -1
+            TestMonitor.shared.logUpdate("\(vertex),\(fragment)")
+        }
+
+        func workloadExit(_ node: Node) throws {
+        }
+    }
+
+    // #539
+    @Test func `a reused modifier that writes a different key drops its earlier write`() throws {
+        TestMonitor.shared.reset()
+
+        let system = System()
+        try system.update(root: StageRecorder().linkedFunctions([], functionType: .vertex))
+        try system.processWorkload()
+        try system.update(root: StageRecorder().linkedFunctions([], functionType: .fragment))
+        try system.processWorkload()
+
+        #expect(TestMonitor.shared.updates == ["0,-1", "-1,0"])
+    }
 }

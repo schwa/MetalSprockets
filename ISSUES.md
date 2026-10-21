@@ -10779,11 +10779,13 @@ Also reproduced in a standalone MTL4Compiler script with MTL4StaticLinkingDescri
 ## 538: Render pipelines rebuild on the frame path for each new linked function
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, effort:m
 created: 2026-10-21T00:47:27Z
+updated: 2026-10-21T00:58:38Z
+closed: 2026-10-21T00:58:38Z
 +++
 
 #534 binary-links compute pipelines, so a new linked function no longer rebuilds the kernel. Render pipelines are still statically linked: PipelineCache.renderPipeline builds a new MTL4 render pipeline the first time a vertex/fragment pair is used with a new set of vertex or fragment linked functions, synchronously while encoding.
@@ -10797,11 +10799,13 @@ Ask: the same binary linking for render pipelines (vertex and fragment stages), 
 ## 539: Stage-specific linked functions seem to carry over between frames
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
-labels: area:api,effort:s
+labels: area:api, effort:s
 created: 2026-10-21T00:47:28Z
+updated: 2026-10-21T00:58:38Z
+closed: 2026-10-21T00:58:38Z
 +++
 
 Seen in MetalSprocketsParticles (#219 there). A RenderPipeline got .linkedFunctions(fs, functionType: .vertex) on one frame. On a later frame the same tree position instead got .linkedFunctions(gs, functionType: .fragment), with no vertex call. The pipeline then appeared to see both the old vertex list and the new fragment list. When fs and gs came from different MTLLibrary instances (two runtimes with their own ShaderLibrary), validateLinkedFunctions threw "Linked function 'X' has conflicting definitions".

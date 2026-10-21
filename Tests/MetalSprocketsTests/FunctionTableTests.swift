@@ -99,6 +99,26 @@ struct FunctionTableTests {
         #expect(runner.context.pipelines.compilationCount == 1)
     }
 
+    // #538
+    @Test func newLinkedFunctionsReuseTheRenderPipeline() throws {
+        let library = try device.makeLibrary(source: VisibleFunctionTableTests.fragmentTableSource, options: nil)
+        let vertex = try VertexShader(library: library, name: "vertex_main")
+        let fragment = try FragmentShader(library: library, name: "fragment_main")
+        let red = try VisibleFunction(library: library, name: "red_visible")
+        let green = try VisibleFunction(library: library, name: "green_visible")
+        let context = try MetalContext(device: device)
+        for linked in [[red], [green], [red, green]] {
+            let configuration = RenderPipelineConfiguration(vertex: vertex, fragment: fragment, colorPixelFormats: [.bgra8Unorm], vertexDescriptor: vertex.inferredVertexDescriptor(), fragmentLinkedFunctions: linked)
+            let pipeline = try context.pipelines.renderPipeline(configuration)
+            _ = try pipeline.functionTables.table(named: "colorTable", stage: .fragment, functions: linked)
+            #expect(throws: (any Error).self) {
+                try pipeline.functionTables.table(named: "colorTable", stage: .vertex, functions: linked)
+            }
+        }
+        // Only the base pipeline compiles; each new linked set adds binary functions to it.
+        #expect(context.pipelines.compilationCount == 1)
+    }
+
     @Test(.timeLimit(.minutes(1)))
     func tablesStayResidentForTheirPipelineLifetime() async throws {
         let library = try await device.makeLibrary(source: VisibleFunctionTableTests.computeTableSource, options: nil)

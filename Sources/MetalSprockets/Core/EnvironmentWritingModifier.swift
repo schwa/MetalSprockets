@@ -17,6 +17,8 @@ internal struct EnvironmentWritingModifier<Content: Element>: Element, BodylessE
     }
 
     func configureNodeBodyless(_ node: Node) throws {
+        // A reused node can hold a write to a different key from an earlier frame (#539).
+        node.environmentValues.removeOwnValues()
         modify(&node.environmentValues)
     }
 

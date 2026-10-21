@@ -17,13 +17,18 @@ internal final class FunctionTables {
     private(set) var creationCount = 0
     private(set) var resources: ResourceCollection?
 
-    init(render state: any MTLRenderPipelineState) {
+    init(render state: any MTLRenderPipelineState, binaryFunctions: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [:]) {
         makeTable = { stage, count in
             let descriptor = MTLVisibleFunctionTableDescriptor()
             descriptor.functionCount = count
             return state.makeVisibleFunctionTable(descriptor: descriptor, stage: Self.renderStage(stage))
         }
-        handle = { name, stage in state.functionHandle(withName: name, stage: Self.renderStage(stage)) }
+        handle = { name, stage in
+            if let binary = binaryFunctions[stage]?[name] {
+                return state.functionHandle(function: binary, stage: Self.renderStage(stage))
+            }
+            return state.functionHandle(withName: name, stage: Self.renderStage(stage))
+        }
     }
 
     /// Name lookup does not find binary-linked functions, so those resolve through `binaryFunctions`.

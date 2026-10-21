@@ -115,6 +115,13 @@ public struct MSEnvironmentValues {
         recomputeEffectiveValues()
     }
 
+    /// Drops values written directly on this environment, keeping inherited values.
+    internal mutating func removeOwnValues() {
+        values = [:]
+        ownParameterSet = nil
+        effectiveValues = inheritedValues
+    }
+
     // Updates the one key in place instead of re-merging the whole environment (#498).
     internal mutating func setValue(_ box: Box?, forKey key: Key) {
         values[key] = box
