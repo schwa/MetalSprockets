@@ -10835,3 +10835,65 @@ Ask: let callers choose per pipeline (or per linked function) between static lin
 Repro: MetalSprocketsParticles particles-bench --presets --preset foil --repeats 5, against the commit before the #538 update.
 
 ---
+
+## 541: PipelineCache adds binary functions to an existing pipeline, which crashes under Metal API validation
+
++++
+status: new
+priority: high
+kind: bug
+labels: area:metal4, effort:m
+created: 2026-10-21T12:34:03Z
++++
+
+PipelineCache.computePipeline and the render path link .binary VisibleFunctions by building a base pipeline (supportBinaryLinking) and then calling makeComputePipelineState(additionalBinaryFunctions:) / makeRenderPipelineState(additionalBinaryFunctions:). Under Metal API validation (MTLDebugDevice, on by default in Xcode Debug runs) this crashes: a segfault in the minimal repro, '-[__NSArrayM insertObject:atIndex:]: object cannot be nil' in newComputePipelineStateWithBinaryFunctions, or '-[MTLDebugFunction vendorPrivate]' in MetalSprocketsParticles' demo.
+
+Metal 4's own path works under validation: pass the binary functions at creation through MTL4PipelineStageDynamicLinkingDescriptor.binaryLinkedFunctions (compute: compiler.makeComputePipelineState(descriptor:dynamicLinkingDescriptor:compilerTaskOptions:); render: MTL4RenderPipelineDynamicLinkingDescriptor per stage).
+
+Evidence (standalone, no MetalSprockets; ~/Desktop/binaryfn-repro/main.swift, args legacy|dynamic):
+- legacy, no layer: ok. legacy, MTL_DEBUG_LAYER=1: crash.
+- dynamic, no layer: ok. dynamic, MTL_DEBUG_LAYER=1: ok.
+
+Repro in this repo's tests: run the binary-linking tests (FunctionTableTests, PipelineCacheTests) with MTL_DEBUG_LAYER=1 set before the device exists (see MetalSprocketsGLTF's .metalValidation trait); add such a trait here so it stays covered.
+
+Fix: build binary-linked pipelines with the dynamic linking descriptor. Measure the cost: today a cached base pipeline is reused and only the binaries are added; with the descriptor each new binary set creates a pipeline from the descriptor. Benchmarks in MetalSprocketsParticles (user functions, stitched modules) show whether that matters.
+
+- `2026-10-21T12:40:45Z`: Repro moved to ~/Desktop/BinaryFunctionRepro (SwiftPM; ./run-matrix.sh; FEEDBACK.md filed text). Matrix on macOS 27.0.1 (26A434), Xcode 27.0 (27A266a), M5 Max, under MTL_DEBUG_LAYER=1: compute+additionalBinaryFunctions CRASH (SIGBUS); compute+dynamicLinkingDescriptor ok; render+additionalBinaryFunctions ok; render+dynamicLinkingDescriptor ok. So the validation crash is compute-only, in newComputePipelineStateWithBinaryFunctions:. Fix scope: the compute path in PipelineCache.computePipeline must link at creation via MTL4PipelineStageDynamicLinkingDescriptor; render can stay as is for validation (but see #542). No Xcode/forum known issue found.
+
+---
+
+## 542: Binary-linked pipelines crash under Xcode GPU Frame Capture: CaptureMTL4Compiler returns unwrapped binary functions
+
++++
+status: new
+priority: high
+kind: bug
+labels: area:metal4, effort:m, needs-design
+created: 2026-10-21T12:34:05Z
++++
+
+Under GPU Frame Capture (CaptureMTLDevice; on by default when running from Xcode), MTL4Compiler.makeBinaryFunction returns a raw AGXG17XFamilyBinaryFunction instead of a capture-wrapped object, both sync and async, with or without .pipelineIndependent. Every capture pipeline call that takes it then throws '-[AGXG17XFamilyBinaryFunction baseObject]: unrecognized selector' (unwrapNSArray in GPUToolsCapture). This happens with both the additionalBinaryFunctions path and MTL4PipelineStageDynamicLinkingDescriptor. MetalSprocketsParticles' demo crashes this way in Xcode whenever an emitter has a user function or stitched module; outside Xcode it runs.
+
+Evidence: ~/Desktop/binaryfn-repro/main.swift prints each object's class. With MTL_CAPTURE_ENABLED=1: device CaptureMTLDevice, compiler CaptureMTL4Compiler, library CaptureMTLLibrary, binary AGXG17XFamilyBinaryFunction, then the crash. Without capture, every path works.
+
+Repro in this repo's tests: run the binary-linking tests with MTL_CAPTURE_ENABLED=1 set before the device exists.
+
+Not yet found: a public API path where capture wraps binary functions (tried sync, async, pipelineIndependent, both linking paths). Still to try: binary functions from an MTL4Archive, and render pipelines. Report to Apple with the repro. Until there is a path that works, decide whether binary linking must fall back to static linking when a pipeline cannot take the binary functions.
+
+- `2026-10-21T12:40:45Z`: Render confirmed too. Matrix (~/Desktop/BinaryFunctionRepro, macOS 27.0.1, Xcode 27.0 27A266a, M5 Max) under MTL_CAPTURE_ENABLED=1: compute additional, compute dynamic, render additional, render dynamic all crash with '-[AGXG17XFamilyBinaryFunction baseObject]: unrecognized selector' (GPUToolsCapture unwrapNSArray). CaptureMTL4Compiler.makeBinaryFunction returns the unwrapped driver object (sync, async, pipelineIndependent all the same). No public path works under capture. Searched Xcode 26-27 release notes and developer forums: no known issue; Xcode 26 notes list unsupported Metal 4 debugger features and binary functions are not among them. Feedback text ready in FEEDBACK.md; MetalSprockets cannot fix this one without avoiding binary linking.
+
+---
+
+## 543: Run GPU tests under Metal API validation and GPU frame capture
+
++++
+status: new
+priority: high
+kind: task
+labels: area:testing, effort:s
+created: 2026-10-21T12:34:06Z
++++
+
+The suite never runs with MTL_DEBUG_LAYER=1 or MTL_CAPTURE_ENABLED=1, so failures that only happen in Xcode Debug runs (both layers are on by default there) never fail a test. Binary-linked pipelines crash under both layers, and nothing caught it. Port MetalSprocketsGLTF's .metalValidation trait (sets the env var before the device exists and checks the device class), add a capture variant, and apply both to the pipeline and function-table suites.
+
+---
