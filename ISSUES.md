@@ -10563,12 +10563,13 @@ What is wrong
 ## 526: AnyElementID converts Int ids with unsafeBitCast
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:architecture, effort:xs
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-21T14:44:10Z
+updated: 2026-10-21T14:50:15Z
+closed: 2026-10-21T14:50:15Z
 +++
 
 From the RFC 0006 performance work.
@@ -10578,6 +10579,8 @@ What is wrong
 
 ## Proposed (per Jonathan)
 - Use if let int = id as? Int. In optimized builds the generic cast is resolved at compile time, so it should cost nothing. Measure to confirm.
+
+- `2026-10-21T14:50:15Z`: Switched to 'if let int = id as? Int'. Benchmark (Release, cubes 1000, cpu ms, 3 runs): 3.61-3.72 before, 3.63-3.66 after; no measurable change. Side effect: ids whose dynamic value is an Int (AnyHashable(5), Optional(5)) now also take the Int path; ids in one ForEach share one type, so this does not change identity within a container.
 
 ---
 

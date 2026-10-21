@@ -14,8 +14,9 @@ public struct AnyElementID: Hashable, @unchecked Sendable {
     private let storage: Storage
 
     public init<ID>(_ id: ID) where ID: Hashable {
-        if ID.self == Int.self {
-            storage = .int(unsafeBitCast(id, to: Int.self))
+        // Optimized builds specialize this cast, so it costs about the same as the type check it replaced (#526).
+        if let int = id as? Int {
+            storage = .int(int)
         } else {
             storage = .other(AnyHashable(id))
         }
