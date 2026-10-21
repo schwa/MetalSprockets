@@ -8986,9 +8986,9 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 status: open
 priority: low
 kind: bug
-labels: area:metal4, effort:s
+labels: area:metal4, effort:s, needs-decision, deferred
 created: 2026-10-02T15:54:58Z
-updated: 2026-10-21T14:19:49Z
+updated: 2026-10-21T14:25:12Z
 +++
 
 Draw.swift (around line 75) calls setCullMode(.none), setTriangleFillMode(.fill), setFrontFacing(.clockwise) and setVertexAmplificationCount(1) before every draw, so state set inside one Draw closure does not leak to the next.
@@ -9016,6 +9016,8 @@ Option D: leave as is; document that the warnings are expected.
   - Real validation warnings stay buried.
 
 Recommendation: A (possibly with B as a stopgap). Needs a decision on the leak behaviour change.
+
+- `2026-10-21T14:25:12Z`: Auto-fixer punt (2026-10-21): no change. Only option A (rasterizer modifiers, drop the unconditional reset) removes the warnings for multi-draw passes, but then rasterizer state set directly in a Draw closure leaks to later draws in the pass. B fixes only the first draw per pass; C and D do not reduce noise. Unblocker: decide whether the leak change in A is acceptable. If yes, about effort:m with docs and a migration note.
 
 ---
 
