@@ -34,11 +34,14 @@ struct DynamicPropertyCacheTests {
         var body: some Element { EmptyElement() }
     }
 
+    #if DEBUG
     // #503: the first value caches the type; a later value holds a dynamic property in the same Any field.
+    // Release builds skip cached types by design, so only debug builds visit it.
     @Test func `a dynamic property stored in an Any field is still visited`() {
         #expect(DynamicPropertyCache.mayHaveDynamicProperties(WithExistential(payload: 1)) == false)
         #expect(DynamicPropertyCache.mayHaveDynamicProperties(WithExistential(payload: MSState(wrappedValue: 0))))
     }
+    #endif
 
     // Not cached, so this only checks the answer; existing @MSState tests cover state through configureNode.
     @Test func `a type with an optional field reports no dynamic properties`() {
