@@ -106,6 +106,11 @@ internal protocol CollapsibleWorkloadModifier: BodylessContentElement {
     // Walk the rest of the chain in place. A chain is one nested value (`A<B<C<Draw>>>`), so taking each level out as
     // `any Element` would copy the whole remaining chain at every level. These read `Self` through a pointer to the
     // caller's storage instead, and are called through the metatype of `Content` cached in `ElementTypeInfo`.
+    //
+    // Soundness (#527): `pointer` always points at a live value of `Self`. The entry points pass `self`, and each
+    // level passes a pointer to its own `content`, then calls the next level through the metatype looked up for
+    // `Content`, so that level's `Self` is `Content`. The pointer is valid only inside `withUnsafePointer`, and nothing
+    // escapes it. Debug builds assert that the looked-up metatype is `Content`.
     static func visitInnermost(at pointer: UnsafeRawPointer, _ visit: (any Element) throws -> Void) throws
     static func applyChain(at pointer: UnsafeRawPointer, to node: Node, state: inout CollapseState) throws
 }
@@ -117,6 +122,7 @@ extension CollapsibleWorkloadModifier {
             try visit(modifier.pointee.content)
             return
         }
+        assert(next == Content.self, "Collapsed chain metatype \(next) does not match content type \(Content.self)")
         try withUnsafePointer(to: modifier.pointee.content) { content in
             try next.visitInnermost(at: UnsafeRawPointer(content), visit)
         }
@@ -128,6 +134,7 @@ extension CollapsibleWorkloadModifier {
         guard let next = ElementTypeInfo.of(type: Content.self).collapsibleType else {
             return
         }
+        assert(next == Content.self, "Collapsed chain metatype \(next) does not match content type \(Content.self)")
         try withUnsafePointer(to: modifier.pointee.content) { content in
             try next.applyChain(at: UnsafeRawPointer(content), to: node, state: &state)
         }

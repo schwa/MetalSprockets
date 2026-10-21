@@ -10587,12 +10587,13 @@ What is wrong
 ## 527: Collapsed modifier chains are walked with unchecked pointer binding
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:architecture, effort:s
 created: 2026-10-16T18:52:33Z
-updated: 2026-10-21T14:44:15Z
+updated: 2026-10-21T14:50:51Z
+closed: 2026-10-21T14:50:51Z
 +++
 
 From the RFC 0006 performance work.
