@@ -9334,6 +9334,8 @@ Constraint: the EnvironmentValues keys live in MetalSprocketsUI and import Swift
 
 Next step: decide between option 1 and option 2 before implementing.
 
+- `2026-10-21T16:35:40Z`: Punting: the issue asks to decide between option 1 (chainable copy methods) and option 2 (shared MetalContextConfiguration) before implementing, and both change the public init API of Runner and OffscreenRenderer. Unblocker: pick an option (2 is marked preferred) and say whether the old init parameters should stay as deprecated overloads.
+
 ---
 
 ## 484: Priority inversion in MetalContext.waitForResult
