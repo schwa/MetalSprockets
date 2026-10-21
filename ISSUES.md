@@ -10911,12 +10911,13 @@ The suite never runs with MTL_DEBUG_LAYER=1 or MTL_CAPTURE_ENABLED=1, so failure
 ## 544: Buildkite runs tests only under API validation, not GPU frame capture
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:testing, effort:s
 created: 2026-10-21T12:49:05Z
-updated: 2026-10-21T13:42:40Z
+updated: 2026-10-21T13:49:54Z
+closed: 2026-10-21T13:49:54Z
 +++
 
 Buildkite (.buildkite/pipeline.yml) has a Metal 4 machine and already runs the test step with MTL_DEBUG_LAYER=1, in debug and release. GitHub CI has no Metal 4 device (#444), so it skips most GPU tests.
@@ -10959,6 +10960,8 @@ updated: 2026-10-21T13:40:16Z
 +++
 
 #541 moved compute pipelines to MTL4PipelineStageDynamicLinkingDescriptor because the additionalBinaryFunctions path crashes under Metal API validation. The render path in PipelineCache.renderPipeline still uses makeRenderPipelineState(additionalBinaryFunctions:). It passes under validation in this repo's tests (FunctionTableTests, PipelineCacheTests with MTL_DEBUG_LAYER=1), so it was left alone. But the original #541 report saw '-[MTLDebugFunction vendorPrivate]' in MetalSprocketsParticles, which may come from a render case the tests do not cover (for example stitched functions). Add a test for that case under validation. If it crashes, move render to MTL4RenderPipelineDynamicLinkingDescriptor the same way. Measured cost for compute: about 0.1 ms per new binary set, against about 0.01 ms before; the kernel is not recompiled.
+
+- `2026-10-21T13:47:37Z`: Tested (RenderBinaryLinkingTests): render pipelines binary-link a visible function from another library and a stitched function (MTLStitchedLibraryDescriptor). Both render correctly in normal runs, under MTL_DEBUG_LAYER=1, under MTL_CAPTURE_ENABLED=1, and under both. A third test shows both take the binary path (one base compile). So the render path stays on makeRenderPipelineState(additionalBinaryFunctions:); no code change. The '-[MTLDebugFunction vendorPrivate]' crash from the original #541 report is not reproduced here; its cause in MetalSprocketsParticles is unknown.
 
 ---
 
