@@ -10932,15 +10932,18 @@ Open question: #541 should have crashed the existing Buildkite validation run. C
 ## 545: MetalContext creates a log state when shader logging is on, which breaks GPU frame capture
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: area:metal4, effort:s, needs-decision
 created: 2026-10-21T12:49:05Z
-updated: 2026-10-21T13:40:16Z
+updated: 2026-10-21T13:42:51Z
+closed: 2026-10-21T13:42:51Z
 +++
 
 MetalContext.init creates an MTLLogState when ShaderLogging.systemDefault is set (MS_METAL_LOGGING). After any log state exists, Metal refuses captures for the rest of the process ('Capturing Shader logging is not supported'). So a user with MS_METAL_LOGGING on cannot use Xcode GPU capture or MetalSprockets capture scopes, and gets an error only at capture time. Found while adding layered test runs (#543): the tests already skip log-state tests under capture. Decide whether to warn, skip the log state under capture, or document it.
+
+- `2026-10-21T13:42:51Z`: Won't fix: users who turn on shader logging know it blocks capture.
 
 ---
 
