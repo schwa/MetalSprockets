@@ -627,9 +627,9 @@ closed: 2026-08-08T16:32:10Z
 status: closed
 priority: low
 kind: none
-labels: effort:m, priority:low
+labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-03-31T18:38:08Z
+updated: 2026-10-23T14:31:29Z
 closed: 2026-03-31T18:38:08Z
 +++
 
@@ -2207,9 +2207,9 @@ we have explicit labels to computepass and friends. Add them to more places. Use
 status: closed
 priority: high
 kind: none
-labels: effort:m, priority:high
+labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-03-31T18:59:05Z
+updated: 2026-10-23T14:31:29Z
 closed: 2026-03-31T18:59:05Z
 +++
 
@@ -2336,9 +2336,9 @@ Shader constants allow specializing shaders at pipeline creation time for better
 status: closed
 priority: medium
 kind: enhancement
-labels: enhancement, priority:medium
+labels: enhancement
 created: 2026-02-19T00:00:00Z
-updated: 2026-03-31T18:20:11Z
+updated: 2026-10-23T14:31:29Z
 closed: 2026-03-31T18:20:11Z
 +++
 
