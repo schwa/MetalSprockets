@@ -11203,3 +11203,21 @@ A pass with no draws is a client-side mistake, but MetalSprockets should either 
 Env: macOS 26, MetalSprockets 0.2.8, Debug build.
 
 ---
+
+## 553: RenderView has no way to request a frame in on-demand mode
+
++++
+status: new
+priority: medium
+kind: feature
+labels: rendering
+created: 2026-10-23T21:32:23Z
++++
+
+RenderView can run its MTKView in paused or setNeedsDisplay mode (.metalIsPaused, .metalEnableSetNeedsDisplay). But the host app cannot ask for a frame when its render inputs change: the MTKView and its delegate are hidden inside RenderView, and the SwiftUI update closure stores the new content without marking the view as needing display.
+
+Because of this, apps cannot render on demand (only when the camera, transforms, or parameters change) to save power on static scenes. Radiance#62 needs this.
+
+Missing: a supported way to invalidate a RenderView in on-demand mode. For example, redraw when RenderView's inputs change, or an environment- or binding-provided redraw request. Renderers that accumulate over frames also need a way to keep requesting frames until they converge.
+
+---
