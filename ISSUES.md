@@ -11172,3 +11172,32 @@ gpuTimed's doc comment (GPUTiming.swift) says: 'To time a smaller piece of work,
 - `2026-10-21T15:05:31Z`: Verified with the #491/#492 probes: a queue barrier between encoders (compute: small 28 us instead of 3-5.5 ms; render: cheap 17 us / expensive ~767 us per pass) or a producer barrier at the end of the earlier encoder removes the overlap. The doc now says intervals are a profile of the real frame, that a barrier between passes gives isolated numbers while investigating, and that the barrier should not stay in production code. Note: a QueueBarrier element inside the timed pass would not help, because the pass's start timestamp is written before the pass content.
 
 ---
+
+## 552: RenderView presents stale or transparent frames when a RenderPass has no draw calls
+
++++
+status: new
+priority: low
+kind: bug
+labels: rendering
+created: 2026-10-23T14:51:07Z
++++
+
+A RenderView whose content is a RenderPass with no draw calls does not present a cleared frame each frame.
+
+Repro:
+1. Make a RenderView with .metalClearColor set to opaque black.
+2. Make its content `try RenderPass { EmptyElement() }`, also with a renderPassDescriptorModifier that sets loadAction = .clear and storeAction = .store.
+3. Run on macOS and take screenshots of the window in quick succession.
+
+Expected: every frame is solid black, like a pass with at least one draw.
+
+Actual: the first frame is black. Later frames are transparent (the window background shows through, because the layer is not opaque), or show an older frame left in the drawable. No error is logged with MS_LOGGING=1. While other SwiftUI updates arrive, frames switch between black and transparent, which looks like heavy flicker.
+
+The same pass with one real draw (for example GridShader) is solid black on every frame.
+
+A pass with no draws is a client-side mistake, but MetalSprockets should either present the cleared frame or report the problem. It should not fail silently.
+
+Env: macOS 26, MetalSprockets 0.2.8, Debug build.
+
+---
