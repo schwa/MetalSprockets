@@ -11176,11 +11176,13 @@ gpuTimed's doc comment (GPUTiming.swift) says: 'To time a smaller piece of work,
 ## 552: RenderView presents stale or transparent frames when a RenderPass has no draw calls
 
 +++
-status: new
+status: closed
 priority: low
 kind: bug
 labels: rendering
 created: 2026-10-23T14:51:07Z
+updated: 2026-10-23T17:18:54Z
+closed: 2026-10-23T17:18:54Z
 +++
 
 A RenderView whose content is a RenderPass with no draw calls does not present a cleared frame each frame.

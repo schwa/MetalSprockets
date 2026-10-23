@@ -51,7 +51,12 @@ public struct RenderPass <Content>: Element, SetupElement, WorkloadElement, Body
     func workloadEnter(_ node: Node) throws {
         logger?.verbose?.info("Enter render pass: \(label ?? "<unlabeled>") (\(node.element.debugName))")
         let scope = try node.environmentValues.recordingScope.orThrow(.withHint(.missingEnvironment("recordingScope"), hint: "Render passes run inside a root such as Runner, OffscreenRenderer or RenderView."))
-        let descriptor = try node.environmentValues.activeRenderPassDescriptor.orThrow(.missingEnvironment("renderPassDescriptor"))
+        // Setup is skipped when the pass and its content compare equal to last frame (for example a pass with only
+        // an EmptyElement), so the setup copy can still target last frame's drawable. Copy again from the current
+        // descriptor. See #552.
+        let source = try node.environmentValues.renderPassDescriptor.orThrow(.missingEnvironment("renderPassDescriptor"))
+        let descriptor = try (source.copy() as? MTL4RenderPassDescriptor).orThrow(.generic("Could not copy the render pass descriptor"))
+        node.environmentValues.activeRenderPassDescriptor = descriptor
         let pass = try scope.beginRenderPass(descriptor: descriptor)
         node.environmentValues.renderPassEncoder = pass
         node.environmentValues.renderCommandEncoder = pass.encoder
