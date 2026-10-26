@@ -191,28 +191,31 @@ extension MTKView {
         configureDrawLoop(from: environment)
     }
 
+    // Runs on every SwiftUI update; MTKView setters can recreate attachments even for an unchanged value.
     private func configureAttachments(from environment: EnvironmentValues) {
-        if let value = environment.metalFramebufferOnly {
+        if let value = environment.metalFramebufferOnly, framebufferOnly != value {
             self.framebufferOnly = value
         }
-        if let value = environment.metalDepthStencilAttachmentTextureUsage {
+        if let value = environment.metalDepthStencilAttachmentTextureUsage, depthStencilAttachmentTextureUsage != value {
             self.depthStencilAttachmentTextureUsage = value
         }
-        if let value = environment.metalMultisampleColorAttachmentTextureUsage {
+        if let value = environment.metalMultisampleColorAttachmentTextureUsage, multisampleColorAttachmentTextureUsage != value {
             self.multisampleColorAttachmentTextureUsage = value
         }
-        if let value = environment.metalColorPixelFormat {
+        if let value = environment.metalColorPixelFormat, colorPixelFormat != value {
             self.colorPixelFormat = value
         }
-        if let value = environment.metalDepthStencilPixelFormat {
+        if let value = environment.metalDepthStencilPixelFormat, depthStencilPixelFormat != value {
             self.depthStencilPixelFormat = value
         }
         if let value = environment.metalDepthStencilStorageMode {
-            self.depthStencilStorageMode = value
+            if depthStencilStorageMode != value {
+                self.depthStencilStorageMode = value
+            }
         } else {
             adoptMemorylessDepthStencilIfPossible()
         }
-        if let value = environment.metalSampleCount {
+        if let value = environment.metalSampleCount, sampleCount != value {
             self.sampleCount = value
         }
         #if os(macOS)
@@ -283,7 +286,7 @@ extension MTKView {
         guard depthStencilAttachmentTextureUsage == .renderTarget else {
             return
         }
-        guard let device, device.supportsFamily(.apple1) else {
+        guard let device, device.supportsFamily(.apple1), depthStencilStorageMode != .memoryless else {
             return
         }
         depthStencilStorageMode = .memoryless

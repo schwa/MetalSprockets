@@ -428,7 +428,9 @@ internal struct MetalHostView <Content>: View where Content: Element {
             #else
             view.layer.isOpaque = false
             #endif
-            view.device = device
+            if view.device !== device {
+                view.device = device
+            }
             view.delegate = viewModel
             view.configure(from: overrides.applied(to: environment))
             viewModel.content = content
