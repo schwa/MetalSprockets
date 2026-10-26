@@ -11221,3 +11221,23 @@ Because of this, apps cannot render on demand (only when the camera, transforms,
 Missing: a supported way to invalidate a RenderView in on-demand mode. For example, redraw when RenderView's inputs change, or an environment- or binding-provided redraw request. Renderers that accumulate over frames also need a way to keep requesting frames until they converge.
 
 ---
+
+## 554: RenderView .capture(): capture several frames into one trace
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:diagnostics,effort:s
+created: 2026-10-26T15:04:18Z
++++
+
+Today .capture() starts and stops a separate MTLCaptureManager capture around every frame's submission (CaptureModifier in Diagnostics.swift). With .gpuTraceDocument and a fixed outputURL there is no way to get several consecutive frames in one trace, which is what debugging frame-to-frame problems needs (SceneSprockets #242: intermittent garbage frames that only appear while SwiftUI updates the view).
+Proposal: add a frame count, for example .capture(true, frames: 30, destination: .gpuTraceDocument, outputURL: url). The first frame starts the capture; the session stays alive across frames and stops once the Nth submission has finished on the GPU (counting terminal results, so in-flight frames are included). Then it disables itself until the configuration changes, instead of re-capturing every frame.
+Notes:
+- Keep the one-frame default.
+- The Metal 4 rule stays: start and stop only around whole passes and submissions, never inside an open encoder (#432).
+- Decide what happens to the file if the app exits mid-capture: stop in deinit, as CaptureSession does now.
+- Useful companion: a trigger (a binding or a keyboard shortcut in demos) to start an N-frame capture at the moment a glitch is visible.
+
+---
