@@ -1,8 +1,8 @@
+import MetalSprocketsUI
 import SwiftUI
 
 #if os(visionOS)
 import MetalSprockets
-import MetalSprocketsUI
 #endif
 
 #if os(visionOS)
@@ -22,6 +22,9 @@ struct MetalSprockets_ExampleApp: App {
         // Main window with the spinning cube
         WindowGroup {
             ContentView()
+                .captureHotKeys { result in
+                    print("GPU capture: \(result)")
+                }
                 #if os(visionOS)
                 .environment(immersiveFrameTiming)
             #endif

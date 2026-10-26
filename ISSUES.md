@@ -11243,3 +11243,18 @@ Notes:
 - Useful companion: a trigger (a binding or a keyboard shortcut in demos) to start an N-frame capture at the moment a glitch is visible.
 
 ---
+
+## 555: Opt-in hotkeys on RenderView to trigger a GPU frame capture
+
++++
+status: closed
+priority: low
+kind: feature
+created: 2026-10-26T15:29:18Z
+updated: 2026-10-26T15:35:49Z
+closed: 2026-10-26T15:35:49Z
++++
+
+Add a `.captureHotKeys()` View modifier. One key combo captures the next frame(s) to Xcode (default ⌃⌥⌘C). Another combo writes a .gputrace file (default ⌃⌥⌘⇧C). Both keys can be configured or turned off. Supports frame count, target, output directory, and an onCapture callback. Builds on the existing `.capture` plumbing.
+
+---

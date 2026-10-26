@@ -123,6 +123,8 @@ internal struct RenderViewCaptureConfiguration: Equatable {
     var destination: MTLCaptureDestination
     var outputURL: URL?
     var frames: Int?
+    // Bumped to re-arm a capture without changing other fields (used by `captureHotKeys`).
+    var generation: Int = 0
 }
 
 public extension View {
