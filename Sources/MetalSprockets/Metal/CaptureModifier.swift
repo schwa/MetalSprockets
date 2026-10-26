@@ -47,3 +47,16 @@ public extension Element {
         CaptureModifier(content: self, enabled: enabled, target: target, destination: destination, outputURL: outputURL)
     }
 }
+
+package extension Element {
+    /// Like ``capture(_:target:destination:outputURL:)``, but adds this submission to a multi-frame `sequence`.
+    func capture(
+        _ enabled: Bool,
+        target: CaptureTarget,
+        destination: MTLCaptureDestination,
+        outputURL: URL?,
+        sequence: CaptureSequence?
+    ) -> some Element {
+        CaptureModifier(content: self, enabled: enabled, target: target, destination: destination, outputURL: outputURL, sequence: sequence)
+    }
+}

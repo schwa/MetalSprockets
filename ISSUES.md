@@ -11225,11 +11225,13 @@ Missing: a supported way to invalidate a RenderView in on-demand mode. For examp
 ## 554: RenderView .capture(): capture several frames into one trace
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
-labels: area:diagnostics,effort:s
+labels: area:diagnostics, effort:s
 created: 2026-10-26T15:04:18Z
+updated: 2026-10-26T15:21:18Z
+closed: 2026-10-26T15:21:18Z
 +++
 
 Today .capture() starts and stops a separate MTLCaptureManager capture around every frame's submission (CaptureModifier in Diagnostics.swift). With .gpuTraceDocument and a fixed outputURL there is no way to get several consecutive frames in one trace, which is what debugging frame-to-frame problems needs (SceneSprockets #242: intermittent garbage frames that only appear while SwiftUI updates the view).

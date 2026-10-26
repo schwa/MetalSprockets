@@ -122,15 +122,19 @@ internal struct RenderViewCaptureConfiguration: Equatable {
     var target: CaptureTarget
     var destination: MTLCaptureDestination
     var outputURL: URL?
+    var frames: Int?
 }
 
 public extension View {
     /// Wraps each rendered frame in an `MTLCaptureManager` GPU frame capture scope.
     ///
     /// Mirrors `Element.capture(_:target:destination:)` but applies
-    /// to everything rendered inside a ``RenderView``. While it is enabled, a capture starts
-    /// and stops for every frame. Thus `MTLCaptureDestination.developerTools` (Xcode)
+    /// to everything rendered inside a ``RenderView``. When `frames` is `nil`, a capture starts
+    /// and stops for every frame while the modifier is enabled. Thus `MTLCaptureDestination.developerTools` (Xcode)
     /// is better. Turn the modifier off when you have the capture that you need.
+    ///
+    /// When `frames` is set, one capture records that many consecutive frames, then the modifier does nothing
+    /// until its configuration changes. To capture again, toggle `enabled` or change another argument.
     ///
     /// ```swift
     /// RenderView { context, size in
@@ -146,13 +150,16 @@ public extension View {
     ///   - destination: The capture destination. Defaults to `.developerTools`.
     ///   - outputURL: Where to write the `.gputrace` file. Required for
     ///     `.gpuTraceDocument`, ignored otherwise.
+    ///   - frames: The number of consecutive frames in one capture. `nil` captures every frame separately.
     func capture(
         _ enabled: Bool = true,
+        frames: Int? = nil,
         target: CaptureTarget = .device,
         destination: MTLCaptureDestination = .developerTools,
         outputURL: URL? = nil
     ) -> some View {
-        environment(\.renderViewCapture, RenderViewCaptureConfiguration(enabled: enabled, target: target, destination: destination, outputURL: outputURL))
+        precondition(frames.map { $0 > 0 } ?? true, "`frames` must be positive.")
+        return environment(\.renderViewCapture, RenderViewCaptureConfiguration(enabled: enabled, target: target, destination: destination, outputURL: outputURL, frames: frames))
     }
 }
 
@@ -554,7 +561,22 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
     var frameTimingChange: ((FrameTimingStatistics) -> Void)?
 
     @ObservationIgnored
-    var captureConfiguration: RenderViewCaptureConfiguration?
+    var captureConfiguration: RenderViewCaptureConfiguration? {
+        didSet {
+            guard captureConfiguration != oldValue else {
+                return
+            }
+            captureSequence = captureConfiguration.flatMap { configuration in
+                guard configuration.enabled, let frames = configuration.frames else {
+                    return nil
+                }
+                return CaptureSequence(frameCount: frames)
+            }
+        }
+    }
+
+    @ObservationIgnored
+    private(set) var captureSequence: CaptureSequence?
 
     /// Ambient shader store from the SwiftUI environment, if any. When `nil`,
     /// the view model uses its private ``fallbackShaderStore`` so that shaders
@@ -714,6 +736,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                 let rootElement = try buildRenderViewRootElement(
                     content: userContent,
                     captureConfiguration: self.captureConfiguration,
+                    captureSequence: self.captureSequence,
                     device: device,
                     commandQueue: commandQueue,
                     shaderStore: shaderStore ?? fallbackShaderStore,

@@ -142,6 +142,52 @@ struct CaptureModifierTests {
         #expect(manager.isCapturing)
     }
 
+    @Test("A capture sequence starts once, admits N frames, and finishes after N ends")
+    func testCaptureSequenceCounting() {
+        let sequence = CaptureSequence(frameCount: 3)
+        #expect(sequence.admit() == .start)
+        #expect(sequence.admit() == .join)
+        #expect(sequence.admit() == .join)
+        #expect(sequence.admit() == .skip)
+        sequence.submissionEnded()
+        sequence.submissionEnded()
+        #expect(sequence.isDone == false)
+        sequence.submissionEnded()
+        #expect(sequence.isDone)
+        #expect(sequence.admit() == .skip)
+    }
+
+    @Test("A capture sequence that cannot start stays done")
+    func testCaptureSequenceCancelStart() {
+        let sequence = CaptureSequence(frameCount: 2)
+        #expect(sequence.admit() == .start)
+        sequence.cancelStart()
+        #expect(sequence.isDone)
+        #expect(sequence.admit() == .skip)
+    }
+
+    @Test("A capture sequence writes one .gputrace for several frames", .requiresMetal4)
+    func testCaptureSequenceMultipleFrames() throws {
+        let manager = MTLCaptureManager.shared()
+        guard manager.supportsDestination(.gpuTraceDocument) else {
+            return
+        }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("CaptureModifierTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let outputURL = directory.appendingPathComponent("trace.gputrace")
+
+        let sequence = CaptureSequence(frameCount: 3)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
+        for frame in 0..<3 {
+            let pass = try makeTriangleRenderPass().capture(true, target: .device, destination: .gpuTraceDocument, outputURL: outputURL, sequence: sequence)
+            _ = try renderer.render(pass)
+            #expect(manager.isCapturing == (frame < 2))
+        }
+        #expect(sequence.isDone)
+        #expect(FileManager.default.fileExists(atPath: outputURL.path))
+    }
+
     @Test("CaptureModifier.requiresSetup is false", .requiresMetal4)
     func testCaptureRequiresSetupIsFalse() throws {
         struct Leaf: Element, BodylessElement { var body: Never { fatalError() } }

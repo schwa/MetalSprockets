@@ -45,6 +45,7 @@ internal func sampleCountChanged(current: Int, observed: Int) -> Bool {
 internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable:this function_parameter_count
     content: Content,
     captureConfiguration: RenderViewCaptureConfiguration?,
+    captureSequence: CaptureSequence? = nil,
     device: MTLDevice,
     commandQueue: any MTL4CommandQueue,
     shaderStore: ShaderStore,
@@ -63,7 +64,8 @@ internal func buildRenderViewRootElement<Content: Element>( // swiftlint:disable
         captureConfiguration?.enabled ?? false,
         target: captureConfiguration?.target ?? .device,
         destination: captureConfiguration?.destination ?? .developerTools,
-        outputURL: captureConfiguration?.outputURL
+        outputURL: captureConfiguration?.outputURL,
+        sequence: captureSequence
     )
     .renderPassDescriptor(renderPassDescriptor)
     .renderPipelineDescriptor(MTL4RenderPipelineDescriptor())

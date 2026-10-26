@@ -52,12 +52,21 @@ extension ShaderLogging {
 /// that throws still ends the capture.
 internal final class CaptureSession: Sendable {
     private let isFinished = OSAllocatedUnfairLock(initialState: false)
+    private let onFinish: @Sendable () -> Void
+
+    init(onFinish: @escaping @Sendable () -> Void = { stopCapture() }) {
+        self.onFinish = onFinish
+    }
 
     /// Stops the capture while the resources of the submission are still alive. The capture layer serializes their state.
     func finish() {
         guard !isFinished.withLock({ finished in defer { finished = true }; return finished }) else {
             return
         }
+        onFinish()
+    }
+
+    static func stopCapture() {
         let manager = MTLCaptureManager.shared()
         if manager.isCapturing {
             manager.stopCapture()
@@ -71,19 +80,136 @@ internal final class CaptureSession: Sendable {
     }
 }
 
+/// One capture that spans several consecutive submissions.
+///
+/// The first submission starts the capture. Every counted submission ends with a terminal result (or a discard), and
+/// the capture stops once the last of them has ended. Later submissions are not captured. Make a new sequence to
+/// capture again.
+package final class CaptureSequence: Sendable {
+    private enum Phase {
+        case idle
+        case capturing(started: Int, ended: Int)
+        case done
+    }
+
+    package let frameCount: Int
+    private let phase = OSAllocatedUnfairLock(initialState: Phase.idle)
+
+    package init(frameCount: Int) {
+        precondition(frameCount > 0, "A capture sequence needs at least one frame.")
+        self.frameCount = frameCount
+    }
+
+    package var isDone: Bool {
+        phase.withLock { if case .done = $0 { true } else { false } }
+    }
+
+    enum Admission {
+        case start
+        case join
+        case skip
+    }
+
+    /// Counts a new submission into the sequence.
+    func admit() -> Admission {
+        phase.withLock { phase in
+            switch phase {
+            case .idle:
+                phase = .capturing(started: 1, ended: 0)
+                return .start
+            case let .capturing(started, ended) where started < frameCount:
+                phase = .capturing(started: started + 1, ended: ended)
+                return .join
+            case .capturing, .done:
+                return .skip
+            }
+        }
+    }
+
+    /// Undoes `admit()` for a submission whose capture could not start.
+    func cancelStart() {
+        phase.withLock { $0 = .done }
+    }
+
+    /// Records that an admitted submission has ended. Stops the capture after the last one.
+    func submissionEnded() {
+        let shouldStop = phase.withLock { phase in
+            guard case let .capturing(started, previouslyEnded) = phase else {
+                return false
+            }
+            if previouslyEnded + 1 >= frameCount {
+                phase = .done
+                return true
+            }
+            phase = .capturing(started: started, ended: previouslyEnded + 1)
+            return false
+        }
+        if shouldStop {
+            CaptureSession.stopCapture()
+            logger?.info("capture: \(self.frameCount)-frame capture finished.")
+        }
+    }
+
+    // The app can drop the sequence mid-capture (configuration change, view gone). Stop so the trace is written.
+    deinit {
+        if case .capturing = phase.withLock({ $0 }) {
+            CaptureSession.stopCapture()
+        }
+    }
+}
+
 internal struct CaptureModifier<Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
     var content: Content
     var enabled: Bool
     var target: CaptureTarget
     var destination: MTLCaptureDestination
     var outputURL: URL?
+    var sequence: CaptureSequence?
 
     func workloadEnter(_ node: Node) throws {
         guard enabled else {
             return
         }
-        let context = try node.environmentValues.metalContext.orThrow(.missingEnvironment("metalContext"))
+        if let sequence {
+            try enterSequence(sequence, node: node)
+            return
+        }
+        guard try startCapture(node: node) else {
+            return
+        }
         let recording = try node.environmentValues.recordingScope.orThrow(.missingEnvironment("recordingScope"))
+        let session = CaptureSession()
+        try recording.retain(session)
+        try recording.onTerminated { _ in session.finish() }
+    }
+
+    private func enterSequence(_ sequence: CaptureSequence, node: Node) throws {
+        let recording = try node.environmentValues.recordingScope.orThrow(.missingEnvironment("recordingScope"))
+        switch sequence.admit() {
+        case .skip:
+            return
+        case .start:
+            do {
+                guard try startCapture(node: node) else {
+                    sequence.cancelStart()
+                    return
+                }
+            } catch {
+                sequence.cancelStart()
+                throw error
+            }
+        case .join:
+            break
+        }
+        // The session holds the sequence, so a capture outlives the view model until its last frame ends.
+        let session = CaptureSession { sequence.submissionEnded() }
+        try recording.retain(session)
+        try recording.onTerminated { _ in session.finish() }
+    }
+
+    /// Returns `false` when the capture is skipped (unsupported destination or a capture already running).
+    private func startCapture(node: Node) throws -> Bool {
+        let context = try node.environmentValues.metalContext.orThrow(.missingEnvironment("metalContext"))
         // Starting a capture while an encoder is open, then drawing, crashes capture serialization at stop (observed
         // on the Xcode 27 RC, #432). The legacy modifier allowed this placement; on Metal 4 it must wrap whole passes.
         guard node.environmentValues.renderPassEncoder == nil, node.environmentValues.computePassEncoder == nil else {
@@ -92,12 +218,12 @@ internal struct CaptureModifier<Content>: Element, WorkloadElement, BodylessCont
         let manager = MTLCaptureManager.shared()
         guard manager.supportsDestination(destination) else {
             logger?.warning("capture: MTLCaptureManager does not support destination \(String(describing: destination)). Set MTL_CAPTURE_ENABLED=1 to enable .developerTools captures.")
-            return
+            return false
         }
         // A capture owned by someone else (or an outer scope) is left alone.
         guard !manager.isCapturing else {
             logger?.warning("capture: MTLCaptureManager is already capturing; skipping nested scope.")
-            return
+            return false
         }
         let descriptor = MTLCaptureDescriptor()
         descriptor.destination = destination
@@ -114,9 +240,7 @@ internal struct CaptureModifier<Content>: Element, WorkloadElement, BodylessCont
         }
         try manager.startCapture(with: descriptor)
         logger?.info("capture: capture started successfully.")
-        let session = CaptureSession()
-        try recording.retain(session)
-        try recording.onTerminated { _ in session.finish() }
+        return true
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }
