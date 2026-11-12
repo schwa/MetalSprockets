@@ -11286,3 +11286,16 @@ Expected: this package requires GeometryLite3D 0.3.x (and SwiftMesh 0.1.x where 
 Reported from SceneSprockets #378.
 
 ---
+
+## 557: Snapshot support may no longer be worth keeping
+
++++
+status: new
+priority: low
+kind: task
+created: 2026-11-12T04:58:43Z
++++
+
+System snapshots (Snapshotter, SystemSnapshot, System+Snapshot) and the companion MetalSprocketsSnapshotUI viewer may be candidates for deprecation. MetalSprocketsSnapshotUI has been removed from metalsprockets.com. Decide whether to keep, deprecate, or remove snapshot support.
+
+---
