@@ -11262,11 +11262,13 @@ Add a `.captureHotKeys()` View modifier. One key combo captures the next frame(s
 ## 556: Depends on GeometryLite3D 0.2.x / SwiftMesh 0.0.x; the rest of the stack has moved to 0.3 / 0.1
 
 +++
-status: new
+status: closed
 priority: high
 kind: task
 labels: dependencies
 created: 2026-11-11T21:15:46Z
+updated: 2026-11-14T21:40:39Z
+closed: 2026-11-14T21:40:39Z
 +++
 
 This package still requires:
@@ -11284,6 +11286,8 @@ GeometryLite3D 0.3.0 has source-breaking changes that code here may hit:
 Expected: this package requires GeometryLite3D 0.3.x (and SwiftMesh 0.1.x where used), builds and passes its tests, and is tagged so dependents can resolve without branch overrides.
 
 Reported from SceneSprockets #378.
+
+- `2026-11-14T21:40:39Z`: Fixed in vxznmtyv (GeometryLite3D 0.3.0), released in tag 0.2.10. This package does not depend on SwiftMesh.
 
 ---
 
@@ -11324,5 +11328,60 @@ Each duplicates the amplification setup. Code converts between them at every pac
 ## Proposed fix (per schwa)
 
 One public StereoViews in MetalSprockets: view matrices, projections and viewports (1 or 2 views), with view-projections, eye positions, a center camera, camera-relative view-projections, configure(encoder) for per-draw amplification, and an Element modifier that sets maxVertexAmplificationCount. ImmersiveContext can vend one. AddOns, PBR, Particles and SceneSprockets then adopt it and drop their own types.
+
+---
+
+## 559: ThreadSanitizer reports a data race between SubmissionCompletion.init and its Metal completion callbacks
+
++++
+status: new
+priority: low
+kind: bug
+labels: effort:s
+created: 2026-11-12T22:06:23Z
++++
+
+Found while testing SceneSprockets #391 (rendering on a background thread with OffscreenRenderer). Unknown whether this is a real race or a false positive from ThreadSanitizer not seeing Metal's internal synchronization.
+
+Steps to reproduce:
+1. In SceneSprockets, run: swift test --sanitize=thread --filter presenterSnapshots
+2. The test renders with OffscreenRenderer.render(_:) on a non-main Thread in a loop.
+
+Actual: two ThreadSanitizer data race reports, both on the same 8-byte field:
+
+  Read of size 8 by thread T1:
+    #0 SubmissionCompletion.resolve(_:) SubmissionCompletion.swift:150
+    #1 SubmissionCompletion.recordFeedback(error:gpuStartTime:gpuEndTime:) SubmissionCompletion.swift:72
+    #2 closure #3 in MetalContext.commit(_:resources:presenting:) MetalContext.swift:283
+    #5 -[_MTL4CommitFeedbackDispatch executeBlocksWithCommitFeedback:]
+  Previous write of size 8 by thread T6:
+    #0 SubmissionCompletion.init(submissionIdentifier:label:owners:) SubmissionCompletion.swift:37
+    #2 SubmissionCompletion.__allocating_init(submissionIdentifier:label:commandBuffer:allocator:resources:) SubmissionCompletion.swift:42
+    #3 MetalContext.commit(_:resources:presenting:) MetalContext.swift:251
+    #7 OffscreenRenderer.render<A>(_:) OffscreenRenderer.swift:114
+
+The second report is the same, with the read from SubmissionCompletion.recordEvent() (SubmissionCompletion.swift:84) via closure #2 in MetalContext.commit (MetalContext.swift:275), called from an MTLSharedEvent notification (_ioSurfaceEventNotificationCallback2).
+
+Line 37 initializes the 'state' OSAllocatedUnfairLock; the callbacks read it from Metal's feedback and shared-event threads.
+
+Expected: no ThreadSanitizer reports.
+
+---
+
+## 560: RenderView can only render on the main thread
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:l
+created: 2026-11-14T21:36:36Z
++++
+
+RenderView on macOS and iOS draws from MTKView's delegate, so the content closure, element tree build and encoding all run on the main thread. A busy frame takes main-thread time away from UI, input and app logic.
+
+There is no way to have RenderView build and encode frames on another thread. The visionOS immersive path already renders off the main thread; macOS and iOS views do not.
+
+Seen in SceneSprockets (SceneSprockets #393): SceneView's per-frame culling and encoding can take tens of milliseconds on the main thread (about 70 ms CPU per frame in TinyTorii's sample town), which delays input handling.
 
 ---
