@@ -11299,3 +11299,28 @@ created: 2026-11-12T04:58:43Z
 System snapshots (Snapshotter, SystemSnapshot, System+Snapshot) and the companion MetalSprocketsSnapshotUI viewer may be candidates for deprecation. MetalSprocketsSnapshotUI has been removed from metalsprockets.com. Decide whether to keep, deprecate, or remove snapshot support.
 
 ---
+
+## 558: No shared stereo views type; each package defines its own
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:m
+created: 2026-11-12T20:42:19Z
++++
+
+Stereo rendering (visionOS immersive spaces, vertex amplification) needs per-view matrices and viewports, plus the per-draw amplification setup (setVertexAmplificationCount with view mappings, setViewports) and maxVertexAmplificationCount on pipelines. MetalSprockets has no type for this, so four packages each define their own:
+
+- SceneSprockets: StereoViews (view matrices, projections, viewports)
+- MetalSprocketsAddOns: StereoViews (view-projections, optional viewports)
+- MetalSprocketsPBR: PBRStereoViews (view matrices, projections, viewports)
+- MetalSprocketsParticles: ParticleStereoViews (view matrices, projections, viewports)
+
+Each duplicates the amplification setup. Code converts between them at every package boundary (SceneSprockets maps its views to PBRStereoViews and ParticleStereoViews). The two StereoViews types collide: a file importing both SceneSprockets and MetalSprocketsAddOns gets 'StereoViews is ambiguous'.
+
+## Proposed fix (per schwa)
+
+One public StereoViews in MetalSprockets: view matrices, projections and viewports (1 or 2 views), with view-projections, eye positions, a center camera, camera-relative view-projections, configure(encoder) for per-draw amplification, and an Element modifier that sets maxVertexAmplificationCount. ImmersiveContext can vend one. AddOns, PBR, Particles and SceneSprockets then adopt it and drop their own types.
+
+---
