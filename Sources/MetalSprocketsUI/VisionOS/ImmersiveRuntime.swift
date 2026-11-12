@@ -7,6 +7,12 @@ import MetalSprocketsSupport
 import simd
 import SwiftUI
 
+// Not a static on ImmersiveRuntime: its generic Content conformance can't cross into a @concurrent context.
+@concurrent
+private func waitUntilLayerRendererRunning(_ layerRenderer: LayerRenderer) async {
+    layerRenderer.waitUntilRunning()
+}
+
 @ImmersiveRendererActor
 internal final class ImmersiveRuntime<Content: Element> {
     let layerRenderer: LayerRenderer
@@ -73,12 +79,7 @@ internal final class ImmersiveRuntime<Content: Element> {
     /// here stops the actor (and a cooperative pool thread) for the full pause. See #386.
     private func waitUntilRunning() async {
         nonisolated(unsafe) let layerRenderer = layerRenderer
-        await Self.waitUntilRunning(layerRenderer)
-    }
-
-    @concurrent
-    nonisolated private static func waitUntilRunning(_ layerRenderer: LayerRenderer) async {
-        layerRenderer.waitUntilRunning()
+        await waitUntilLayerRendererRunning(layerRenderer)
     }
 
     func renderFrame() async throws {

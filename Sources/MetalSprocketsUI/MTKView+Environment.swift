@@ -269,9 +269,11 @@ extension MTKView {
             ?? UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.screen }.first
         let value = screen?.maximumFramesPerSecond ?? 0
         #else
-        let value = 0
+        return nil
         #endif
+        #if os(macOS) || os(iOS) || os(tvOS)
         return value > 0 ? value : nil
+        #endif
     }
 
     /// Makes MTKView's internal depth/stencil texture memoryless when it is a pure transient render target.
