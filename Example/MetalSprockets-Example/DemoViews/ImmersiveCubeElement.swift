@@ -34,18 +34,14 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
             let modelMatrix = float4x4.translation(0, 1.5, -1.5) * cubeRotationMatrix(time: context.time) * float4x4.scale(0.3, 0.3, 0.3)
 
             // ImmersiveContext provides head-tracked view/projection matrices for each eye
-            let leftView = context.viewMatrix(eye: 0)
-            let rightView = context.viewCount > 1 ? context.viewMatrix(eye: 1) : leftView
-            let leftProj = context.projectionMatrix(eye: 0)
-            let rightProj = context.viewCount > 1 ? context.projectionMatrix(eye: 1) : leftProj
-            let uniforms = Uniforms(modelMatrix: modelMatrix, cameras: (CameraUniforms(viewMatrix: leftView, projectionMatrix: leftProj), CameraUniforms(viewMatrix: rightView, projectionMatrix: rightProj)))
+            let views = context.stereoViews
+            let cameras = zip(views.viewMatrices, views.projectionMatrices).map { CameraUniforms(viewMatrix: $0, projectionMatrix: $1) }
+            let uniforms = Uniforms(modelMatrix: modelMatrix, cameras: (cameras[0], cameras[views.isStereo ? 1 : 0]))
 
             return try RenderPipeline(vertexShader: shaderLibrary.vertexImmersive, fragmentShader: shaderLibrary.fragmentMain) {
                 Draw { encoder in
                     // Vertex amplification renders geometry twice (once per eye) in a single draw call.
-                    let viewMappings = (0 ..< context.viewCount).map { MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: UInt32($0), renderTargetArrayIndexOffset: UInt32($0)) }
-                    encoder.setVertexAmplificationCount(viewMappings)
-                    encoder.setViewports(context.viewports)
+                    views.configure(encoder)
                     encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: cubeVertexCount)
                 }
                 .vertexValues(generateCubeVertices(), index: 0)
@@ -55,8 +51,8 @@ struct ImmersiveCubeContent: Element, @unchecked Sendable {
             }
             .vertexDescriptor(Vertex.descriptor)
             .depthCompare(function: .greater, writes: true)  // visionOS uses reverse-Z depth buffer
+            .vertexAmplification(count: views.count)
             .renderPipelineDescriptorTransformer { descriptor in
-                descriptor.maxVertexAmplificationCount = context.viewCount
                 // Attachment formats come from the render pass; Metal 4 pipeline descriptors have no depth format.
                 descriptor.colorAttachments[0].pixelFormat = context.drawable.colorTextures[0].pixelFormat
             }

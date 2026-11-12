@@ -220,6 +220,15 @@ public struct ImmersiveContext: Sendable {
     public func projectionMatrix(eye: Int) -> simd_float4x4 {
         drawable.computeProjection(convention: .rightUpBack, viewIndex: eye)
     }
+
+    /// All eyes' view matrices, projections and viewports.
+    public var stereoViews: StereoViews {
+        StereoViews(
+            viewMatrices: (0 ..< viewCount).map { viewMatrix(eye: $0) },
+            projectionMatrices: (0 ..< viewCount).map { projectionMatrix(eye: $0) },
+            viewports: viewports
+        )
+    }
 }
 
 // MARK: - ImmersiveRenderPass

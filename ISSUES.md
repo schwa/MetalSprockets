@@ -11303,11 +11303,13 @@ System snapshots (Snapshotter, SystemSnapshot, System+Snapshot) and the companio
 ## 558: No shared stereo views type; each package defines its own
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m
 created: 2026-11-12T20:42:19Z
+updated: 2026-11-12T20:44:51Z
+closed: 2026-11-12T20:44:51Z
 +++
 
 Stereo rendering (visionOS immersive spaces, vertex amplification) needs per-view matrices and viewports, plus the per-draw amplification setup (setVertexAmplificationCount with view mappings, setViewports) and maxVertexAmplificationCount on pipelines. MetalSprockets has no type for this, so four packages each define their own:
