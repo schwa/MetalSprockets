@@ -144,7 +144,4 @@ rendering hides this. On-demand mode needs an explicit redraw request.
 - `.main` stays the default for now. Revisiting the default is tracked in #561.
 - Each `RenderView` gets its own render thread.
 
-## Open questions
-
-- iOS: not verified that `CADisplayLink` on a background run loop behaves like on main (ProMotion,
-  `preferredFrameRateRange`). Test later.
+- iOS: `CADisplayLink` on the render thread's run loop works on device (tested 2026-11-14).
