@@ -2731,9 +2731,9 @@ The port is Metal 4-only. Archives, specialization optimizations, automatic depe
 status: open
 priority: low
 kind: enhancement
-labels: enhancement, effort:l, deferred, area:api
+labels: effort:l, deferred, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-10-07T14:17:51Z
+updated: 2026-11-14T22:06:35Z
 +++
 
 We currently pass data to shaders through three different mechanisms, each with a distinct API:
@@ -8963,7 +8963,7 @@ priority: medium
 kind: bug
 labels: area:metal4, effort:l, deferred
 created: 2026-10-02T15:19:38Z
-updated: 2026-10-07T14:23:11Z
+updated: 2026-11-14T22:07:46Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -8985,6 +8985,8 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 - `2026-10-05T23:14:53Z`: Closing as invalid for now. Reopen if the tile-shaped corruption reproduces again.
 - `2026-10-06T21:27:26Z`: Reopening: pink/garbage output in RenderView is reported again, now also in MetalSprocketsGLTF's GLTFViewer (Metal 4). Workaround found by the user: set the MTKView's framebufferOnly to false (RenderView: .metalFramebufferOnly(false)), so the drawable's texture has usage beyond render target; with that the pink output goes away. GLTFViewer now has a 'Framebuffer Only' toggle in its Display tab for A/B testing (MetalSprocketsGLTF 191f1610). Guess, unverified: framebufferOnly drawables can use a different memory/compression (lossless or framebuffer-only) path, so this may be an interaction between Metal 4 drawable textures and how they are written or resolved (MSAA resolve, store actions, or reads of the drawable), rather than the fragment shader timing suspected above. Next: reproduce with framebufferOnly true vs false in the same app, with and without MSAA, and check a GPU capture for the drawable's usage and store/resolve actions.
 - `2026-10-07T14:23:11Z`: Deferring for now.
+- `2026-11-14T22:07:44Z`: Filed with Apple. Re-test against the new RenderView backing and render thread is tracked in the new investigation issue (see related).
+- `2026-11-14T22:07:46Z`: Re-test is #562.
 
 ---
 
@@ -10497,9 +10499,9 @@ Expected
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:api, effort:m, deferred
+labels: area:performance, area:api, effort:m
 created: 2026-10-16T18:03:37Z
-updated: 2026-10-16T18:45:18Z
+updated: 2026-11-14T22:07:42Z
 +++
 
 Part of #519.
@@ -10518,9 +10520,9 @@ What is wrong
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:api, effort:m, deferred
+labels: area:performance, area:api, effort:m
 created: 2026-10-16T18:03:38Z
-updated: 2026-10-16T18:45:18Z
+updated: 2026-11-14T22:07:43Z
 +++
 
 Part of #519.
@@ -11207,11 +11209,12 @@ Env: macOS 26, MetalSprockets 0.2.8, Debug build.
 ## 553: RenderView has no way to request a frame in on-demand mode
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
-labels: rendering
+labels: area:api, effort:m
 created: 2026-10-23T21:32:23Z
+updated: 2026-11-14T22:06:32Z
 +++
 
 RenderView can run its MTKView in paused or setNeedsDisplay mode (.metalIsPaused, .metalEnableSetNeedsDisplay). But the host app cannot ask for a frame when its render inputs change: the MTKView and its delegate are hidden inside RenderView, and the SwiftUI update closure stores the new content without marking the view as needing display.
@@ -11219,6 +11222,8 @@ RenderView can run its MTKView in paused or setNeedsDisplay mode (.metalIsPaused
 Because of this, apps cannot render on demand (only when the camera, transforms, or parameters change) to save power on static scenes. Radiance#62 needs this.
 
 Missing: a supported way to invalidate a RenderView in on-demand mode. For example, redraw when RenderView's inputs change, or an environment- or binding-provided redraw request. Renderers that accumulate over frames also need a way to keep requesting frames until they converge.
+
+- `2026-11-14T22:06:32Z`: Related to #560: RenderView no longer uses MTKView. It hosts MetalLayerView, and with threading: .renderThread frames run on a render thread, so a redraw request must reach that thread.
 
 ---
 
@@ -11294,10 +11299,12 @@ Reported from SceneSprockets #378.
 ## 557: Snapshot support may no longer be worth keeping
 
 +++
-status: new
+status: open
 priority: low
 kind: task
+labels: area:api, effort:s, needs-decision
 created: 2026-11-12T04:58:43Z
+updated: 2026-11-14T22:06:32Z
 +++
 
 System snapshots (Snapshotter, SystemSnapshot, System+Snapshot) and the companion MetalSprocketsSnapshotUI viewer may be candidates for deprecation. MetalSprocketsSnapshotUI has been removed from metalsprockets.com. Decide whether to keep, deprecate, or remove snapshot support.
@@ -11388,18 +11395,197 @@ There is no way to have RenderView build and encode frames on another thread. Th
 
 Seen in SceneSprockets (SceneSprockets #393): SceneView's per-frame culling and encoding can take tens of milliseconds on the main thread (about 70 ms CPU per frame in TinyTorii's sample town), which delays input handling.
 
+- `2026-11-14T22:06:32Z`: Related: #553 (on-demand redraw requests must also work in render-thread mode).
+
 ---
 
 ## 561: RenderView renders on the main thread by default
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: area:api, effort:s
 depends: 560
 created: 2026-11-14T21:44:42Z
+updated: 2026-11-14T22:06:32Z
 +++
 
 After #560 adds an opt-in render thread (RFCs/0008), RenderView still defaults to main-thread rendering. Apps must opt in to keep busy frames off the main thread. Revisit the default once the render-thread mode has shipped and been tested on macOS and iOS.
+
+---
+
+## 562: Unknown whether the tile-shaped corruption (#471) still occurs with RenderView's new backing and render thread
+
++++
+status: open
+priority: medium
+kind: task
+labels: area:metal4, effort:s
+created: 2026-11-14T22:07:43Z
+updated: 2026-11-14T22:07:46Z
++++
+
+#471 reports random pink or garbage tile-shaped blocks in RenderView output with a slow fragment shader (SolarSystem, ~/Shared/Projects/Scratch/SolarSystem). It has been filed with Apple.
+
+Since that report, RenderView changed (#560): it no longer uses MTKView, it creates its own MSAA and depth attachments, it acquires the drawable at a different point in the frame, and it can render on a dedicated thread (threading: .renderThread).
+
+Not known:
+- whether the corruption still occurs in the default .main mode with the new CAMetalLayer-backed view;
+- whether it occurs in .renderThread mode;
+- whether its frequency or appearance differs between the two modes.
+
+Expected: SolarSystem has been run in both modes with the #471 repro conditions, and the results are recorded on #471.
+
+- `2026-11-14T22:11:07Z`: Related: #563. A mid-frame settings mismatch in render-thread mode could also produce bad frames, so keep the window size and MSAA fixed while testing, or test after #563.
+
+---
+
+## 563: RenderView frame can mix old and new size or sample count when settings change mid-frame in render-thread mode
+
++++
+status: open
+priority: high
+kind: bug
+labels: area:threading, effort:s
+created: 2026-11-14T22:10:41Z
+updated: 2026-11-14T22:11:06Z
++++
+
+In RenderViewViewModel.render(on:) (Sources/MetalSprocketsUI/RenderView.swift), a frame reads the surface configuration more than once. The drawable size and sample count are read at the start of the frame. The render pass descriptor reads the configuration again later, after prepareFrame() and nextDrawable(), which can block.
+
+With threading: .renderThread, the main thread can change the drawable size or sample count between those reads. Then, for that frame:
+- setup invalidation and currentSampleCount use the old sample count, but the attachments use the new one;
+- the size given to the content closure, the frame uniforms and the drawableSize environment value can differ from the drawable texture's size.
+
+Not reproduced. Found by code review. Suspected result for a sample count change: a pipeline compiled for the old sample count is used with attachments of the new one (Metal validation failure). Does not apply to .main mode, where the frame and the settings writes share a thread.
+
+Expected: every value a frame uses for size and sample count agrees with the attachments it renders into. From #560.
+
+- `2026-11-14T22:11:08Z`: Related: #562 (corruption investigation in render-thread mode).
+
+---
+
+## 564: Render thread frames have no autorelease pool of their own
+
++++
+status: open
+priority: medium
+kind: bug
+labels: area:threading, effort:xs
+created: 2026-11-14T22:10:42Z
+updated: 2026-11-14T22:11:06Z
++++
+
+MetalLayerSurface.renderFrame() (Sources/MetalSprocketsUI/MetalLayerView.swift) does not wrap a frame in an autorelease pool. On the render thread the only pool is in RenderThread's loop, around each RunLoop.run(mode:before:) call. It drains only when that call returns.
+
+Not verified: whether a CADisplayLink tick makes run(mode:before:) return. If it does not, objects autoreleased during frames (for example drawables from CAMetalLayer.nextDrawable()) stay alive until some other run loop source fires.
+
+No symptom seen: the cube demo ran normally on macOS and iOS in render-thread mode. Found by code review.
+
+Expected: objects autoreleased during a frame are released when that frame ends. From #560.
+
+---
+
+## 565: MetalLayerView's display link and render thread keep running if the view goes away without tearDown()
+
++++
+status: open
+priority: medium
+kind: bug
+labels: area:threading, effort:s
+created: 2026-11-14T22:10:42Z
+updated: 2026-11-14T22:11:06Z
++++
+
+MetalLayerView (Sources/MetalSprocketsUI/MetalLayerView.swift) stops its display link and its RenderThread only in tearDown(). RenderView calls tearDown() from dismantle, so RenderView is not affected.
+
+A MetalLayerView released any other way leaves both running: the CADisplayLink retains its DisplayLinkTarget, the target holds the MetalLayerSurface strongly, and nothing invalidates the link or stops the thread. The link then fires forever (renderFrame() returns early once the delegate is gone) and the thread never exits.
+
+The first version of the view (#560 step 1) held the view weakly from the display link target and invalidated the link when the view was gone. That was lost when the view was split into view and surface.
+
+Expected: when a MetalLayerView is deallocated, its display link is invalidated and its render thread exits. From #560.
+
+- `2026-11-14T22:11:07Z`: Related: #566 (both concern MetalLayerView / render thread teardown).
+
+---
+
+## 566: Render thread teardown does not match RFC 0008: no drain, and the view model is not released on the render thread
+
++++
+status: open
+priority: medium
+kind: task
+labels: area:threading, effort:m
+created: 2026-11-14T22:10:43Z
+updated: 2026-11-14T22:11:06Z
++++
+
+RFC 0008 (RFCs/0008-off-main-thread-renderview.md), section Lifetime, says that on dismantle the render thread drains in-flight submissions (drain(timeout:)) and then exits, and that the view model and FrameRunner are released on the render thread.
+
+The implementation (#560) does neither. MetalLayerView.tearDown() invalidates the display link, clears the delegate and stops the thread. In-flight submissions are not awaited. The view model, its FrameRunner and System are released on whichever thread drops the last reference (the main thread from onDisappear, or the render thread at the end of a frame).
+
+This was omitted without being called out when #560 was closed. The main-thread path before #560 also did not drain, so this is not a known regression.
+
+Expected: the implementation and the RFC agree. From #560.
+
+- `2026-11-14T22:11:07Z`: Related: #565 (both concern MetalLayerView / render thread teardown).
+
+---
+
+## 567: onCommandBufferCompleted(isolation:perform:) runs its non-Sendable action on an arbitrary thread when there is no actor
+
++++
+status: open
+priority: medium
+kind: bug
+labels: area:threading, area:api, effort:s, needs-decision
+created: 2026-11-14T22:10:44Z
+updated: 2026-11-14T22:11:06Z
++++
+
+onCommandBufferCompleted(isolation:perform:) (Sources/MetalSprockets/Metal/SubmissionCallbacks.swift) takes a non-Sendable action and documents that it runs on the calling isolation, so that it can capture isolated state such as an element's self.
+
+When the caller has no actor isolation, #isolation is nil. The action is then run by Task { await runIsolated(on: nil, ...) }, which uses the global concurrent executor. The non-Sendable action runs on an arbitrary thread, at the same time as the thread that built the element.
+
+Callers with no actor: a RenderView content closure in threading: .renderThread mode (#560), and OffscreenRenderer or Runner used on a plain thread. The hazard existed before #560; the render thread makes it reachable from RenderView.
+
+Expected: the action never runs concurrently with the context that created it, or the API cannot be used where that cannot be guaranteed.
+
+---
+
+## 568: Example: Screenshot's ProxyRepresentation assumes the export closure runs on the main thread
+
++++
+status: open
+priority: low
+kind: bug
+labels: area:example, effort:xs
+created: 2026-11-14T22:10:44Z
+updated: 2026-11-14T22:11:07Z
++++
+
+Example/MetalSprockets-Example/DemoViews/ScreenshotSupport.swift exports with ProxyRepresentation { screenshot in try MainActor.assumeIsolated { try screenshot.render() } }.
+
+MainActor.assumeIsolated traps if the closure is called off the main thread. Not verified which thread ShareLink / Transferable uses to call the export closure. No crash seen. Found by code review.
+
+Expected: taking a screenshot from the share link cannot trap, whichever thread the system exports on.
+
+---
+
+## 569: RenderThreadTests can hang if the view has no render thread
+
++++
+status: open
+priority: low
+kind: bug
+labels: area:tests, effort:xs
+created: 2026-11-14T22:10:45Z
+updated: 2026-11-14T22:11:07Z
++++
+
+Tests/MetalSprocketsTests/RenderThreadTests.swift waits for the render thread with withCheckedContinuation { view.renderThread?.perform { ... continuation.resume() } }. If renderThread is nil, the optional chain does nothing and the continuation is never resumed. The test then hangs until its time limit instead of failing with a clear message.
+
+Expected: the test fails immediately when the view has no render thread.
 
 ---
