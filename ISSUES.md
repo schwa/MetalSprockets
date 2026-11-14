@@ -11627,3 +11627,29 @@ Expected: an element can write its own @MSState from a completion handler withou
 Make MSState Sendable when Value is Sendable (StateBox and the Box wrapper conform), so callers can capture the storage: .onCommandBufferCompleted { [_baked] result in _baked.wrappedValue = ... }
 
 ---
+
+## 571: Render-thread RenderView can draw new content with an old surface configuration
+
++++
+status: new
+priority: medium
+kind: bug
+labels: effort:m
+created: 2026-11-14T22:47:56Z
++++
+
+With RenderView(threading: .renderThread), the main thread updates two things separately, each under its own lock:
+
+- the surface configuration (pixel formats, depthStencilStorageMode, attachment usage, sample count) through MetalLayerSurface.updateConfiguration (MetalLayerView.swift);
+- the content closure through RenderViewViewModel's settingsStorage (RenderView.swift).
+
+A frame on the render thread reads each one at a different time, so it can pair the content closure from one SwiftUI update with the configuration from another. Content that relies on its configuration then breaks. For example, content that stores depth runs against a depth texture that is still memoryless, and Metal API validation aborts:
+
+    _MTLDebugValidateRenderPassDescriptorAndTrackAttachments:487: failed assertion `RenderPass Descriptor Validation
+    Memoryless attachment content cannot be stored in memory.
+
+With threading .main this cannot happen, because both are updated and read in order on the main thread.
+
+Found by reading the code while moving SceneSprockets' SceneView to the render thread (SceneSprockets #393), where the same assertion fired. In that crash, SceneSprockets' own one-step lag was at least part of the cause; this race in MetalSprocketsUI on its own has not been reproduced.
+
+---
