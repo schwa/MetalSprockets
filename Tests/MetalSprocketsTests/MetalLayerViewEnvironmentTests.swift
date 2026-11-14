@@ -5,14 +5,14 @@ import SwiftUI
 import Testing
 
 @MainActor
-@Suite("MTKView configure(from:) Tests")
-struct MTKViewEnvironmentTests {
-    private func makeView() -> MTKView {
+@Suite("MetalLayerView configure(from:) Tests")
+struct MetalLayerViewEnvironmentTests {
+    private func makeView() -> MetalLayerView {
         let device = MTLCreateSystemDefaultDevice()!
-        return MTKView(frame: .zero, device: device)
+        return MetalLayerView(frame: .zero, device: device)
     }
 
-    @Test("nil environment values leave MTKView defaults untouched")
+    @Test("nil environment values leave MetalLayerView defaults untouched")
     func testNoOverrides() {
         let view = makeView()
         let originalSampleCount = view.sampleCount
@@ -238,7 +238,7 @@ struct MTKViewEnvironmentTests {
         env.metalColorPixelFormat = .bgra8Unorm
         env.metalDepthStencilPixelFormat = .invalid
         env.metalSampleCount = 1
-        let overrides = MTKViewOverrides(colorPixelFormat: .rgba16Float, depthStencilPixelFormat: .depth32Float, sampleCount: 4)
+        let overrides = MetalLayerViewOverrides(colorPixelFormat: .rgba16Float, depthStencilPixelFormat: .depth32Float, sampleCount: 4)
         view.configure(from: overrides.applied(to: env))
 
         #expect(view.colorPixelFormat == .rgba16Float)
@@ -252,7 +252,7 @@ struct MTKViewEnvironmentTests {
         var env = EnvironmentValues()
         env.metalColorPixelFormat = .bgra8Unorm_srgb
         env.metalSampleCount = 4
-        let overrides = MTKViewOverrides()
+        let overrides = MetalLayerViewOverrides()
         view.configure(from: overrides.applied(to: env))
 
         #expect(view.colorPixelFormat == .bgra8Unorm_srgb)

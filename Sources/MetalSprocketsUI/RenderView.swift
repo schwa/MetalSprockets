@@ -1,5 +1,4 @@
 import Metal
-import MetalKit
 import MetalSprockets
 import MetalSprocketsSupport
 import MetalSupport
@@ -45,7 +44,7 @@ public extension EnvironmentValues {
 
 /// Resolved per-frame diagnostics settings for a ``RenderView``.
 ///
-/// There used to be two independent sources of truth here: SwiftUI environment values for the `MTKView`
+/// There used to be two independent sources of truth here: SwiftUI environment values for the Metal view
 /// settings, and direct `SystemEnvironment` (that is, `ProcessInfo`) reads for the debugging flags. Now both go
 /// through the SwiftUI environment, and the process environment supplies the defaults. Thus a view can turn on
 /// frame logging for one `RenderView`, without a variable for the whole process. See #269.
@@ -300,7 +299,7 @@ public struct RenderView <Content>: View where Content: Element {
     /// - Parameters:
     ///   - colorPixelFormat: The pixel format of the color render target. When `nil` (the default) the
     ///     value from the environment (``SwiftUICore/View/metalColorPixelFormat(_:)``) is used, falling back
-    ///     to `MTKView`'s own default.
+    ///     to `.bgra8Unorm`.
     ///   - depthStencilPixelFormat: The pixel format of the depth/stencil render target. Required for
     ///     depth testing. When `nil` (the default) the environment value is used.
     ///   - sampleCount: The number of samples used for MSAA. When `nil` (the default) the environment
@@ -337,7 +336,7 @@ public struct RenderView <Content>: View where Content: Element {
             commandQueue: commandQueue,
             residency: residency,
             maximumInFlightSubmissions: maximumInFlightSubmissions,
-            overrides: MTKViewOverrides(
+            overrides: MetalLayerViewOverrides(
                 colorPixelFormat: colorPixelFormat,
                 depthStencilPixelFormat: depthStencilPixelFormat,
                 sampleCount: sampleCount
@@ -348,7 +347,7 @@ public struct RenderView <Content>: View where Content: Element {
 }
 
 /// Per-``RenderView`` configuration that wins over the equivalent SwiftUI environment values.
-internal struct MTKViewOverrides: Equatable {
+internal struct MetalLayerViewOverrides: Equatable {
     var colorPixelFormat: MTLPixelFormat?
     var depthStencilPixelFormat: MTLPixelFormat?
     var sampleCount: Int?
@@ -374,7 +373,7 @@ internal struct MetalHostView <Content>: View where Content: Element {
     var commandQueue: (any MTL4CommandQueue)?
     var residency: ResidencyConfiguration
     var maximumInFlightSubmissions: Int
-    var overrides: MTKViewOverrides
+    var overrides: MetalLayerViewOverrides
     var content: (RenderViewContext, CGSize) throws -> Content
 
     @Environment(\.self)
@@ -402,7 +401,7 @@ internal struct MetalHostView <Content>: View where Content: Element {
     @State
     private var viewModelBox = ViewModelBox<Content>()
 
-    init(device: MTLDevice?, commandQueue: (any MTL4CommandQueue)?, residency: ResidencyConfiguration, maximumInFlightSubmissions: Int, overrides: MTKViewOverrides = MTKViewOverrides(), @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
+    init(device: MTLDevice?, commandQueue: (any MTL4CommandQueue)?, residency: ResidencyConfiguration, maximumInFlightSubmissions: Int, overrides: MetalLayerViewOverrides = MetalLayerViewOverrides(), @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
         self.residency = residency
@@ -412,8 +411,8 @@ internal struct MetalHostView <Content>: View where Content: Element {
     }
 
     var body: some View {
-        PlatformAdaptorView<MTKView> {
-            MTKView()
+        PlatformAdaptorView<MetalLayerView> {
+            MetalLayerView()
         }
         update: { view in
             let device = viewModelBox.device(preferring: device)
@@ -425,11 +424,9 @@ internal struct MetalHostView <Content>: View where Content: Element {
                 viewModel = RenderViewViewModel(device: device, commandQueue: commandQueue, content: content)
                 viewModelBox.value = viewModel
             }
-            #if os(macOS)
-            view.layer?.isOpaque = false
-            #else
-            view.layer.isOpaque = false
-            #endif
+            if view.metalLayer.isOpaque {
+                view.metalLayer.isOpaque = false
+            }
             if view.device !== device {
                 view.device = device
             }
@@ -452,7 +449,7 @@ internal struct MetalHostView <Content>: View where Content: Element {
         dismantle: { view in
             // Stop the display link and drop the delegate before SwiftUI releases the representable, so no draw
             // callback can arrive after the view model is gone. See #301.
-            view.isPaused = true
+            view.invalidateDisplayLink()
             view.delegate = nil
         }
         .onDisappear {
@@ -495,7 +492,7 @@ internal final class ViewModelBox<Content: Element> {
 }
 
 @Observable
-internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Content: Element {
+internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate where Content: Element {
     @ObservationIgnored
     let device: MTLDevice
 
@@ -660,14 +657,14 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
         return resources
     }
 
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+    func metalLayerView(_ view: MetalLayerView, drawableSizeWillChange size: CGSize) {
         drawableSizeChange?(size)
         frameRenderer.invalidateSetup()
         self.currentDrawableSize = size
     }
 
-    func draw(in view: MTKView) {
-        // MTKView only calls mtkView(_:drawableSizeWillChange:) when the size *changes*. If the
+    func draw(in view: MetalLayerView) {
+        // The view only reports a size when it *changes*. If the
         // view was already sized before the delegate was attached (e.g. under a .toolbar layout
         // pass) we would keep rendering at .zero until the next resize. Re-sync defensively.
         if currentDrawableSize != view.drawableSize {
@@ -676,7 +673,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
             frameRenderer.invalidateSetup()
         }
 
-        // An MSAA toggle only shows up on the drawable's texture, not on any value MTKView reports.
+        // An MSAA toggle only shows up on the drawable's texture, not on any value the view reports.
         let actualSampleCount = view.currentMTL4RenderPassDescriptor?.colorAttachments[0]?.texture?.sampleCount ?? 1
         if sampleCountChanged(current: currentSampleCount, observed: actualSampleCount) {
             currentSampleCount = actualSampleCount
@@ -698,12 +695,12 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
                     frameSignposter.emitEvent("Frame skipped", "in-flight limit")
                     return
                 }
-                // MTKView may block here until a drawable is free.
+                // May block here until a drawable is free.
                 let currentDrawable = try frameSignposter.withIntervalSignpost("Drawable") {
                     try view.currentDrawable.orThrow(.resourceCreationFailure("No drawable available"))
                 }
-                // MTKView releases its drawable after each draw(); a drawable already presented cannot be waited on
-                // again by a Metal 4 queue, so a repeated one (drawing outside MTKView's cycle) is skipped.
+                // The view releases its drawable after each draw(); a drawable already presented cannot be waited on
+                // again by a Metal 4 queue, so a repeated one is skipped.
                 guard currentDrawable !== lastPresentedDrawable else {
                     skippedFrameCount += 1
                     frameSignposter.emitEvent("Frame skipped", "drawable already presented")
@@ -758,7 +755,7 @@ internal class RenderViewViewModel <Content>: NSObject, MTKViewDelegate where Co
 
                 do {
                     // Commit waits for the drawable, signals it after the frame's work, then presents.
-                    let residencySets = ((view.layer as? CAMetalLayer)?.residencySet).map { [$0] } ?? []
+                    let residencySets = [view.metalLayer.residencySet]
                     var frameResidency = residency
                     frameResidency.collections.append(try updateAttachmentResidency(for: currentRenderPassDescriptor, drawableTexture: currentDrawable.texture))
                     runner.residency = frameResidency

@@ -27,8 +27,8 @@ struct RenderViewViewModelTests {
     }
     """
 
-    private func makeView(device: MTLDevice) -> MTKView {
-        let view = MTKView(frame: CGRect(x: 0, y: 0, width: 64, height: 64), device: device)
+    private func makeView(device: MTLDevice) -> MetalLayerView {
+        let view = MetalLayerView(frame: CGRect(x: 0, y: 0, width: 64, height: 64), device: device)
         view.isPaused = true
         view.enableSetNeedsDisplay = true
         view.framebufferOnly = false
@@ -210,7 +210,7 @@ struct RenderViewViewModelTests {
         view.draw()
         #expect(viewModel.frameRenderer.system.nodes.values.map(\.needsSetup).contains(true) == false)
 
-        viewModel.mtkView(view, drawableSizeWillChange: CGSize(width: 128, height: 128))
+        viewModel.metalLayerView(view, drawableSizeWillChange: CGSize(width: 128, height: 128))
 
         // The first draw also reports, because the delegate was attached after the view was already sized.
         #expect(reportedSizes == [CGSize(width: 64, height: 64), CGSize(width: 128, height: 128)])

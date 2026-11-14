@@ -1,10 +1,9 @@
 import Metal
-import MetalKit
 import SwiftUI
 
-// MARK: - MTKView Environment Configuration
+// MARK: - Metal View Environment Configuration
 //
-// These view modifiers configure the underlying MTKView used by RenderView.
+// These view modifiers configure the underlying Metal view used by RenderView.
 // Apply them to RenderView or any ancestor view.
 //
 // Example:
@@ -14,7 +13,7 @@ import SwiftUI
 //         .metalClearColor(MTLClearColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1))
 
 internal extension EnvironmentValues {
-    // The optional Bools are three-state on purpose: nil means "not specified", so MTKView keeps its own default.
+    // The optional Bools are three-state on purpose: nil means "not specified", so the view keeps its own default.
     // swiftlint:disable discouraged_optional_boolean
     @Entry var metalFramebufferOnly: Bool?
     @Entry var metalDepthStencilAttachmentTextureUsage: MTLTextureUsage?
@@ -39,7 +38,7 @@ internal extension EnvironmentValues {
     // swiftlint:enable discouraged_optional_boolean
 }
 
-// MARK: - MTKView Configuration Modifiers
+// MARK: - Metal View Configuration Modifiers
 
 public extension View {
     /// Sets whether the drawable textures are used only for rendering.
@@ -105,7 +104,7 @@ public extension View {
         self.environment(\.metalDepthStencilStorageMode, value)
     }
 
-    /// Sets the store action for the frame's depth attachment. MTKView defaults to `.dontCare`.
+    /// Sets the store action for the frame's depth attachment. The default is `.dontCare`.
     ///
     /// Use `.store` (with a non-memoryless storage mode and `.shaderRead` usage) to read
     /// ``RenderViewContext/depthTexture`` in a later pass.
@@ -184,14 +183,14 @@ public extension View {
     }
 }
 
-extension MTKView {
+extension MetalLayerView {
     func configure(from environment: EnvironmentValues) {
         configureAttachments(from: environment)
         configureClearValues(from: environment)
         configureDrawLoop(from: environment)
     }
 
-    // Runs on every SwiftUI update; MTKView setters can recreate attachments even for an unchanged value.
+    // Runs on every SwiftUI update; setters can recreate attachments even for an unchanged value.
     private func configureAttachments(from environment: EnvironmentValues) {
         if let value = environment.metalFramebufferOnly, framebufferOnly != value {
             self.framebufferOnly = value
@@ -223,8 +222,8 @@ extension MTKView {
             self.colorspace = value
         }
         #endif
-        if let value = environment.metalWantsExtendedDynamicRangeContent, let layer = layer as? CAMetalLayer {
-            layer.wantsExtendedDynamicRangeContent = value
+        if let value = environment.metalWantsExtendedDynamicRangeContent, metalLayer.wantsExtendedDynamicRangeContent != value {
+            metalLayer.wantsExtendedDynamicRangeContent = value
         }
     }
 
@@ -241,22 +240,20 @@ extension MTKView {
     }
 
     private func configureDrawLoop(from environment: EnvironmentValues) {
-        if let value = environment.metalPresentsWithTransaction {
+        if let value = environment.metalPresentsWithTransaction, presentsWithTransaction != value {
             self.presentsWithTransaction = value
         }
-        if let value = environment.metalPreferredFramesPerSecond {
-            self.preferredFramesPerSecond = value
-        } else if let value = screenMaximumFramesPerSecond {
-            // MTKView defaults to 60; match the display instead (e.g. 120 on ProMotion).
+        // Defaults to the display's maximum (e.g. 120 on ProMotion) rather than 60.
+        if let value = environment.metalPreferredFramesPerSecond ?? screenMaximumFramesPerSecond, preferredFramesPerSecond != value {
             self.preferredFramesPerSecond = value
         }
-        if let value = environment.metalEnableSetNeedsDisplay {
+        if let value = environment.metalEnableSetNeedsDisplay, enableSetNeedsDisplay != value {
             self.enableSetNeedsDisplay = value
         }
-        if let value = environment.metalAutoResizeDrawable {
+        if let value = environment.metalAutoResizeDrawable, autoResizeDrawable != value {
             self.autoResizeDrawable = value
         }
-        if let value = environment.metalIsPaused {
+        if let value = environment.metalIsPaused, isPaused != value {
             self.isPaused = value
         }
     }
@@ -276,9 +273,9 @@ extension MTKView {
         #endif
     }
 
-    /// Makes MTKView's internal depth/stencil texture memoryless when it is a pure transient render target.
+    /// Makes the depth/stencil texture memoryless when it is a pure transient render target.
     ///
-    /// MTKView defaults to `.private`, which needlessly reserves VRAM (and trips a Metal validation warning) for a
+    /// `.private`, the default, which needlessly reserves VRAM (and trips a Metal validation warning) for a
     /// texture that is never read outside the pass that writes it. Memoryless is only valid on Apple-family GPUs and
     /// only when nothing samples the texture, so both conditions are checked.
     private func adoptMemorylessDepthStencilIfPossible() {
