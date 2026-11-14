@@ -9,7 +9,8 @@ struct Screenshot: Transferable {
     var width: Int = 1_920
     var height: Int = 1_080
 
-    func render() throws -> Image {
+    // Rendering needs no main-actor state, so the export closure can call it from any thread (#568).
+    nonisolated func render() throws -> Image {
         let size = CGSize(width: width, height: height)
         let renderer = try OffscreenRenderer(size: size)
 
@@ -34,7 +35,7 @@ struct Screenshot: Transferable {
 
     nonisolated static var transferRepresentation: some TransferRepresentation {
         ProxyRepresentation { screenshot in
-            try MainActor.assumeIsolated { try screenshot.render() }
+            try screenshot.render()
         }
     }
 }

@@ -301,6 +301,15 @@ internal final class MetalContext {
         try retireCompletedSubmissions()
     }
 
+    /// Blocking form of ``drain(timeout:)`` for synchronous roots, such as a render thread shutting down.
+    func drainBlocking(timeout: Duration? = nil) throws {
+        let outstanding = inFlight.sorted { $0.key < $1.key }
+        for (identifier, submission) in outstanding {
+            _ = try waitForResult(Submission(identifier: identifier, completion: submission.completion), timeout: timeout)
+        }
+        try retireCompletedSubmissions()
+    }
+
     var inFlightCount: Int { inFlight.count }
 
     /// Returns a cached depth-stencil state, so steady-state draws never allocate one.

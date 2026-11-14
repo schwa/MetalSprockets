@@ -18,6 +18,15 @@ internal protocol MetalLayerViewDelegate: AnyObject, Sendable {
 
     /// Called on the surface's frame thread: the main thread, or the view's render thread.
     func render(on surface: MetalLayerSurface)
+
+    /// Called once on the render thread when the view tears down, after its last frame.
+    func finishRendering()
+}
+
+extension MetalLayerViewDelegate {
+    func finishRendering() {
+        // Nothing to finish by default.
+    }
 }
 
 // MARK: - MetalLayerSurface
@@ -100,7 +109,10 @@ internal final class MetalLayerSurface: @unchecked Sendable {
         }
         isRendering = true
         defer { isRendering = false }
-        delegate.render(on: self)
+        // The render thread's run loop may not return between display link ticks, so drain per frame (#564).
+        autoreleasepool {
+            delegate.render(on: self)
+        }
     }
 
     /// May block until a drawable is free.
@@ -343,6 +355,11 @@ internal final class MetalLayerView: PlatformView {
         fatalError("init(coder:) is not supported")
     }
 
+    // RenderView tears down in dismantle; this covers views released any other way (#565).
+    isolated deinit {
+        tearDown()
+    }
+
     private func commonInit() {
         #if os(macOS)
         wantsLayer = true
@@ -462,11 +479,21 @@ internal final class MetalLayerView: PlatformView {
         onFrameThread { link.invalidate() }
     }
 
-    /// Stops the display link and lets the render thread exit once queued frames finish.
-    func tearDown() {
+    /// Stops the display link and drops the delegate. With a render thread, the thread then finishes the delegate's
+    /// work and exits without blocking the main thread. The delegate and `owner` are released on the render thread, so
+    /// frame state is torn down where it lives (#566).
+    func tearDown(releasing owner: AnyObject? = nil) {
         invalidateDisplayLink()
-        delegate = nil
-        renderThread?.stop()
+        let delegate = delegate
+        self.delegate = nil
+        guard let renderThread else {
+            return
+        }
+        nonisolated(unsafe) let owner = owner
+        renderThread.stop {
+            delegate?.finishRendering()
+            withExtendedLifetime(owner) { /* released when this block is, on the render thread */ }
+        }
     }
 
     // A display link must be configured on the run loop thread that it is scheduled on.
@@ -493,9 +520,10 @@ internal final class MetalLayerView: PlatformView {
     }
 }
 
-/// Breaks the retain cycle between a display link and its view. Runs on the display link's run loop thread.
+/// Breaks the retain cycle between a display link and its view. Runs on the display link's run loop thread. The view
+/// owns the surface, so a link that outlives its view stops itself (#565).
 private final class DisplayLinkTarget: NSObject {
-    let surface: MetalLayerSurface
+    weak var surface: MetalLayerSurface?
 
     init(surface: MetalLayerSurface) {
         self.surface = surface
@@ -503,6 +531,10 @@ private final class DisplayLinkTarget: NSObject {
 
     @objc
     func step(_ link: CADisplayLink) {
+        guard let surface else {
+            link.invalidate()
+            return
+        }
         surface.renderFrame()
     }
 }

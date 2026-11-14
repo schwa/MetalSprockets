@@ -483,8 +483,10 @@ internal struct MetalHostView <Content>: View where Content: Element {
         }
         dismantle: { view in
             // Stop the display link and drop the delegate before SwiftUI releases the representable, so no draw
-            // callback can arrive after the view model is gone. See #301.
-            view.tearDown()
+            // callback can arrive after the view model is gone. See #301. With a render thread, the view model is
+            // handed to the thread so it is drained and released there (#566).
+            view.tearDown(releasing: viewModelBox.value)
+            viewModelBox.value = nil
         }
         .onDisappear {
             viewModelBox.value = nil
@@ -795,23 +797,20 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
         }
     }
 
+    /// Waits for in-flight frames, so their resources are released before the thread exits (#566).
+    func finishRendering() {
+        guard let runner = _runner else {
+            return
+        }
+        do {
+            try runner.drainBlocking(timeout: .seconds(1))
+        } catch {
+            logger?.error("RenderView: drain on teardown failed: \(error)")
+        }
+    }
+
     func render(on surface: MetalLayerSurface) {
         let settings = settings
-        // The view only reports a size when it *changes*. If the
-        // view was already sized before the delegate was attached (e.g. under a .toolbar layout
-        // pass) we would keep rendering at .zero until the next resize. Re-sync defensively.
-        let drawableSize = surface.drawableSize
-        if currentDrawableSize != drawableSize {
-            currentDrawableSize = drawableSize
-            reportDrawableSize(drawableSize, to: settings.drawableSizeChange)
-            frameRenderer.invalidateSetup()
-        }
-
-        if sampleCountChanged(current: currentSampleCount, observed: surface.sampleCount) {
-            currentSampleCount = surface.sampleCount
-            frameRenderer.invalidateSetup()
-        }
-
         do {
             let currentFrame = timingState.frame
             let threadInfo = Thread.isMainThread ? "main thread" : "thread \(pthread_mach_thread_np(pthread_self()))"
@@ -843,6 +842,22 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
                     timingState.commit()
                 }
                 let currentRenderPassDescriptor = surface.renderPassDescriptor(for: currentDrawable)
+                // Size and sample count come from what this frame renders into, not from the view's settings, which
+                // the main thread can change mid-frame in render-thread mode (#563).
+                let drawableSize = CGSize(width: currentDrawable.texture.width, height: currentDrawable.texture.height)
+                let sampleCount = currentRenderPassDescriptor.colorAttachments[0]?.texture?.sampleCount ?? 1
+                // The view only reports a size when it *changes*. If the view was already sized before the delegate
+                // was attached (e.g. under a .toolbar layout pass) we would keep rendering at .zero until the next
+                // resize. Re-sync defensively.
+                if currentDrawableSize != drawableSize {
+                    currentDrawableSize = drawableSize
+                    reportDrawableSize(drawableSize, to: settings.drawableSizeChange)
+                    frameRenderer.invalidateSetup()
+                }
+                if sampleCountChanged(current: currentSampleCount, observed: sampleCount) {
+                    currentSampleCount = sampleCount
+                    frameRenderer.invalidateSetup()
+                }
                 if let depthStoreAction = settings.depthStoreAction {
                     currentRenderPassDescriptor.depthAttachment.storeAction = depthStoreAction
                 }

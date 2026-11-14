@@ -71,6 +71,11 @@ package final class FrameRunner {
         return try context.submit(content, system: system, residencySets: residencySets, presenting: presentable)
     }
 
+    /// Blocks until every in-flight frame ends or `timeout` passes. For synchronous roots that are shutting down.
+    package func drainBlocking(timeout: Duration? = nil) throws {
+        try context.drainBlocking(timeout: timeout)
+    }
+
     package func setMaximumInFlightSubmissions(_ limit: Int) throws {
         try context.setMaximumInFlightSubmissions(limit)
     }

@@ -11444,12 +11444,13 @@ Expected: SolarSystem has been run in both modes with the #471 repro conditions,
 ## 563: RenderView frame can mix old and new size or sample count when settings change mid-frame in render-thread mode
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: area:threading, effort:s
 created: 2026-11-14T22:10:41Z
-updated: 2026-11-14T22:11:06Z
+updated: 2026-11-14T22:22:48Z
+closed: 2026-11-14T22:22:48Z
 +++
 
 In RenderViewViewModel.render(on:) (Sources/MetalSprocketsUI/RenderView.swift), a frame reads the surface configuration more than once. The drawable size and sample count are read at the start of the frame. The render pass descriptor reads the configuration again later, after prepareFrame() and nextDrawable(), which can block.
@@ -11469,12 +11470,13 @@ Expected: every value a frame uses for size and sample count agrees with the att
 ## 564: Render thread frames have no autorelease pool of their own
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: area:threading, effort:xs
 created: 2026-11-14T22:10:42Z
-updated: 2026-11-14T22:11:06Z
+updated: 2026-11-14T22:22:48Z
+closed: 2026-11-14T22:22:48Z
 +++
 
 MetalLayerSurface.renderFrame() (Sources/MetalSprocketsUI/MetalLayerView.swift) does not wrap a frame in an autorelease pool. On the render thread the only pool is in RenderThread's loop, around each RunLoop.run(mode:before:) call. It drains only when that call returns.
@@ -11490,12 +11492,13 @@ Expected: objects autoreleased during a frame are released when that frame ends.
 ## 565: MetalLayerView's display link and render thread keep running if the view goes away without tearDown()
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: area:threading, effort:s
 created: 2026-11-14T22:10:42Z
-updated: 2026-11-14T22:11:06Z
+updated: 2026-11-14T22:22:48Z
+closed: 2026-11-14T22:22:48Z
 +++
 
 MetalLayerView (Sources/MetalSprocketsUI/MetalLayerView.swift) stops its display link and its RenderThread only in tearDown(). RenderView calls tearDown() from dismantle, so RenderView is not affected.
@@ -11513,12 +11516,13 @@ Expected: when a MetalLayerView is deallocated, its display link is invalidated 
 ## 566: Render thread teardown does not match RFC 0008: no drain, and the view model is not released on the render thread
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:threading, effort:m
 created: 2026-11-14T22:10:43Z
-updated: 2026-11-14T22:11:06Z
+updated: 2026-11-14T22:22:48Z
+closed: 2026-11-14T22:22:48Z
 +++
 
 RFC 0008 (RFCs/0008-off-main-thread-renderview.md), section Lifetime, says that on dismantle the render thread drains in-flight submissions (drain(timeout:)) and then exits, and that the view model and FrameRunner are released on the render thread.
@@ -11557,12 +11561,13 @@ Expected: the action never runs concurrently with the context that created it, o
 ## 568: Example: Screenshot's ProxyRepresentation assumes the export closure runs on the main thread
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: area:example, effort:xs
 created: 2026-11-14T22:10:44Z
-updated: 2026-11-14T22:11:07Z
+updated: 2026-11-14T22:22:49Z
+closed: 2026-11-14T22:22:49Z
 +++
 
 Example/MetalSprockets-Example/DemoViews/ScreenshotSupport.swift exports with ProxyRepresentation { screenshot in try MainActor.assumeIsolated { try screenshot.render() } }.
@@ -11576,12 +11581,13 @@ Expected: taking a screenshot from the share link cannot trap, whichever thread 
 ## 569: RenderThreadTests can hang if the view has no render thread
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: area:tests, effort:xs
 created: 2026-11-14T22:10:45Z
-updated: 2026-11-14T22:11:07Z
+updated: 2026-11-14T22:22:49Z
+closed: 2026-11-14T22:22:49Z
 +++
 
 Tests/MetalSprocketsTests/RenderThreadTests.swift waits for the render thread with withCheckedContinuation { view.renderThread?.perform { ... continuation.resume() } }. If renderThread is nil, the optional chain does nothing and the continuation is never resumed. The test then hangs until its time limit instead of failing with a clear message.

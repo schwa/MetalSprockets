@@ -32,6 +32,11 @@ internal final class RenderThread: Sendable {
         started.wait()
     }
 
+    /// `false` once the thread has left its run loop.
+    var isRunning: Bool {
+        state.withLockUnchecked { $0.runLoop != nil }
+    }
+
     /// Runs `work` on the render thread, after work already queued.
     func perform(_ work: @escaping @Sendable () -> Void) {
         let runLoop: CFRunLoop? = state.withLockUnchecked { state in
