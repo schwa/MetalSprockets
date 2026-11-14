@@ -11387,3 +11387,17 @@ There is no way to have RenderView build and encode frames on another thread. Th
 Seen in SceneSprockets (SceneSprockets #393): SceneView's per-frame culling and encoding can take tens of milliseconds on the main thread (about 70 ms CPU per frame in TinyTorii's sample town), which delays input handling.
 
 ---
+
+## 561: RenderView renders on the main thread by default
+
++++
+status: new
+priority: low
+kind: enhancement
+depends: 560
+created: 2026-11-14T21:44:42Z
++++
+
+After #560 adds an opt-in render thread (RFCs/0008), RenderView still defaults to main-thread rendering. Apps must opt in to keep busy frames off the main thread. Revisit the default once the render-thread mode has shipped and been tested on macOS and iOS.
+
+---
