@@ -450,36 +450,10 @@ internal struct MetalHostView <Content>: View where Content: Element {
             return view
         }
         update: { view in
-            let device = viewModelBox.device(preferring: device)
-            let commandQueue = viewModelBox.commandQueue(preferring: commandQueue, device: device)
-            let viewModel: RenderViewViewModel<Content>
-            if let existing = viewModelBox.value {
-                viewModel = existing
-            } else {
-                viewModel = RenderViewViewModel(device: device, commandQueue: commandQueue, rendersOffMainThread: view.renderThread != nil, content: content)
-                viewModelBox.value = viewModel
+            // One SwiftUI update is applied as a unit, so a render-thread frame sees all of it or none of it (#571).
+            view.surface.atomically {
+                update(view)
             }
-            if view.metalLayer.isOpaque {
-                view.metalLayer.isOpaque = false
-            }
-            if view.device !== device {
-                view.device = device
-            }
-            view.delegate = viewModel
-            view.configure(from: overrides.applied(to: environment))
-            viewModel.content = content
-            viewModel.drawableSizeChange = drawableSizeChange.map { box in { box($0) } }
-            viewModel.frameTimingChange = frameTimingChange.map { box in { box($0) } }
-            if viewModel.captureConfiguration != captureConfiguration {
-                logger?.info("RenderView: capture configuration changed to \(String(describing: captureConfiguration))")
-            }
-            viewModel.captureConfiguration = captureConfiguration
-            viewModel.shaderLogging = shaderLogging ?? .processDefault
-            viewModel.residency = residency
-            viewModel.maximumInFlightSubmissions = maximumInFlightSubmissions
-            viewModel.shaderStore = shaderStore
-            viewModel.diagnostics = RenderViewDiagnostics(environment: environment)
-            viewModel.depthStoreAction = environment.metalDepthStoreAction
         }
         dismantle: { view in
             // Stop the display link and drop the delegate before SwiftUI releases the representable, so no draw
@@ -491,6 +465,39 @@ internal struct MetalHostView <Content>: View where Content: Element {
         .onDisappear {
             viewModelBox.value = nil
         }
+    }
+
+    private func update(_ view: MetalLayerView) {
+        let device = viewModelBox.device(preferring: device)
+        let commandQueue = viewModelBox.commandQueue(preferring: commandQueue, device: device)
+        let viewModel: RenderViewViewModel<Content>
+        if let existing = viewModelBox.value {
+            viewModel = existing
+        } else {
+            viewModel = RenderViewViewModel(device: device, commandQueue: commandQueue, rendersOffMainThread: view.renderThread != nil, content: content)
+            viewModelBox.value = viewModel
+        }
+        if view.metalLayer.isOpaque {
+            view.metalLayer.isOpaque = false
+        }
+        if view.device !== device {
+            view.device = device
+        }
+        view.delegate = viewModel
+        view.configure(from: overrides.applied(to: environment))
+        viewModel.content = content
+        viewModel.drawableSizeChange = drawableSizeChange.map { box in { box($0) } }
+        viewModel.frameTimingChange = frameTimingChange.map { box in { box($0) } }
+        if viewModel.captureConfiguration != captureConfiguration {
+            logger?.info("RenderView: capture configuration changed to \(String(describing: captureConfiguration))")
+        }
+        viewModel.captureConfiguration = captureConfiguration
+        viewModel.shaderLogging = shaderLogging ?? .processDefault
+        viewModel.residency = residency
+        viewModel.maximumInFlightSubmissions = maximumInFlightSubmissions
+        viewModel.shaderStore = shaderStore
+        viewModel.diagnostics = RenderViewDiagnostics(environment: environment)
+        viewModel.depthStoreAction = environment.metalDepthStoreAction
     }
 }
 
@@ -810,7 +817,8 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
     }
 
     func render(on surface: MetalLayerSurface) {
-        let settings = settings
+        // Read together so content and surface configuration come from the same SwiftUI update (#571).
+        let (settings, configuration) = surface.atomically { (self.settings, surface.configuration) }
         do {
             let currentFrame = timingState.frame
             let threadInfo = Thread.isMainThread ? "main thread" : "thread \(pthread_mach_thread_np(pthread_self()))"
@@ -841,7 +849,7 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
                 defer {
                     timingState.commit()
                 }
-                let currentRenderPassDescriptor = surface.renderPassDescriptor(for: currentDrawable)
+                let currentRenderPassDescriptor = surface.renderPassDescriptor(for: currentDrawable, configuration: configuration)
                 // Size and sample count come from what this frame renders into, not from the view's settings, which
                 // the main thread can change mid-frame in render-thread mode (#563).
                 let drawableSize = CGSize(width: currentDrawable.texture.width, height: currentDrawable.texture.height)

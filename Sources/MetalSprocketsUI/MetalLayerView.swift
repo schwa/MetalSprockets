@@ -69,6 +69,9 @@ internal final class MetalLayerSurface: @unchecked Sendable {
     let layer: CAMetalLayer
     private let configurationStorage = Mutex(MetalSurfaceConfiguration())
     private let delegateStorage = Mutex(WeakDelegate())
+    // Groups a main-thread update with the delegate's own settings, so a frame never pairs one update's content
+    // with another's configuration (#571). Recursive: a main-thread frame can run inside an update.
+    private let updateLock = NSRecursiveLock()
 
     // Frame thread only.
     private var attachmentKey: AttachmentKey?
@@ -87,6 +90,13 @@ internal final class MetalLayerSurface: @unchecked Sendable {
 
     func updateConfiguration(_ update: (inout MetalSurfaceConfiguration) -> Void) {
         configurationStorage.withLock { update(&$0) }
+    }
+
+    /// Runs `body` so that no frame can read state between its changes. Use it on both the writing and the reading side.
+    func atomically<Result>(_ body: () throws -> Result) rethrows -> Result {
+        updateLock.lock()
+        defer { updateLock.unlock() }
+        return try body()
     }
 
     var delegate: (any MetalLayerViewDelegate)? {
@@ -125,7 +135,10 @@ internal final class MetalLayerSurface: @unchecked Sendable {
     }
 
     func renderPassDescriptor(for drawable: any CAMetalDrawable) -> MTL4RenderPassDescriptor {
-        let configuration = configuration
+        renderPassDescriptor(for: drawable, configuration: configuration)
+    }
+
+    func renderPassDescriptor(for drawable: any CAMetalDrawable, configuration: MetalSurfaceConfiguration) -> MTL4RenderPassDescriptor {
         let drawableTexture = drawable.texture
         updateAttachments(configuration: configuration, width: drawableTexture.width, height: drawableTexture.height)
         let descriptor = MTL4RenderPassDescriptor()

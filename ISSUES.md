@@ -11631,11 +11631,13 @@ Make MSState Sendable when Value is Sendable (StateBox and the Box wrapper confo
 ## 571: Render-thread RenderView can draw new content with an old surface configuration
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 labels: effort:m
 created: 2026-11-14T22:47:56Z
+updated: 2026-11-14T22:51:27Z
+closed: 2026-11-14T22:51:27Z
 +++
 
 With RenderView(threading: .renderThread), the main thread updates two things separately, each under its own lock:
