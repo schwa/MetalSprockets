@@ -75,7 +75,7 @@ internal final class RecordingScope {
         guard isActive else {
             throw Failure.encodingEnded
         }
-        // Memoryless textures (tile-memory render targets, such as MTKView's default depth) have no memory to make
+        // Memoryless textures (tile-memory render targets, such as RenderView's default depth) have no memory to make
         // resident, and residency sets reject them. Keep them alive, but out of the residency set.
         if let resource = allocation as? any MTLResource, resource.storageMode == .memoryless {
             resources.objects.append(resource)

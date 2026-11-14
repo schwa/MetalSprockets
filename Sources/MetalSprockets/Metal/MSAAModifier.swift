@@ -37,7 +37,7 @@ import MetalSprocketsSupport
 ///
 /// ## See Also
 ///
-/// - ``View/metalSampleCount(_:)`` - For MTKView-based MSAA (simpler, preferred for on-screen rendering)
+/// - ``View/metalSampleCount(_:)`` - For RenderView MSAA (simpler, preferred for on-screen rendering)
 internal struct MSAAModifier<Content>: Element, BodylessContentElement, EnvironmentModifyingElement where Content: Element {
     var content: Content
     var sampleCount: Int
@@ -183,7 +183,7 @@ public extension Element {
     ///
     /// Use this modifier when rendering to a custom texture and you want anti-aliasing.
     /// For on-screen rendering with `RenderView`, prefer using `.metalSampleCount()` on
-    /// the SwiftUI view instead, as MTKView handles texture management automatically.
+    /// the SwiftUI view instead, as RenderView manages the textures.
     ///
     /// - Parameter sampleCount: The number of samples per pixel (typically 2, 4, or 8).
     ///   Use 1 to disable MSAA.

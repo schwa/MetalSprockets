@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `RenderView(threading: .renderThread)` builds, encodes, and commits frames on a dedicated thread for each view, so busy frames do not delay the main thread. The content closure must be `@Sendable`. The default is still `.main` (#560, #561, [RFC 0008](RFCs/0008-off-main-thread-renderview.md)).
+- `RenderView` no longer uses `MTKView`. It uses its own view backed by a `CAMetalLayer`. The `metal*` view modifiers work as before (#560).
 - The iOS and visionOS Simulators are not supported. Their SDKs have no Metal 4 APIs, so MetalSprockets does not build for them (#473).
 
 ## 0.2.3

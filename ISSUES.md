@@ -11373,11 +11373,13 @@ Expected: no ThreadSanitizer reports.
 ## 560: RenderView can only render on the main thread
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l
 created: 2026-11-14T21:36:36Z
+updated: 2026-11-14T22:02:12Z
+closed: 2026-11-14T22:02:12Z
 +++
 
 RenderView on macOS and iOS draws from MTKView's delegate, so the content closure, element tree build and encoding all run on the main thread. A busy frame takes main-thread time away from UI, input and app logic.

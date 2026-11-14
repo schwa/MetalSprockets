@@ -37,6 +37,7 @@ The visionOS and ARKit types are only available on those platforms, so this macO
 ### SwiftUI Integration
 
 - ``RenderView``
+- ``RenderViewThreading``
 - ``RenderViewContext``
 - ``FrameUniforms``
 

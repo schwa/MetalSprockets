@@ -128,7 +128,7 @@ The main framework. It contains:
 SwiftUI integration. It contains:
 
 - `RenderView`, a SwiftUI view for Metal rendering
-- `MTKView` integration
+- A view backed by a `CAMetalLayer` that runs the frame loop
 - A bridge between the SwiftUI environment and the MetalSprockets environment
 
 ### Support Utilities (MetalSprocketsSupport)
@@ -334,7 +334,7 @@ The framework manages the lifecycle of resources:
 
 Each `System` stays in one isolation context:
 
-- **Owning isolation**: Element updates, setup, and command encoding run synchronously on the isolation that drives the system. For `RenderView`, this is the main thread, through `MTKViewDelegate`.
+- **Owning isolation**: Element updates, setup, and command encoding run synchronously on the isolation that drives the system. For `RenderView`, this is the main thread or the view's render thread.
 - **GPU**: The GPU runs the command buffer asynchronously after the commit.
 
 ### Rules
@@ -347,7 +347,9 @@ Each `System` stays in one isolation context:
 
 ### SwiftUI Integration
 
-In `RenderView`, the MetalKit callback `MTKViewDelegate.draw(in:)` drives the render loop. This callback runs on the main thread. All MetalSprockets work for the view occurs there.
+In `RenderView`, a display link drives the render loop. By default it runs on the main thread, and all MetalSprockets work for the view occurs there.
+
+With `RenderView(threading: .renderThread)`, each view has its own render thread. The content closure, element updates, encoding, and commit run on that thread, so busy frames do not delay the main thread. Frame timing and drawable size callbacks come back to the main thread. The content closure must be `@Sendable` and must not touch main-actor state. In a module that uses `MainActor` as its default isolation, mark the element types that the closure builds `nonisolated`.
 
 ## Performance
 

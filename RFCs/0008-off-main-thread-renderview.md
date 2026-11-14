@@ -1,6 +1,6 @@
 # RFC 0008 — Off-main-thread RenderView
 
-**Status:** Draft
+**Status:** Implemented (steps 1–3); step 4 is in SceneSprockets
 **Author:** schwa
 **Date:** 2026-11-14
 **Tracking issue:** #560
