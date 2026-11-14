@@ -70,8 +70,8 @@ internal final class MetalLayerSurface: @unchecked Sendable {
     private let configurationStorage = Mutex(MetalSurfaceConfiguration())
     private let delegateStorage = Mutex(WeakDelegate())
     // Groups a main-thread update with the delegate's own settings, so a frame never pairs one update's content
-    // with another's configuration (#571). Recursive: a main-thread frame can run inside an update.
-    private let updateLock = NSRecursiveLock()
+    // with another's configuration (#571). Not recursive: frames never run inside an update.
+    private let updateLock = Mutex(())
 
     // Frame thread only.
     private var attachmentKey: AttachmentKey?
@@ -94,9 +94,7 @@ internal final class MetalLayerSurface: @unchecked Sendable {
 
     /// Runs `body` so that no frame can read state between its changes. Use it on both the writing and the reading side.
     func atomically<Result>(_ body: () throws -> Result) rethrows -> Result {
-        updateLock.lock()
-        defer { updateLock.unlock() }
-        return try body()
+        try updateLock.withLock { _ in try body() }
     }
 
     var delegate: (any MetalLayerViewDelegate)? {

@@ -11655,3 +11655,21 @@ With threading .main this cannot happen, because both are updated and read in or
 Found by reading the code while moving SceneSprockets' SceneView to the render thread (SceneSprockets #393), where the same assertion fired. In that crash, SceneSprockets' own one-step lag was at least part of the cause; this race in MetalSprocketsUI on its own has not been reproduced.
 
 ---
+
+## 572: MetalLayerSurface update lock is an NSRecursiveLock, but nothing locks it recursively
+
++++
+status: closed
+priority: low
+kind: task
+labels: effort:s
+created: 2026-11-14T22:54:02Z
+updated: 2026-11-14T22:54:37Z
+closed: 2026-11-14T22:54:37Z
++++
+
+The fix for #571 added a lock to MetalLayerSurface (MetalLayerView.swift). It groups a SwiftUI update in MetalHostView with the frame's read of settings and surface configuration. The lock is an NSRecursiveLock, based on the guess that a main-thread frame can run inside the update block.
+
+Reading the code does not support that guess. Synchronous frames come only from the display link and display(_:), not from the SwiftUI update: block. The rest of MetalSprocketsUI uses Mutex and OSAllocatedUnfairLock, so this lock is the only one of its kind. A recursive lock can also hide accidental re-entry, which a non-recursive lock would expose.
+
+---
