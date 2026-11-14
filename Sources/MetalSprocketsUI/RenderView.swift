@@ -6,6 +6,7 @@ import Observation
 internal import os
 import QuartzCore
 import SwiftUI
+import Synchronization
 
 public extension EnvironmentValues {
     @Entry
@@ -287,6 +288,7 @@ public struct RenderView <Content>: View where Content: Element {
     var sampleCount: Int?
     var residency: ResidencyConfiguration
     var maximumInFlightSubmissions: Int
+    var threading: RenderViewThreading = .main
 
     @Environment(\.device)
     var device
@@ -327,6 +329,24 @@ public struct RenderView <Content>: View where Content: Element {
         self.maximumInFlightSubmissions = maximumInFlightSubmissions
     }
 
+    /// Creates a render view that renders on the thread `threading` selects.
+    ///
+    /// With ``RenderViewThreading/renderThread``, `content` runs on the view's render thread, so it must not touch
+    /// main-actor state. Pass it a `Sendable` snapshot instead. Reads of `@Observable` models inside `content` do not
+    /// cause redraws. The threading mode is fixed when the view is first created.
+    public init(
+        threading: RenderViewThreading,
+        colorPixelFormat: MTLPixelFormat? = nil,
+        depthStencilPixelFormat: MTLPixelFormat? = nil,
+        sampleCount: Int? = nil,
+        residency: ResidencyConfiguration = ResidencyConfiguration(),
+        maximumInFlightSubmissions: Int = 3,
+        @ElementBuilder content: @escaping @Sendable (RenderViewContext, CGSize) throws -> Content
+    ) {
+        self.init(colorPixelFormat: colorPixelFormat, depthStencilPixelFormat: depthStencilPixelFormat, sampleCount: sampleCount, residency: residency, maximumInFlightSubmissions: maximumInFlightSubmissions, content: content)
+        self.threading = threading
+    }
+
     public var body: some View {
         // Device and command queue are resolved lazily inside MetalHostView's update
         // closure rather than here: creating them during body evaluation can happen while
@@ -336,6 +356,7 @@ public struct RenderView <Content>: View where Content: Element {
             commandQueue: commandQueue,
             residency: residency,
             maximumInFlightSubmissions: maximumInFlightSubmissions,
+            threading: threading,
             overrides: MetalLayerViewOverrides(
                 colorPixelFormat: colorPixelFormat,
                 depthStencilPixelFormat: depthStencilPixelFormat,
@@ -344,6 +365,14 @@ public struct RenderView <Content>: View where Content: Element {
             content: content
         )
     }
+}
+
+/// Where a ``RenderView`` builds, encodes and commits its frames.
+public enum RenderViewThreading: Sendable, Equatable {
+    /// The main thread. The content closure can use main-actor state.
+    case main
+    /// A dedicated thread for each view, so busy frames do not delay the main thread.
+    case renderThread
 }
 
 /// Per-``RenderView`` configuration that wins over the equivalent SwiftUI environment values.
@@ -373,6 +402,7 @@ internal struct MetalHostView <Content>: View where Content: Element {
     var commandQueue: (any MTL4CommandQueue)?
     var residency: ResidencyConfiguration
     var maximumInFlightSubmissions: Int
+    var threading: RenderViewThreading
     var overrides: MetalLayerViewOverrides
     var content: (RenderViewContext, CGSize) throws -> Content
 
@@ -401,18 +431,23 @@ internal struct MetalHostView <Content>: View where Content: Element {
     @State
     private var viewModelBox = ViewModelBox<Content>()
 
-    init(device: MTLDevice?, commandQueue: (any MTL4CommandQueue)?, residency: ResidencyConfiguration, maximumInFlightSubmissions: Int, overrides: MetalLayerViewOverrides = MetalLayerViewOverrides(), @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
+    init(device: MTLDevice?, commandQueue: (any MTL4CommandQueue)?, residency: ResidencyConfiguration, maximumInFlightSubmissions: Int, threading: RenderViewThreading = .main, overrides: MetalLayerViewOverrides = MetalLayerViewOverrides(), @ElementBuilder content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
         self.residency = residency
         self.maximumInFlightSubmissions = maximumInFlightSubmissions
+        self.threading = threading
         self.overrides = overrides
         self.content = content
     }
 
     var body: some View {
         PlatformAdaptorView<MetalLayerView> {
-            MetalLayerView()
+            let view = MetalLayerView()
+            if threading == .renderThread {
+                view.renderThread = RenderThread()
+            }
+            return view
         }
         update: { view in
             let device = viewModelBox.device(preferring: device)
@@ -421,7 +456,7 @@ internal struct MetalHostView <Content>: View where Content: Element {
             if let existing = viewModelBox.value {
                 viewModel = existing
             } else {
-                viewModel = RenderViewViewModel(device: device, commandQueue: commandQueue, content: content)
+                viewModel = RenderViewViewModel(device: device, commandQueue: commandQueue, rendersOffMainThread: view.renderThread != nil, content: content)
                 viewModelBox.value = viewModel
             }
             if view.metalLayer.isOpaque {
@@ -449,8 +484,7 @@ internal struct MetalHostView <Content>: View where Content: Element {
         dismantle: { view in
             // Stop the display link and drop the delegate before SwiftUI releases the representable, so no draw
             // callback can arrive after the view model is gone. See #301.
-            view.invalidateDisplayLink()
-            view.delegate = nil
+            view.tearDown()
         }
         .onDisappear {
             viewModelBox.value = nil
@@ -491,26 +525,61 @@ internal final class ViewModelBox<Content: Element> {
     }
 }
 
-@Observable
-internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate where Content: Element {
-    @ObservationIgnored
+/// Drives a ``RenderView``'s frames. Frame state belongs to the frame thread: the main thread, or the view's render
+/// thread (#560). The main thread writes ``Settings``, and each frame reads them under a lock.
+internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate, @unchecked Sendable where Content: Element {
+    struct Settings {
+        var content: (RenderViewContext, CGSize) throws -> Content
+        var shaderLogging: ShaderLogging = .processDefault
+        var residency = ResidencyConfiguration()
+        var maximumInFlightSubmissions = 3
+        var drawableSizeChange: ((CGSize) -> Void)?
+        var frameTimingChange: ((FrameTimingStatistics) -> Void)?
+        var captureConfiguration: RenderViewCaptureConfiguration?
+        var captureSequence: CaptureSequence?
+        var shaderStore: ShaderStore?
+        var diagnostics = RenderViewDiagnostics(environment: EnvironmentValues())
+        var depthStoreAction: MTLStoreAction?
+    }
+
+    // Settings hold main-actor closures; with a render thread they are only called on the main thread.
+    private struct UncheckedSettings: @unchecked Sendable {
+        var value: Settings
+    }
+
     let device: MTLDevice
 
     /// Fixed for the view model's lifetime: the Metal 4 context, and everything in flight, is bound to it.
-    @ObservationIgnored
     let commandQueue: any MTL4CommandQueue
 
-    @ObservationIgnored
-    var content: (RenderViewContext, CGSize) throws -> Content
+    /// `true` when frames run on a render thread. Callbacks to the app then hop to the main thread.
+    let rendersOffMainThread: Bool
 
-    var lastError: Error?
+    private let settingsStorage: Mutex<UncheckedSettings>
+    private let lastErrorStorage = Mutex<(any Error)?>(nil)
+    private let pendingFrameTiming = Mutex<FrameTimingStatistics?>(nil)
+
+    var settings: Settings {
+        settingsStorage.withLock { $0.value }
+    }
+
+    private func updateSettings(_ update: (inout Settings) -> Void) {
+        settingsStorage.withLock { update(&$0.value) }
+    }
+
+    var content: (RenderViewContext, CGSize) throws -> Content {
+        get { settings.content }
+        set { updateSettings { $0.content = newValue } }
+    }
+
+    var lastError: (any Error)? {
+        lastErrorStorage.withLock { $0 }
+    }
 
     /// Lazily created on first use. See #337. A cheap `init` means that SwiftUI
     /// can make and discard RenderViewViewModel instances on each body update
     /// without the cost of a `FrameRenderer` (and its `System`).
-    @ObservationIgnored
     private var _frameRenderer: FrameRenderer?
-    @ObservationIgnored
     var frameRenderer: FrameRenderer {
         if let renderer = _frameRenderer {
             return renderer
@@ -521,77 +590,87 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
     }
 
     /// The Metal 4 context and element tree, created on the first frame (see #337).
-    @ObservationIgnored
     private var _runner: FrameRunner?
     func runner() throws -> FrameRunner {
+        let settings = settings
         if let runner = _runner {
-            try runner.setMaximumInFlightSubmissions(maximumInFlightSubmissions)
+            try runner.setMaximumInFlightSubmissions(settings.maximumInFlightSubmissions)
             return runner
         }
-        let runner = try FrameRunner(device: device, commandQueue: commandQueue, system: frameRenderer.system, shaderLogging: shaderLogging, maximumInFlightSubmissions: maximumInFlightSubmissions)
+        let runner = try FrameRunner(device: device, commandQueue: commandQueue, system: frameRenderer.system, shaderLogging: settings.shaderLogging, maximumInFlightSubmissions: settings.maximumInFlightSubmissions)
         _runner = runner
         return runner
     }
 
     /// Applied when the first frame creates the runner. The log state belongs to the Metal 4 context.
-    @ObservationIgnored
-    var shaderLogging: ShaderLogging = .processDefault
+    var shaderLogging: ShaderLogging {
+        get { settings.shaderLogging }
+        set { updateSettings { $0.shaderLogging = newValue } }
+    }
 
-    @ObservationIgnored
-    var residency = ResidencyConfiguration()
+    var residency: ResidencyConfiguration {
+        get { settings.residency }
+        set { updateSettings { $0.residency = newValue } }
+    }
 
-    @ObservationIgnored
     private var attachmentResources: ResourceCollection?
-    @ObservationIgnored
     private var residentAttachments: [ObjectIdentifier: any MTLTexture] = [:]
 
-    @ObservationIgnored
-    var maximumInFlightSubmissions = 3
+    var maximumInFlightSubmissions: Int {
+        get { settings.maximumInFlightSubmissions }
+        set { updateSettings { $0.maximumInFlightSubmissions = newValue } }
+    }
 
     /// Frames dropped at the in-flight limit, or because the drawable was already presented.
-    @ObservationIgnored
     var skippedFrameCount = 0
 
-    @ObservationIgnored
     private weak var lastPresentedDrawable: CAMetalDrawable?
 
-    @ObservationIgnored
-    var drawableSizeChange: ((CGSize) -> Void)?
+    var drawableSizeChange: ((CGSize) -> Void)? {
+        get { settings.drawableSizeChange }
+        set { updateSettings { $0.drawableSizeChange = newValue } }
+    }
 
-    @ObservationIgnored
-    var frameTimingChange: ((FrameTimingStatistics) -> Void)?
+    var frameTimingChange: ((FrameTimingStatistics) -> Void)? {
+        get { settings.frameTimingChange }
+        set { updateSettings { $0.frameTimingChange = newValue } }
+    }
 
-    @ObservationIgnored
     var captureConfiguration: RenderViewCaptureConfiguration? {
-        didSet {
-            guard captureConfiguration != oldValue else {
-                return
-            }
-            captureSequence = captureConfiguration.flatMap { configuration in
-                guard configuration.enabled, let frames = configuration.frames else {
-                    return nil
+        get { settings.captureConfiguration }
+        set {
+            updateSettings { settings in
+                guard settings.captureConfiguration != newValue else {
+                    return
                 }
-                return CaptureSequence(frameCount: frames)
+                settings.captureConfiguration = newValue
+                settings.captureSequence = newValue.flatMap { configuration in
+                    guard configuration.enabled, let frames = configuration.frames else {
+                        return nil
+                    }
+                    return CaptureSequence(frameCount: frames)
+                }
             }
         }
     }
 
-    @ObservationIgnored
-    private(set) var captureSequence: CaptureSequence?
+    var captureSequence: CaptureSequence? {
+        settings.captureSequence
+    }
 
     /// Ambient shader store from the SwiftUI environment, if any. When `nil`,
     /// the view model uses its private ``fallbackShaderStore`` so that shaders
     /// compiled inside this RenderView die with it.
-    @ObservationIgnored
-    var shaderStore: ShaderStore?
+    var shaderStore: ShaderStore? {
+        get { settings.shaderStore }
+        set { updateSettings { $0.shaderStore = newValue } }
+    }
 
     /// Lazily created private store used when no ``ShaderStore`` is provided in
     /// the SwiftUI environment. Lifetime is tied to this view model so shaders
     /// cached here are freed when the RenderView goes away.
-    @ObservationIgnored
     private let fallbackShaderStore = ShaderStore()
 
-    @ObservationIgnored
     var timingState = FrameTimingState()
 
     /// The zero-based index of the next frame to be produced.
@@ -599,23 +678,26 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
 
     var currentDrawableSize: CGSize = .zero
 
-    @ObservationIgnored
     var frameTimingTracker = FrameTimingTracker()
 
-    @ObservationIgnored
     var currentSampleCount: Int = 1
 
     /// Diagnostics settings resolved from the SwiftUI environment and the process environment (#269).
-    @ObservationIgnored
-    var diagnostics = RenderViewDiagnostics(environment: EnvironmentValues())
+    var diagnostics: RenderViewDiagnostics {
+        get { settings.diagnostics }
+        set { updateSettings { $0.diagnostics = newValue } }
+    }
 
-    @ObservationIgnored
-    var depthStoreAction: MTLStoreAction?
+    var depthStoreAction: MTLStoreAction? {
+        get { settings.depthStoreAction }
+        set { updateSettings { $0.depthStoreAction = newValue } }
+    }
 
-    init(device: MTLDevice, commandQueue: any MTL4CommandQueue, content: @escaping (RenderViewContext, CGSize) throws -> Content) {
+    init(device: MTLDevice, commandQueue: any MTL4CommandQueue, rendersOffMainThread: Bool = false, content: @escaping (RenderViewContext, CGSize) throws -> Content) {
         self.device = device
         self.commandQueue = commandQueue
-        self.content = content
+        self.rendersOffMainThread = rendersOffMainThread
+        self.settingsStorage = Mutex(UncheckedSettings(value: Settings(content: content)))
         super.init()
         RenderViewViewModelAllocationTracker.shared.recordAllocation()
     }
@@ -657,26 +739,76 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
         return resources
     }
 
+    @MainActor
     func metalLayerView(_ view: MetalLayerView, drawableSizeWillChange size: CGSize) {
+        // With a render thread, frame state is not ours to touch; the next frame notices the new size and reports it.
+        guard !rendersOffMainThread else {
+            return
+        }
         drawableSizeChange?(size)
         frameRenderer.invalidateSetup()
         self.currentDrawableSize = size
     }
 
-    func draw(in view: MetalLayerView) {
+    /// Runs `work` on the main thread: now if this is the main thread, otherwise asynchronously.
+    private func onMainThread(_ work: @escaping @MainActor () -> Void) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated(work)
+        } else {
+            DispatchQueue.main.async { work() }
+        }
+    }
+
+    private func reportDrawableSize(_ size: CGSize, to callback: ((CGSize) -> Void)?) {
+        guard let callback else {
+            return
+        }
+        nonisolated(unsafe) let unchecked = callback
+        onMainThread { unchecked(size) }
+    }
+
+    // Off the main thread, coalesces to the newest statistics so a slow main thread does not queue a backlog.
+    private func reportFrameTiming(_ statistics: FrameTimingStatistics, to callback: ((FrameTimingStatistics) -> Void)?) {
+        guard let callback else {
+            return
+        }
+        guard rendersOffMainThread else {
+            callback(statistics)
+            return
+        }
+        let alreadyScheduled = pendingFrameTiming.withLock { pending in
+            defer { pending = statistics }
+            return pending != nil
+        }
+        guard !alreadyScheduled else {
+            return
+        }
+        nonisolated(unsafe) let unchecked = callback
+        onMainThread {
+            let latest = self.pendingFrameTiming.withLock { pending in
+                defer { pending = nil }
+                return pending
+            }
+            if let latest {
+                unchecked(latest)
+            }
+        }
+    }
+
+    func render(on surface: MetalLayerSurface) {
+        let settings = settings
         // The view only reports a size when it *changes*. If the
         // view was already sized before the delegate was attached (e.g. under a .toolbar layout
         // pass) we would keep rendering at .zero until the next resize. Re-sync defensively.
-        if currentDrawableSize != view.drawableSize {
-            currentDrawableSize = view.drawableSize
-            drawableSizeChange?(view.drawableSize)
+        let drawableSize = surface.drawableSize
+        if currentDrawableSize != drawableSize {
+            currentDrawableSize = drawableSize
+            reportDrawableSize(drawableSize, to: settings.drawableSizeChange)
             frameRenderer.invalidateSetup()
         }
 
-        // An MSAA toggle only shows up on the drawable's texture, not on any value the view reports.
-        let actualSampleCount = view.currentMTL4RenderPassDescriptor?.colorAttachments[0]?.texture?.sampleCount ?? 1
-        if sampleCountChanged(current: currentSampleCount, observed: actualSampleCount) {
-            currentSampleCount = actualSampleCount
+        if sampleCountChanged(current: currentSampleCount, observed: surface.sampleCount) {
+            currentSampleCount = surface.sampleCount
             frameRenderer.invalidateSetup()
         }
 
@@ -697,7 +829,7 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
                 }
                 // May block here until a drawable is free.
                 let currentDrawable = try frameSignposter.withIntervalSignpost("Drawable") {
-                    try view.currentDrawable.orThrow(.resourceCreationFailure("No drawable available"))
+                    try surface.nextDrawable().orThrow(.resourceCreationFailure("No drawable available"))
                 }
                 // The view releases its drawable after each draw(); a drawable already presented cannot be waited on
                 // again by a Metal 4 queue, so a repeated one is skipped.
@@ -710,15 +842,15 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
                 defer {
                     timingState.commit()
                 }
-                let currentRenderPassDescriptor = try view.currentMTL4RenderPassDescriptor.orThrow(.resourceCreationFailure("No render pass descriptor available"))
-                if let depthStoreAction {
+                let currentRenderPassDescriptor = surface.renderPassDescriptor(for: currentDrawable)
+                if let depthStoreAction = settings.depthStoreAction {
                     currentRenderPassDescriptor.depthAttachment.storeAction = depthStoreAction
                 }
 
                 let currentTime: CFTimeInterval = CACurrentMediaTime()
                 let frameUniforms = timingState.advance(
                     now: currentTime,
-                    viewportSize: [UInt32(view.drawableSize.width), UInt32(view.drawableSize.height)]
+                    viewportSize: [UInt32(drawableSize.width), UInt32(drawableSize.height)]
                 )
                 frameTimingTracker.lastGPUTime = frameRenderer.lastGPUTime
                 frameTimingTracker.lastGPUTimings = frameRenderer.lastGPUTimings
@@ -728,22 +860,22 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
                     frameTimingStatistics: frameTimingStatistics,
                     attachedDepthTexture: currentRenderPassDescriptor.depthAttachment.texture
                 )
-                frameTimingChange?(frameTimingStatistics)
+                reportFrameTiming(frameTimingStatistics, to: settings.frameTimingChange)
 
                 let t0 = CACurrentMediaTime()
                 let userContent = try frameSignposter.withIntervalSignpost("Content") {
-                    try self.content(context, currentDrawableSize)
+                    try settings.content(context, currentDrawableSize)
                 }
                 let rootElement = try buildRenderViewRootElement(
                     content: userContent,
-                    captureConfiguration: self.captureConfiguration,
-                    captureSequence: self.captureSequence,
+                    captureConfiguration: settings.captureConfiguration,
+                    captureSequence: settings.captureSequence,
                     device: device,
                     commandQueue: commandQueue,
-                    shaderStore: shaderStore ?? fallbackShaderStore,
+                    shaderStore: settings.shaderStore ?? fallbackShaderStore,
                     renderPassDescriptor: currentRenderPassDescriptor,
                     currentDrawable: currentDrawable,
-                    drawableSize: view.drawableSize,
+                    drawableSize: drawableSize,
                     onCompleted: { [frameRenderer] result in
                         frameRenderer.lastGPUTime = result.gpuDuration
                     },
@@ -755,8 +887,8 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
 
                 do {
                     // Commit waits for the drawable, signals it after the frame's work, then presents.
-                    let residencySets = [view.metalLayer.residencySet]
-                    var frameResidency = residency
+                    let residencySets = [surface.residencySet]
+                    var frameResidency = settings.residency
                     frameResidency.collections.append(try updateAttachmentResidency(for: currentRenderPassDescriptor, drawableTexture: currentDrawable.texture))
                     runner.residency = frameResidency
                     try runner.submitFrame(rootElement, presenting: currentDrawable, residencySets: residencySets)
@@ -767,7 +899,7 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
                         return timings
                     }
 
-                    if diagnostics.logFrame, let timings = runner.system.lastPhaseTimings {
+                    if settings.diagnostics.logFrame, let timings = runner.system.lastPhaseTimings {
                         let contentMs = contentDuration * 1_000
                         let updateMs = timings.update * 1_000
                         let setupMs = timings.setup * 1_000
@@ -784,13 +916,12 @@ internal class RenderViewViewModel <Content>: NSObject, MetalLayerViewDelegate w
         }
     }
 
-    @MainActor
     func handle(error: Error) {
         logger?.error("Error when drawing frame #\(self.timingState.frame): \(error)")
-        if diagnostics.fatalErrorOnError {
+        if settings.diagnostics.fatalErrorOnError {
             fatalError("Error when drawing #\(self.timingState.frame): \(error)")
         }
-        lastError = error
+        lastErrorStorage.withLock { $0 = error }
     }
 }
 

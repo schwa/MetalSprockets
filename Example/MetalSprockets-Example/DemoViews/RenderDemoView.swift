@@ -15,6 +15,7 @@ struct RenderDemoView: View {
     // Persisted, so a profiling run can start with many cubes (`defaults write` or `-cubeCount 1000`).
     @AppStorage("cubeCount") private var cubeCount = 1
     @AppStorage("instanced") private var instanced = true
+    @AppStorage("renderThread") private var renderThread = false
 
     private static let cubeCounts = [1, 100, 500, 1_000, 2_000, 5_000]
 
@@ -26,29 +27,18 @@ struct RenderDemoView: View {
     }()
 
     var body: some View {
+        // Copied out of view state so the content closure is Sendable and can run on a render thread.
+        let scene = CubeScene(pausedTime: isPaused ? pausedTime : nil, cubeCount: cubeCount, instanced: instanced)
         // RenderView is the bridge between SwiftUI and Metal - closure called every frame
-        RenderView { context, size in
-            let time: Float = isPaused ? pausedTime : context.frameUniforms.time
-
-            // Standard MVP transform chain
-            let modelMatrix = cubeRotationMatrix(time: TimeInterval(time))
-            let gridSide = Int(ceil(cbrt(Double(cubeCount))))
-            let viewMatrix = float4x4.translation(0, 0, -8 * Float(gridSide))
-            let aspect = size.height > 0 ? Float(size.width / size.height) : 1.0
-            let projectionMatrix = float4x4.perspective(fovY: .pi / 4, aspect: aspect, near: 0.1, far: 100.0 * Float(gridSide))
-            let transforms = cubeGridOffsets(count: cubeCount, side: gridSide).map { offset in
-                projectionMatrix * viewMatrix * modelMatrix * float4x4.translation(offset.x, offset.y, offset.z)
-            }
-
-            // RenderPass creates a render command encoder, contains one or more pipelines
-            try RenderPass(label: "Cube") {
-                try DemoCubeRenderPipeline(transforms: transforms, time: time, instanced: instanced)
-            }
-            // Shown as its own row in the FrameTimingView HUD.
-            .gpuTimed("Cube pass")
-            .onWorkloadEnter { environment in
-                let commandBuffer = try environment.commandBuffer.orThrow(.missingEnvironment("commandBuffer"))
-                commandBuffer.label = "Cube Frame"
+        Group {
+            if renderThread {
+                RenderView(threading: .renderThread) { context, size in
+                    try scene.content(context: context, size: size)
+                }
+            } else {
+                RenderView { context, size in
+                    try scene.content(context: context, size: size)
+                }
             }
         }
         .ignoresSafeArea()
@@ -77,6 +67,10 @@ struct RenderDemoView: View {
                     }
                 }
                 .pickerStyle(.menu)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Toggle("Render Thread", systemImage: "cpu", isOn: $renderThread)
+                    .help("Build and encode frames on a dedicated render thread instead of the main thread")
             }
             ToolbarItem(placement: .primaryAction) {
                 Toggle("Instanced", systemImage: "square.stack.3d.up", isOn: $instanced)
@@ -115,8 +109,39 @@ struct RenderDemoView: View {
     }
 }
 
+nonisolated private struct CubeScene: Sendable {
+    var pausedTime: Float?
+    var cubeCount: Int
+    var instanced: Bool
+
+    func content(context: RenderViewContext, size: CGSize) throws -> some Element {
+        let time: Float = pausedTime ?? context.frameUniforms.time
+
+        // Standard MVP transform chain
+        let modelMatrix = cubeRotationMatrix(time: TimeInterval(time))
+        let gridSide = Int(ceil(cbrt(Double(cubeCount))))
+        let viewMatrix = float4x4.translation(0, 0, -8 * Float(gridSide))
+        let aspect = size.height > 0 ? Float(size.width / size.height) : 1.0
+        let projectionMatrix = float4x4.perspective(fovY: .pi / 4, aspect: aspect, near: 0.1, far: 100.0 * Float(gridSide))
+        let transforms = cubeGridOffsets(count: cubeCount, side: gridSide).map { offset in
+            projectionMatrix * viewMatrix * modelMatrix * float4x4.translation(offset.x, offset.y, offset.z)
+        }
+
+        // RenderPass creates a render command encoder, contains one or more pipelines
+        return try RenderPass(label: "Cube") {
+            try DemoCubeRenderPipeline(transforms: transforms, time: time, instanced: instanced)
+        }
+        // Shown as its own row in the FrameTimingView HUD.
+        .gpuTimed("Cube pass")
+        .onWorkloadEnter { environment in
+            let commandBuffer = try environment.commandBuffer.orThrow(.missingEnvironment("commandBuffer"))
+            commandBuffer.label = "Cube Frame"
+        }
+    }
+}
+
 /// Centred grid positions, `side` cubes per edge, filled until `count` is reached.
-private func cubeGridOffsets(count: Int, side: Int) -> [SIMD3<Float>] {
+nonisolated private func cubeGridOffsets(count: Int, side: Int) -> [SIMD3<Float>] {
     let spacing: Float = 3
     let center = Float(side - 1) / 2
     return (0..<count).map { index in

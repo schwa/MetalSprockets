@@ -1,6 +1,7 @@
 import Metal
 import QuartzCore
 import SwiftUI
+import Synchronization
 
 #if os(macOS)
 import AppKit
@@ -10,50 +11,259 @@ import UIKit
 internal typealias PlatformView = UIView
 #endif
 
-@MainActor
-internal protocol MetalLayerViewDelegate: AnyObject {
+internal protocol MetalLayerViewDelegate: AnyObject, Sendable {
+    /// Called on the main thread when the drawable size changes.
+    @MainActor
     func metalLayerView(_ view: MetalLayerView, drawableSizeWillChange size: CGSize)
-    func draw(in view: MetalLayerView)
+
+    /// Called on the surface's frame thread: the main thread, or the view's render thread.
+    func render(on surface: MetalLayerSurface)
 }
 
-/// A view backed by a `CAMetalLayer` that drives frames from a display link and owns the frame's MSAA and depth
-/// attachments. It replaces MTKView in RenderView. Its API follows MTKView's.
+// MARK: - MetalLayerSurface
+
+/// Settings the main thread writes and the frame thread reads at the start of each frame.
+internal struct MetalSurfaceConfiguration: Sendable {
+    var device: (any MTLDevice)?
+    var colorPixelFormat: MTLPixelFormat = .bgra8Unorm
+    var depthStencilPixelFormat: MTLPixelFormat = .invalid
+    var depthStencilStorageMode: MTLStorageMode = .private
+    var depthStencilAttachmentTextureUsage: MTLTextureUsage = .renderTarget
+    var multisampleColorAttachmentTextureUsage: MTLTextureUsage = .renderTarget
+    var sampleCount = 1
+    var clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+    var clearDepth: Double = 1
+    var clearStencil: UInt32 = 0
+    var drawableSize: CGSize = .zero
+}
+
+/// The thread-safe half of ``MetalLayerView``. Frames run on one thread at a time (the frame thread): drawable
+/// acquisition, the render pass descriptor, and the MSAA and depth attachments it owns.
+internal final class MetalLayerSurface: @unchecked Sendable {
+    private struct AttachmentKey: Equatable {
+        var device: ObjectIdentifier?
+        var width: Int
+        var height: Int
+        var sampleCount: Int
+        var colorPixelFormat: MTLPixelFormat
+        var depthStencilPixelFormat: MTLPixelFormat
+        var depthStencilStorageMode: MTLStorageMode
+        var depthStencilUsage: MTLTextureUsage.RawValue
+        var multisampleColorUsage: MTLTextureUsage.RawValue
+    }
+
+    private final class WeakDelegate: @unchecked Sendable {
+        weak var value: (any MetalLayerViewDelegate)?
+    }
+
+    // `nextDrawable()` is thread-safe; other layer properties are only written on the main thread.
+    let layer: CAMetalLayer
+    private let configurationStorage = Mutex(MetalSurfaceConfiguration())
+    private let delegateStorage = Mutex(WeakDelegate())
+
+    // Frame thread only.
+    private var attachmentKey: AttachmentKey?
+    private(set) var depthStencilTexture: (any MTLTexture)?
+    private(set) var multisampleColorTexture: (any MTLTexture)?
+    private var isRendering = false
+
+    init(layer: CAMetalLayer) {
+        self.layer = layer
+    }
+
+    var configuration: MetalSurfaceConfiguration {
+        get { configurationStorage.withLock { $0 } }
+        set { configurationStorage.withLock { $0 = newValue } }
+    }
+
+    func updateConfiguration(_ update: (inout MetalSurfaceConfiguration) -> Void) {
+        configurationStorage.withLock { update(&$0) }
+    }
+
+    var delegate: (any MetalLayerViewDelegate)? {
+        get { delegateStorage.withLock { $0.value } }
+        set {
+            let box = WeakDelegate()
+            box.value = newValue
+            delegateStorage.withLock { $0 = box }
+        }
+    }
+
+    var drawableSize: CGSize { configuration.drawableSize }
+    var sampleCount: Int { configuration.sampleCount }
+    var residencySet: any MTLResidencySet { layer.residencySet }
+
+    /// Calls the delegate's `render(on:)`. Frame thread only.
+    func renderFrame() {
+        guard !isRendering, let delegate else {
+            return
+        }
+        isRendering = true
+        defer { isRendering = false }
+        delegate.render(on: self)
+    }
+
+    /// May block until a drawable is free.
+    func nextDrawable() -> (any CAMetalDrawable)? {
+        let size = drawableSize
+        guard size.width > 0, size.height > 0 else {
+            return nil
+        }
+        return layer.nextDrawable()
+    }
+
+    func renderPassDescriptor(for drawable: any CAMetalDrawable) -> MTL4RenderPassDescriptor {
+        let configuration = configuration
+        let drawableTexture = drawable.texture
+        updateAttachments(configuration: configuration, width: drawableTexture.width, height: drawableTexture.height)
+        let descriptor = MTL4RenderPassDescriptor()
+        // swiftlint:disable:next force_unwrapping
+        let color = descriptor.colorAttachments[0]!
+        color.loadAction = .clear
+        color.clearColor = configuration.clearColor
+        if let multisampleColorTexture {
+            color.texture = multisampleColorTexture
+            color.resolveTexture = drawableTexture
+            color.storeAction = .multisampleResolve
+        } else {
+            color.texture = drawableTexture
+            color.storeAction = .store
+        }
+        if let depthStencilTexture {
+            let format = configuration.depthStencilPixelFormat
+            if format.hasDepth {
+                descriptor.depthAttachment.texture = depthStencilTexture
+                descriptor.depthAttachment.loadAction = .clear
+                descriptor.depthAttachment.storeAction = .dontCare
+                descriptor.depthAttachment.clearDepth = configuration.clearDepth
+            }
+            if format.hasStencil {
+                descriptor.stencilAttachment.texture = depthStencilTexture
+                descriptor.stencilAttachment.loadAction = .clear
+                descriptor.stencilAttachment.storeAction = .dontCare
+                descriptor.stencilAttachment.clearStencil = configuration.clearStencil
+            }
+        }
+        return descriptor
+    }
+
+    // Sized from the drawable, not the configuration, so a resize between the two cannot mismatch them.
+    private func updateAttachments(configuration: MetalSurfaceConfiguration, width: Int, height: Int) {
+        let key = AttachmentKey(
+            device: configuration.device.map { ObjectIdentifier($0) },
+            width: width,
+            height: height,
+            sampleCount: configuration.sampleCount,
+            colorPixelFormat: configuration.colorPixelFormat,
+            depthStencilPixelFormat: configuration.depthStencilPixelFormat,
+            depthStencilStorageMode: configuration.depthStencilStorageMode,
+            depthStencilUsage: configuration.depthStencilAttachmentTextureUsage.rawValue,
+            multisampleColorUsage: configuration.multisampleColorAttachmentTextureUsage.rawValue
+        )
+        guard key != attachmentKey else {
+            return
+        }
+        attachmentKey = key
+        multisampleColorTexture = nil
+        depthStencilTexture = nil
+        guard let device = configuration.device else {
+            return
+        }
+        func descriptor(_ pixelFormat: MTLPixelFormat) -> MTLTextureDescriptor {
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
+            descriptor.textureType = key.sampleCount > 1 ? .type2DMultisample : .type2D
+            descriptor.sampleCount = key.sampleCount
+            return descriptor
+        }
+        if key.sampleCount > 1 {
+            let colorDescriptor = descriptor(key.colorPixelFormat)
+            colorDescriptor.usage = configuration.multisampleColorAttachmentTextureUsage
+            colorDescriptor.storageMode = .private
+            multisampleColorTexture = device.makeTexture(descriptor: colorDescriptor)
+            multisampleColorTexture?.label = "MultisampleColor"
+        }
+        if key.depthStencilPixelFormat != .invalid {
+            let depthDescriptor = descriptor(key.depthStencilPixelFormat)
+            depthDescriptor.usage = configuration.depthStencilAttachmentTextureUsage
+            depthDescriptor.storageMode = key.depthStencilStorageMode
+            depthStencilTexture = device.makeTexture(descriptor: depthDescriptor)
+            depthStencilTexture?.label = "DepthStencil"
+        }
+    }
+}
+
+// MARK: - MetalLayerView
+
+/// A view backed by a `CAMetalLayer` that drives frames from a display link. It replaces MTKView in RenderView. Its
+/// API follows MTKView's. With a ``RenderThread``, frames run on that thread instead of the main thread (#560).
 @MainActor
 internal final class MetalLayerView: PlatformView {
-    weak var delegate: (any MetalLayerViewDelegate)?
+    // swiftlint:disable:next implicitly_unwrapped_optional
+    private(set) var surface: MetalLayerSurface!
+
+    /// Set before the view joins a window. `nil` renders on the main thread.
+    var renderThread: RenderThread? {
+        didSet {
+            precondition(displayLink == nil, "Set renderThread before the display link starts.")
+        }
+    }
+
+    var delegate: (any MetalLayerViewDelegate)? {
+        get { surface.delegate }
+        set { surface.delegate = newValue }
+    }
 
     var device: (any MTLDevice)? {
-        didSet {
-            guard device !== oldValue else {
+        get { surface.configuration.device }
+        set {
+            guard newValue !== device else {
                 return
             }
-            metalLayer.device = device
-            releaseAttachments()
+            metalLayer.device = newValue
+            surface.updateConfiguration { $0.device = newValue }
         }
     }
 
     // MARK: Attachments
 
-    var colorPixelFormat: MTLPixelFormat = .bgra8Unorm {
-        didSet {
-            metalLayer.pixelFormat = colorPixelFormat
-            multisampleColorTexture = nil
+    var colorPixelFormat: MTLPixelFormat {
+        get { surface.configuration.colorPixelFormat }
+        set {
+            metalLayer.pixelFormat = newValue
+            surface.updateConfiguration { $0.colorPixelFormat = newValue }
         }
     }
-    var depthStencilPixelFormat: MTLPixelFormat = .invalid {
-        didSet { depthStencilTexture = nil }
+    var depthStencilPixelFormat: MTLPixelFormat {
+        get { surface.configuration.depthStencilPixelFormat }
+        set { surface.updateConfiguration { $0.depthStencilPixelFormat = newValue } }
     }
-    var depthStencilStorageMode: MTLStorageMode = .private {
-        didSet { depthStencilTexture = nil }
+    var depthStencilStorageMode: MTLStorageMode {
+        get { surface.configuration.depthStencilStorageMode }
+        set { surface.updateConfiguration { $0.depthStencilStorageMode = newValue } }
     }
-    var depthStencilAttachmentTextureUsage: MTLTextureUsage = .renderTarget {
-        didSet { depthStencilTexture = nil }
+    var depthStencilAttachmentTextureUsage: MTLTextureUsage {
+        get { surface.configuration.depthStencilAttachmentTextureUsage }
+        set { surface.updateConfiguration { $0.depthStencilAttachmentTextureUsage = newValue } }
     }
-    var multisampleColorAttachmentTextureUsage: MTLTextureUsage = .renderTarget {
-        didSet { multisampleColorTexture = nil }
+    var multisampleColorAttachmentTextureUsage: MTLTextureUsage {
+        get { surface.configuration.multisampleColorAttachmentTextureUsage }
+        set { surface.updateConfiguration { $0.multisampleColorAttachmentTextureUsage = newValue } }
     }
-    var sampleCount = 1 {
-        didSet { releaseAttachments() }
+    var sampleCount: Int {
+        get { surface.configuration.sampleCount }
+        set { surface.updateConfiguration { $0.sampleCount = newValue } }
+    }
+    var clearColor: MTLClearColor {
+        get { surface.configuration.clearColor }
+        set { surface.updateConfiguration { $0.clearColor = newValue } }
+    }
+    var clearDepth: Double {
+        get { surface.configuration.clearDepth }
+        set { surface.updateConfiguration { $0.clearDepth = newValue } }
+    }
+    var clearStencil: UInt32 {
+        get { surface.configuration.clearStencil }
+        set { surface.updateConfiguration { $0.clearStencil = newValue } }
     }
     var framebufferOnly: Bool {
         get { metalLayer.framebufferOnly }
@@ -70,12 +280,9 @@ internal final class MetalLayerView: PlatformView {
     }
     #endif
 
-    var clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-    var clearDepth: Double = 1
-    var clearStencil: UInt32 = 0
-
-    private(set) var depthStencilTexture: (any MTLTexture)?
-    private(set) var multisampleColorTexture: (any MTLTexture)?
+    /// Frame-thread state; read it only from the frame thread (tests use the main thread).
+    var depthStencilTexture: (any MTLTexture)? { surface.depthStencilTexture }
+    var multisampleColorTexture: (any MTLTexture)? { surface.multisampleColorTexture }
 
     // MARK: Draw loop
 
@@ -103,22 +310,14 @@ internal final class MetalLayerView: PlatformView {
                 return
             }
             metalLayer.drawableSize = newValue
-            releaseAttachments()
+            surface.updateConfiguration { $0.drawableSize = newValue }
             delegate?.metalLayerView(self, drawableSizeWillChange: newValue)
         }
     }
 
-    // Valid only inside `draw()`; both are released when the delegate returns.
-    private var frameDrawable: (any CAMetalDrawable)?
-    private var frameRenderPassDescriptor: MTL4RenderPassDescriptor?
-    private var isDrawing = false
-
     private var displayLink: CADisplayLink?
 
-    var metalLayer: CAMetalLayer {
-        // swiftlint:disable:next force_cast
-        layer as! CAMetalLayer
-    }
+    var metalLayer: CAMetalLayer { surface.layer }
 
     // MARK: Init
 
@@ -137,7 +336,6 @@ internal final class MetalLayerView: PlatformView {
     convenience init(frame: CGRect, device: (any MTLDevice)?) {
         self.init(frame: frame)
         self.device = device
-        metalLayer.device = device
     }
 
     @available(*, unavailable)
@@ -150,6 +348,8 @@ internal final class MetalLayerView: PlatformView {
         wantsLayer = true
         layerContentsRedrawPolicy = .duringViewResize
         #endif
+        // swiftlint:disable:next force_cast
+        surface = MetalLayerSurface(layer: layer as! CAMetalLayer)
         metalLayer.pixelFormat = colorPixelFormat
         metalLayer.framebufferOnly = true
         updateDrawableSizeFromBounds()
@@ -232,163 +432,78 @@ internal final class MetalLayerView: PlatformView {
     private func updateDisplayLink() {
         let wantsDisplayLink = window != nil && !enableSetNeedsDisplay
         if wantsDisplayLink, displayLink == nil {
-            let target = DisplayLinkTarget(view: self)
+            let target = DisplayLinkTarget(surface: surface)
             #if os(macOS)
             let link = displayLink(target: target, selector: #selector(DisplayLinkTarget.step(_:)))
             #else
             let link = CADisplayLink(target: target, selector: #selector(DisplayLinkTarget.step(_:)))
             #endif
-            link.add(to: .main, forMode: .common)
             displayLink = link
-        } else if !wantsDisplayLink, let link = displayLink {
-            link.invalidate()
-            displayLink = nil
+            onFrameThread { link.add(to: .current, forMode: .common) }
+        } else if !wantsDisplayLink {
+            invalidateDisplayLink()
         }
         guard let displayLink else {
             return
         }
-        displayLink.isPaused = isPaused
+        let isPaused = isPaused
         let rate = Float(preferredFramesPerSecond)
-        displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: min(rate, 30), maximum: rate, preferred: rate)
+        onFrameThread {
+            displayLink.isPaused = isPaused
+            displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: min(rate, 30), maximum: rate, preferred: rate)
+        }
     }
 
     func invalidateDisplayLink() {
-        displayLink?.invalidate()
+        guard let link = displayLink else {
+            return
+        }
         displayLink = nil
+        onFrameThread { link.invalidate() }
+    }
+
+    /// Stops the display link and lets the render thread exit once queued frames finish.
+    func tearDown() {
+        invalidateDisplayLink()
+        delegate = nil
+        renderThread?.stop()
+    }
+
+    // A display link must be configured on the run loop thread that it is scheduled on.
+    private func onFrameThread(_ work: @escaping () -> Void) {
+        guard let renderThread else {
+            work()
+            return
+        }
+        nonisolated(unsafe) let work = work
+        renderThread.perform { work() }
     }
 
     // MARK: Frame
 
-    /// Calls the delegate's `draw(in:)`. The drawable and render pass descriptor are valid only during the call.
+    /// Renders a frame on the frame thread. Without a render thread it renders before returning.
     func draw() {
-        guard !isDrawing else {
+        guard let renderThread else {
+            surface.renderFrame()
             return
         }
-        isDrawing = true
-        defer {
-            isDrawing = false
-            frameDrawable = nil
-            frameRenderPassDescriptor = nil
+        renderThread.perform { [surface] in
+            surface?.renderFrame()
         }
-        delegate?.draw(in: self)
-    }
-
-    var currentDrawable: (any CAMetalDrawable)? {
-        if let frameDrawable {
-            return frameDrawable
-        }
-        guard isDrawing, drawableSize.width > 0, drawableSize.height > 0 else {
-            return nil
-        }
-        frameDrawable = metalLayer.nextDrawable()
-        return frameDrawable
-    }
-
-    var currentMTL4RenderPassDescriptor: MTL4RenderPassDescriptor? {
-        if let frameRenderPassDescriptor {
-            return frameRenderPassDescriptor
-        }
-        guard let drawable = currentDrawable else {
-            return nil
-        }
-        let descriptor = makeRenderPassDescriptor(drawableTexture: drawable.texture)
-        frameRenderPassDescriptor = descriptor
-        return descriptor
-    }
-
-    private func makeRenderPassDescriptor(drawableTexture: any MTLTexture) -> MTL4RenderPassDescriptor {
-        let descriptor = MTL4RenderPassDescriptor()
-        // swiftlint:disable:next force_unwrapping
-        let color = descriptor.colorAttachments[0]!
-        color.loadAction = .clear
-        color.clearColor = clearColor
-        if sampleCount > 1, let multisample = makeMultisampleColorTextureIfNeeded() {
-            color.texture = multisample
-            color.resolveTexture = drawableTexture
-            color.storeAction = .multisampleResolve
-        } else {
-            color.texture = drawableTexture
-            color.storeAction = .store
-        }
-        if let depthStencil = makeDepthStencilTextureIfNeeded() {
-            if depthStencilPixelFormat.hasDepth {
-                descriptor.depthAttachment.texture = depthStencil
-                descriptor.depthAttachment.loadAction = .clear
-                descriptor.depthAttachment.storeAction = .dontCare
-                descriptor.depthAttachment.clearDepth = clearDepth
-            }
-            if depthStencilPixelFormat.hasStencil {
-                descriptor.stencilAttachment.texture = depthStencil
-                descriptor.stencilAttachment.loadAction = .clear
-                descriptor.stencilAttachment.storeAction = .dontCare
-                descriptor.stencilAttachment.clearStencil = clearStencil
-            }
-        }
-        return descriptor
-    }
-
-    private func makeMultisampleColorTextureIfNeeded() -> (any MTLTexture)? {
-        if let multisampleColorTexture {
-            return multisampleColorTexture
-        }
-        guard let device else {
-            return nil
-        }
-        let descriptor = attachmentDescriptor(pixelFormat: colorPixelFormat)
-        descriptor.usage = multisampleColorAttachmentTextureUsage
-        descriptor.storageMode = .private
-        multisampleColorTexture = device.makeTexture(descriptor: descriptor)
-        multisampleColorTexture?.label = "MultisampleColor"
-        return multisampleColorTexture
-    }
-
-    private func makeDepthStencilTextureIfNeeded() -> (any MTLTexture)? {
-        guard depthStencilPixelFormat != .invalid else {
-            return nil
-        }
-        if let depthStencilTexture {
-            return depthStencilTexture
-        }
-        guard let device else {
-            return nil
-        }
-        let descriptor = attachmentDescriptor(pixelFormat: depthStencilPixelFormat)
-        descriptor.usage = depthStencilAttachmentTextureUsage
-        descriptor.storageMode = depthStencilStorageMode
-        depthStencilTexture = device.makeTexture(descriptor: descriptor)
-        depthStencilTexture?.label = "DepthStencil"
-        return depthStencilTexture
-    }
-
-    private func attachmentDescriptor(pixelFormat: MTLPixelFormat) -> MTLTextureDescriptor {
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: pixelFormat, width: Int(drawableSize.width), height: Int(drawableSize.height), mipmapped: false)
-        descriptor.textureType = sampleCount > 1 ? .type2DMultisample : .type2D
-        descriptor.sampleCount = sampleCount
-        return descriptor
-    }
-
-    private func releaseAttachments() {
-        depthStencilTexture = nil
-        multisampleColorTexture = nil
     }
 }
 
-/// Breaks the retain cycle between a display link and its view.
+/// Breaks the retain cycle between a display link and its view. Runs on the display link's run loop thread.
 private final class DisplayLinkTarget: NSObject {
-    weak var view: MetalLayerView?
+    let surface: MetalLayerSurface
 
-    init(view: MetalLayerView) {
-        self.view = view
+    init(surface: MetalLayerSurface) {
+        self.surface = surface
     }
 
-    @MainActor
     @objc
     func step(_ link: CADisplayLink) {
-        guard let view else {
-            link.invalidate()
-            return
-        }
-        view.draw()
+        surface.renderFrame()
     }
 }
 

@@ -80,14 +80,14 @@ struct MetalLayerViewParityTests {
         }
     }
 
-    final class LayerCapture: MetalLayerViewDelegate {
+    final class LayerCapture: MetalLayerViewDelegate, @unchecked Sendable {
         var summary: Summary?
         func metalLayerView(_ view: MetalLayerView, drawableSizeWillChange size: CGSize) {}
-        func draw(in view: MetalLayerView) {
-            guard let descriptor = view.currentMTL4RenderPassDescriptor, let drawable = view.currentDrawable else {
+        func render(on surface: MetalLayerSurface) {
+            guard let drawable = surface.nextDrawable() else {
                 return
             }
-            summary = Summary(descriptor, drawable: drawable.texture)
+            summary = Summary(surface.renderPassDescriptor(for: drawable), drawable: drawable.texture)
         }
     }
 

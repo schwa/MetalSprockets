@@ -4,7 +4,7 @@ import MetalSprocketsSupport
 import simd
 
 // Element is like SwiftUI View but for Metal
-struct DemoCubeRenderPipeline: Element {
+nonisolated struct DemoCubeRenderPipeline: Element {
     let shaderLibrary: ShaderLibrary
     let transforms: [float4x4]
     let time: Float
