@@ -1,6 +1,7 @@
 import Metal
 import os
 import QuartzCore
+import Synchronization
 
 internal final class SubmissionCompletion: Sendable {
     private struct Waiter {
@@ -8,7 +9,8 @@ internal final class SubmissionCompletion: Sendable {
         let continuation: CheckedContinuation<SubmissionResult, any Error>
     }
 
-    private struct Contents {
+    // Owners are only retained and released, never used, so moving them across threads is safe.
+    private struct Contents: @unchecked Sendable {
         var owners: [AnyObject]
         var lifetime: SubmissionCompletion?
         var feedbackReceived = false
@@ -29,12 +31,13 @@ internal final class SubmissionCompletion: Sendable {
     let label: String?
 
     // Callbacks retain/release these objects but never encode through them or touch the owning context.
-    private let state: OSAllocatedUnfairLock<Contents>
+    // Stored inline, not behind a reference, so Metal's callback threads touch it only by taking the lock (#559).
+    private let state: Mutex<Contents>
 
     init(submissionIdentifier: UInt64, label: String?, owners: [AnyObject]) {
         self.submissionIdentifier = submissionIdentifier
         self.label = label
-        state = OSAllocatedUnfairLock(uncheckedState: Contents(owners: owners))
+        state = Mutex(Contents(owners: owners))
     }
 
     convenience init(submissionIdentifier: UInt64, label: String?, commandBuffer: any MTL4CommandBuffer, allocator: any MTL4CommandAllocator, resources: RecordingScope.Resources) {
@@ -43,20 +46,20 @@ internal final class SubmissionCompletion: Sendable {
     }
 
     var resolvedResult: SubmissionResult? {
-        state.withLockUnchecked { $0.result }
+        state.withLock { $0.result }
     }
 
     var isRetiredSuccessfully: Bool {
-        state.withLockUnchecked { $0.result?.outcome == .completed }
+        state.withLock { $0.result?.outcome == .completed }
     }
 
     func retainUntilCompleted() {
-        state.withLockUnchecked { $0.lifetime = self }
+        state.withLock { $0.lifetime = self }
     }
 
     /// Adds a terminal handler. Each handler fires exactly once, immediately if the submission already resolved.
     func onTerminated(_ handler: @escaping @Sendable (SubmissionResult) -> Void) {
-        let resolved: SubmissionResult? = state.withLockUnchecked { contents in
+        let resolved: SubmissionResult? = state.withLock { contents in
             if let result = contents.result {
                 return result
             }
@@ -97,7 +100,7 @@ internal final class SubmissionCompletion: Sendable {
     }
 
     func waitForResult() async throws -> SubmissionResult {
-        let waiterIdentifier = state.withLockUnchecked { contents in
+        let waiterIdentifier = state.withLock { contents in
             defer { contents.nextWaiterIdentifier += 1 }
             return contents.nextWaiterIdentifier
         }
@@ -108,7 +111,7 @@ internal final class SubmissionCompletion: Sendable {
                     case cancelled
                     case waiting
                 }
-                let registration: Registration = state.withLockUnchecked { contents in
+                let registration: Registration = state.withLock { contents in
                     if let result = contents.result {
                         return .resolved(result)
                     }
@@ -129,7 +132,7 @@ internal final class SubmissionCompletion: Sendable {
             }
         } onCancel: {
             // Canceling a waiter never cancels the GPU submission; the work and its resources stay retained.
-            let cancelled: CheckedContinuation<SubmissionResult, any Error>? = state.withLockUnchecked { contents in
+            let cancelled: CheckedContinuation<SubmissionResult, any Error>? = state.withLock { contents in
                 guard let index = contents.waiters.firstIndex(where: { $0.identifier == waiterIdentifier }) else {
                     // The continuation is not registered yet; the body observes this and throws on registration.
                     if contents.result == nil {
@@ -147,7 +150,7 @@ internal final class SubmissionCompletion: Sendable {
         var releasedOwners: [AnyObject] = []
         var waiters: [Waiter] = []
         var handlers: [@Sendable (SubmissionResult) -> Void] = []
-        let result: SubmissionResult? = state.withLockUnchecked { contents in
+        let result: SubmissionResult? = state.withLock { contents in
             guard contents.result == nil else {
                 return nil
             }

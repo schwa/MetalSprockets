@@ -11334,11 +11334,13 @@ One public StereoViews in MetalSprockets: view matrices, projections and viewpor
 ## 559: ThreadSanitizer reports a data race between SubmissionCompletion.init and its Metal completion callbacks
 
 +++
-status: new
+status: closed
 priority: low
 kind: bug
 labels: effort:s
 created: 2026-11-12T22:06:23Z
+updated: 2026-11-14T21:41:47Z
+closed: 2026-11-14T21:41:47Z
 +++
 
 Found while testing SceneSprockets #391 (rendering on a background thread with OffscreenRenderer). Unknown whether this is a real race or a false positive from ThreadSanitizer not seeing Metal's internal synchronization.
