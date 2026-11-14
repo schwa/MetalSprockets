@@ -1,5 +1,8 @@
 import os
 
+// Every mutable field is guarded by `lock`, and `binding` is only written in `init` (#570).
+extension StateBox: @unchecked Sendable where Wrapped: Sendable {}
+
 internal final class StateBox<Wrapped> {
     // Writes can arrive off the owning isolation (see the `MSBinding` note in
     // `init`), so every access to `_value`, `dependencies`, `_system` and

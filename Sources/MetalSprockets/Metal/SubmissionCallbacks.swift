@@ -32,27 +32,24 @@ public extension Element {
         }
     }
 
-    /// Runs `action` on the calling isolation (for example the `@MainActor`) with the submission's terminal result, so
-    /// it can write `@MSState` directly without a manual actor hop.
+    /// Runs `action` on its own isolation (for example the `@MainActor`) with the submission's terminal result.
     ///
-    /// Unlike ``onCommandBufferCompleted(_:)``, `action` is not `@Sendable`. It can capture isolated state, such as the
-    /// `self` of an element. The hop is asynchronous. After the GPU work finishes, `action` runs in a `Task` on
-    /// `isolation`. Thus it never blocks the completion executor. Its order relative to other submissions can change. Work
-    /// that fails during encoding reports nothing.
+    /// A closure written on an actor keeps that actor, so it can use the actor's state without a manual hop. A
+    /// closure with no actor runs on a concurrent executor; it is `@Sendable`, so that is safe (#567). The hop is
+    /// asynchronous. After the GPU work finishes, `action` runs in a `Task`. Thus it never blocks the completion
+    /// executor. Its order relative to other submissions can change. Work that fails during encoding reports nothing.
     ///
     /// ```swift
-    /// .onCommandBufferCompleted { result in   // this @MainActor closure can now write @MSState
-    ///     baked = result.outcome == .completed
+    /// .onCommandBufferCompleted { @MainActor result in
+    ///     model.baked = result.outcome == .completed
     /// }
     /// ```
     func onCommandBufferCompleted(
-        isolation: isolated (any Actor)? = #isolation,
-        perform action: @escaping (SubmissionResult) -> Void
+        perform action: @escaping @isolated(any) @Sendable (SubmissionResult) -> Void
     ) -> some Element {
-        let transfer = UncheckedTransfer(action)
-        return ScopeModifier(content: self) { scope in
+        ScopeModifier(content: self) { scope in
             try scope.onTerminated { result in
-                Task { await runIsolated(on: isolation, transfer, result) }
+                Task { await action(result) }
             }
         }
     }
@@ -73,23 +70,6 @@ public extension Element {
             try scope.onTerminated { _ in sentinel.fire() }
         }
     }
-}
-
-/// Carries a non-`Sendable` value into a `@Sendable` closure so it can be delivered to an isolated executor. The
-/// caller guarantees the value is only touched after the hop to that isolation.
-private struct UncheckedTransfer<Value>: @unchecked Sendable {
-    let value: Value
-    init(_ value: Value) { self.value = value }
-}
-
-/// Runs the transferred action on `actor`. Being `isolated`, calling it from a `Task` hops onto that isolation before
-/// the non-`Sendable` action runs.
-private func runIsolated(
-    on actor: isolated (any Actor)?,
-    _ transfer: UncheckedTransfer<(SubmissionResult) -> Void>,
-    _ result: SubmissionResult
-) {
-    transfer.value(result)
 }
 
 /// Fires once on GPU termination, or from deinit if encoding fails before submission.

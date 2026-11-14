@@ -1,3 +1,5 @@
+import os
+
 // MARK: - MSState
 
 /// A property wrapper that stores mutable state within an element.
@@ -40,14 +42,20 @@
 /// - ``MSEnvironment``
 @propertyWrapper
 public struct MSState<Value> {
-    @Box
-    private var state: StateBox<Value>
+    // Updates swap in the persisted StateBox while a completion handler may hold this state, so the swap is locked
+    // (#570).
+    private let storage: StateBoxReference<Value>
+
+    private var state: StateBox<Value> {
+        get { storage.stateBox }
+        nonmutating set { storage.stateBox = newValue }
+    }
 
     /// Creates a state property with the specified initial value.
     ///
     /// - Parameter wrappedValue: The initial value for the state.
     public init(wrappedValue: Value) {
-        _state = Box(StateBox(wrappedValue))
+        storage = StateBoxReference(StateBox(wrappedValue))
     }
 
     /// The current value of the state.
@@ -65,6 +73,24 @@ public struct MSState<Value> {
     /// Use this to pass mutable access to child elements.
     public var projectedValue: MSBinding<Value> {
         state.binding
+    }
+}
+
+/// `@MSState` reads and writes are safe from any thread, so state with a `Sendable` value can be captured by `@Sendable`
+/// closures, such as completion handlers: `.onCommandBufferCompleted { [_baked] result in _baked.wrappedValue = … }`.
+extension MSState: Sendable where Value: Sendable {}
+
+/// The `StateBox` an `MSState` currently points at.
+private final class StateBoxReference<Value>: @unchecked Sendable {
+    private let lock: OSAllocatedUnfairLock<StateBox<Value>>
+
+    init(_ stateBox: StateBox<Value>) {
+        lock = OSAllocatedUnfairLock(uncheckedState: stateBox)
+    }
+
+    var stateBox: StateBox<Value> {
+        get { lock.withLockUnchecked { $0 } }
+        set { lock.withLockUnchecked { $0 = newValue } }
     }
 }
 

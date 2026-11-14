@@ -11540,12 +11540,13 @@ Expected: the implementation and the RFC agree. From #560.
 ## 567: onCommandBufferCompleted(isolation:perform:) runs its non-Sendable action on an arbitrary thread when there is no actor
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: area:threading, area:api, effort:s, needs-decision
 created: 2026-11-14T22:10:44Z
-updated: 2026-11-14T22:11:06Z
+updated: 2026-11-14T22:33:19Z
+closed: 2026-11-14T22:33:19Z
 +++
 
 onCommandBufferCompleted(isolation:perform:) (Sources/MetalSprockets/Metal/SubmissionCallbacks.swift) takes a non-Sendable action and documents that it runs on the calling isolation, so that it can capture isolated state such as an element's self.
@@ -11593,5 +11594,36 @@ closed: 2026-11-14T22:22:49Z
 Tests/MetalSprocketsTests/RenderThreadTests.swift waits for the render thread with withCheckedContinuation { view.renderThread?.perform { ... continuation.resume() } }. If renderThread is nil, the optional chain does nothing and the continuation is never resumed. The test then hangs until its time limit instead of failing with a clear message.
 
 Expected: the test fails immediately when the view has no render thread.
+
+---
+
+## 570: Elements cannot write their own @MSState from onCommandBufferCompleted(perform:)
+
++++
+status: closed
+priority: medium
+kind: enhancement
+labels: area:threading, area:api, effort:s
+created: 2026-11-14T22:24:54Z
+updated: 2026-11-14T22:33:19Z
+closed: 2026-11-14T22:33:19Z
++++
+
+After #567, onCommandBufferCompleted(perform:) takes an @isolated(any) @Sendable closure. An element that writes its own @MSState from that closure no longer compiles:
+
+    EmptyElement().onCommandBufferCompleted(perform: { @MainActor result in
+        baked = result.outcome == .completed   // error: sending 'self' risks causing data races
+    })
+
+The closure reaches the state through self (the element struct), which is not Sendable. MSState is not Sendable either, so capturing the state's storage ([_baked]) does not compile.
+
+@MSState writes are documented as safe from any thread: StateBox protects its value with a lock and records changes for the next update.
+
+This was the use case of #463.
+
+Expected: an element can write its own @MSState from a completion handler without unchecked code.
+
+## Proposed fix (per schwa)
+Make MSState Sendable when Value is Sendable (StateBox and the Box wrapper conform), so callers can capture the storage: .onCommandBufferCompleted { [_baked] result in _baked.wrappedValue = ... }
 
 ---

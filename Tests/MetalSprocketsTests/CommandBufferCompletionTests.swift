@@ -1,5 +1,6 @@
 import Metal
 @testable import MetalSprockets
+import os
 import Testing
 
 private struct WorkloadTestKey: MSEnvironmentKey {
@@ -322,26 +323,49 @@ struct CommandBufferCompletionTests {
         #expect(box.result?.outcome == .completed)
     }
 
-    // #463: the isolation-aware overload runs on the caller's isolation (here @MainActor), so it can write isolated
-    // state such as @MSState directly without an actor hop.
+    @MainActor
+    private final class OutcomeBox {
+        var outcome: SubmissionResult.Outcome?
+    }
+
+    // #463, #567: the isolated overload runs a @MainActor closure on the MainActor, so it can write main-actor state
+    // directly without an actor hop.
+    @MainActor
     @Test(.requiresMetal4)
     func testIsolatedCompletionRunsOnMainActorAndWritesState() async throws {
-        var outcome: SubmissionResult.Outcome?
+        let box = OutcomeBox()
         let runner = try Runner()
         let recording = try runner.submit(
             // swiftlint:disable:next trailing_closure
-            EmptyElement().onCommandBufferCompleted(perform: { result in
+            EmptyElement().onCommandBufferCompleted(perform: { @MainActor result in
                 MainActor.assertIsolated()
-                outcome = result.outcome
+                box.outcome = result.outcome
             })
         )
         let submission = recording
         _ = try await submission.waitUntilCompleted()
         // The callback hops to the MainActor via a Task, so wait for it to land.
-        while outcome == nil {
+        while box.outcome == nil {
             await Task.yield()
         }
-        #expect(outcome == .completed)
+        #expect(box.outcome == .completed)
+    }
+
+    // #567: with no actor, the action still runs, on a concurrent executor; being Sendable, that cannot race.
+    @Test(.requiresMetal4)
+    func testIsolatedCompletionWithoutAnActorRuns() async throws {
+        let ran = OSAllocatedUnfairLock(initialState: false)
+        let runner = try Runner()
+        let submission = try runner.submit(
+            // swiftlint:disable:next trailing_closure
+            EmptyElement().onCommandBufferCompleted(perform: { _ in
+                ran.withLock { $0 = true }
+            })
+        )
+        _ = try await submission.waitUntilCompleted()
+        while !ran.withLock({ $0 }) {
+            await Task.yield()
+        }
     }
 
     @Test(.requiresMetal4)
