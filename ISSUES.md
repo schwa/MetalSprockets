@@ -11673,3 +11673,45 @@ The fix for #571 added a lock to MetalLayerSurface (MetalLayerView.swift). It gr
 Reading the code does not support that guess. Synchronous frames come only from the display link and display(_:), not from the SwiftUI update: block. The rest of MetalSprocketsUI uses Mutex and OSAllocatedUnfairLock, so this lock is the only one of its kind. A recursive lock can also hide accidental re-entry, which a non-recursive lock would expose.
 
 ---
+
+## 573: RenderView crashes on devices without Metal 4 support
+
++++
+status: new
+priority: high
+kind: bug
+labels: area:metal4, area:api
+created: 2026-11-15T18:54:17Z
++++
+
+RenderView traps on launch on GPUs that do not support Metal 4. `device.makeMTL4CommandQueue()` returns nil, and `ViewModelBox.commandQueue(preferring:device:)` calls `orFatalError` on it.
+
+Seen in TestFlight crash reports from TinyTorii 1.0 (7) on iPad8,9 (iPad Pro 11" 2nd gen, A12Z), iPadOS 27.2. Two crashes, both about 2 s after launch.
+
+```
+Exception Type:  EXC_BREAKPOINT (SIGTRAP)
+0 libswiftCore  _assertionFailure(_:_:file:line:flags:)
+1 TinyTorii     Optional.orFatalError(_:) (Error.swift:67)
+2 TinyTorii     ViewModelBox.commandQueue(preferring:device:) (RenderView.swift:491)
+3 TinyTorii     closure #2 in MetalHostView.body.getter (RenderView.swift:420)
+5 TinyTorii     PlatformAdaptorView.Representation.updateUIView(_:context:)
+```
+
+Expected: apps can find out that the device is not supported and show something other than a crash.
+Actual: the process traps inside RenderView's view update. The app gets no chance to handle it.
+
+---
+
+## 574: No API to check if the current device can run MetalSprockets
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:api, area:metal4
+created: 2026-11-15T18:54:18Z
++++
+
+Apps have no MetalSprockets API to find out if the device supports Metal 4 before they show a RenderView. Each app must find the right GPU family check (for example `supportsFamily(.metal4)` or `.apple7`) on its own. If an app gets it wrong, the app crashes. See the RenderView crash on devices without Metal 4 support.
+
+---
