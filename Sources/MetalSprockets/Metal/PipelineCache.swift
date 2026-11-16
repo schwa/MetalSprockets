@@ -69,6 +69,9 @@ internal struct MeshRenderPipelineConfiguration {
     var stencilPixelFormat: MTLPixelFormat = .invalid
     var rasterSampleCount = 1
     var linkedFunctions: [VisibleFunction] = []
+    /// Caller-configured state from `renderPipelineDescriptorTransformer`. The mesh descriptor takes the state it shares
+    /// with render descriptors: color attachments, vertex amplification, alpha-to-coverage, alpha-to-one, rasterization.
+    var baseDescriptor: MTL4RenderPipelineDescriptor?
     var label: String?
 }
 
@@ -139,7 +142,75 @@ internal final class PipelineCache {
         let depthPixelFormat: MTLPixelFormat
         let stencilPixelFormat: MTLPixelFormat
         let rasterSampleCount: Int
+        let shared: MeshSharedState
         let label: String?
+    }
+
+    /// The render-descriptor state a mesh pipeline takes from `renderPipelineDescriptorTransformer`, as plain values.
+    private struct MeshSharedState: Hashable {
+        struct Attachment: Hashable {
+            var pixelFormat: MTLPixelFormat
+            var blendingState: MTL4BlendState
+            var sourceRGBBlendFactor: MTLBlendFactor
+            var destinationRGBBlendFactor: MTLBlendFactor
+            var rgbBlendOperation: MTLBlendOperation
+            var sourceAlphaBlendFactor: MTLBlendFactor
+            var destinationAlphaBlendFactor: MTLBlendFactor
+            var alphaBlendOperation: MTLBlendOperation
+            var writeMask: UInt
+        }
+
+        var maxVertexAmplificationCount = 1
+        var alphaToCoverageState = MTL4AlphaToCoverageState.disabled
+        var alphaToOneState = MTL4AlphaToOneState.disabled
+        var isRasterizationEnabled = true
+        var attachments: [Attachment?] = []
+
+        init(_ base: MTL4RenderPipelineDescriptor?, colorAttachmentCount: Int) {
+            guard let base else {
+                return
+            }
+            maxVertexAmplificationCount = base.maxVertexAmplificationCount
+            alphaToCoverageState = base.alphaToCoverageState
+            alphaToOneState = base.alphaToOneState
+            isRasterizationEnabled = base.isRasterizationEnabled
+            attachments = (0 ..< colorAttachmentCount).map { index in
+                base.colorAttachments[index].map { attachment in
+                    Attachment(
+                        pixelFormat: attachment.pixelFormat,
+                        blendingState: attachment.blendingState,
+                        sourceRGBBlendFactor: attachment.sourceRGBBlendFactor,
+                        destinationRGBBlendFactor: attachment.destinationRGBBlendFactor,
+                        rgbBlendOperation: attachment.rgbBlendOperation,
+                        sourceAlphaBlendFactor: attachment.sourceAlphaBlendFactor,
+                        destinationAlphaBlendFactor: attachment.destinationAlphaBlendFactor,
+                        alphaBlendOperation: attachment.alphaBlendOperation,
+                        writeMask: attachment.writeMask.rawValue
+                    )
+                }
+            }
+        }
+
+        func apply(to descriptor: MTL4MeshRenderPipelineDescriptor) {
+            descriptor.maxVertexAmplificationCount = maxVertexAmplificationCount
+            descriptor.alphaToCoverageState = alphaToCoverageState
+            descriptor.alphaToOneState = alphaToOneState
+            descriptor.isRasterizationEnabled = isRasterizationEnabled
+            for (index, source) in attachments.enumerated() {
+                guard let source, let target = descriptor.colorAttachments[index] else {
+                    continue
+                }
+                target.pixelFormat = source.pixelFormat
+                target.blendingState = source.blendingState
+                target.sourceRGBBlendFactor = source.sourceRGBBlendFactor
+                target.destinationRGBBlendFactor = source.destinationRGBBlendFactor
+                target.rgbBlendOperation = source.rgbBlendOperation
+                target.sourceAlphaBlendFactor = source.sourceAlphaBlendFactor
+                target.destinationAlphaBlendFactor = source.destinationAlphaBlendFactor
+                target.alphaBlendOperation = source.alphaBlendOperation
+                target.writeMask = MTLColorWriteMask(rawValue: source.writeMask)
+            }
+        }
     }
 
     struct ComputePipeline {
@@ -360,6 +431,7 @@ internal final class PipelineCache {
             depthPixelFormat: configuration.depthPixelFormat,
             stencilPixelFormat: configuration.stencilPixelFormat,
             rasterSampleCount: configuration.rasterSampleCount,
+            shared: MeshSharedState(configuration.baseDescriptor, colorAttachmentCount: configuration.colorPixelFormats.count),
             label: configuration.label
         )
         if let cached = meshPipelines[key] {
@@ -376,8 +448,11 @@ internal final class PipelineCache {
         descriptor.objectFunctionDescriptor = try key.object?.makeFunctionDescriptor()
         descriptor.meshFunctionDescriptor = try key.mesh.makeFunctionDescriptor()
         descriptor.fragmentFunctionDescriptor = try key.fragment.makeFunctionDescriptor()
+        key.shared.apply(to: descriptor)
         for (index, format) in configuration.colorPixelFormats.enumerated() {
-            Self.configure(descriptor.colorAttachments[index], format: format)
+            let attachment = descriptor.colorAttachments[index]
+            let explicit = attachment?.pixelFormat ?? .invalid
+            Self.configure(attachment, format: explicit == .invalid ? format : explicit)
         }
         descriptor.rasterSampleCount = configuration.rasterSampleCount
         if !key.linked.isEmpty {

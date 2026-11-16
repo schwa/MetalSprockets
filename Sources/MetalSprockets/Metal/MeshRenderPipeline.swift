@@ -61,6 +61,7 @@ public struct MeshRenderPipeline <Content>: Element, SetupElement, BodylessConte
             stencilPixelFormat: formats.stencil,
             rasterSampleCount: formats.sampleCount,
             linkedFunctions: environment.linkedFunctions ?? [],
+            baseDescriptor: environment.renderPipelineDescriptor,
             label: label
         )
         let pipeline = try context.pipelines.meshRenderPipeline(configuration)

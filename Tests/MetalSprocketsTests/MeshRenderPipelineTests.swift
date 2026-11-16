@@ -218,6 +218,50 @@ struct MeshRenderPipelineTests {
         #expect(rendering.texture.width == 64)
     }
 
+    private func meshOnlyPass(_ transform: @escaping (MTL4RenderPipelineDescriptor) -> Void) throws -> some Element {
+        let library = try ShaderLibrary(source: Self.meshSource)
+        let meshShader = try library.function(type: MeshShader.self, named: "mesh_main")
+        let fragment = try library.function(type: FragmentShader.self, named: "fragment_main")
+        return try RenderPass {
+            try MeshRenderPipeline(label: "transformed", meshShader: meshShader, fragmentShader: fragment) {
+                Draw { encoder in
+                    encoder.drawMeshThreadgroups(
+                        threadgroupsPerGrid: MTLSize(width: 1, height: 1, depth: 1),
+                        threadsPerObjectThreadgroup: MTLSize(width: 1, height: 1, depth: 1),
+                        threadsPerMeshThreadgroup: MTLSize(width: 3, height: 1, depth: 1)
+                    )
+                }
+            }
+            .renderPipelineDescriptorTransformer(transform)
+        }
+    }
+
+    private func centerPixel(_ texture: MTLTexture) -> [UInt8] {
+        var pixel = [UInt8](repeating: 0, count: 4)
+        texture.getBytes(&pixel, bytesPerRow: 4 * texture.width, from: MTLRegionMake2D(texture.width / 2, texture.height / 2, 1, 1), mipmapLevel: 0)
+        return pixel
+    }
+
+    @Test("renderPipelineDescriptorTransformer reaches mesh pipelines", .requiresMetal4)
+    func testMeshPipelineAppliesDescriptorTransformer() throws {
+        guard try meshShadersSupported() else {
+            return
+        }
+        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
+        let drawn = centerPixel(try renderer.render(try meshOnlyPass { _ in }).texture)
+        let masked = centerPixel(try renderer.render(try meshOnlyPass { $0.colorAttachments[0].writeMask = [] }).texture)
+        #expect(drawn != masked)
+    }
+
+    @Test("Mesh pipelines accept vertex amplification", .requiresMetal4)
+    func testMeshPipelineVertexAmplification() throws {
+        guard try meshShadersSupported() else {
+            return
+        }
+        let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64))
+        _ = try renderer.render(try meshOnlyPass { $0.maxVertexAmplificationCount = 2 })
+    }
+
     @Test("A stencil attachment contributes its pixel format to the mesh pipeline", .requiresMetal4)
     func testMeshPipelineWithStencilAttachment() throws {
         guard try meshShadersSupported() else {
