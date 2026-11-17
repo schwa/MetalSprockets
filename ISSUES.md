@@ -11751,12 +11751,13 @@ Needed by SceneSprockets GPU-driven rendering: occlusion culling, GPU particle d
 ## 576: No support for indirect command buffers
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:api, area:metal4, area:performance, effort:l
 created: 2026-11-17T19:13:47Z
-updated: 2026-11-17T19:15:43Z
+updated: 2026-11-17T19:22:34Z
+closed: 2026-11-17T19:22:34Z
 +++
 
 MetalSprockets has no element or helper for MTLIndirectCommandBuffer: creating one, encoding draws into it (from the CPU once, or from a compute shader each frame), keeping it and the resources its commands reach resident, and executing a range of it in a render pass (executeCommandsInBuffer).
