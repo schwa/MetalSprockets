@@ -11677,11 +11677,12 @@ Reading the code does not support that guess. Synchronous frames come only from 
 ## 573: RenderView crashes on devices without Metal 4 support
 
 +++
-status: new
+status: open
 priority: high
 kind: bug
-labels: area:metal4, area:api
+labels: area:metal4, area:api, effort:s
 created: 2026-11-15T18:54:17Z
+updated: 2026-11-17T19:15:48Z
 +++
 
 RenderView traps on launch on GPUs that do not support Metal 4. `device.makeMTL4CommandQueue()` returns nil, and `ViewModelBox.commandQueue(preferring:device:)` calls `orFatalError` on it.
@@ -11700,30 +11701,36 @@ Exception Type:  EXC_BREAKPOINT (SIGTRAP)
 Expected: apps can find out that the device is not supported and show something other than a crash.
 Actual: the process traps inside RenderView's view update. The app gets no chance to handle it.
 
+- `2026-11-17T19:15:43Z`: Related: #574 (device-support check API).
+
 ---
 
 ## 574: No API to check if the current device can run MetalSprockets
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: area:api, area:metal4
+labels: area:api, area:metal4, effort:s
 created: 2026-11-15T18:54:18Z
+updated: 2026-11-17T19:15:48Z
 +++
 
 Apps have no MetalSprockets API to find out if the device supports Metal 4 before they show a RenderView. Each app must find the right GPU family check (for example `supportsFamily(.metal4)` or `.apple7`) on its own. If an app gets it wrong, the app crashes. See the RenderView crash on devices without Metal 4 support.
+
+- `2026-11-17T19:15:43Z`: Related: #573 (RenderView crash without Metal 4).
 
 ---
 
 ## 575: No Draw initializers for indirect draws
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
 labels: area:api, area:metal4, area:performance, effort:m
 created: 2026-11-17T19:13:47Z
+updated: 2026-11-17T19:15:43Z
 +++
 
 Draw has initializers for direct draws (Draw(primitiveType:indexBuffer:...), Draw(mesh:)) that validate the index range and keep buffers resident. There are none for indirect draws, where the GPU writes the draw arguments (MTLDrawPrimitivesIndirectArguments / MTLDrawIndexedPrimitivesIndirectArguments) into a buffer.
@@ -11732,16 +11739,19 @@ Today a caller must use a raw Draw closure, compute the Metal 4 GPU addresses it
 
 Needed by SceneSprockets GPU-driven rendering: occlusion culling, GPU particle draw counts, and GPU LOD selection all produce draw arguments on the GPU.
 
+- `2026-11-17T19:15:43Z`: Related: #576 (indirect command buffers).
+
 ---
 
 ## 576: No support for indirect command buffers
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
-labels: area:api,area:metal4,area:performance,effort:l
+labels: area:api, area:metal4, area:performance, effort:l
 created: 2026-11-17T19:13:47Z
+updated: 2026-11-17T19:15:43Z
 +++
 
 MetalSprockets has no element or helper for MTLIndirectCommandBuffer: creating one, encoding draws into it (from the CPU once, or from a compute shader each frame), keeping it and the resources its commands reach resident, and executing a range of it in a render pass (executeCommandsInBuffer).
@@ -11749,5 +11759,7 @@ MetalSprockets has no element or helper for MTLIndirectCommandBuffer: creating o
 Without it, every draw is encoded on the CPU every frame through the element tree, and GPU-driven rendering (draw lists built by compute) is not possible.
 
 Needed by SceneSprockets: draws encoded with indirect command buffers, and GPU-driven rendering in general.
+
+- `2026-11-17T19:15:43Z`: Related: #575 (indirect draw initializers).
 
 ---
