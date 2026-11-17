@@ -2735,9 +2735,10 @@ The port is Metal 4-only. Archives, specialization optimizations, automatic depe
 status: open
 priority: low
 kind: enhancement
-labels: effort:l, area:api
+labels: effort:l, area:api, breaking
+milestone: m2
 created: 2026-02-19T00:00:00Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 We currently pass data to shaders through three different mechanisms, each with a distinct API:
@@ -5998,9 +5999,10 @@ It is also the only thing that makes the class look internally synchronized, whi
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l, area:architecture, needs-decision
+labels: effort:l, area:architecture
+milestone: m2
 created: 2026-08-08T23:14:01Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:55:27Z
 +++
 
 Ten call sites reach traversal state through the `@TaskLocal System.current` rather than being handed the context they need: `MSEnvironment` (EnvironmentValues.swift:170), `EnvironmentReader`, `Element` body evaluation (Element.swift:82), `StateBox.resolveSystem()`, `Element+SystemExtensions`, and the modifiers in `RenderPipelineDescriptorTransformer`, `RenderPassDescriptorModifier`, `MSAAModifier`, `GPUCounters`, plus ambient `ShaderStore` lookup in `ShaderLibrary`.
@@ -6021,6 +6023,9 @@ Structural group (5): MSEnvironment.wrappedValue, StateBox read-tracking (resolv
 Decision needed: (a) split this: file the easy group as a subtask (effort:s) and keep the structural group as the design issue; or (b) commit to the SwiftUI-style dynamic-property injection redesign (effort:l, touches State/Environment/Element core).
 
 - `2026-10-07T14:25:42Z`: Auto-fixer punt: decision-gated and core-wide. The issue's own audit lays out the choice \u2014 (a) carve off the easy group (Element.configureNode + the 3 descriptor/MSAA modifiers) via a weak Node.parent in TreeReconciler as an effort:s subtask, or (b) commit to the SwiftUI-style dynamic-property injection redesign (effort:l, touches State/Environment/Element core). Not inferable from code. Recommend (a): file the easy group as a subtask and keep this as the structural design issue. Say the word and I'll split it.
+- `2026-11-17T19:51:20Z`: Question 1 (decision): Split off the easy group (Element.configureNode, RenderPassDescriptorModifier, RenderPipelineDescriptorTransformer, MSAAModifier via a weak Node.parent) as an effort:s subtask, and keep this issue for the structural redesign? Recommended: Yes. Split off the easy group.
+- `2026-11-17T19:52:00Z`: Answer 1: Yes
+- `2026-11-17T19:55:27Z`: Decision (Q1): easy group split off as #577. This issue keeps the structural dynamic-property redesign.
 
 ---
 
@@ -6031,8 +6036,9 @@ status: open
 priority: low
 kind: enhancement
 labels: effort:l, area:architecture
+milestone: m1
 created: 2026-08-08T23:14:01Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 #292 proposed splitting `System` into a `TreeReconciler` (done, #372), a `PhaseRunner` that drives setup/workload over a frozen traversal event list, and a thin `System` facade composing the two.
@@ -8966,8 +8972,9 @@ status: blocked
 priority: medium
 kind: bug
 labels: area:metal4, effort:l
+milestone: m2
 created: 2026-10-02T15:19:38Z
-updated: 2026-11-17T19:18:50Z
+updated: 2026-11-17T19:50:01Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -8994,44 +9001,65 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 
 ---
 
-## 472: Draw resets rasterizer state unconditionally, flooding API validation with redundant-call warnings
+## 472: Three redundant-call validation warnings per draw, every frame
 
 +++
 status: open
 priority: low
 kind: bug
-labels: area:metal4, effort:s, needs-decision
+labels: area:metal4, effort:s, breaking
+milestone: m2
 created: 2026-10-02T15:54:58Z
-updated: 2026-10-21T14:42:35Z
+updated: 2026-11-17T19:55:27Z
 +++
 
-Draw.swift (around line 75) calls setCullMode(.none), setTriangleFillMode(.fill), setFrontFacing(.clockwise) and setVertexAmplificationCount(1) before every draw, so state set inside one Draw closure does not leak to the next.
+`Draw.swift` (around line 75) calls `setCullMode(.none)`, `setTriangleFillMode(.fill)`, `setFrontFacing(.clockwise)` and `setVertexAmplificationCount(1)` before every draw, so state set inside one `Draw` closure does not leak to the next.
 
-Because the resets are unconditional, Metal API validation reports 'Redundant call to setCullMode / setTriangleFillMode / setVertexAmplificationCount' three times per draw, every frame (seen in SolarSystem with validation on). The real warnings get lost in the noise.
+Because these resets are unconditional, Metal API validation reports a redundant-call warning for three of them on every draw, every frame. Real warnings get lost in the noise.
 
-Fix: track the encoder's rasterizer state on the pass and only reset values that differ from the defaults, as applyDrawState already does for depth/stencil state and as viewportOverridden/scissorOverridden do for viewport and scissor. A Draw closure that changes the state directly is not visible to the pass, so either mark the state dirty after any Draw closure runs, or offer rasterizer modifiers (.cullMode, .fillMode, .frontFacing) that the pass tracks.
+## Repro
 
-\- `2026-10-06T00:59:56Z`: Investigated. A Draw closure gets the raw MTL4RenderCommandEncoder and can call setCullMode etc. directly; the pass cannot observe that, so the unconditional reset is the only thing preventing leaks to sibling draws. Wrapping the encoder in a recording proxy is impractical (huge protocol surface).
+Run SolarSystem with Metal API validation enabled.
 
-Option A: rasterizer modifiers (.cullMode, .triangleFillMode, .frontFacing, .vertexAmplificationCount), tracked by the pass like applyDrawState; set only on change; drop the unconditional reset.
-  + No redundant-call validation noise; declarative, matches depth/stencil modifiers.
-  - Behaviour change: state set directly in a Draw closure leaks to later draws in the pass. Needs docs + migration of existing closures.
+## Expected
 
-Option B: keep the reset, but skip it on the first draw of each pass (encoder starts at defaults).
-  + No API or behaviour change; small.
-  - Only removes noise for 1 draw per pass; multi-draw passes still warn.
+Rasterizer state is only set when it differs from the current encoder state, as `applyDrawState` already does for depth/stencil state and as `viewportOverridden` / `scissorOverridden` do for viewport and scissor, so no redundant-call warnings are emitted.
 
-Option C: modifiers as in A, but keep resetting after any Draw whose closure ran (pass marks rasterizer state dirty).
-  + Leak protection kept.
-  - Every Draw has a closure, so this resets every time: no reduction in noise. Not useful unless Draw grows a closure-free form.
+## Actual
 
-Option D: leave as is; document that the warnings are expected.
-  + Zero cost.
-  - Real validation warnings stay buried.
+Three warnings per draw, per frame:
 
-Recommendation: A (possibly with B as a stopgap). Needs a decision on the leak behaviour change.
+```
+Redundant call to setCullMode
+Redundant call to setTriangleFillMode
+Redundant call to setVertexAmplificationCount
+```
+
+## Investigation notes (2026-10-06T00:59:56Z)
+
+A `Draw` closure gets the raw `MTL4RenderCommandEncoder` and can call `setCullMode` etc. directly; the pass cannot observe that, so the unconditional reset is the only thing preventing leaks to sibling draws. Wrapping the encoder in a recording proxy is impractical (huge protocol surface).
+
+Options considered:
+
+- **Option A:** rasterizer modifiers (`.cullMode`, `.triangleFillMode`, `.frontFacing`, `.vertexAmplificationCount`), tracked by the pass like `applyDrawState`; set only on change; drop the unconditional reset.
+  - \+ No redundant-call validation noise; declarative, matches depth/stencil modifiers.
+  - \- Behaviour change: state set directly in a `Draw` closure leaks to later draws in the pass. Needs docs plus migration of existing closures.
+- **Option B:** keep the reset, but skip it on the first draw of each pass (the encoder starts at defaults).
+  - \+ No API or behaviour change; small.
+  - \- Only removes noise for one draw per pass; multi-draw passes still warn.
+- **Option C:** modifiers as in A, but keep resetting after any `Draw` whose closure ran (pass marks rasterizer state dirty).
+  - \+ Leak protection kept.
+  - \- Every `Draw` has a closure, so this resets every time: no reduction in noise. Not useful unless `Draw` grows a closure-free form.
+- **Option D:** leave as is; document that the warnings are expected.
+  - \+ Zero cost.
+  - \- Real validation warnings stay buried.
+
+Recommendation: A, possibly with B as a stopgap. Needs a decision on the leak behaviour change.
 
 - `2026-10-21T14:25:12Z`: Auto-fixer punt (2026-10-21): no change. Only option A (rasterizer modifiers, drop the unconditional reset) removes the warnings for multi-draw passes, but then rasterizer state set directly in a Draw closure leaks to later draws in the pass. B fixes only the first draw per pass; C and D do not reduce noise. Unblocker: decide whether the leak change in A is acceptable. If yes, about effort:m with docs and a migration note.
+- `2026-11-17T19:27:24Z`: Breaking note: option A changes behaviour. Rasterizer state set in a Draw closure would carry over to later draws in the pass.
+- `2026-11-17T19:27:43Z`: Question 1 (decision): Accept the behaviour change of option A, where rasterizer state set in a Draw closure carries over to later draws? Recommended: Yes, with rasterizer modifiers and a migration note.
+- `2026-11-17T19:47:33Z`: Answer 1: Yes
 
 ---
 
@@ -9092,12 +9120,14 @@ Done when a pipeline element can register its persistent buffers in its own `Res
 ## 475: MSState initial values are evaluated on every element rebuild
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
-labels: area:metal4, area:performance, needs-decision, effort:l
+labels: area:metal4, area:performance, effort:l, breaking
+milestone: m2
 created: 2026-10-02T22:35:16Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:57:00Z
+closed: 2026-11-17T19:57:00Z
 +++
 
 MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure () -> Value. A default like '@MSState var mesh: MTKMesh = .teapot()', or an assignment to an @MSState in init, runs every time the element struct is rebuilt. That is usually every frame. The persisted StateBox wins and the new value is discarded, but the allocation still happens. In MetalSprocketsExamples this builds a teapot MTKMesh, a sphere, a 2048x2048 texture and a sampler every frame in BouncingTeapots, and MetalCanvas allocated 16 MB of buffers per frame (MetalSprocketsExamples #438). Proposal: add init(wrappedValue: @autoclosure @escaping () -> Value) and evaluate it only when no persisted state exists, like SwiftUI State. Assignments in init are harder to fix; at least document that they run every rebuild.
@@ -9122,6 +9152,11 @@ For MetalSprockets:
 
 Re-sized to effort:l and deferred: macro plus StateBox change plus migration is not a small fix.
 
+- `2026-11-17T19:27:24Z`: Breaking note: option (a), autoclosure-only init(wrappedValue:), is a source break for code that assigns @MSState in an initializer. Option (b) only adds API.
+- `2026-11-17T19:27:43Z`: Question 1 (decision): Accept a source break with autoclosure-only init(wrappedValue:) (option a), instead of adding @MSState(lazy:) (option b)? Recommended: No. Ship option (b), the additive @MSState(lazy:).
+- `2026-11-17T19:47:56Z`: Answer 1: a
+- `2026-11-17T19:57:00Z`: Superseded by #578 (plan of record: @MSState macro). Q1 answer (a) is replaced by the macro plan.
+
 ---
 
 ## 476: Argument tables are rebuilt and fully re-bound for every draw on every frame
@@ -9131,8 +9166,9 @@ status: open
 priority: medium
 kind: enhancement
 labels: area:metal4, area:performance, effort:l, needs-decision
+milestone: m1
 created: 2026-10-03T00:16:32Z
-updated: 2026-10-21T14:42:43Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 Potential performance issue, not measured.
@@ -9156,6 +9192,7 @@ Found while debugging SolarSystem #36.
 - `2026-10-16T15:41:25Z`: From the real-app trace in #507 (Release, 1000 cubes): ParameterSet.makeTables is about 25% of Workload, the largest single item there.
 - `2026-10-16T17:51:28Z`: Autoresearch session: makeTables returns fixed per-stage slots (StageTables) instead of a Dictionary, and bind no longer builds temporary arrays (-7%). Tables are still acquired and fully bound for every draw every frame.
 - `2026-10-16T17:53:15Z`: Big remaining lever after the autoresearch session: Workload is now about 45% of the cubes frame (1.5 of 3.4 ms, Release), and most of it is per-draw table acquisition and binding. Reusing a draw's bound tables when its bindings are unchanged (or encoding unchanged draws more cheaply) is the next large win here. Still needs the design decision. Related: #519 (draw subtrees never reused in Update).
+- `2026-11-17T19:51:20Z`: Question 1 (decision): Drop this to Low until a design for reusing bound argument tables across frames exists, given makeTables is about 25% of Workload in the cubes benchmark? Recommended: No. Keep Medium and design per-draw table reuse after #521/#523 make bindings comparable.
 
 ---
 
@@ -9315,9 +9352,10 @@ On device, the first frames after opening an immersive space (ImmersiveRenderCon
 status: open
 priority: low
 kind: enhancement
-labels: effort:m, area:api
+labels: effort:m, area:api, breaking
+milestone: m2
 created: 2026-10-07T01:51:42Z
-updated: 2026-10-21T14:42:49Z
+updated: 2026-11-17T19:55:27Z
 +++
 
 RenderView configures its Metal context through SwiftUI view modifiers backed by EnvironmentValues (`.device`, `.commandQueue`, `.shaderStore`, `.metalShaderLogging`, `.renderViewLogFrame`, `.renderViewFatalErrorOnError`). Runner and OffscreenRenderer configure the same underlying context through init parameters (device, commandQueue, shaderLogging, residency, maximumInFlightSubmissions; plus size/colorUsage/depthUsage/clearDepth for OffscreenRenderer).
@@ -9341,6 +9379,9 @@ Constraint: the EnvironmentValues keys live in MetalSprocketsUI and import Swift
 Next step: decide between option 1 and option 2 before implementing.
 
 - `2026-10-21T16:35:40Z`: Punting: the issue asks to decide between option 1 (chainable copy methods) and option 2 (shared MetalContextConfiguration) before implementing, and both change the public init API of Runner and OffscreenRenderer. Unblocker: pick an option (2 is marked preferred) and say whether the old init parameters should stay as deprecated overloads.
+- `2026-11-17T19:27:24Z`: Breaking note: option 2 (shared config struct) probably changes the Runner/OffscreenRenderer inits. Option 1 only adds API.
+- `2026-11-17T19:27:43Z`: Question 1 (decision): Accept breaking the Runner/OffscreenRenderer inits to adopt a shared config struct (option 2)? Recommended: Yes. Option 2 is the preferred design.
+- `2026-11-17T19:48:05Z`: Answer 1: Breaking is ok
 
 ---
 
@@ -9947,9 +9988,10 @@ Expected
 status: open
 priority: low
 kind: feature
-labels: area:performance, needs-decision, effort:xl
+labels: area:performance, effort:xl
+milestone: m1
 created: 2026-10-16T13:52:51Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:55:27Z
 +++
 
 Idea (speculative).
@@ -9966,6 +10008,8 @@ Open questions
 - Whether an explicit API (an instanced ForEach or Draw variant) is a better answer than detection.
 
 - `2026-10-16T17:53:15Z`: Post-autoresearch assessment: for many identical draws this is still the largest lever (the Example demo's instanced mode is far cheaper than ForEach of Draws). Remains deferred and speculative; per-draw cost is now about 3.4 us (Release, cubes).
+- `2026-11-17T19:51:20Z`: Question 1 (decision): Pursue an explicit opt-in instanced API (for example an instanced ForEach or Draw) instead of automatic detection of identical draws? Recommended: Yes. Explicit opt-in; automatic detection is unsafe because closures cannot be compared.
+- `2026-11-17T19:52:42Z`: Answer 1: Yes
 
 ---
 
@@ -9976,8 +10020,9 @@ status: open
 priority: medium
 kind: enhancement
 labels: area:performance, needs-decision, effort:l
+milestone: m1
 created: 2026-10-16T13:55:05Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 From the #489 profile. Related: #486, #495, #496, #497, #490. Not the same as #500 (instancing).
@@ -10010,6 +10055,7 @@ Repro
 - `2026-10-16T14:00:32Z`: Tracked in RFCs/0006-frame-cpu-performance.md (measurements, profile, all candidate ideas).
 - `2026-10-16T17:51:27Z`: Autoresearch session: IdentifiedElement (one per ForEach item) no longer gets a node; its identity goes on its content's atom, and Int ids are stored directly. Sibling counts use a flat stack instead of a Dictionary per node. Directions 1, 3 and 4 in this issue are not done.
 - `2026-10-16T17:53:15Z`: After the autoresearch session, the remaining directions here (type-level work once per ForEach; positional matching when ids are unchanged; reusing unchanged items) are among the big remaining levers. Item reuse (direction 4) overlaps #519.
+- `2026-11-17T19:51:20Z`: Question 1 (decision): Start with directions 1 and 5 (per-ForEach type-level caching, and avoiding the AnyHashable box for common ID types), since they need no API contract? Recommended: Yes. Do 1 and 5 first; defer 4 because it needs a content-depends-only-on-item contract.
 
 ---
 
@@ -10301,8 +10347,9 @@ status: open
 priority: medium
 kind: enhancement
 labels: area:performance, area:metal4, effort:m
+milestone: m1
 created: 2026-10-16T15:41:08Z
-updated: 2026-10-21T14:43:45Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 Part of RFC 0006.
@@ -10449,10 +10496,11 @@ Expected
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:api, needs-decision, effort:l
+labels: area:performance, area:api, effort:l
+milestone: m1
 depends: 520, 521, 522, 523
 created: 2026-10-16T17:52:46Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:55:27Z
 +++
 
 Part of RFC 0006. A big remaining lever after the autoresearch session.
@@ -10470,6 +10518,8 @@ Expected
 - A way for unchanged draw subtrees to be reused across frames, with the trade-offs decided (for example an explicit identity or version supplied by the caller, Equatable payloads instead of closures for common modifiers, or something else).
 
 - `2026-10-16T18:04:01Z`: Split into #520 (static-scene benchmark, prerequisite), #521 (data-only parameter/vertex modifiers), #522 (closure-free Draw for single calls), #523 (Draw with explicit inputs). Speculative and deferred: #524 (result-builder Draw).
+- `2026-11-17T19:51:20Z`: Question 1 (decision): Make unchanged draw subtrees reusable through Equatable data payloads (#521, #522) plus explicit inputs (#523), rather than a caller-supplied identity or version? Recommended: Yes. Use data payloads and explicit inputs.
+- `2026-11-17T19:53:00Z`: Answer 1: Yes
 
 ---
 
@@ -10504,8 +10554,9 @@ status: open
 priority: medium
 kind: enhancement
 labels: area:performance, area:api, effort:m
+milestone: m1
 created: 2026-10-16T18:03:37Z
-updated: 2026-11-14T22:07:42Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 Part of #519.
@@ -10525,8 +10576,9 @@ status: open
 priority: medium
 kind: enhancement
 labels: area:performance, area:api, effort:m
+milestone: m1
 created: 2026-10-16T18:03:38Z
-updated: 2026-11-14T22:07:43Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 Part of #519.
@@ -10546,9 +10598,10 @@ What is wrong
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:api, needs-decision, effort:m
+labels: area:performance, area:api, effort:m
+milestone: m1
 created: 2026-10-16T18:03:38Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:55:27Z
 +++
 
 Part of #519.
@@ -10560,17 +10613,22 @@ What is wrong
 ## Proposed (per Jonathan)
 - A Draw form that takes its inputs explicitly and passes them to the closure, for example Draw(model.mesh, wireframe) { encoder, mesh, wireframe in ... }. Draw compares the inputs (Equatable, or identity for Metal objects); the documented contract is that the closure depends only on them. Risk: a closure that also captures something else goes stale. The current closure form stays and stays never-equal.
 
+- `2026-11-17T19:51:20Z`: Question 1 (decision): Accept the stale-capture risk of a Draw(inputs...) { encoder, inputs in } form, where the documented contract is that the closure depends only on its declared inputs? Recommended: Yes, with the contract documented and the closure-only Draw kept as never-equal.
+- `2026-11-17T19:54:12Z`: Answer 1: Yes
+
 ---
 
 ## 524: Idea: a result-builder Draw made of encoder commands
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: area:api, needs-decision, effort:l
+milestone: m1
 created: 2026-10-16T18:03:38Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:55:28Z
+closed: 2026-11-17T19:55:28Z
 +++
 
 Part of #519. Speculative.
@@ -10582,6 +10640,10 @@ Concerns found
 - Every encoder call people use needs a command type, and helpers (encoder.draw(mesh)) need builder forms; anything missing pushes people back to the closure.
 - Logic-heavy closures (PBR record loops, splat amplification setup) would need for/if inside the builder and would likely read worse.
 - The explicit-inputs Draw covers the same need with less API. Revisit only if there is demand.
+
+- `2026-11-17T19:51:20Z`: Question 1 (decision): Close this idea as superseded by the explicit-inputs Draw (#523)? Recommended: Yes. Close it; reopen if there is demand.
+- `2026-11-17T19:53:16Z`: Answer 1: Yes close
+- `2026-11-17T19:55:28Z`: Closed as superseded by #523 (explicit-inputs Draw). Reopen if there is demand.
 
 ---
 
@@ -10680,9 +10742,10 @@ SDK 27 makes SwiftUI's ViewBuilder (now ContentBuilder) unconstrained. Apple not
 status: open
 priority: low
 kind: enhancement
-labels: area:api, effort:xl
+labels: area:api, effort:xl, breaking
+milestone: m2
 created: 2026-10-17T11:49:19Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 Use SwiftUI 27's ContentBuilder pattern so nonsensical nesting (e.g. ComputeDispatch inside RenderPipeline) fails to compile. See RFCs/0007-typed-content-domains.md.
@@ -10813,9 +10876,10 @@ Option 2 removes the cost; option 1 hides it. Repro: MetalSprocketsParticles Sti
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, needs-design, effort:l
+labels: area:performance, effort:l
+milestone: m1
 created: 2026-10-21T00:26:17Z
-updated: 2026-10-21T16:43:45Z
+updated: 2026-11-17T19:55:27Z
 +++
 
 PipelineCache keeps every compiled pipeline (render, mesh, compute), every compute base pipeline, and every binary function (#534) for the life of the context. Nothing is ever removed.
@@ -10826,6 +10890,9 @@ Same applies to FunctionTables: each pipeline keeps every visible function table
 
 Expected: entries that are no longer used can be released.
 Actual: memory only grows until the MetalContext is destroyed.
+
+- `2026-11-17T19:51:20Z`: Question 1 (design): Evict pipeline and binary-function cache entries by reference counting from the nodes that use them, rather than LRU with a size limit? Recommended: Yes. Release entries when no node uses them.
+- `2026-11-17T19:54:27Z`: Answer 1: Yes
 
 ---
 
@@ -11122,8 +11189,9 @@ status: open
 priority: medium
 kind: bug
 labels: area:timing, area:metal4, effort:m
+milestone: m1
 created: 2026-10-21T14:59:32Z
-updated: 2026-10-21T16:43:45Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 Found while measuring #491 (Apple M5 Max, macOS 27, Xcode 27 RC; probe /tmp/probe491/probe.swift).
@@ -11151,8 +11219,9 @@ status: open
 priority: low
 kind: enhancement
 labels: area:timing, area:metal4, effort:m
+milestone: m1
 created: 2026-10-21T14:59:43Z
-updated: 2026-10-21T16:43:45Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 #491 showed per-dispatch precise timestamps in one Metal 4 compute encoder match Instruments (within about 1 us) and are stable, at about 0.7% cost. Today gpuTimed inside a pass logs a warning and measures nothing (GPUTimedModifier). Allow it inside a ComputePass: write a shared timestamp before the first and after the last dispatch of the subtree (writeSharedTimestamp already avoids adjacent duplicates). Render passes stay pass-level until #492 is understood. Document the small serialization cost.
@@ -11217,8 +11286,9 @@ status: open
 priority: medium
 kind: feature
 labels: area:api, effort:m
+milestone: m1
 created: 2026-10-23T21:32:23Z
-updated: 2026-11-14T22:06:32Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 RenderView can run its MTKView in paused or setNeedsDisplay mode (.metalIsPaused, .metalEnableSetNeedsDisplay). But the host app cannot ask for a frame when its render inputs change: the MTKView and its delegate are hidden inside RenderView, and the SwiftUI update closure stores the new content without marking the view as needing display.
@@ -11306,12 +11376,17 @@ Reported from SceneSprockets #378.
 status: open
 priority: low
 kind: task
-labels: area:api, effort:s, needs-decision
+labels: area:api, effort:s, breaking
+milestone: m2
 created: 2026-11-12T04:58:43Z
-updated: 2026-11-14T22:06:32Z
+updated: 2026-11-17T19:55:27Z
 +++
 
 System snapshots (Snapshotter, SystemSnapshot, System+Snapshot) and the companion MetalSprocketsSnapshotUI viewer may be candidates for deprecation. MetalSprocketsSnapshotUI has been removed from metalsprockets.com. Decide whether to keep, deprecate, or remove snapshot support.
+
+- `2026-11-17T19:27:24Z`: Breaking note: breaking if snapshot support is removed, not if it is deprecated.
+- `2026-11-17T19:27:43Z`: Question 1 (decision): Remove snapshot support outright (breaking), rather than deprecate it first? Recommended: No. Deprecate first, then remove.
+- `2026-11-17T19:48:18Z`: Answer 1: Remove.
 
 ---
 
@@ -11410,12 +11485,16 @@ status: open
 priority: low
 kind: enhancement
 labels: area:api, effort:s
+milestone: m2
 depends: 560
 created: 2026-11-14T21:44:42Z
-updated: 2026-11-14T22:06:32Z
+updated: 2026-11-17T19:50:30Z
 +++
 
 After #560 adds an opt-in render thread (RFCs/0008), RenderView still defaults to main-thread rendering. Apps must opt in to keep busy frames off the main thread. Revisit the default once the render-thread mode has shipped and been tested on macOS and iOS.
+
+- `2026-11-17T19:27:24Z`: Breaking note: changing the default threading mode changes behaviour for existing apps.
+- `2026-11-17T19:27:43Z`: Question 1 (decision): Make the render thread the default RenderView threading mode, which changes behaviour for existing apps? Recommended: Yes, once #560 has shipped and been tested on macOS and iOS.
 
 ---
 
@@ -11426,8 +11505,9 @@ status: open
 priority: medium
 kind: task
 labels: area:metal4, effort:s
+milestone: m2
 created: 2026-11-14T22:07:43Z
-updated: 2026-11-14T22:07:46Z
+updated: 2026-11-17T19:58:08Z
 +++
 
 #471 reports random pink or garbage tile-shaped blocks in RenderView output with a slow fragment shader (SolarSystem, ~/Shared/Projects/Scratch/SolarSystem). It has been filed with Apple.
@@ -11685,8 +11765,9 @@ status: open
 priority: high
 kind: bug
 labels: area:metal4, area:api, effort:s
+milestone: m1
 created: 2026-11-15T18:54:17Z
-updated: 2026-11-17T19:15:48Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 RenderView traps on launch on GPUs that do not support Metal 4. `device.makeMTL4CommandQueue()` returns nil, and `ViewModelBox.commandQueue(preferring:device:)` calls `orFatalError` on it.
@@ -11716,8 +11797,9 @@ status: open
 priority: medium
 kind: enhancement
 labels: area:api, area:metal4, effort:s
+milestone: m1
 created: 2026-11-15T18:54:18Z
-updated: 2026-11-17T19:15:48Z
+updated: 2026-11-17T19:49:53Z
 +++
 
 Apps have no MetalSprockets API to find out if the device supports Metal 4 before they show a RenderView. Each app must find the right GPU family check (for example `supportsFamily(.metal4)` or `.apple7`) on its own. If an app gets it wrong, the app crashes. See the RenderView crash on devices without Metal 4 support.
@@ -11767,5 +11849,69 @@ Without it, every draw is encoded on the CPU every frame through the element tre
 Needed by SceneSprockets: draws encoded with indirect command buffers, and GPU-driven rendering in general.
 
 - `2026-11-17T19:15:43Z`: Related: #575 (indirect draw initializers).
+
+---
+
+## 577: Element.configureNode and descriptor/MSAA modifiers reach the parent node through System.current
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:s, area:architecture, subtask
+milestone: m1
+created: 2026-11-17T19:55:24Z
+updated: 2026-11-17T19:55:27Z
++++
+
+Part of #389. Element.configureNode, RenderPassDescriptorModifier, RenderPipelineDescriptorTransformer and MSAAModifier use System.current only to reach the parent node or walk ancestors. The dependency is invisible in their signatures, and they see nil outside a traversal.
+
+---
+
+## 578: @MSState initial values are evaluated on every element rebuild
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: area:api, area:performance, effort:l, breaking
+milestone: m1
+created: 2026-11-17T19:56:56Z
+updated: 2026-11-17T19:57:55Z
++++
+
+Supersedes #475.
+
+What is wrong
+- MSState.init(wrappedValue:) takes Value, so a default such as '@MSState var mesh: MTKMesh = .teapot()' runs every time the element struct is rebuilt, usually every frame. The persisted StateBox wins and the new value is discarded, but the work and allocation still happen (teapot meshes, 2048x2048 textures, 16 MB buffers per frame in MetalSprocketsExamples #438).
+- A property wrapper cannot fix this cleanly: an autoclosure-only init(wrappedValue:) breaks assigning the property in an initializer, and keeping both overloads is ambiguous at every '@MSState var x = ...' site.
+
+Plan of record (per Jonathan)
+- Make @MSState a macro, modelled on SwiftUI 27's @State macro (see #349 and the SwiftUI notes in #475): declaration defaults are evaluated lazily, once per identity; assignments in init stay eager.
+- Accepted: this is a source break (for example assigning in init before other stored properties are set, or composing with another property wrapper), and it adds a swift-syntax macro dependency.
+
+Expected
+- '@MSState var x = expensive()' evaluates expensive() once per element identity.
+- Assigning @MSState in an initializer still works.
+
+- `2026-11-17T19:57:00Z`: Supersedes #475, which has the prior investigation (lazy StateBox change and evaluation-count test) and the SwiftUI 27 @State macro notes.
+
+---
+
+## Milestone: m1
+
++++
+status: open
+created: 2026-11-17T19:49:53Z
++++
+
+---
+
+## Milestone: m2
+
++++
+status: open
+created: 2026-11-17T19:49:53Z
++++
 
 ---
