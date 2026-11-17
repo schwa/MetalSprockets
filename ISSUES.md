@@ -11715,3 +11715,21 @@ created: 2026-11-15T18:54:18Z
 Apps have no MetalSprockets API to find out if the device supports Metal 4 before they show a RenderView. Each app must find the right GPU family check (for example `supportsFamily(.metal4)` or `.apple7`) on its own. If an app gets it wrong, the app crashes. See the RenderView crash on devices without Metal 4 support.
 
 ---
+
+## 575: No Draw initializers for indirect draws
+
++++
+status: new
+priority: medium
+kind: feature
+labels: area:api,area:metal4,area:performance,effort:m
+created: 2026-11-17T19:13:47Z
++++
+
+Draw has initializers for direct draws (Draw(primitiveType:indexBuffer:...), Draw(mesh:)) that validate the index range and keep buffers resident. There are none for indirect draws, where the GPU writes the draw arguments (MTLDrawPrimitivesIndirectArguments / MTLDrawIndexedPrimitivesIndirectArguments) into a buffer.
+
+Today a caller must use a raw Draw closure, compute the Metal 4 GPU addresses itself, and declare the argument and index buffers for residency by hand. ComputeDispatch already has the equivalent for compute (init(indirectBuffer:)).
+
+Needed by SceneSprockets GPU-driven rendering: occlusion culling, GPU particle draw counts, and GPU LOD selection all produce draw arguments on the GPU.
+
+---
