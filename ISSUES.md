@@ -8,9 +8,9 @@
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l, deferred, area:api
+labels: effort:l, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-09-30T16:17:56Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 MetalSprockets does not provide enough type safety.
@@ -2039,9 +2039,9 @@ File: Sources/MetalSprockets/Core/StateBox.swift
 status: open
 priority: low
 kind: enhancement
-labels: effort:m, deferred
+labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-10-07T14:21:52Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 EnvironmentReader should ideally be passed a Node as a parameter as noted in the TODO.
@@ -2731,9 +2731,9 @@ The port is Metal 4-only. Archives, specialization optimizations, automatic depe
 status: open
 priority: low
 kind: enhancement
-labels: effort:l, deferred, area:api
+labels: effort:l, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-11-14T22:06:35Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 We currently pass data to shaders through three different mechanisms, each with a distinct API:
@@ -5994,9 +5994,9 @@ It is also the only thing that makes the class look internally synchronized, whi
 status: open
 priority: medium
 kind: enhancement
-labels: effort:l, area:architecture, needs-decision, deferred
+labels: effort:l, area:architecture, needs-decision
 created: 2026-08-08T23:14:01Z
-updated: 2026-10-21T13:56:52Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 Ten call sites reach traversal state through the `@TaskLocal System.current` rather than being handed the context they need: `MSEnvironment` (EnvironmentValues.swift:170), `EnvironmentReader`, `Element` body evaluation (Element.swift:82), `StateBox.resolveSystem()`, `Element+SystemExtensions`, and the modifiers in `RenderPipelineDescriptorTransformer`, `RenderPassDescriptorModifier`, `MSAAModifier`, `GPUCounters`, plus ambient `ShaderStore` lookup in `ShaderLibrary`.
@@ -6026,9 +6026,9 @@ Decision needed: (a) split this: file the easy group as a subtask (effort:s) and
 status: open
 priority: low
 kind: enhancement
-labels: effort:l, area:architecture, deferred
+labels: effort:l, area:architecture
 created: 2026-08-08T23:14:01Z
-updated: 2026-10-21T13:56:53Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 #292 proposed splitting `System` into a `TreeReconciler` (done, #372), a `PhaseRunner` that drives setup/workload over a frozen traversal event list, and a thin `System` facade composing the two.
@@ -8961,9 +8961,9 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 status: open
 priority: medium
 kind: bug
-labels: area:metal4, effort:l, deferred
+labels: area:metal4, effort:l
 created: 2026-10-02T15:19:38Z
-updated: 2026-11-14T22:07:46Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -9091,9 +9091,9 @@ Done when a pipeline element can register its persistent buffers in its own `Res
 status: open
 priority: medium
 kind: enhancement
-labels: area:metal4, area:performance, needs-decision, effort:l, deferred
+labels: area:metal4, area:performance, needs-decision, effort:l
 created: 2026-10-02T22:35:16Z
-updated: 2026-10-21T14:01:17Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 MSState.init(wrappedValue:) (Core/State.swift:50) takes Value, not @autoclosure () -> Value. A default like '@MSState var mesh: MTKMesh = .teapot()', or an assignment to an @MSState in init, runs every time the element struct is rebuilt. That is usually every frame. The persisted StateBox wins and the new value is discarded, but the allocation still happens. In MetalSprocketsExamples this builds a teapot MTKMesh, a sphere, a 2048x2048 texture and a sampler every frame in BouncingTeapots, and MetalCanvas allocated 16 MB of buffers per frame (MetalSprocketsExamples #438). Proposal: add init(wrappedValue: @autoclosure @escaping () -> Value) and evaluate it only when no persisted state exists, like SwiftUI State. Assignments in init are harder to fix; at least document that they run every rebuild.
@@ -9943,9 +9943,9 @@ Expected
 status: open
 priority: low
 kind: feature
-labels: area:performance, needs-decision, effort:xl, deferred
+labels: area:performance, needs-decision, effort:xl
 created: 2026-10-16T13:52:51Z
-updated: 2026-10-16T13:55:56Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 Idea (speculative).
@@ -9971,9 +9971,9 @@ Open questions
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, needs-decision, effort:l, deferred
+labels: area:performance, needs-decision, effort:l
 created: 2026-10-16T13:55:05Z
-updated: 2026-10-16T18:45:18Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 From the #489 profile. Related: #486, #495, #496, #497, #490. Not the same as #500 (instancing).
@@ -10445,10 +10445,10 @@ Expected
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:api, needs-decision, effort:l, deferred
+labels: area:performance, area:api, needs-decision, effort:l
 depends: 520, 521, 522, 523
 created: 2026-10-16T17:52:46Z
-updated: 2026-10-16T18:45:18Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 Part of RFC 0006. A big remaining lever after the autoresearch session.
@@ -10542,9 +10542,9 @@ What is wrong
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, area:api, needs-decision, effort:m, deferred
+labels: area:performance, area:api, needs-decision, effort:m
 created: 2026-10-16T18:03:38Z
-updated: 2026-10-16T18:45:19Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 Part of #519.
@@ -10564,9 +10564,9 @@ What is wrong
 status: open
 priority: low
 kind: feature
-labels: area:api, needs-decision, effort:l, deferred
+labels: area:api, needs-decision, effort:l
 created: 2026-10-16T18:03:38Z
-updated: 2026-10-16T18:04:01Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 Part of #519. Speculative.
@@ -10676,9 +10676,9 @@ SDK 27 makes SwiftUI's ViewBuilder (now ContentBuilder) unconstrained. Apple not
 status: open
 priority: low
 kind: enhancement
-labels: deferred, area:api, effort:xl
+labels: area:api, effort:xl
 created: 2026-10-17T11:49:19Z
-updated: 2026-10-21T16:43:44Z
+updated: 2026-11-17T19:16:19Z
 +++
 
 Use SwiftUI 27's ContentBuilder pattern so nonsensical nesting (e.g. ComputeDispatch inside RenderPipeline) fails to compile. See RFCs/0007-typed-content-domains.md.
