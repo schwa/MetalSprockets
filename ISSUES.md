@@ -5,12 +5,13 @@
 ## 11: Address Type Safety
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l, area:api
 created: 2026-02-19T00:00:00Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:18:09Z
+closed: 2026-11-17T19:18:09Z
 +++
 
 MetalSprockets does not provide enough type safety.
@@ -24,6 +25,8 @@ SwiftUI constrains some combinations: TableView expects TableRows/TableColumns.
 Investigate equivalent constraints in MetalSprockets. One option is additional element-builder types, similar to SwiftUI's TableRowBuilder.
 
 *Imported from #3*
+
+- `2026-11-17T19:18:09Z`: Duplicated by 529.
 
 ---
 
@@ -2036,12 +2039,13 @@ File: Sources/MetalSprockets/Core/StateBox.swift
 ## 212: Pass Node as parameter to EnvironmentReader
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m
 created: 2026-02-19T00:00:00Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:18:30Z
+closed: 2026-11-17T19:18:30Z
 +++
 
 EnvironmentReader should ideally be passed a Node as a parameter as noted in the TODO.
@@ -8958,12 +8962,12 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 ## 471: Random tile-shaped corruption in a RenderView frame with a slow fragment shader
 
 +++
-status: open
+status: blocked
 priority: medium
 kind: bug
 labels: area:metal4, effort:l
 created: 2026-10-02T15:19:38Z
-updated: 2026-11-17T19:16:19Z
+updated: 2026-11-17T19:18:50Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -11725,12 +11729,13 @@ Apps have no MetalSprockets API to find out if the device supports Metal 4 befor
 ## 575: No Draw initializers for indirect draws
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:api, area:metal4, area:performance, effort:m
 created: 2026-11-17T19:13:47Z
-updated: 2026-11-17T19:15:43Z
+updated: 2026-11-17T19:19:44Z
+closed: 2026-11-17T19:19:44Z
 +++
 
 Draw has initializers for direct draws (Draw(primitiveType:indexBuffer:...), Draw(mesh:)) that validate the index range and keep buffers resident. There are none for indirect draws, where the GPU writes the draw arguments (MTLDrawPrimitivesIndirectArguments / MTLDrawIndexedPrimitivesIndirectArguments) into a buffer.

@@ -292,6 +292,45 @@ struct RenderStateTests {
         }
     }
 
+    // #575: indirect draws read their arguments from a buffer.
+    @Test(.timeLimit(.minutes(1)))
+    func indirectDrawsReadArgumentsFromABuffer() async throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let shaders = try shaders(Self.colorSource)
+        let vertices = try vertexBuffer([[-1, -1], [1, -1], [-1, 1], [-1, 1], [1, -1], [1, 1]])
+        let indices: [UInt16] = [9, 9, 0, 1, 2, 2, 1, 3]
+        let indexBuffer = try #require(device.makeBuffer(bytes: indices, length: indices.count * 2, options: .storageModeShared))
+        let quadVertices = try vertexBuffer([[-1, -1], [1, -1], [-1, 1], [1, 1]])
+        // A junk record first, so the draws only work if the offsets are honoured.
+        var direct = [MTLDrawPrimitivesIndirectArguments(vertexCount: 0, instanceCount: 0, vertexStart: 0, baseInstance: 0), MTLDrawPrimitivesIndirectArguments(vertexCount: 6, instanceCount: 1, vertexStart: 0, baseInstance: 0)]
+        let directBuffer = try #require(device.makeBuffer(bytes: &direct, length: MemoryLayout<MTLDrawPrimitivesIndirectArguments>.stride * 2, options: .storageModeShared))
+        var indexed = [MTLDrawIndexedPrimitivesIndirectArguments(indexCount: 0, instanceCount: 0, indexStart: 0, baseVertex: 0, baseInstance: 0), MTLDrawIndexedPrimitivesIndirectArguments(indexCount: 6, instanceCount: 1, indexStart: 0, baseVertex: 0, baseInstance: 0)]
+        let indexedBuffer = try #require(device.makeBuffer(bytes: &indexed, length: MemoryLayout<MTLDrawIndexedPrimitivesIndirectArguments>.stride * 2, options: .storageModeShared))
+        let directOffset = MemoryLayout<MTLDrawPrimitivesIndirectArguments>.stride
+        let indexedOffset = MemoryLayout<MTLDrawIndexedPrimitivesIndirectArguments>.stride
+        func directScene(offset: Int) throws -> some Element {
+            try RenderPipeline(vertexShader: shaders.vertex, fragmentShader: shaders.fragment) {
+                Draw(primitiveType: .triangle, indirectBuffer: directBuffer, indirectBufferOffset: offset)
+                    .vertexBuffer(vertices, index: 0)
+                    .parameter("color", value: SIMD4<Float>(0, 1, 0, 1))
+            }.vertexDescriptor(shaders.vertex.inferredVertexDescriptor())
+        }
+        func indexedScene(offset: Int) throws -> some Element {
+            try RenderPipeline(vertexShader: shaders.vertex, fragmentShader: shaders.fragment) {
+                Draw(primitiveType: .triangle, indexBuffer: indexBuffer, indexType: .uint16, indexBufferOffset: 4, indirectBuffer: indexedBuffer, indirectBufferOffset: offset)
+                    .vertexBuffer(quadVertices, index: 0)
+                    .parameter("color", value: SIMD4<Float>(0, 0, 1, 1))
+            }.vertexDescriptor(shaders.vertex.inferredVertexDescriptor())
+        }
+        func render(_ content: some Element) async throws -> [UInt8] {
+            centerPixel(try await TestOffscreenRenderer(size: CGSize(width: 64, height: 64), pixelFormat: .bgra8Unorm).render(content).texture)
+        }
+        #expect(try await render(directScene(offset: directOffset)) == [0, 255, 0, 255])
+        #expect(try await render(indexedScene(offset: indexedOffset)) == [255, 0, 0, 255])
+        await #expect(throws: (any Error).self) { _ = try await render(directScene(offset: directOffset + 4)) }
+        await #expect(throws: (any Error).self) { _ = try await render(indexedScene(offset: 2)) }
+    }
+
     // #453: Draw(mesh:) with .vertexBuffers(of:) renders an MTKMesh.
     @Test(.timeLimit(.minutes(1)))
     func meshDrawRendersAnMTKMesh() async throws {
