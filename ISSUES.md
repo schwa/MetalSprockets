@@ -11722,7 +11722,7 @@ Apps have no MetalSprockets API to find out if the device supports Metal 4 befor
 status: new
 priority: medium
 kind: feature
-labels: area:api,area:metal4,area:performance,effort:m
+labels: area:api, area:metal4, area:performance, effort:m
 created: 2026-11-17T19:13:47Z
 +++
 
@@ -11731,5 +11731,23 @@ Draw has initializers for direct draws (Draw(primitiveType:indexBuffer:...), Dra
 Today a caller must use a raw Draw closure, compute the Metal 4 GPU addresses itself, and declare the argument and index buffers for residency by hand. ComputeDispatch already has the equivalent for compute (init(indirectBuffer:)).
 
 Needed by SceneSprockets GPU-driven rendering: occlusion culling, GPU particle draw counts, and GPU LOD selection all produce draw arguments on the GPU.
+
+---
+
+## 576: No support for indirect command buffers
+
++++
+status: new
+priority: medium
+kind: feature
+labels: area:api,area:metal4,area:performance,effort:l
+created: 2026-11-17T19:13:47Z
++++
+
+MetalSprockets has no element or helper for MTLIndirectCommandBuffer: creating one, encoding draws into it (from the CPU once, or from a compute shader each frame), keeping it and the resources its commands reach resident, and executing a range of it in a render pass (executeCommandsInBuffer).
+
+Without it, every draw is encoded on the CPU every frame through the element tree, and GPU-driven rendering (draw lists built by compute) is not possible.
+
+Needed by SceneSprockets: draws encoded with indirect command buffers, and GPU-driven rendering in general.
 
 ---
