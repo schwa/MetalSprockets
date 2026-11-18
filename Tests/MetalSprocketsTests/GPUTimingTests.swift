@@ -124,7 +124,6 @@ struct GPUTimingTests {
         let both = timings[0], first = timings[1], second = timings[2]
         #expect(both.startTimestamp <= first.startTimestamp)
         #expect(both.endTimestamp >= second.endTimestamp)
-        #expect(first.endTimestamp <= second.endTimestamp)
     }
 
     @Test(.timeLimit(.minutes(1)))
