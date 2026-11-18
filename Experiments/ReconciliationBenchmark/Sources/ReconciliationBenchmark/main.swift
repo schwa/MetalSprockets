@@ -1,12 +1,14 @@
 // Per-frame CPU cost with many draw elements (#486, #487).
-// Usage: ReconciliationBenchmark [--scenario cubes|draws|static] [--frames N] [--warmup N] [--counts 10,50,100]
-//                                [--moving N] [--half-modifiers] [--flat]
+// Usage: ReconciliationBenchmark [--scenario cubes|draws|static|materials] [--frames N] [--warmup N] [--counts 10,50,100]
+//                                [--moving N] [--half-modifiers] [--flat] [--argument-buffers]
 //   --warmup: frames rendered and not measured before each count (default 3), so pipeline compilation, allocation
 //             and caching are not counted.
 //   cubes (default): the Example app's Render demo, one Draw per cube in a ForEach. Default count 1000.
 //   draws: the #486 repro, two passes with a deeper modifier stack per draw.
 //   static: the cubes scene where only the first --moving cubes (default 10) change each frame; the rest are
 //           identical every frame (#520). Measures how well unchanged draws are reused.
+//   materials: one triangle per draw with four textures, a sampler and a tint, bound slot by slot, or with
+//              --argument-buffers through one ArgumentBuffer per material (#579).
 
 import CoreGraphics
 import Foundation
@@ -56,6 +58,7 @@ struct Options {
         case cubes
         case draws
         case `static`
+        case materials
     }
 
     var scenario = Scenario.cubes
@@ -64,6 +67,7 @@ struct Options {
     var moving = 10
     var halfModifiers = false
     var flat = false
+    var argumentBuffers = false
     var counts: [Int]?
 
     init(arguments: [String]) {
@@ -72,7 +76,7 @@ struct Options {
             switch argument {
             case "--scenario":
                 guard let scenario = Scenario(rawValue: iterator.next() ?? "") else {
-                    fatalError("--scenario must be cubes, draws or static")
+                    fatalError("--scenario must be cubes, draws, static or materials")
                 }
                 self.scenario = scenario
             case "--frames": frames = Int(iterator.next() ?? "") ?? frames
@@ -80,6 +84,7 @@ struct Options {
             case "--moving": moving = Int(iterator.next() ?? "") ?? moving
             case "--half-modifiers": halfModifiers = true
             case "--flat": flat = true
+            case "--argument-buffers": argumentBuffers = true
             case "--counts": counts = (iterator.next() ?? "").split(separator: ",").compactMap { Int($0) }
             default: fatalError("Unknown argument \(argument)")
             }
@@ -241,7 +246,8 @@ let options = Options(arguments: CommandLine.arguments)
 let device = MTLCreateSystemDefaultDevice()!
 let renderer = try OffscreenRenderer(size: CGSize(width: 1280, height: 800), device: device)
 let drawResources = options.scenario == .draws ? try Resources(device: device) : nil
-let cubeResources = options.scenario != .draws ? try CubeResources(device: device) : nil
+let cubeResources = [.cubes, .static].contains(options.scenario) ? try CubeResources(device: device) : nil
+let materialsResources = options.scenario == .materials ? try MaterialsResources(device: device) : nil
 
 // Builds one frame's root element and reports how many draws it issues.
 @MainActor
@@ -253,6 +259,8 @@ func makeRoot(count: Int, frame: Int) throws -> (AnyElement, Int) {
         return (try root(makeItems(count: count, frame: frame), resources: drawResources!, options: options).eraseToAnyElement(), count * 2)
     case .static:
         return (try cubesRoot(count: count, frame: frame, resources: cubeResources!, moving: options.moving).eraseToAnyElement(), count)
+    case .materials:
+        return (try materialsRoot(count: count, frame: frame, resources: materialsResources!, argumentBuffers: options.argumentBuffers).eraseToAnyElement(), count)
     }
 }
 
@@ -262,7 +270,7 @@ let configuration = "debug"
 let configuration = "release"
 #endif
 let counts = options.counts ?? (options.scenario == .draws ? [10, 50, 100, 200, 400] : [1_000])
-print("# scenario=\(options.scenario.rawValue) config=\(configuration) frames=\(options.frames) warmup=\(options.warmup) moving=\(options.moving) halfModifiers=\(options.halfModifiers) flat=\(options.flat)")
+print("# scenario=\(options.scenario.rawValue) config=\(configuration) frames=\(options.frames) warmup=\(options.warmup) moving=\(options.moving) halfModifiers=\(options.halfModifiers) flat=\(options.flat) argumentBuffers=\(options.argumentBuffers)")
 print("# medians in ms; perDraw in microseconds of total CPU")
 print("count,draws,frame,content,update,setup,workload,cpu,gpu,perDrawUs")
 

@@ -11901,11 +11901,13 @@ Expected
 ## 579: No persistent argument buffers: every draw's bindings are rebuilt each frame
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
-labels: area:metal4,area:performance,area:api,effort:l
+labels: area:metal4, area:performance, area:api, effort:l
 created: 2026-11-18T18:18:08Z
+updated: 2026-11-18T18:34:04Z
+closed: 2026-11-18T18:34:04Z
 +++
 
 MetalSprockets uses Metal 4 argument tables (MTL4ArgumentTable, GPU addresses, resource IDs), but in the bind-per-draw style: for every draw, every frame, it acquires a table from ArgumentTablePool, clears it, and sets each buffer, texture and sampler one slot at a time from the element's parameters (ParameterSet).
@@ -11920,6 +11922,8 @@ Effects:
 Expected: first-class support for persistent argument buffers: declaring their layout, writing buffers, textures and samplers into them by name, updating only what changed, keeping their resources resident, and binding them to a draw or indirect command buffer.
 
 Related: #476, #513, #519, #576, MetalSprocketsPBR#37.
+
+- `2026-11-18T18:34:04Z`: Added ArgumentBuffer: fields set by name (layout from pipeline reflection, now requested with .bufferTypeInfo), bound with .parameter(_:argumentBuffer:) as one address, resources kept resident once per submission, copy-on-change so encoded draws keep their contents, count: elements for per-instance/ICB indexing. Benchmark materials scenario (4 textures + sampler + tint per draw, Release): ~9.5 -> 5.9 us CPU per draw. Not covered: nested struct fields, argument buffers inside argument buffers, partial in-place updates (a change writes a new copy).
 
 ---
 

@@ -49,6 +49,12 @@ public extension Element {
         }
     }
 
+    /// Binds an argument buffer to a `constant Struct &` or `constant Struct *` parameter with one address, and keeps it
+    /// and the resources its fields point to resident for the submission.
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], argumentBuffer: ArgumentBuffer) -> some Element {
+        ParameterModifier(content: self) { $0.set(name, argumentBuffer: argumentBuffer, stages: functionTypes) }
+    }
+
     /// Binds an instance or primitive acceleration structure and keeps it resident for the submission. `nil` skips the
     /// binding, so the shader need not declare it.
     func parameter(_ name: String, functionTypes: FunctionTypes = [], accelerationStructure: (any MTLAccelerationStructure)?) -> some Element {
@@ -106,6 +112,10 @@ public struct ShaderParameters {
         if let buffer {
             parameterSet.set(name, buffer: buffer, offset: offset, stages: functionTypes)
         }
+    }
+
+    public mutating func set(_ name: String, functionTypes: FunctionTypes = [], argumentBuffer: ArgumentBuffer) {
+        parameterSet.set(name, argumentBuffer: argumentBuffer, stages: functionTypes)
     }
 
     public mutating func set(_ name: String, functionTypes: FunctionTypes = [], accelerationStructure: (any MTLAccelerationStructure)?) {
@@ -169,6 +179,10 @@ public extension Element {
 
     func parameter(_ name: String, functionType: MTLFunctionType?, buffer: MTLBuffer?, offset: Int = 0) -> some Element {
         parameter(name, functionTypes: .init(functionType), buffer: buffer, offset: offset)
+    }
+
+    func parameter(_ name: String, functionType: MTLFunctionType?, argumentBuffer: ArgumentBuffer) -> some Element {
+        parameter(name, functionTypes: .init(functionType), argumentBuffer: argumentBuffer)
     }
 
     func parameter(_ name: String, functionType: MTLFunctionType?, accelerationStructure: (any MTLAccelerationStructure)?) -> some Element {

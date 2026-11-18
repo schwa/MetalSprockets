@@ -7,6 +7,8 @@ internal struct PipelineBindings {
         let index: Int
         let type: MTLBindingType
         var arrayLength = 1
+        // Buffers that point to a struct, which an ArgumentBuffer can fill.
+        var argumentBufferLayout: ArgumentBufferLayout?
     }
 
     private struct Key: Hashable {
@@ -28,7 +30,8 @@ internal struct PipelineBindings {
             for binding in stageBindings {
                 // Array arguments (e.g. `array<texture2d<float>, N>`) reflect as one binding spanning N slots.
                 let arrayLength = (binding as? any MTLTextureBinding)?.arrayLength ?? 1
-                entries[Key(name: binding.name, stage: stage)] = Binding(index: binding.index, type: binding.type, arrayLength: arrayLength)
+                let layout = (binding as? any MTLBufferBinding).flatMap(ArgumentBufferLayout.init)
+                entries[Key(name: binding.name, stage: stage)] = Binding(index: binding.index, type: binding.type, arrayLength: arrayLength, argumentBufferLayout: layout)
                 var size = sizes[stage, default: TableSizes()]
                 switch binding.type {
                 case .texture:
@@ -627,7 +630,8 @@ internal final class PipelineCache {
 
     private static func reflectingOptions() -> MTL4PipelineOptions {
         let options = MTL4PipelineOptions()
-        options.shaderReflection = .bindingInfo
+        // Buffer type info gives argument buffers their struct layouts.
+        options.shaderReflection = [.bindingInfo, .bufferTypeInfo]
         return options
     }
 }

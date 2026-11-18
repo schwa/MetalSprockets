@@ -23,6 +23,7 @@ internal final class RecordingScope {
     private var hasActiveEncoder = false
     private var resources = Resources()
     private var coveredAllocations: Set<ObjectIdentifier> = []
+    private var retainedArgumentBufferVersions: Set<ObjectIdentifier> = []
     private var residencyMode = ResidencyConfiguration.Mode.automatic
 
     let device: any MTLDevice
@@ -82,6 +83,21 @@ internal final class RecordingScope {
             return
         }
         resources.allocations.append(allocation)
+    }
+
+    // Keeps an argument buffer's contents and every resource it points to resident and alive, once per submission
+    // however many draws bind it.
+    func retainArgumentBufferVersion(_ version: ArgumentBuffer.Version) throws {
+        guard isActive else {
+            throw Failure.encodingEnded
+        }
+        guard retainedArgumentBufferVersions.insert(ObjectIdentifier(version)).inserted else {
+            return
+        }
+        resources.objects.append(version)
+        for allocation in version.allocations {
+            try retainAllocation(allocation)
+        }
     }
 
     /// Copies a shader value into scratch storage retained until the GPU submission retires.

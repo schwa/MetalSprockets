@@ -72,10 +72,11 @@ internal struct ParameterSet {
         case sampler(any MTLSamplerState)
         case bytes((RecordingScope) throws -> MTLGPUAddress)
         case accelerationStructure(any MTLAccelerationStructure)
+        case argumentBuffer(ArgumentBuffer)
 
         func accepts(_ type: MTLBindingType) -> Bool {
             switch self {
-            case .buffer, .bytes:
+            case .buffer, .bytes, .argumentBuffer:
                 type == .buffer
             case .texture, .textures:
                 type == .texture
@@ -131,6 +132,10 @@ internal struct ParameterSet {
 
     mutating func set(_ name: String, sampler: any MTLSamplerState, stages: FunctionTypes = [], isOptional: Bool = false) {
         entries.append(Entry(name: name, stages: stages, value: .sampler(sampler), isOptional: isOptional))
+    }
+
+    mutating func set(_ name: String, argumentBuffer: ArgumentBuffer, stages: FunctionTypes = [], isOptional: Bool = false) {
+        entries.append(Entry(name: name, stages: stages, value: .argumentBuffer(argumentBuffer), isOptional: isOptional))
     }
 
     mutating func set(_ name: String, accelerationStructure: any MTLAccelerationStructure, stages: FunctionTypes = [], isOptional: Bool = false) {
@@ -267,6 +272,13 @@ internal struct ParameterSet {
             case .accelerationStructure(let accelerationStructure):
                 try scope.retainAllocation(accelerationStructure)
                 table.setResource(accelerationStructure.gpuResourceID, bufferIndex: binding.index)
+            case .argumentBuffer(let argumentBuffer):
+                guard argumentBuffer.device === scope.device else {
+                    throw ResourceCollection.Failure.foreignDevice
+                }
+                let version = try argumentBuffer.version(for: binding.argumentBufferLayout, bindingName: entry.name)
+                try scope.retainArgumentBufferVersion(version)
+                table.setAddress(version.buffer.gpuAddress, index: binding.index)
             }
         }
         if !matched, !entry.isOptional {
