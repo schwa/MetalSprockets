@@ -11927,6 +11927,26 @@ Related: #476, #513, #519, #576, MetalSprocketsPBR#37.
 
 ---
 
+## 580: ArgumentBuffer rebuilds every element when one field changes
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:performance,effort:m
+created: 2026-11-19T04:15:24Z
++++
+
+ArgumentBuffer is copy-on-write: any set() drops the built version, and the next bind allocates a new MTLBuffer and rewrites every field of every element (ArgumentBuffer.version(for:bindingName:), build(layout:values:)). Draws already encoded keep their version, so writes never race the GPU.
+
+For a large, long-lived table where a few fields change every frame (for example, one table of all materials of a model with one animated material), each frame costs a full rebuild and a new allocation, in proportion to the table size, not to what changed. Old versions are freed only when the last draw that used them is released; they are never reused.
+
+Expected: changing a few fields costs work in proportion to those fields, and stays safe for frames the GPU is still reading.
+
+Needed by SceneSprockets#573 (shared PBR material table).
+
+---
+
 ## Milestone: m1
 
 +++
