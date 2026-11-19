@@ -51,6 +51,12 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
     @MSState
     private var resources: ResourceCollection?
 
+    // Explicit because Swift 6.2 (Xcode 26) makes the memberwise initializer private when @MSState adds private storage.
+    init(content: Content, sampleCount: Int) {
+        self.content = content
+        self.sampleCount = sampleCount
+    }
+
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         try visit(content)
     }
