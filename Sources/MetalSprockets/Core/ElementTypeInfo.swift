@@ -45,52 +45,65 @@ internal struct ElementTypeInfo: @unchecked Sendable {
     }
 }
 
-// Static entry points for the cached metatypes. `as! Self` casts to a concrete type and cannot fail: the metatype came
-// from the element's own dynamic type.
-// swiftlint:disable force_cast
+/// Runs `body` with `element` viewed as `Concrete`, which must be its dynamic type. Callers get `Concrete` from the
+/// element's own cached metatype, so this skips the dynamic cast `as!` would do.
+@inline(__always)
+private func withConcrete<Concrete, Result, ThrownError>(_ element: any Element, as concrete: Concrete.Type, _ body: (UnsafePointer<Concrete>) throws(ThrownError) -> Result) throws(ThrownError) -> Result {
+    try withOpened(element, as: concrete, body)
+}
+
+@inline(__always)
+private func withOpened<Opened: Element, Concrete, Result, ThrownError>(_ opened: Opened, as _: Concrete.Type, _ body: (UnsafePointer<Concrete>) throws(ThrownError) -> Result) throws(ThrownError) -> Result {
+    assert(Opened.self == Concrete.self, "Element of type \(Opened.self) dispatched as \(Concrete.self)")
+    return try withUnsafePointer(to: opened) { pointer throws(ThrownError) -> Result in
+        // Opened and Concrete are the same type, so the memory is already bound to Concrete.
+        try body(UnsafeRawPointer(pointer).assumingMemoryBound(to: Concrete.self))
+    }
+}
+
+// Static entry points for the cached metatypes. The metatype came from the element's own dynamic type.
 extension BodylessElement {
     static func visitChildrenBodyless(of element: any Element, _ visit: (any Element) throws -> Void) throws {
-        try (element as! Self).visitChildrenBodyless(visit)
+        try withConcrete(element, as: Self.self) { try $0.pointee.visitChildrenBodyless(visit) }
     }
 
     static func configureNodeBodyless(of element: any Element, node: Node) throws {
-        try (element as! Self).configureNodeBodyless(node)
+        try withConcrete(element, as: Self.self) { try $0.pointee.configureNodeBodyless(node) }
     }
 
     static func skipsWorkload(of element: any Element, node: Node) -> Bool {
-        (element as! Self).skipsWorkload(node)
+        withConcrete(element, as: Self.self) { $0.pointee.skipsWorkload(node) }
     }
 }
 
 extension SetupElement {
     static func setupEnter(of element: any Element, node: Node) throws {
-        try (element as! Self).setupEnter(node)
+        try withConcrete(element, as: Self.self) { try $0.pointee.setupEnter(node) }
     }
 
     static func setupExit(of element: any Element, node: Node) throws {
-        try (element as! Self).setupExit(node)
+        try withConcrete(element, as: Self.self) { try $0.pointee.setupExit(node) }
     }
 }
 
 extension WorkloadElement {
     static func workloadEnter(of element: any Element, node: Node) throws {
-        try (element as! Self).workloadEnter(node)
+        try withConcrete(element, as: Self.self) { try $0.pointee.workloadEnter(node) }
     }
 
     static func workloadExit(of element: any Element, node: Node) throws {
-        try (element as! Self).workloadExit(node)
+        try withConcrete(element, as: Self.self) { try $0.pointee.workloadExit(node) }
     }
 }
 
 extension ExplicitlyIdentifiedElement {
     static func explicitID(of element: any Element) -> AnyElementID {
-        (element as! Self).explicitID
+        withConcrete(element, as: Self.self) { $0.pointee.explicitID }
     }
 }
 
 extension IdentityWrapperElement {
     static func wrappedContent(of element: any Element) -> any Element {
-        (element as! Self).wrappedContent
+        withConcrete(element, as: Self.self) { $0.pointee.wrappedContent }
     }
 }
-// swiftlint:enable force_cast

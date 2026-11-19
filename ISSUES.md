@@ -12023,6 +12023,7 @@ Mechanisms tracked separately: #476, #513, #519, #522, #523, #578. Earlier work:
 
 - `2026-11-19T14:32:32Z`: Partial step: ArgumentTablePool.acquire checks its last 4 buckets before hashing the label, and depthStencilState reuses the last state. ReconciliationBenchmark 1000 draws Release, interleaved A/B: workload 2.43 -> 2.22 ms (~8%), cpu 5.55 -> 5.37 ms. Remaining: Update ~2.9 ms (#519), makeTables ~25% of workload (#476), parameter chain ~15% (#513, needs #521).
 - `2026-11-19T14:39:55Z`: Partial step: ScratchArena caches each buffer's length, contents and gpuAddress at creation instead of calling them for every stored value. Workload 2.19 -> 2.09 ms (~5%), same benchmark. Filed #584 for runtime demangling of modifier opaque types (~4% of Update).
+- `2026-11-19T14:49:12Z`: Partial step: ElementTypeInfo dispatch opens the existential and reads it as the concrete type instead of as! Self. A/B 1000 draws Release: update 2.80 -> 2.68 ms, workload 2.11 -> 1.96 ms, cpu 5.12 -> 4.85 ms.
 
 ---
 
