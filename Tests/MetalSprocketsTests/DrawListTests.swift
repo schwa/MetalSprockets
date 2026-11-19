@@ -78,6 +78,47 @@ struct DrawListTests {
         #expect(drawn.left == [255, 0, 0, 255])
     }
 
+    static let amplifiedSource = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    struct VertexOut {
+        float4 position [[position]];
+        float4 color;
+    };
+
+    [[vertex]] VertexOut amplified_vertex(uint vertex_id [[vertex_id]], ushort view [[amplification_id]], constant float2 *positions [[buffer(0)]]) {
+        VertexOut out;
+        out.position = float4(positions[vertex_id], 0, 1);
+        out.color = view == 0 ? float4(1, 0, 0, 1) : float4(0, 1, 0, 1);
+        return out;
+    }
+
+    [[fragment]] float4 amplified_fragment(VertexOut in [[stage_in]]) {
+        return in.color;
+    }
+    """
+
+    @Test(.requiresMetal4) func `stereo views draw every row to each view`() async throws {
+        let left = MTLViewport(originX: 0, originY: 0, width: 32, height: 64, znear: 0, zfar: 1)
+        let right = MTLViewport(originX: 32, originY: 0, width: 32, height: 64, znear: 0, zfar: 1)
+        let views = StereoViews(viewMatrices: [matrix_identity_float4x4, matrix_identity_float4x4], projectionMatrices: [matrix_identity_float4x4, matrix_identity_float4x4], viewports: [left, right])
+        let element = try RenderPipeline(vertexShader: VertexShader(source: Self.amplifiedSource), fragmentShader: FragmentShader(source: Self.amplifiedSource)) {
+            DrawList(stereoViews: views, rows: [DrawRow(geometry: .vertices(10..<13))])
+                .parameter("positions", values: Self.positions)
+        }
+        .vertexAmplification(count: 2)
+        let renderer = try TestOffscreenRenderer(size: CGSize(width: 64, height: 64), pixelFormat: .bgra8Unorm)
+        let texture = try await renderer.render(element).texture
+        func pixel(_ x: Int) -> [UInt8] {
+            var bytes = [UInt8](repeating: 0, count: 4)
+            texture.getBytes(&bytes, bytesPerRow: texture.width * 4, from: MTLRegionMake2D(x, 32, 1, 1), mipmapLevel: 0)
+            return bytes
+        }
+        #expect(pixel(16) == [0, 0, 255, 255])
+        #expect(pixel(48) == [0, 255, 0, 255])
+    }
+
     @Test(.requiresMetal4) func `indexed rows without an index buffer throw`() async throws {
         let element = try RenderPipeline(vertexShader: VertexShader(source: Self.source), fragmentShader: FragmentShader(source: Self.source)) {
             DrawList(rows: [DrawRow(geometry: .indexed(0..<3))])

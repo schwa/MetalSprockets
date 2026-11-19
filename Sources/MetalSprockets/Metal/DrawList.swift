@@ -50,22 +50,27 @@ public struct DrawList: Element {
     let rows: [DrawRow]
     let indexBuffer: (any MTLBuffer)?
     let indexType: MTLIndexType
+    let stereoViews: StereoViews?
 
-    public init(indexBuffer: (any MTLBuffer)? = nil, indexType: MTLIndexType = .uint32, rows: [DrawRow]) {
+    /// With `stereoViews`, every row draws to each view with vertex amplification.
+    public init(indexBuffer: (any MTLBuffer)? = nil, indexType: MTLIndexType = .uint32, stereoViews: StereoViews? = nil, rows: [DrawRow]) {
         self.rows = rows
         self.indexBuffer = indexBuffer
         self.indexType = indexType
+        self.stereoViews = stereoViews
     }
 
-    public init<Data: Sequence>(indexBuffer: (any MTLBuffer)? = nil, indexType: MTLIndexType = .uint32, _ data: Data, row: (Data.Element) throws -> DrawRow) rethrows {
-        self.init(indexBuffer: indexBuffer, indexType: indexType, rows: try data.map(row))
+    public init<Data: Sequence>(indexBuffer: (any MTLBuffer)? = nil, indexType: MTLIndexType = .uint32, stereoViews: StereoViews? = nil, _ data: Data, row: (Data.Element) throws -> DrawRow) rethrows {
+        self.init(indexBuffer: indexBuffer, indexType: indexType, stereoViews: stereoViews, rows: try data.map(row))
     }
 
     public var body: some Element {
         let rows = rows
         let indexBuffer = indexBuffer
         let indexType = indexType
+        let stereoViews = stereoViews
         return Draw(resources: indexBuffer.map { [$0] } ?? []) { encoder in
+            stereoViews?.configure(encoder)
             // Draw has reset cull mode and winding to these defaults; set them only when a row changes them.
             var cullMode = MTLCullMode.none
             var winding = MTLWinding.clockwise

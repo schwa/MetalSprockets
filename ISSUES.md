@@ -12176,19 +12176,22 @@ Part of #585.
 ## 590: Unknown whether the draw list can replace SceneSprockets' PBRMergedGeometry
 
 +++
-status: new
+status: closed
 priority: medium
 kind: task
 labels: area:api, effort:m
 milestone: m3
 depends: 588
 created: 2026-11-19T14:57:57Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T15:40:20Z
+closed: 2026-11-19T15:40:20Z
 +++
 
 Part of #585.
 
 SceneSprockets' PBR renderer merges batches by hand (PBRMergedGeometry, SceneSprockets#545, RFC 0001), with per-record tables for instances, materials, cull mode and winding. It is not known whether the draw list covers that case, or what it is missing.
+
+- `2026-11-19T15:40:20Z`: Yes, with one gap. PBRRenderer.mergedDrawCalls maps to DrawList rows: each record is an indexed row (indexStart/indexCount, baseVertex, firstInstance..<+instanceCount) with per-row cull mode and winding; per-draw data already uses base instance -> instanceRecords -> recordMaterials -> materials argument buffer. Culling is done by filtering records into rows. Eligibility, tables, posing, overrides and skin palettes stay in SceneSprockets. Gap: stereo vertex amplification (#595). Porting SceneSprockets is a separate change there.
 
 ---
 
@@ -12265,6 +12268,31 @@ updated: 2026-11-19T14:59:54Z
 Part of #585.
 
 All draw list rows are encoded on the CPU each frame. There is no path to GPU-driven culling or to indirect command buffers.
+
+---
+
+## 595: DrawList cannot draw to several views with vertex amplification
+
++++
+status: closed
+priority: medium
+kind: feature
+labels: area:api, area:metal4
+milestone: m3
+depends: 588
+created: 2026-11-19T15:39:28Z
+updated: 2026-11-19T15:40:20Z
+closed: 2026-11-19T15:40:20Z
++++
+
+Part of #585. Found in #590.
+
+Draw resets vertex amplification to 1 before its closure runs, and DrawList has no way to set it. Renderers that draw stereo (visionOS) call StereoViews.configure(encoder) inside a Draw closure, as SceneSprockets' PBRRenderer.mergedDrawCalls does. Without it, that merged path cannot move to DrawList.
+
+## Proposed fix (per schwa)
+DrawList takes an optional StereoViews value, applied once before its rows.
+
+- `2026-11-19T15:40:20Z`: DrawList takes stereoViews:, applied once before its rows. Test renders two viewports via amplification_id.
 
 ---
 
