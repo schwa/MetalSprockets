@@ -11949,6 +11949,26 @@ Needed by SceneSprockets#573 (shared PBR material table).
 
 ---
 
+## 581: Submissions spend most CPU time casting repeated allocations to MTLResource
+
++++
+status: closed
+priority: high
+kind: bug
+labels: area:performance, effort:s
+created: 2026-11-19T05:04:44Z
+updated: 2026-11-19T05:04:44Z
+closed: 2026-11-19T05:04:44Z
++++
+
+RecordingScope.retainAllocation appends every allocation it is given, and finish() casts each one with 'as? any MTLResource'. That is an Objective-C protocol conformance check (swift_dynamicCastObjCProtocolConditional), which walks protocol lists with strcmp. Duplicates are removed only later, by the residency tracker.
+
+retainArgumentBufferVersion (#579) skips repeated versions but passes every allocation of each new version, so textures shared by many argument buffers arrive many times per submission.
+
+Measured in SceneSprockets (ms-gltf-render bench NodePerformanceTest, Release, M5 Max): ~54 ms CPU per frame, with ~61% of samples in the cast (Time Profiler). Reported as SceneSprockets#571.
+
+---
+
 ## Milestone: m1
 
 +++

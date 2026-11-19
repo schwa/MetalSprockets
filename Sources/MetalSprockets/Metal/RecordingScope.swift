@@ -23,6 +23,7 @@ internal final class RecordingScope {
     private var hasActiveEncoder = false
     private var resources = Resources()
     private var coveredAllocations: Set<ObjectIdentifier> = []
+    private var retainedAllocations: Set<ObjectIdentifier> = []
     private var retainedArgumentBufferVersions: Set<ObjectIdentifier> = []
     private var residencyMode = ResidencyConfiguration.Mode.automatic
 
@@ -75,6 +76,10 @@ internal final class RecordingScope {
     func retainAllocation(_ allocation: any MTLAllocation) throws {
         guard isActive else {
             throw Failure.encodingEnded
+        }
+        // Argument buffers share textures, so the same allocation often arrives many times per submission.
+        guard retainedAllocations.insert(ObjectIdentifier(allocation)).inserted else {
+            return
         }
         // Memoryless textures (tile-memory render targets, such as RenderView's default depth) have no memory to make
         // resident, and residency sets reject them. Keep them alive, but out of the residency set.
