@@ -238,5 +238,15 @@ struct ArgumentBufferTests {
         #expect(next.allocations.contains { $0 === second })
         #expect(version.buffer.contents().load(fromByteOffset: 16, as: UInt64.self) == first.gpuResourceID._impl)
         #expect(next.buffer.contents().load(fromByteOffset: 16, as: UInt64.self) == second.gpuResourceID._impl)
+        // Unchanged fields carry over from the previous version.
+        #expect(!next.allocations.contains { $0 === first })
+        #expect(next.allocations.contains { $0 === data })
+        #expect(next.allocations.contains { $0 === next.buffer })
+        #expect(!next.allocations.contains { $0 === version.buffer })
+        #expect(next.objects.contains { $0 === sampler })
+        let otherBytes = (0..<layout.stride).filter { !(16..<24).contains($0) }
+        for offset in otherBytes {
+            #expect(next.buffer.contents().load(fromByteOffset: offset, as: UInt8.self) == version.buffer.contents().load(fromByteOffset: offset, as: UInt8.self))
+        }
     }
 }

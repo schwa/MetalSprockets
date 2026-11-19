@@ -32,7 +32,7 @@ public final class ArgumentBuffer: @unchecked Sendable {
         case bytes([UInt8])
     }
 
-    private struct FieldKey: Hashable {
+    fileprivate struct FieldKey: Hashable {
         let element: Int
         let name: String
     }
@@ -42,17 +42,34 @@ public final class ArgumentBuffer: @unchecked Sendable {
         let buffer: any MTLBuffer
         let allocations: [any MTLAllocation]
         let objects: [AnyObject]
+        fileprivate let fieldResources: [FieldKey: FieldResources]
 
-        init(buffer: any MTLBuffer, allocations: [any MTLAllocation], objects: [AnyObject]) {
+        fileprivate init(buffer: any MTLBuffer, fieldResources: [FieldKey: FieldResources]) {
             self.buffer = buffer
+            self.fieldResources = fieldResources
+            var allocations: [any MTLAllocation] = [buffer]
+            var objects: [AnyObject] = []
+            for resources in fieldResources.values {
+                allocations += resources.allocations
+                objects += resources.objects
+            }
             self.allocations = allocations
             self.objects = objects
         }
     }
 
+    fileprivate struct FieldResources {
+        var allocations: [any MTLAllocation] = []
+        var objects: [AnyObject] = []
+    }
+
     private struct State {
         var layout: ArgumentBufferLayout?
         var values: [FieldKey: Value] = [:]
+        // Fields changed since `latest` was built.
+        var dirty: Set<FieldKey> = []
+        var latest: Version?
+        // Nil once a field changes after `latest`.
         var version: Version?
     }
 
@@ -101,7 +118,9 @@ public final class ArgumentBuffer: @unchecked Sendable {
 
     private func store(_ name: String, element: Int, value: Value) {
         state.withLockUnchecked { state in
-            state.values[FieldKey(element: element, name: name)] = value
+            let key = FieldKey(element: element, name: name)
+            state.values[key] = value
+            state.dirty.insert(key)
             state.version = nil
         }
     }
@@ -119,28 +138,36 @@ public final class ArgumentBuffer: @unchecked Sendable {
             if let version = state.version {
                 return version
             }
-            let version = try build(layout: layout, values: state.values)
+            let version: Version
+            if let latest = state.latest {
+                version = try build(layout: layout, values: state.values, keys: state.dirty, base: latest)
+            } else {
+                version = try build(layout: layout, values: state.values, keys: Set(state.values.keys), base: nil)
+            }
+            state.dirty.removeAll()
+            state.latest = version
             state.version = version
             return version
         }
     }
 
-    private func build(layout: ArgumentBufferLayout, values: [FieldKey: Value]) throws -> Version {
+    // Copies `base` (the bytes hold only resource IDs, GPU addresses and plain values, so they stay valid) and writes `keys` over it.
+    private func build(layout: ArgumentBufferLayout, values: [FieldKey: Value], keys: Set<FieldKey>, base: Version?) throws -> Version {
         let length = layout.stride * count
         guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
             throw Failure.bufferCreationFailed
         }
         buffer.label = label
-        var allocations: [any MTLAllocation] = [buffer]
-        var objects: [AnyObject] = []
         let contents = buffer.contents()
-        func writeIDs(_ ids: [UInt64], at offset: Int) {
-            for (index, id) in ids.enumerated() {
-                contents.storeBytes(of: id, toByteOffset: offset + index * MemoryLayout<UInt64>.stride, as: UInt64.self)
-            }
+        var fieldResources = base?.fieldResources ?? [:]
+        if let base {
+            contents.copyMemory(from: base.buffer.contents(), byteCount: length)
         }
         // Sorted so errors are deterministic.
-        for (key, value) in values.sorted(by: { ($0.key.element, $0.key.name) < ($1.key.element, $1.key.name) }) {
+        for key in keys.sorted(by: { ($0.element, $0.name) < ($1.element, $1.name) }) {
+            guard let value = values[key] else {
+                continue
+            }
             guard key.element >= 0, key.element < count else {
                 throw Failure.elementOutOfRange(element: key.element, count: count)
             }
@@ -148,45 +175,56 @@ public final class ArgumentBuffer: @unchecked Sendable {
                 throw Failure.unknownField(name: key.name, available: layout.fields.keys.sorted())
             }
             let offset = key.element * layout.stride + field.offset
-            switch (value, field.kind) {
-            case let (.texture(texture), .texture):
-                writeIDs([texture?.gpuResourceID._impl ?? 0], at: offset)
-                if let texture {
-                    allocations.append(texture)
-                }
-            case let (.textures(textures), .textures(capacity)):
-                guard textures.count <= capacity else {
-                    throw Failure.tooManyElements(name: key.name, count: textures.count, capacity: capacity)
-                }
-                writeIDs(textures.map(\.gpuResourceID._impl), at: offset)
-                allocations += textures as [any MTLAllocation]
-            case let (.sampler(sampler), .sampler):
-                writeIDs([sampler.gpuResourceID._impl], at: offset)
-                objects.append(sampler)
-            case let (.samplers(samplers), .samplers(capacity)):
-                guard samplers.count <= capacity else {
-                    throw Failure.tooManyElements(name: key.name, count: samplers.count, capacity: capacity)
-                }
-                writeIDs(samplers.map(\.gpuResourceID._impl), at: offset)
-                objects += samplers as [AnyObject]
-            case let (.buffer(target, targetOffset), .pointer):
-                guard targetOffset >= 0, targetOffset < target.length else {
-                    throw Failure.offsetOutOfRange(name: key.name, offset: targetOffset, length: target.length)
-                }
-                contents.storeBytes(of: target.gpuAddress + UInt64(targetOffset), toByteOffset: offset, as: UInt64.self)
-                allocations.append(target)
-            case let (.bytes(bytes), .bytes):
-                guard bytes.count <= field.span else {
-                    throw Failure.valueTooLarge(name: key.name, size: bytes.count, span: field.span)
-                }
-                bytes.withUnsafeBytes { source in
-                    contents.advanced(by: offset).copyMemory(from: source.baseAddress!, byteCount: bytes.count) // swiftlint:disable:this force_unwrapping
-                }
-            default:
-                throw Failure.kindMismatch(name: key.name)
+            fieldResources[key] = try write(value, name: key.name, field: field, to: contents.advanced(by: offset))
+        }
+        return Version(buffer: buffer, fieldResources: fieldResources)
+    }
+
+    private func write(_ value: Value, name: String, field: ArgumentBufferLayout.Field, to destination: UnsafeMutableRawPointer) throws -> FieldResources {
+        func writeIDs(_ ids: [UInt64]) {
+            for (index, id) in ids.enumerated() {
+                destination.storeBytes(of: id, toByteOffset: index * MemoryLayout<UInt64>.stride, as: UInt64.self)
             }
         }
-        return Version(buffer: buffer, allocations: allocations, objects: objects)
+        var resources = FieldResources()
+        switch (value, field.kind) {
+        case let (.texture(texture), .texture):
+            writeIDs([texture?.gpuResourceID._impl ?? 0])
+            if let texture {
+                resources.allocations.append(texture)
+            }
+        case let (.textures(textures), .textures(capacity)):
+            guard textures.count <= capacity else {
+                throw Failure.tooManyElements(name: name, count: textures.count, capacity: capacity)
+            }
+            writeIDs(textures.map(\.gpuResourceID._impl))
+            resources.allocations += textures as [any MTLAllocation]
+        case let (.sampler(sampler), .sampler):
+            writeIDs([sampler.gpuResourceID._impl])
+            resources.objects.append(sampler)
+        case let (.samplers(samplers), .samplers(capacity)):
+            guard samplers.count <= capacity else {
+                throw Failure.tooManyElements(name: name, count: samplers.count, capacity: capacity)
+            }
+            writeIDs(samplers.map(\.gpuResourceID._impl))
+            resources.objects += samplers as [AnyObject]
+        case let (.buffer(target, targetOffset), .pointer):
+            guard targetOffset >= 0, targetOffset < target.length else {
+                throw Failure.offsetOutOfRange(name: name, offset: targetOffset, length: target.length)
+            }
+            destination.storeBytes(of: target.gpuAddress + UInt64(targetOffset), as: UInt64.self)
+            resources.allocations.append(target)
+        case let (.bytes(bytes), .bytes):
+            guard bytes.count <= field.span else {
+                throw Failure.valueTooLarge(name: name, size: bytes.count, span: field.span)
+            }
+            bytes.withUnsafeBytes { source in
+                destination.copyMemory(from: source.baseAddress!, byteCount: bytes.count) // swiftlint:disable:this force_unwrapping
+            }
+        default:
+            throw Failure.kindMismatch(name: name)
+        }
+        return resources
     }
 }
 
