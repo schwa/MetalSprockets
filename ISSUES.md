@@ -11992,6 +11992,38 @@ Expected: a version whose fields barely changed costs work in proportion to thos
 
 ---
 
+## 583: One element per draw is too expensive for real scenes, so renderers batch draws themselves
+
++++
+status: new
+priority: high
+kind: enhancement
+labels: area:performance, effort:xl
+depends: 476, 513, 519, 522, 523, 578
+created: 2026-11-19T14:20:17Z
+updated: 2026-11-19T14:20:17Z
++++
+
+Drawing each batch of a model as its own element costs far more CPU than issuing the same Metal draws from one element. SceneSprockets' PBR renderer works around it by drawing most opaque batches from one element per merged set (SceneSprockets#545, RFC 0001), which costs it a second draw path with its own rules.
+
+SceneSprockets ms-gltf-render bench, merged vs per-batch (bench --no-merging), about the same number of Metal draws. Release, M5 Max, MetalSprockets 0.3.7, CPU ms per frame:
+
+| Scene | Merged | Per-batch |
+|---|---|---|
+| NodePerformanceTest | 10.3 | 369 |
+| AnimationPointerUVs | 2.5 | 19.6 |
+| CarConcept | 1.6 | 9.5 |
+| BrainStem | 0.6 | 4.9 |
+| Sponza | 0.65 | 4.7 |
+
+Several of these exceed a 120 Hz frame budget (8.3 ms) per-batch.
+
+Expected: one element per draw is cheap enough that renderers do not need their own batching to stay within a frame budget.
+
+Mechanisms tracked separately: #476, #513, #519, #522, #523, #578. Earlier work: RFC 0006, #486.
+
+---
+
 ## Milestone: m1
 
 +++
