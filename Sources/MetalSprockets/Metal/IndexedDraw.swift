@@ -31,7 +31,7 @@ public extension Draw {
 
 public extension Element {
     /// Binds each of `mesh`'s vertex buffers to the vertex-descriptor layout index matching its position.
-    func vertexBuffers(of mesh: MTKMesh) -> some Element {
+    func vertexBuffers(of mesh: MTKMesh) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { parameters in
             for (index, vertexBuffer) in mesh.vertexBuffers.enumerated() {
                 parameters.setVertexBuffer(vertexBuffer.buffer, layoutIndex: index, offset: vertexBuffer.offset)

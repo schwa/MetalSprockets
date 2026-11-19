@@ -158,7 +158,8 @@ extension CollapsibleWorkloadModifier {
 }
 
 /// Binds parameters for its subtree.
-internal struct ParameterModifier<Content>: Element, WorkloadElement, BodylessContentElement, CollapsibleWorkloadModifier where Content: Element {
+public struct ParameterModifier<Content>: Element, WorkloadElement, BodylessContentElement, CollapsibleWorkloadModifier where Content: Element {
+    public typealias Body = Never
     var content: Content
     var apply: (inout ParameterSet) -> Void
 

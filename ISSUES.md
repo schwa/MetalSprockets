@@ -12036,10 +12036,12 @@ Mechanisms tracked separately: #476, #513, #519, #522, #523, #578. Earlier work:
 ## 584: Opaque return types of element modifiers are demangled at runtime on every call
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 created: 2026-11-19T14:39:52Z
+updated: 2026-11-19T20:38:02Z
+closed: 2026-11-19T20:38:02Z
 +++
 
 Part of #583.
@@ -12049,6 +12051,8 @@ From a Time Profiler capture of ReconciliationBenchmark (Release, --scenario sta
 Expected: resolving the concrete type of a modifier chain costs little per element per frame.
 
 Unknown: whether the runtime caches this metadata in other configurations, and how much this costs in SceneSprockets.
+
+- `2026-11-19T20:38:02Z`: Parameter and vertex modifiers (.parameter overloads, .parameters, .vertexBuffer, .vertexValues, .vertexBuffers(of:)) now return the public ParameterModifier<Self> instead of some Element, so callers get cached generic metadata instead of demangling the opaque type. Time Profiler, static scenario, 1000 draws: swift_getOpaqueTypeMetadata 23 samples -> 0 in Update. Update about 2.7 -> 2.5 ms (noisy). Other modifiers keep some Element. Example app and SceneSprockets (local path) build unchanged.
 
 ---
 

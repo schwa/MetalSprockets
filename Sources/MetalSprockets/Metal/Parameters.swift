@@ -12,27 +12,27 @@ import simd
 // storage, so they must be `BitwiseCopyable`.
 
 public extension Element {
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: SIMD4<Float>) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: SIMD4<Float>) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { $0.set(name, value: value, stages: functionTypes) }
     }
 
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: simd_float4x4) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], value: simd_float4x4) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { $0.set(name, value: value, stages: functionTypes) }
     }
 
     /// Binds a texture. `nil` clears the slot.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], texture: MTLTexture?) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], texture: MTLTexture?) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { $0.set(name, texture: texture, stages: functionTypes) }
     }
 
     /// Binds an array texture argument (`array<texture2d<...>, N>`) by name, filling consecutive slots.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], textures: [MTLTexture]) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], textures: [MTLTexture]) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { $0.set(name, textures: textures, stages: functionTypes) }
     }
 
     /// Binds a sampler. Metal 4 binds samplers by resource ID, so create it with `supportArgumentBuffers = true`.
     /// `nil` skips the binding, so the shader need not declare it.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], samplerState: MTLSamplerState?) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], samplerState: MTLSamplerState?) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { parameters in
             if let samplerState {
                 parameters.set(name, sampler: samplerState, stages: functionTypes)
@@ -41,7 +41,7 @@ public extension Element {
     }
 
     /// `nil` skips the binding, so the shader need not declare it.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], buffer: MTLBuffer?, offset: Int = 0) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], buffer: MTLBuffer?, offset: Int = 0) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { parameters in
             if let buffer {
                 parameters.set(name, buffer: buffer, offset: offset, stages: functionTypes)
@@ -51,13 +51,13 @@ public extension Element {
 
     /// Binds an argument buffer to a `constant Struct &` or `constant Struct *` parameter with one address, and keeps it
     /// and the resources its fields point to resident for the submission.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], argumentBuffer: ArgumentBuffer) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], argumentBuffer: ArgumentBuffer) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { $0.set(name, argumentBuffer: argumentBuffer, stages: functionTypes) }
     }
 
     /// Binds an instance or primitive acceleration structure and keeps it resident for the submission. `nil` skips the
     /// binding, so the shader need not declare it.
-    func parameter(_ name: String, functionTypes: FunctionTypes = [], accelerationStructure: (any MTLAccelerationStructure)?) -> some Element {
+    func parameter(_ name: String, functionTypes: FunctionTypes = [], accelerationStructure: (any MTLAccelerationStructure)?) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { parameters in
             if let accelerationStructure {
                 parameters.set(name, accelerationStructure: accelerationStructure, stages: functionTypes)
@@ -69,7 +69,7 @@ public extension Element {
     ///
     /// The element type must be a plain-old-data type Metal can memcpy. This is checked at runtime because C/Metal
     /// header structs imported through a clang module cannot statically declare `BitwiseCopyable` conformance.
-    func parameter<Value>(_ name: String, functionTypes: FunctionTypes = [], values: [Value]) -> some Element {
+    func parameter<Value>(_ name: String, functionTypes: FunctionTypes = [], values: [Value]) -> ParameterModifier<Self> {
         assert(_isPOD(Value.self), "Parameter values must be a POD type.")
         return ParameterModifier(content: self) { $0.set(name, values: values, stages: functionTypes) }
     }
@@ -81,7 +81,7 @@ public extension Element {
     ///
     /// POD-ness is checked at runtime because C/Metal header structs imported through a clang module cannot statically
     /// declare `BitwiseCopyable` conformance.
-    func parameter<Value>(_ name: String, functionTypes: FunctionTypes = [], value: Value) -> some Element {
+    func parameter<Value>(_ name: String, functionTypes: FunctionTypes = [], value: Value) -> ParameterModifier<Self> {
         assert(_isPOD(Value.self), "Parameter value must be a POD type.")
         return ParameterModifier(content: self) { $0.set(name, value: value, stages: functionTypes) }
     }
@@ -146,7 +146,7 @@ public extension Element {
     ///         parameters.set("material", value: material)
     ///     }
     /// ```
-    func parameters(_ build: (inout ShaderParameters) -> Void) -> some Element {
+    func parameters(_ build: (inout ShaderParameters) -> Void) -> ParameterModifier<Self> {
         var parameters = ShaderParameters()
         build(&parameters)
         let parameterSet = parameters.parameterSet
@@ -157,43 +157,43 @@ public extension Element {
 // MARK: - Single-stage conveniences
 
 public extension Element {
-    func parameter(_ name: String, functionType: MTLFunctionType?, value: SIMD4<Float>) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, value: SIMD4<Float>) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), value: value)
     }
 
-    func parameter(_ name: String, functionType: MTLFunctionType?, value: simd_float4x4) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, value: simd_float4x4) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), value: value)
     }
 
-    func parameter(_ name: String, functionType: MTLFunctionType?, texture: MTLTexture?) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, texture: MTLTexture?) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), texture: texture)
     }
 
-    func parameter(_ name: String, functionType: MTLFunctionType?, textures: [MTLTexture]) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, textures: [MTLTexture]) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), textures: textures)
     }
 
-    func parameter(_ name: String, functionType: MTLFunctionType?, samplerState: MTLSamplerState?) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, samplerState: MTLSamplerState?) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), samplerState: samplerState)
     }
 
-    func parameter(_ name: String, functionType: MTLFunctionType?, buffer: MTLBuffer?, offset: Int = 0) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, buffer: MTLBuffer?, offset: Int = 0) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), buffer: buffer, offset: offset)
     }
 
-    func parameter(_ name: String, functionType: MTLFunctionType?, argumentBuffer: ArgumentBuffer) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, argumentBuffer: ArgumentBuffer) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), argumentBuffer: argumentBuffer)
     }
 
-    func parameter(_ name: String, functionType: MTLFunctionType?, accelerationStructure: (any MTLAccelerationStructure)?) -> some Element {
+    func parameter(_ name: String, functionType: MTLFunctionType?, accelerationStructure: (any MTLAccelerationStructure)?) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), accelerationStructure: accelerationStructure)
     }
 
-    func parameter<Value>(_ name: String, functionType: MTLFunctionType?, values: [Value]) -> some Element {
+    func parameter<Value>(_ name: String, functionType: MTLFunctionType?, values: [Value]) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), values: values)
     }
 
-    func parameter<Value>(_ name: String, functionType: MTLFunctionType?, value: Value) -> some Element {
+    func parameter<Value>(_ name: String, functionType: MTLFunctionType?, value: Value) -> ParameterModifier<Self> {
         parameter(name, functionTypes: .init(functionType), value: value)
     }
 }
@@ -204,14 +204,14 @@ public extension Element {
     /// Binds a `[[stage_in]]` vertex buffer to the given vertex-descriptor layout (buffer) index.
     ///
     /// Replaces `setVertexBuffer(_:offset:index:)` inside `Draw` closures on Metal 4.
-    func vertexBuffer(_ buffer: MTLBuffer, index: Int, offset: Int = 0) -> some Element {
+    func vertexBuffer(_ buffer: MTLBuffer, index: Int, offset: Int = 0) -> ParameterModifier<Self> {
         ParameterModifier(content: self) { $0.setVertexBuffer(buffer, layoutIndex: index, offset: offset) }
     }
 
     /// Copies small vertex data into scratch storage and binds it to the given layout (buffer) index.
     ///
     /// Replaces `setVertexBytes(_:length:index:)` inside `Draw` closures on Metal 4.
-    func vertexValues<Value>(_ values: [Value], index: Int) -> some Element {
+    func vertexValues<Value>(_ values: [Value], index: Int) -> ParameterModifier<Self> {
         assert(_isPOD(Value.self), "Vertex values must be a POD type.")
         return ParameterModifier(content: self) { $0.setVertexValues(values, layoutIndex: index) }
     }
