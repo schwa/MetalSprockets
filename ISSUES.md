@@ -12055,14 +12055,15 @@ Unknown: whether the runtime caches this metadata in other configurations, and h
 ## 585: No container for drawing many similar objects without one element per draw
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 labels: area:api, area:performance, effort:xl, proposal, umbrella
 milestone: m3
 depends: 586, 587, 588, 589, 590
 created: 2026-11-19T14:49:33Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T18:32:45Z
+closed: 2026-11-19T18:32:45Z
 +++
 
 Drawing many similar objects (a model's batches, a crowd, a particle-like set of meshes) means one element per draw, which costs far more CPU than the Metal draws themselves (#583). Renderers work around it by hand: SceneSprockets' PBR renderer issues the draws of many batches from one Draw closure over shared buffers (PBRMergedGeometry), with its own per-record tables for instances, materials, cull mode and winding, and its own eligibility rules. Each renderer that needs this reinvents it, and ordering draws by state to save binds (SceneSprockets#577) is left to each renderer too.
@@ -12079,6 +12080,7 @@ A container for many similar draws, as SwiftUI's List is for many similar rows w
 Related: #500 (ForEach of identical draws as one instanced draw), #522 (closure-free Draw), #519 (subtree reuse), #583.
 
 - `2026-11-19T14:58:03Z`: Split into sub-issues. v1: #586 (measure ceiling), #587 (row binding decision), #588 (container), #589 (#500/#522 overlap), #590 (PBRMergedGeometry fit). Deferred, not blocking this umbrella: #591 CPU culling, #592 state ordering, #593 skip re-encoding unchanged rows, #594 GPU culling / ICB.
+- `2026-11-19T18:32:45Z`: v1 done: DrawList/DrawRow (#588) with base-instance per-draw data (#587), stereo (#595), CPU culling (#591). #500 superseded, #522 kept (#589). #592 closed as not worth it. Open follow-ups: #593 (needs #522), #594.
 
 ---
 
@@ -12222,19 +12224,22 @@ The draw list issues every row, including rows outside the view. Renderers must 
 ## 592: Draw list does not order rows by state to save binds
 
 +++
-status: new
+status: closed
 priority: low
 kind: feature
 labels: area:performance
 milestone: m3
 depends: 588
 created: 2026-11-19T14:57:58Z
-updated: 2026-11-19T15:42:15Z
+updated: 2026-11-19T16:52:44Z
+closed: 2026-11-19T16:52:44Z
 +++
 
 Part of #585. Related: SceneSprockets#577.
 
 Rows are issued in the order given, so rows with the same state may be split by others and rebind it. Each renderer orders by hand.
+
+- `2026-11-19T16:52:44Z`: Not worth it now: with bindings shared on the list, the only per-row state is cull mode and winding, which are cheap to set and already set only on change. Reordering would change draw order (matters for blending), so it would have to be opt-in. Reopen if profiles show state changes.
 
 ---
 
