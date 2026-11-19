@@ -9985,13 +9985,14 @@ Expected
 ## 500: Idea: ForEach of identical draws could render as one instanced draw automatically
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: area:performance, effort:xl
 milestone: m1
 created: 2026-10-16T13:52:51Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-19T15:34:44Z
+closed: 2026-11-19T15:34:44Z
 +++
 
 Idea (speculative).
@@ -10010,6 +10011,7 @@ Open questions
 - `2026-10-16T17:53:15Z`: Post-autoresearch assessment: for many identical draws this is still the largest lever (the Example demo's instanced mode is far cheaper than ForEach of Draws). Remains deferred and speculative; per-draw cost is now about 3.4 us (Release, cubes).
 - `2026-11-17T19:51:20Z`: Question 1 (decision): Pursue an explicit opt-in instanced API (for example an instanced ForEach or Draw) instead of automatic detection of identical draws? Recommended: Yes. Explicit opt-in; automatic detection is unsafe because closures cannot be compared.
 - `2026-11-17T19:52:42Z`: Answer 1: Yes
+- `2026-11-19T15:34:44Z`: Superseded by DrawList (#588), the explicit opt-in API decided here: rows with instance ranges, per-item data in shared tables indexed by base instance.
 
 ---
 
@@ -10589,6 +10591,8 @@ What is wrong
 
 ## Proposed (per Jonathan)
 - Data-only Draw initializers for those cases (for example Draw(.triangle, vertexCount: 3), indexed with instance count, indirect). They compare by their arguments, and can declare their own buffers resident. The closure form stays.
+
+- `2026-11-19T15:34:44Z`: Still needed after DrawList (#588): DrawList is built on a Draw closure, so it also never compares equal and is rebuilt every frame. Its rows are Hashable, so it should use the same closure-free comparison (groundwork for #593).
 
 ---
 
@@ -12150,19 +12154,22 @@ There is no element that issues many similar draws from value-type rows (index r
 ## 589: Unclear whether #500 and #522 are still needed once a draw list exists
 
 +++
-status: new
+status: closed
 priority: medium
 kind: task
 labels: area:api, needs-decision, effort:s
 milestone: m3
 depends: 588
 created: 2026-11-19T14:57:57Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T15:34:44Z
+closed: 2026-11-19T15:34:44Z
 +++
 
 Part of #585.
 
 #500 (ForEach of identical draws as one instanced draw) and #522 (closure-free Draw for single draws) overlap with the draw list: a row with an instance range, and a list with one row. Whether they are folded into the draw list, kept, or closed is not decided.
+
+- `2026-11-19T15:34:44Z`: Decided: #500 closed as superseded by DrawList. #522 kept; it also applies to DrawList.
 
 ---
 
