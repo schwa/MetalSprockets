@@ -202,7 +202,7 @@ Set these variables in Xcode's scheme editor or your shell. The values `yes`, `t
 
 ## Testing
 
-Run the tests with `xcb test`. Xcode Debug runs also turn on Metal API validation and GPU frame capture, and some failures happen only under those layers. To run the suite under each layer, use `Scripts/test-metal-layers.sh`. To run one layer, set its variable for the whole run, for example `xcb test -e MTL_DEBUG_LAYER=1` or `xcb test -e MTL_CAPTURE_ENABLED=1`.
+Run the tests with `swift test`. Xcode Debug runs also turn on Metal API validation and GPU frame capture, and some failures happen only under those layers. To run the suite under each layer, use `Scripts/test-metal-layers.sh`. To run one layer, set its variable for the whole run, for example `MTL_DEBUG_LAYER=1 swift test` or `MTL_CAPTURE_ENABLED=1 swift test`.
 
 ---
 

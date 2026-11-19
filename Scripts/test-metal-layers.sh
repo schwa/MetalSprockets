@@ -19,11 +19,8 @@ configurations=(
 failed=()
 for configuration in "${configurations[@]}"; do
     echo "==> ${configuration}"
-    arguments=()
-    for variable in ${configuration}; do
-        arguments+=(-e "${variable}")
-    done
-    if ! xcb test "${arguments[@]}"; then
+    # shellcheck disable=SC2086 # each configuration is a list of NAME=value words
+    if ! env ${configuration} swift test; then
         failed+=("${configuration}")
     fi
 done
