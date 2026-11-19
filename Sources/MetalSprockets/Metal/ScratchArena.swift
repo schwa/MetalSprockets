@@ -16,8 +16,15 @@ internal final class ScratchArena {
         let buffer: any MTLBuffer
         let offset: Int
         let length: Int
+        let gpuAddress: MTLGPUAddress
+    }
 
-        var gpuAddress: MTLGPUAddress { buffer.gpuAddress + UInt64(offset) }
+    // Buffer properties read once at creation, so storing a value makes no Objective-C calls.
+    private struct Slab {
+        let buffer: any MTLBuffer
+        let length: Int
+        let contents: UnsafeMutableRawPointer
+        let gpuAddress: MTLGPUAddress
     }
 
     static let minimumAlignment = 16
@@ -25,14 +32,14 @@ internal final class ScratchArena {
     let resources: ResourceCollection
     private let device: any MTLDevice
     private let initialCapacity: Int
-    private var buffers: [any MTLBuffer] = []
+    private var slabs: [Slab] = []
     private var currentIndex = 0
     private var currentOffset = 0
 
-    var bufferCount: Int { buffers.count }
+    var bufferCount: Int { slabs.count }
 
     /// Buffers used since the last reset. The arena keeps their residency across recordings.
-    var usedBuffers: [any MTLBuffer] { buffers.isEmpty ? [] : Array(buffers[0...currentIndex]) }
+    var usedBuffers: [any MTLBuffer] { slabs.isEmpty ? [] : slabs[0...currentIndex].map(\.buffer) }
 
     init(device: any MTLDevice, initialCapacity: Int) throws {
         self.device = device
@@ -62,34 +69,35 @@ internal final class ScratchArena {
             throw Failure.emptyAllocation
         }
         let alignment = max(requested, Self.minimumAlignment)
-        let (buffer, offset) = try reserve(length: bytes.count, alignment: alignment)
-        (buffer.contents() + offset).copyMemory(from: bytes.baseAddress.orFatalError("A non-empty byte buffer has a base address"), byteCount: bytes.count)
-        return Allocation(buffer: buffer, offset: offset, length: bytes.count)
+        let (slab, offset) = try reserve(length: bytes.count, alignment: alignment)
+        (slab.contents + offset).copyMemory(from: bytes.baseAddress.orFatalError("A non-empty byte buffer has a base address"), byteCount: bytes.count)
+        return Allocation(buffer: slab.buffer, offset: offset, length: bytes.count, gpuAddress: slab.gpuAddress + UInt64(offset))
     }
 
-    private func reserve(length: Int, alignment: Int) throws -> (any MTLBuffer, Int) {
-        while currentIndex < buffers.count {
+    private func reserve(length: Int, alignment: Int) throws -> (Slab, Int) {
+        while currentIndex < slabs.count {
             let offset = (currentOffset + alignment - 1) & ~(alignment - 1)
-            if offset + length <= buffers[currentIndex].length {
+            if offset + length <= slabs[currentIndex].length {
                 currentOffset = offset + length
-                return (buffers[currentIndex], offset)
+                return (slabs[currentIndex], offset)
             }
-            guard currentIndex + 1 < buffers.count else {
+            guard currentIndex + 1 < slabs.count else {
                 break
             }
             currentIndex += 1
             currentOffset = 0
         }
-        let previous = buffers.last?.length ?? initialCapacity / 2
+        let previous = slabs.last?.length ?? initialCapacity / 2
         let capacity = max(previous * 2, length + alignment, initialCapacity)
         let buffer = try device.makeBuffer(length: capacity, options: .storageModeShared).orThrow(.resourceCreationFailure("Could not allocate Metal 4 scratch storage"))
         buffer.label = "MetalSprockets scratch"
         try resources.register(buffer)
-        if !buffers.isEmpty {
+        if !slabs.isEmpty {
             currentIndex += 1
         }
-        buffers.append(buffer)
+        let slab = Slab(buffer: buffer, length: buffer.length, contents: buffer.contents(), gpuAddress: buffer.gpuAddress)
+        slabs.append(slab)
         currentOffset = length
-        return (buffer, 0)
+        return (slab, 0)
     }
 }

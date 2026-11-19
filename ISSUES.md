@@ -12022,6 +12022,26 @@ Expected: one element per draw is cheap enough that renderers do not need their 
 Mechanisms tracked separately: #476, #513, #519, #522, #523, #578. Earlier work: RFC 0006, #486.
 
 - `2026-11-19T14:32:32Z`: Partial step: ArgumentTablePool.acquire checks its last 4 buckets before hashing the label, and depthStencilState reuses the last state. ReconciliationBenchmark 1000 draws Release, interleaved A/B: workload 2.43 -> 2.22 ms (~8%), cpu 5.55 -> 5.37 ms. Remaining: Update ~2.9 ms (#519), makeTables ~25% of workload (#476), parameter chain ~15% (#513, needs #521).
+- `2026-11-19T14:39:55Z`: Partial step: ScratchArena caches each buffer's length, contents and gpuAddress at creation instead of calling them for every stored value. Workload 2.19 -> 2.09 ms (~5%), same benchmark. Filed #584 for runtime demangling of modifier opaque types (~4% of Update).
+
+---
+
+## 584: Opaque return types of element modifiers are demangled at runtime on every call
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-11-19T14:39:52Z
++++
+
+Part of #583.
+
+From a Time Profiler capture of ReconciliationBenchmark (Release, --scenario static, 1000 draws): about 4% of the Update phase is in swift_getOpaqueTypeMetadataImpl -> Demangler::demangleType, called from the client's element-building closure when it calls modifiers that return `some Element` (for example `.parameter(_:value:)`).
+
+Expected: resolving the concrete type of a modifier chain costs little per element per frame.
+
+Unknown: whether the runtime caches this metadata in other configurations, and how much this costs in SceneSprockets.
 
 ---
 
