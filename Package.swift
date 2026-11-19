@@ -30,6 +30,7 @@ public let package = Package(
         .target(
             name: "MetalSprockets",
             dependencies: [
+                "MetalSprocketsMacros",
                 "MetalSprocketsSupport",
                 .product(name: "MetalSupport", package: "MetalSupport"),
             ]
@@ -66,6 +67,7 @@ public let package = Package(
         .macro(
             name: "MetalSprocketsMacros",
             dependencies: [
+                .product(name: "SwiftDiagnostics", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
             ]

@@ -78,7 +78,8 @@ struct SystemSnapshotTests {
 
         let counterState = node?.stateProperties.first { $0.key == "_counter" || $0.key == "counter" }
         #expect(counterState != nil)
-        #expect(counterState?.value.contains("0") == true) // Initial value is 0
+        // The body never reads `counter`, so its lazy default has not been evaluated (#578).
+        #expect(counterState?.value == "<not yet evaluated>")
     }
 
     @Test("Codable works")

@@ -11871,13 +11871,14 @@ Part of #389. Element.configureNode, RenderPassDescriptorModifier, RenderPipelin
 ## 578: @MSState initial values are evaluated on every element rebuild
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:api, area:performance, effort:l, breaking
 milestone: m1
 created: 2026-11-17T19:56:56Z
-updated: 2026-11-17T19:57:55Z
+updated: 2026-11-19T14:20:04Z
+closed: 2026-11-19T14:20:04Z
 +++
 
 Supersedes #475.

@@ -60,14 +60,4 @@ internal protocol SnapshotValueProviding {
     var snapshotValue: Any { get }
 }
 
-extension StateBox: SnapshotValueProviding {
-    /// Helper to create a snapshot-friendly representation
-    internal var snapshotValue: Any {
-        // Use Mirror to extract the value without triggering system checks
-        let mirror = Mirror(reflecting: self)
-        if let valueChild = mirror.children.first(where: { $0.label == "_value" }) {
-            return valueChild.value
-        }
-        return "Unknown"
-    }
-}
+extension StateBox: SnapshotValueProviding {}

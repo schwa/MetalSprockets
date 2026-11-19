@@ -40,7 +40,17 @@ import os
 ///
 /// - ``MSBinding``
 /// - ``MSEnvironment``
-@propertyWrapper
+@attached(accessor, names: named(init), named(get), named(set))
+@attached(peer, names: prefixed(`_`), prefixed(`$`))
+public macro MSState() = #externalMacro(module: "MetalSprocketsMacros", type: "MSStateMacro")
+
+@attached(accessor, names: named(get))
+public macro MSStateProjectedValue() = #externalMacro(module: "MetalSprocketsMacros", type: "MSStateProjectedValueMacro")
+
+/// The storage behind an `@MSState` property.
+///
+/// The `@MSState` macro evaluates a declaration default lazily, once per element identity (#578). Assigning the
+/// property in an initializer is evaluated eagerly.
 public struct MSState<Value> {
     // Updates swap in the persisted StateBox while a completion handler may hold this state, so the swap is locked
     // (#570).
@@ -56,6 +66,11 @@ public struct MSState<Value> {
     /// - Parameter wrappedValue: The initial value for the state.
     public init(wrappedValue: Value) {
         storage = StateBoxReference(StateBox(wrappedValue))
+    }
+
+    /// Creates a state whose initial value is only evaluated if no persisted state replaces it.
+    public init(initialValue: @autoclosure @escaping () -> Value) {
+        storage = StateBoxReference(StateBox(makeValue: initialValue))
     }
 
     /// The current value of the state.

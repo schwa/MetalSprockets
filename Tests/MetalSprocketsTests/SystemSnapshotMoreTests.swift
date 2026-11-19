@@ -112,7 +112,8 @@ struct SystemSnapshotExtendedTests {
         #expect(dump.contains("State:"))
         #expect(dump.contains("_counter"))
         #expect(dump.contains("5"))
-        #expect(dump.contains("hello"))
+        // `name` is never read, so its lazy default has not been evaluated (#578).
+        #expect(dump.contains("<not yet evaluated>"))
     }
 
     @Test("textDump includeEnvironment surfaces environment values")
