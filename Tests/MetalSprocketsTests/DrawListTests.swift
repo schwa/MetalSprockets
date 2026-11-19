@@ -119,6 +119,43 @@ struct DrawListTests {
         #expect(pixel(48) == [0, 255, 0, 255])
     }
 
+    @Test func `culling keeps rows inside any frustum and rows without bounds`() {
+        func row(_ instance: Int, _ bounds: DrawRow.Bounds?) -> DrawRow {
+            DrawRow(geometry: .vertices(0..<3), instances: instance..<instance + 1, bounds: bounds)
+        }
+        var shifted = matrix_identity_float4x4
+        shifted.columns.3 = [-4, 0, 0, 1]
+        let rows = [
+            row(0, DrawRow.Bounds(min: [-0.5, -0.5, 0.2], max: [0.5, 0.5, 0.4])),
+            row(1, DrawRow.Bounds(min: [1.5, -0.5, 0.2], max: [2.5, 0.5, 0.4])),
+            row(2, DrawRow.Bounds(min: [3.5, -0.5, 0.2], max: [4.5, 0.5, 0.4])),
+            row(3, DrawRow.Bounds(min: [-0.5, -0.5, 2], max: [0.5, 0.5, 3])),
+            row(4, nil)
+        ]
+        let identity = DrawList(cullingViewProjections: [matrix_identity_float4x4], rows: rows)
+        #expect(identity.visibleRows.map(\.instances.lowerBound) == [0, 4])
+        let both = DrawList(cullingViewProjections: [matrix_identity_float4x4, shifted], rows: rows)
+        #expect(both.visibleRows.map(\.instances.lowerBound) == [0, 2, 4])
+        #expect(DrawList(rows: rows).visibleRows.count == 5)
+    }
+
+    @Test(.requiresMetal4) func `culled rows are not drawn`() async throws {
+        let outside = DrawRow.Bounds(min: [2, 2, 0.5], max: [3, 3, 0.5])
+        let element = try RenderPipeline(vertexShader: VertexShader(source: Self.source), fragmentShader: FragmentShader(source: Self.source)) {
+            DrawList(cullingViewProjections: [matrix_identity_float4x4], rows: [
+                DrawRow(geometry: .vertices(0..<6), instances: 0..<1),
+                DrawRow(geometry: .vertices(10..<13), instances: 2..<3, bounds: outside)
+            ])
+            .parameter("positions", values: Self.positions)
+            .parameter("colors", values: Self.colors)
+        }
+        let renderer = try TestOffscreenRenderer(size: CGSize(width: 64, height: 64), pixelFormat: .bgra8Unorm)
+        let texture = try await renderer.render(element).texture
+        var bytes = [UInt8](repeating: 0, count: 4)
+        texture.getBytes(&bytes, bytesPerRow: texture.width * 4, from: MTLRegionMake2D(16, 32, 1, 1), mipmapLevel: 0)
+        #expect(bytes == [0, 0, 255, 255])
+    }
+
     @Test(.requiresMetal4) func `indexed rows without an index buffer throw`() async throws {
         let element = try RenderPipeline(vertexShader: VertexShader(source: Self.source), fragmentShader: FragmentShader(source: Self.source)) {
             DrawList(rows: [DrawRow(geometry: .indexed(0..<3))])

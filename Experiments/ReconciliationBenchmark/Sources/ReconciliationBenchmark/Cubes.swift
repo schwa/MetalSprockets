@@ -88,33 +88,45 @@ struct CubeResources {
 /// `moving`: how many cubes (the first ones) animate with `frame`. The rest use frame 0, so their transforms are the
 /// same every frame. `nil` animates them all.
 func cubeTransforms(count: Int, frame: Int, moving: Int? = nil) -> [simd_float4x4] {
+    let animated = cubeViewProjection(count: count, frame: frame)
+    let still = cubeViewProjection(count: count, frame: 0)
+    return cubeCenters(count: count).enumerated().map { index, center in
+        var model = matrix_identity_float4x4
+        model.columns.3 = SIMD4(center, 1)
+        let isMoving = moving.map { index < $0 } ?? true
+        return (isMoving ? animated : still) * model
+    }
+}
+
+/// Projection, view and the scene's rotation: maps a cube's grid-space position to clip space.
+func cubeViewProjection(count: Int, frame: Int) -> simd_float4x4 {
     let side = Int(ceil(cbrt(Double(count))))
-    let center = Float(side - 1) / 2
     var view = matrix_identity_float4x4
     view.columns.3.z = -8 * Float(side)
     let projection = perspective(fovY: .pi / 4, aspect: 1.6, near: 0.1, far: 100 * Float(side))
-    func rotation(_ frame: Int) -> simd_float4x4 {
-        simd_float4x4(simd_quatf(angle: Float(frame) * 0.01, axis: simd_normalize([1, 1, 0])))
-    }
-    let animated = rotation(frame)
-    let still = rotation(0)
+    return projection * view * simd_float4x4(simd_quatf(angle: Float(frame) * 0.01, axis: simd_normalize([1, 1, 0])))
+}
+
+func cubeCenters(count: Int) -> [SIMD3<Float>] {
+    let side = Int(ceil(cbrt(Double(count))))
+    let center = Float(side - 1) / 2
     return (0..<count).map { index in
-        var model = matrix_identity_float4x4
-        model.columns.3 = SIMD4(SIMD3(Float(index % side) - center, Float((index / side) % side) - center, Float(index / (side * side)) - center) * 3, 1)
-        let isMoving = moving.map { index < $0 } ?? true
-        return projection * view * (isMoving ? animated : still) * model
+        SIMD3(Float(index % side) - center, Float((index / side) % side) - center, Float(index / (side * side)) - center) * 3
     }
 }
 
 /// The cubes scene drawn by one element: a DrawList issues every cube's draw, each picking its transform from a
-/// shared table by base instance (#586).
-func mergedCubesRoot(count: Int, frame: Int, resources: CubeResources) throws -> some Element {
+/// shared table by base instance (#586). With `cull`, every row has bounds and is frustum-culled (#591); the whole grid
+/// is in view, so this measures the cost of culling, not its savings.
+func mergedCubesRoot(count: Int, frame: Int, resources: CubeResources, cull: Bool = false) throws -> some Element {
     let transforms = cubeTransforms(count: count, frame: frame)
+    let centers = cubeCenters(count: count)
+    let culling = cull ? [cubeViewProjection(count: count, frame: frame)] : []
     let time = Float(frame) / 60
     return try RenderPass(label: "Cubes") {
         try RenderPipeline(vertexShader: resources.mergedVertexShader, fragmentShader: resources.fragmentShader) {
-            DrawList(0..<count) { index in
-                DrawRow(geometry: .vertices(0..<36), instances: index..<index + 1)
+            DrawList(cullingViewProjections: culling, 0..<count) { index in
+                DrawRow(geometry: .vertices(0..<36), instances: index..<index + 1, bounds: cull ? DrawRow.Bounds(min: centers[index] - 0.5, max: centers[index] + 0.5) : nil)
             }
             .vertexValues(resources.vertices, index: 0)
             .parameter("transforms", values: transforms)

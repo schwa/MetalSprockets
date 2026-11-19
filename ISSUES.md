@@ -12003,8 +12003,10 @@ status: new
 priority: high
 kind: enhancement
 labels: area:performance, effort:xl
+milestone: m3
 depends: 476, 513, 519, 522, 523, 578
 created: 2026-11-19T14:20:17Z
+updated: 2026-11-19T15:43:01Z
 +++
 
 Drawing each batch of a model as its own element costs far more CPU than issuing the same Metal draws from one element. SceneSprockets' PBR renderer works around it by drawing most opaque batches from one element per merged set (SceneSprockets#545, RFC 0001), which costs it a second draw path with its own rules.
@@ -12198,19 +12200,22 @@ SceneSprockets' PBR renderer merges batches by hand (PBRMergedGeometry, SceneSpr
 ## 591: Draw list has no CPU culling
 
 +++
-status: new
+status: closed
 priority: low
 kind: feature
-labels: area:performance, deferred
+labels: area:performance
 milestone: m3
 depends: 588
 created: 2026-11-19T14:57:57Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T16:00:05Z
+closed: 2026-11-19T16:00:05Z
 +++
 
 Part of #585.
 
 The draw list issues every row, including rows outside the view. Renderers must cull before building rows.
+
+- `2026-11-19T16:00:05Z`: DrawRow.bounds (plain SIMD min/max) and DrawList(cullingViewProjections:); a row outside every frustum is skipped. Flat scan, no spatial structure. Benchmark merged --cull, all rows in view (worst case): about 16 ns per row (+0.32 ms at 20000 rows, Release). File a retained spatial structure only if this shows up in profiles.
 
 ---
 
@@ -12220,11 +12225,11 @@ The draw list issues every row, including rows outside the view. Renderers must 
 status: new
 priority: low
 kind: feature
-labels: area:performance, deferred
+labels: area:performance
 milestone: m3
 depends: 588
 created: 2026-11-19T14:57:58Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T15:42:15Z
 +++
 
 Part of #585. Related: SceneSprockets#577.
@@ -12239,11 +12244,11 @@ Rows are issued in the order given, so rows with the same state may be split by 
 status: new
 priority: low
 kind: feature
-labels: area:performance, deferred
+labels: area:performance
 milestone: m3
 depends: 588
 created: 2026-11-19T14:57:58Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T15:42:15Z
 +++
 
 Part of #585.
@@ -12258,11 +12263,11 @@ Rows whose id and contents are the same as the previous frame are encoded again.
 status: new
 priority: low
 kind: feature
-labels: area:performance, area:metal4, deferred, effort:xl
+labels: area:performance, area:metal4, effort:xl
 milestone: m3
 depends: 593
 created: 2026-11-19T14:57:58Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T15:42:15Z
 +++
 
 Part of #585.
