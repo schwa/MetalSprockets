@@ -31,6 +31,7 @@ internal final class MetalContext {
     let pipelines: PipelineCache
     var residencyConfiguration = ResidencyConfiguration()
     private var depthStencilStates: [DepthState: any MTLDepthStencilState] = [:]
+    private var lastDepthStencilState: (state: DepthState, value: any MTLDepthStencilState)?
     /// Installed on every command buffer when shader logging is on. Logging is per submission, not per subtree.
     let logState: (any MTLLogState)?
 
@@ -314,7 +315,12 @@ internal final class MetalContext {
 
     /// Returns a cached depth-stencil state, so steady-state draws never allocate one.
     func depthStencilState(_ state: DepthState) throws -> any MTLDepthStencilState {
+        // Consecutive draws almost always share a state, so skip hashing in that case.
+        if let last = lastDepthStencilState, last.state == state {
+            return last.value
+        }
         if let cached = depthStencilStates[state] {
+            lastDepthStencilState = (state, cached)
             return cached
         }
         let descriptor = MTLDepthStencilDescriptor()
@@ -324,6 +330,7 @@ internal final class MetalContext {
         descriptor.backFaceStencil = state.backStencil?.makeDescriptor()
         let created = try device.makeDepthStencilState(descriptor: descriptor).orThrow(.resourceCreationFailure("Could not create a depth-stencil state"))
         depthStencilStates[state] = created
+        lastDepthStencilState = (state, created)
         return created
     }
 

@@ -13,6 +13,10 @@ internal final class ArgumentTablePool {
 
     private let device: any MTLDevice
     private var buckets: [Key: Bucket] = [:]
+    // Consecutive draws usually use the same pipeline, so the tables for its few stages are found here without hashing
+    // the label. Newest first.
+    private var recentBuckets: [(key: Key, bucket: Bucket)] = []
+    private static let recentBucketLimit = 4
 
     init(device: any MTLDevice) {
         self.device = device
@@ -21,11 +25,19 @@ internal final class ArgumentTablePool {
     func acquire(sizes: PipelineBindings.TableSizes, label: String?) throws -> any MTL4ArgumentTable {
         let key = Key(sizes: sizes, label: label)
         let bucket: Bucket
-        if let existing = buckets[key] {
-            bucket = existing
+        if let recent = recentBuckets.firstIndex(where: { $0.key == key }) {
+            bucket = recentBuckets[recent].bucket
         } else {
-            bucket = Bucket()
-            buckets[key] = bucket
+            if let existing = buckets[key] {
+                bucket = existing
+            } else {
+                bucket = Bucket()
+                buckets[key] = bucket
+            }
+            if recentBuckets.count == Self.recentBucketLimit {
+                recentBuckets.removeLast()
+            }
+            recentBuckets.insert((key, bucket), at: 0)
         }
         let table: any MTL4ArgumentTable
         if bucket.usedCount < bucket.tables.count {

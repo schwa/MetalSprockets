@@ -12001,7 +12001,6 @@ kind: enhancement
 labels: area:performance, effort:xl
 depends: 476, 513, 519, 522, 523, 578
 created: 2026-11-19T14:20:17Z
-updated: 2026-11-19T14:20:17Z
 +++
 
 Drawing each batch of a model as its own element costs far more CPU than issuing the same Metal draws from one element. SceneSprockets' PBR renderer works around it by drawing most opaque batches from one element per merged set (SceneSprockets#545, RFC 0001), which costs it a second draw path with its own rules.
@@ -12021,6 +12020,8 @@ Several of these exceed a 120 Hz frame budget (8.3 ms) per-batch.
 Expected: one element per draw is cheap enough that renderers do not need their own batching to stay within a frame budget.
 
 Mechanisms tracked separately: #476, #513, #519, #522, #523, #578. Earlier work: RFC 0006, #486.
+
+- `2026-11-19T14:32:32Z`: Partial step: ArgumentTablePool.acquire checks its last 4 buckets before hashing the label, and depthStencilState reuses the last state. ReconciliationBenchmark 1000 draws Release, interleaved A/B: workload 2.43 -> 2.22 ms (~8%), cpu 5.55 -> 5.37 ms. Remaining: Update ~2.9 ms (#519), makeTables ~25% of workload (#476), parameter chain ~15% (#513, needs #521).
 
 ---
 
