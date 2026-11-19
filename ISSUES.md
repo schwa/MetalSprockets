@@ -12052,8 +12052,11 @@ Unknown: whether the runtime caches this metadata in other configurations, and h
 status: new
 priority: medium
 kind: feature
-labels: area:api,area:performance,effort:xl,proposal
+labels: area:api, area:performance, effort:xl, proposal, umbrella
+milestone: m3
+depends: 586, 587, 588, 589, 590
 created: 2026-11-19T14:49:33Z
+updated: 2026-11-19T14:59:54Z
 +++
 
 Drawing many similar objects (a model's batches, a crowd, a particle-like set of meshes) means one element per draw, which costs far more CPU than the Metal draws themselves (#583). Renderers work around it by hand: SceneSprockets' PBR renderer issues the draws of many batches from one Draw closure over shared buffers (PBRMergedGeometry), with its own per-record tables for instances, materials, cull mode and winding, and its own eligibility rules. Each renderer that needs this reinvents it, and ordering draws by state to save binds (SceneSprockets#577) is left to each renderer too.
@@ -12068,6 +12071,184 @@ A container for many similar draws, as SwiftUI's List is for many similar rows w
 - The container owns realization: culling (CPU now, GPU later) and optional ordering by state.
 
 Related: #500 (ForEach of identical draws as one instanced draw), #522 (closure-free Draw), #519 (subtree reuse), #583.
+
+- `2026-11-19T14:58:03Z`: Split into sub-issues. v1: #586 (measure ceiling), #587 (row binding decision), #588 (container), #589 (#500/#522 overlap), #590 (PBRMergedGeometry fit). Deferred, not blocking this umbrella: #591 CPU culling, #592 state ordering, #593 skip re-encoding unchanged rows, #594 GPU culling / ICB.
+
+---
+
+## 586: Unknown how much CPU one element issuing many draws saves over one element per draw
+
++++
+status: new
+priority: high
+kind: task
+labels: area:performance, effort:s
+milestone: m3
+created: 2026-11-19T14:57:57Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585.
+
+The case for a draw-list container rests on per-draw element overhead (#583), but the ceiling for MetalSprockets itself is not measured. SceneSprockets' merged path suggests 7-35x, on its own scenes.
+
+Missing: a ReconciliationBenchmark number for the cubes scene drawn by one element issuing all draws, next to the per-draw element number, Release.
+
+---
+
+## 587: Undecided how rows of a draw list bind per-draw data
+
++++
+status: new
+priority: high
+kind: task
+labels: area:api, needs-decision, effort:m
+milestone: m3
+created: 2026-11-19T14:57:57Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585.
+
+Rows of a draw list differ in material and other per-draw data. How a row binds that data is not decided, and the container API depends on it.
+
+Options raised so far:
+- Rows hold only indices into tables shared by the container (needs argument buffers or bindless, as PBRMergedGeometry does).
+- Rows hold small per-row values.
+- Rows hold arbitrary bindings (textures, samplers, buffers), which brings back the per-draw ParameterSet cost.
+
+---
+
+## 588: No draw-list container for many similar draws from one element
+
++++
+status: new
+priority: medium
+kind: feature
+labels: area:api, area:performance, effort:l
+milestone: m3
+depends: 586, 587
+created: 2026-11-19T14:57:57Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585.
+
+There is no element that issues many similar draws from value-type rows (index range, base vertex, instance range, cull mode, winding) under one pipeline and one set of shared bindings. Each draw needs its own element today.
+
+---
+
+## 589: Unclear whether #500 and #522 are still needed once a draw list exists
+
++++
+status: new
+priority: medium
+kind: task
+labels: area:api, needs-decision, effort:s
+milestone: m3
+depends: 588
+created: 2026-11-19T14:57:57Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585.
+
+#500 (ForEach of identical draws as one instanced draw) and #522 (closure-free Draw for single draws) overlap with the draw list: a row with an instance range, and a list with one row. Whether they are folded into the draw list, kept, or closed is not decided.
+
+---
+
+## 590: Unknown whether the draw list can replace SceneSprockets' PBRMergedGeometry
+
++++
+status: new
+priority: medium
+kind: task
+labels: area:api, effort:m
+milestone: m3
+depends: 588
+created: 2026-11-19T14:57:57Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585.
+
+SceneSprockets' PBR renderer merges batches by hand (PBRMergedGeometry, SceneSprockets#545, RFC 0001), with per-record tables for instances, materials, cull mode and winding. It is not known whether the draw list covers that case, or what it is missing.
+
+---
+
+## 591: Draw list has no CPU culling
+
++++
+status: new
+priority: low
+kind: feature
+labels: area:performance, deferred
+milestone: m3
+depends: 588
+created: 2026-11-19T14:57:57Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585.
+
+The draw list issues every row, including rows outside the view. Renderers must cull before building rows.
+
+---
+
+## 592: Draw list does not order rows by state to save binds
+
++++
+status: new
+priority: low
+kind: feature
+labels: area:performance, deferred
+milestone: m3
+depends: 588
+created: 2026-11-19T14:57:58Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585. Related: SceneSprockets#577.
+
+Rows are issued in the order given, so rows with the same state may be split by others and rebind it. Each renderer orders by hand.
+
+---
+
+## 593: Draw list re-encodes unchanged rows every frame
+
++++
+status: new
+priority: low
+kind: feature
+labels: area:performance, deferred
+milestone: m3
+depends: 588
+created: 2026-11-19T14:57:58Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585.
+
+Rows whose id and contents are the same as the previous frame are encoded again. Unknown whether this matters; worth measuring only after the draw list exists.
+
+---
+
+## 594: Draw list has no GPU culling or indirect command buffer path
+
++++
+status: new
+priority: low
+kind: feature
+labels: area:performance, area:metal4, deferred, effort:xl
+milestone: m3
+depends: 593
+created: 2026-11-19T14:57:58Z
+updated: 2026-11-19T14:59:54Z
++++
+
+Part of #585.
+
+All draw list rows are encoded on the CPU each frame. There is no path to GPU-driven culling or to indirect command buffers.
 
 ---
 
@@ -12085,6 +12266,15 @@ created: 2026-11-17T19:49:53Z
 +++
 status: open
 created: 2026-11-17T19:49:53Z
++++
+
+---
+
+## Milestone: m3
+
++++
+status: open
+created: 2026-11-19T14:59:24Z
 +++
 
 ---
