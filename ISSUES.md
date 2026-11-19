@@ -12046,6 +12046,31 @@ Unknown: whether the runtime caches this metadata in other configurations, and h
 
 ---
 
+## 585: No container for drawing many similar objects without one element per draw
+
++++
+status: new
+priority: medium
+kind: feature
+labels: area:api,area:performance,effort:xl,proposal
+created: 2026-11-19T14:49:33Z
++++
+
+Drawing many similar objects (a model's batches, a crowd, a particle-like set of meshes) means one element per draw, which costs far more CPU than the Metal draws themselves (#583). Renderers work around it by hand: SceneSprockets' PBR renderer issues the draws of many batches from one Draw closure over shared buffers (PBRMergedGeometry), with its own per-record tables for instances, materials, cull mode and winding, and its own eligibility rules. Each renderer that needs this reinvents it, and ordering draws by state to save binds (SceneSprockets#577) is left to each renderer too.
+
+## Proposed design (per schwa)
+
+A container for many similar draws, as SwiftUI's List is for many similar rows while VStack + ForEach stays the general tool:
+
+- Takes a collection and a row builder. Rows are draw descriptions (value types, no closures): index range, base vertex, instance range, per-draw table indices, cull mode, winding. Not arbitrary elements.
+- Shared pipeline and bindings are on the container; the whole list is one element.
+- Identity by id, so unchanged rows need not be re-encoded (a path to indirect command buffers).
+- The container owns realization: culling (CPU now, GPU later) and optional ordering by state.
+
+Related: #500 (ForEach of identical draws as one instanced draw), #522 (closure-free Draw), #519 (subtree reuse), #583.
+
+---
+
 ## Milestone: m1
 
 +++
