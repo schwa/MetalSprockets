@@ -24,6 +24,9 @@ struct OnChangeTests {
             @MSState var counter = 0
             let onCounterChange: (Int, Int) -> Void
 
+            // Explicit: Swift 6.2 (Xcode 26) makes the memberwise initializer private next to @MSState storage.
+            init(onCounterChange: @escaping (Int, Int) -> Void) { self.onCounterChange = onCounterChange }
+
             var body: some Element {
                 TestElement(value: "Test-\(counter)")
                     .onChange(of: counter) { old, new in
@@ -121,6 +124,8 @@ struct OnChangeTests {
             @MSState var value: String = "Hello"
             let onChange: () -> Void
 
+            init(onChange: @escaping () -> Void) { self.onChange = onChange }
+
             var body: some Element {
                 TestElement(value: "Test")
                     .onChange(of: value) { _, _ in
@@ -164,6 +169,8 @@ struct OnChangeTests {
             @MSState var toggle = false
             let onToggle: () -> Void
 
+            init(onToggle: @escaping () -> Void) { self.onToggle = onToggle }
+
             var body: some Element {
                 TestElement(value: "Test-\(toggle)")
                     .onChange(of: toggle) {
@@ -201,6 +208,11 @@ struct OnChangeTests {
             @MSState var value2 = "A"
             let onValue1Change: () -> Void
             let onValue2Change: () -> Void
+
+            init(onValue1Change: @escaping () -> Void, onValue2Change: @escaping () -> Void) {
+                self.onValue1Change = onValue1Change
+                self.onValue2Change = onValue2Change
+            }
 
             var body: some Element {
                 TestElement(value: "Test-\(value1)-\(value2)")
@@ -275,6 +287,8 @@ struct OnChangeTests {
             @MSState var value = 5
             let onChange: (Int) -> Void
 
+            init(onChange: @escaping (Int) -> Void) { self.onChange = onChange }
+
             var body: some Element {
                 ChildElement(boundValue: $value, onChange: onChange)
             }
@@ -317,6 +331,8 @@ struct OnChangeTests {
         struct TrackedElement: Element {
             @MSState var value = 0
             let onValueChange: () -> Void
+
+            init(onValueChange: @escaping () -> Void) { self.onValueChange = onValueChange }
 
             var body: some Element {
                 TestElement(value: "\(value)")

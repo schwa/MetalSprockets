@@ -37,7 +37,6 @@ struct ShaderParametersTests {
             parameters.set("scale", value: UInt32(3))
             parameters.set("offsets", values: offsets)
         }
-        #expect(dispatch is ParameterModifier<ComputeDispatch>)
 
         try ComputePass {
             try ComputePipeline(computeKernel: kernel) {

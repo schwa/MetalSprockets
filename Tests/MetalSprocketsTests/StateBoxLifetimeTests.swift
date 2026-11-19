@@ -9,6 +9,9 @@ struct StateBoxLifetimeTests {
         @MSState var count = 0
         let recorder: Recorder
 
+        // Explicit: Swift 6.2 (Xcode 26) makes the memberwise initializer private next to @MSState storage.
+        init(recorder: Recorder) { self.recorder = recorder }
+
         var body: some Element {
             recorder.observed = count
             return EmptyElement()

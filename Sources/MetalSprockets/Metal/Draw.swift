@@ -5,7 +5,7 @@ import MetalSprocketsSupport
 
 /// Issues draw calls with the enclosing ``RenderPipeline``.
 ///
-/// Before `encodeGeometry` runs, the pipeline, its argument tables (from ``Element/parameter(_:functionTypes:value:)-6o0zh``
+/// Before `encodeGeometry` runs, the pipeline, its argument tables (from ``Element/parameter(_:functionTypes:value:)-(String,FunctionTypes,Value)``
 /// and related modifiers), depth/stencil state, depth bias, viewport and scissor are already bound. Cull mode, triangle
 /// fill mode, front-facing winding and vertex amplification count are reset to Metal's defaults. Every draw sets that
 /// state, so nothing leaks from one draw to the next.

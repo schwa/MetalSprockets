@@ -18,6 +18,9 @@ struct OnDisappearTests {
             @MSState var present = true
             let onGone: () -> Void
 
+            // Explicit: Swift 6.2 (Xcode 26) makes the memberwise initializer private next to @MSState storage.
+            init(onGone: @escaping () -> Void) { self.onGone = onGone }
+
             var body: some Element {
                 if present {
                     Leaf(tag: "a").onDisappear(perform: onGone)
@@ -48,6 +51,8 @@ struct OnDisappearTests {
             @MSState var counter = 0
             let onGone: () -> Void
 
+            init(onGone: @escaping () -> Void) { self.onGone = onGone }
+
             var body: some Element {
                 Leaf(tag: "stays-\(counter)").onDisappear(perform: onGone)
             }
@@ -76,6 +81,8 @@ struct OnDisappearTests {
         struct Root: Element {
             @MSState var flipped = false
             let onGone: () -> Void
+
+            init(onGone: @escaping () -> Void) { self.onGone = onGone }
 
             var body: some Element {
                 get throws {
@@ -118,6 +125,8 @@ struct OnDisappearTests {
             @MSState var present = true
             let onGone: (String) -> Void
 
+            init(onGone: @escaping (String) -> Void) { self.onGone = onGone }
+
             var body: some Element {
                 get throws {
                     if present {
@@ -153,6 +162,11 @@ struct OnDisappearTests {
             let onOuterGone: () -> Void
             let onInnerGone: () -> Void
 
+            init(onOuterGone: @escaping () -> Void, onInnerGone: @escaping () -> Void) {
+                self.onOuterGone = onOuterGone
+                self.onInnerGone = onInnerGone
+            }
+
             var body: some Element {
                 if present {
                     Leaf(tag: "leaf")
@@ -187,6 +201,8 @@ struct OnDisappearTests {
         struct Root: Element {
             @MSState var mode = 0
             let onGone: () -> Void
+
+            init(onGone: @escaping () -> Void) { self.onGone = onGone }
 
             var body: some Element {
                 get throws {

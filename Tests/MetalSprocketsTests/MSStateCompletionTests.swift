@@ -8,6 +8,9 @@ private struct BakingElement: Element {
     @MSState var baked = false
     let observed: OSAllocatedUnfairLock<Bool>
 
+    // Explicit: Swift 6.2 (Xcode 26) makes the memberwise initializer private next to @MSState storage.
+    init(observed: OSAllocatedUnfairLock<Bool>) { self.observed = observed }
+
     var body: some Element {
         get throws {
             let baked = baked

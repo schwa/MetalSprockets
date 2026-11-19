@@ -182,6 +182,12 @@ struct StateTests {
         let onIncrement: () -> Void
         @MSState var ownValue = 100
 
+        // Explicit: Swift 6.2 (Xcode 26) makes the memberwise initializer private next to @MSState storage.
+        init(parentValue: Int, onIncrement: @escaping () -> Void) {
+            self.parentValue = parentValue
+            self.onIncrement = onIncrement
+        }
+
         var body: some Element {
             PropagationLeaf(
                 combinedValue: parentValue + ownValue
