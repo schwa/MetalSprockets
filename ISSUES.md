@@ -11971,11 +11971,13 @@ Measured in SceneSprockets (ms-gltf-render bench NodePerformanceTest, Release, M
 ## 582: ArgumentBuffer version builds cost time in proportion to the whole buffer
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
-labels: area:performance,effort:m
+labels: area:performance, effort:m
 created: 2026-11-19T05:41:36Z
+updated: 2026-11-19T06:06:31Z
+closed: 2026-11-19T06:06:31Z
 +++
 
 After #580 a change re-encodes only the changed fields, but each new version still:

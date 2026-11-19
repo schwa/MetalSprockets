@@ -205,6 +205,43 @@ struct ArgumentBufferTests {
         }
     }
 
+    // A value-only change shares the previous version's resource list, and a retired version's buffer is reused with
+    // the latest contents copied in.
+    @Test
+    func valueChangesReuseResourcesAndRetiredBuffers() throws {
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = library.makeFunction(name: "vertex_main")
+        descriptor.fragmentFunction = library.makeFunction(name: "read_pointer")
+        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        var reflection: MTLRenderPipelineReflection?
+        _ = try device.makeRenderPipelineState(descriptor: descriptor, options: [.bindingInfo, .bufferTypeInfo], reflection: &reflection)
+        let binding = try #require(reflection?.fragmentBindings.first { $0.name == "material" } as? any MTLBufferBinding)
+        let layout = try #require(ArgumentBufferLayout(binding))
+        let tintOffset = try #require(layout.fields["tint"]).offset
+
+        let color = try texture([0, 0, 0, 255])
+        let material = ArgumentBuffer(device: device)
+        material.set("color", texture: color)
+        material.set("colorSampler", samplerState: sampler)
+        material.set("tint", value: SIMD4<Float>(1, 1, 1, 1))
+        var first: ArgumentBuffer.Version? = try material.version(for: layout, bindingName: "material")
+        let firstBuffer = try ObjectIdentifier(#require(first).buffer)
+        let firstResources = try #require(first).resourceAllocations.map { ObjectIdentifier($0) }
+
+        material.set("tint", value: SIMD4<Float>(1, 0, 0, 1))
+        let second = try material.version(for: layout, bindingName: "material")
+        #expect(second.resourceAllocations.map { ObjectIdentifier($0) } == firstResources)
+
+        first = nil
+        material.set("tint", value: SIMD4<Float>(0, 1, 0, 1))
+        let third = try material.version(for: layout, bindingName: "material")
+        #expect(ObjectIdentifier(third.buffer) == firstBuffer)
+        #expect(third.buffer.contents().load(fromByteOffset: tintOffset, as: SIMD4<Float>.self) == SIMD4<Float>(0, 1, 0, 1))
+        #expect(third.buffer.contents().load(fromByteOffset: 16, as: UInt64.self) == color.gpuResourceID._impl)
+        #expect(third.allocations.contains { $0 === color })
+        #expect(third.objects.contains { $0 === sampler })
+    }
+
     // The buffer and everything its fields point to are kept alive with the contents a draw was encoded with.
     @Test
     func versionsKeepTheirResources() throws {

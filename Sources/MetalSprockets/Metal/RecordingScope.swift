@@ -100,7 +100,8 @@ internal final class RecordingScope {
             return
         }
         resources.objects.append(version)
-        for allocation in version.allocations {
+        try retainAllocation(version.buffer)
+        for allocation in version.resourceAllocations {
             try retainAllocation(allocation)
         }
     }

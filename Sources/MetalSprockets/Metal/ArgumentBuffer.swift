@@ -38,29 +38,52 @@ public final class ArgumentBuffer: @unchecked Sendable {
     }
 
     // One built copy of the contents. Draws retain the version they were encoded with, so later changes write a new one.
+    // Its buffer goes back to the pool when the last draw that used it retires.
     final class Version {
         let buffer: any MTLBuffer
-        let allocations: [any MTLAllocation]
-        let objects: [AnyObject]
+        // What the contents point to, kept resident and alive (with the samplers in `fieldResources`) with the version.
+        let resourceAllocations: [any MTLAllocation]
         fileprivate let fieldResources: [FieldKey: FieldResources]
+        private let pool: BufferPool
 
-        fileprivate init(buffer: any MTLBuffer, fieldResources: [FieldKey: FieldResources]) {
+        fileprivate init(buffer: any MTLBuffer, resourceAllocations: [any MTLAllocation], fieldResources: [FieldKey: FieldResources], pool: BufferPool) {
             self.buffer = buffer
+            self.resourceAllocations = resourceAllocations
             self.fieldResources = fieldResources
-            var allocations: [any MTLAllocation] = [buffer]
-            var objects: [AnyObject] = []
-            for resources in fieldResources.values {
-                allocations += resources.allocations
-                objects += resources.objects
-            }
-            self.allocations = allocations
-            self.objects = objects
+            self.pool = pool
+        }
+
+        var allocations: [any MTLAllocation] { [buffer] + resourceAllocations }
+        var objects: [AnyObject] { fieldResources.values.flatMap(\.objects) }
+
+        deinit {
+            pool.recycle(buffer)
         }
     }
 
     fileprivate struct FieldResources {
         var allocations: [any MTLAllocation] = []
         var objects: [AnyObject] = []
+
+        var isEmpty: Bool { allocations.isEmpty && objects.isEmpty }
+    }
+
+    // Buffers of retired versions. Every version of one argument buffer has the same length.
+    fileprivate final class BufferPool: @unchecked Sendable {
+        private static let capacity = 8
+        private let buffers = OSAllocatedUnfairLock(uncheckedState: [any MTLBuffer]())
+
+        func take() -> (any MTLBuffer)? {
+            buffers.withLockUnchecked { $0.popLast() }
+        }
+
+        func recycle(_ buffer: any MTLBuffer) {
+            buffers.withLockUnchecked { buffers in
+                if buffers.count < Self.capacity {
+                    buffers.append(buffer)
+                }
+            }
+        }
     }
 
     private struct State {
@@ -77,6 +100,7 @@ public final class ArgumentBuffer: @unchecked Sendable {
     public let count: Int
     public let label: String?
     private let state = OSAllocatedUnfairLock(uncheckedState: State())
+    private let pool = BufferPool()
 
     public init(device: any MTLDevice, count: Int = 1, label: String? = nil) {
         precondition(count > 0, "An argument buffer needs at least one element")
@@ -152,14 +176,22 @@ public final class ArgumentBuffer: @unchecked Sendable {
     }
 
     // Copies `base` (the bytes hold only resource IDs, GPU addresses and plain values, so they stay valid) and writes `keys` over it.
+    // When only plain values change, the version shares `base`'s resource lists instead of copying them.
     private func build(layout: ArgumentBufferLayout, values: [FieldKey: Value], keys: Set<FieldKey>, base: Version?) throws -> Version {
         let length = layout.stride * count
-        guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
-            throw Failure.bufferCreationFailed
+        let buffer: any MTLBuffer
+        if let recycled = pool.take() {
+            buffer = recycled
+        } else {
+            guard let created = device.makeBuffer(length: length, options: .storageModeShared) else {
+                throw Failure.bufferCreationFailed
+            }
+            created.label = label
+            buffer = created
         }
-        buffer.label = label
         let contents = buffer.contents()
         var fieldResources = base?.fieldResources ?? [:]
+        var resourcesChanged = base == nil
         if let base {
             contents.copyMemory(from: base.buffer.contents(), byteCount: length)
         }
@@ -175,9 +207,18 @@ public final class ArgumentBuffer: @unchecked Sendable {
                 throw Failure.unknownField(name: key.name, available: layout.fields.keys.sorted())
             }
             let offset = key.element * layout.stride + field.offset
-            fieldResources[key] = try write(value, name: key.name, field: field, to: contents.advanced(by: offset))
+            let resources = try write(value, name: key.name, field: field, to: contents.advanced(by: offset))
+            if !resources.isEmpty || fieldResources[key] != nil {
+                fieldResources[key] = resources.isEmpty ? nil : resources
+                resourcesChanged = true
+            }
         }
-        return Version(buffer: buffer, fieldResources: fieldResources)
+        let resourceAllocations = if !resourcesChanged, let base {
+            base.resourceAllocations
+        } else {
+            fieldResources.values.flatMap(\.allocations)
+        }
+        return Version(buffer: buffer, resourceAllocations: resourceAllocations, fieldResources: fieldResources, pool: pool)
     }
 
     private func write(_ value: Value, name: String, field: ArgumentBufferLayout.Field, to destination: UnsafeMutableRawPointer) throws -> FieldResources {
