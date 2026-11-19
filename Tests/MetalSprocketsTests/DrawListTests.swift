@@ -1,0 +1,92 @@
+import CoreGraphics
+import Metal
+@testable import MetalSprockets
+import simd
+import Testing
+
+@MainActor
+@Suite("DrawList")
+struct DrawListTests {
+    static let source = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    struct VertexOut {
+        float4 position [[position]];
+        float4 color;
+    };
+
+    [[vertex]] VertexOut vertex_main(uint vertex_id [[vertex_id]], uint instance [[instance_id]], constant float2 *positions [[buffer(0)]], constant float4 *colors [[buffer(1)]]) {
+        VertexOut out;
+        out.position = float4(positions[vertex_id], 0, 1);
+        out.color = colors[instance];
+        return out;
+    }
+
+    [[fragment]] float4 fragment_main(VertexOut in [[stage_in]]) {
+        return in.color;
+    }
+    """
+
+    // Left half quad (vertices 0..<6), right half quad (vertices 6..<10, indexed), full-screen triangle (10..<13).
+    static let positions: [SIMD2<Float>] = [
+        [-1, -1], [0, -1], [0, 1], [-1, -1], [0, 1], [-1, 1],
+        [0, -1], [1, -1], [1, 1], [0, 1],
+        [-1, -1], [3, -1], [-1, 3]
+    ]
+    static let colors: [SIMD4<Float>] = [[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1]]
+
+    private func render(_ rows: [DrawRow]) async throws -> (left: [UInt8], right: [UInt8]) {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
+        let indexBuffer = try #require(device.makeBuffer(bytes: indices, length: MemoryLayout<UInt16>.stride * indices.count))
+        let element = try RenderPipeline(vertexShader: VertexShader(source: Self.source), fragmentShader: FragmentShader(source: Self.source)) {
+            DrawList(indexBuffer: indexBuffer, indexType: .uint16, rows: rows)
+                .parameter("positions", values: Self.positions)
+                .parameter("colors", values: Self.colors)
+        }
+        let renderer = try TestOffscreenRenderer(size: CGSize(width: 64, height: 64), pixelFormat: .bgra8Unorm)
+        let texture = try await renderer.render(element).texture
+        func pixel(_ x: Int) -> [UInt8] {
+            var bytes = [UInt8](repeating: 0, count: 4)
+            texture.getBytes(&bytes, bytesPerRow: texture.width * 4, from: MTLRegionMake2D(x, 32, 1, 1), mipmapLevel: 0)
+            return bytes
+        }
+        return (pixel(16), pixel(48))
+    }
+
+    @Test(.requiresMetal4) func `rows pick per-draw data by base instance`() async throws {
+        let pixels = try await render([
+            DrawRow(geometry: .vertices(0..<6), instances: 0..<1),
+            DrawRow(geometry: .indexed(0..<6, baseVertex: 6), instances: 1..<2)
+        ])
+        #expect(pixels.left == [0, 0, 255, 255])
+        #expect(pixels.right == [0, 255, 0, 255])
+    }
+
+    @Test(.requiresMetal4) func `cull mode and winding apply per row`() async throws {
+        // The full-screen triangle is counter-clockwise, so a clockwise front face culls it as a back face.
+        let culled = try await render([
+            DrawRow(geometry: .vertices(0..<6), instances: 0..<1),
+            DrawRow(geometry: .vertices(10..<13), instances: 2..<3, cullMode: .back, winding: .clockwise)
+        ])
+        #expect(culled.left == [0, 0, 255, 255])
+        let drawn = try await render([
+            DrawRow(geometry: .vertices(0..<6), instances: 0..<1),
+            DrawRow(geometry: .vertices(10..<13), instances: 2..<3, cullMode: .back, winding: .counterClockwise)
+        ])
+        #expect(drawn.left == [255, 0, 0, 255])
+    }
+
+    @Test(.requiresMetal4) func `indexed rows without an index buffer throw`() async throws {
+        let element = try RenderPipeline(vertexShader: VertexShader(source: Self.source), fragmentShader: FragmentShader(source: Self.source)) {
+            DrawList(rows: [DrawRow(geometry: .indexed(0..<3))])
+                .parameter("positions", values: Self.positions)
+                .parameter("colors", values: Self.colors)
+        }
+        let renderer = try TestOffscreenRenderer(size: CGSize(width: 8, height: 8), pixelFormat: .bgra8Unorm)
+        await #expect(throws: (any Error).self) {
+            _ = try await renderer.render(element)
+        }
+    }
+}

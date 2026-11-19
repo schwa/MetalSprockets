@@ -1,9 +1,10 @@
 // Per-frame CPU cost with many draw elements (#486, #487).
-// Usage: ReconciliationBenchmark [--scenario cubes|draws|static|materials] [--frames N] [--warmup N] [--counts 10,50,100]
+// Usage: ReconciliationBenchmark [--scenario cubes|merged|draws|static|materials] [--frames N] [--warmup N] [--counts 10,50,100]
 //                                [--moving N] [--half-modifiers] [--flat] [--argument-buffers]
 //   --warmup: frames rendered and not measured before each count (default 3), so pipeline compilation, allocation
 //             and caching are not counted.
 //   cubes (default): the Example app's Render demo, one Draw per cube in a ForEach. Default count 1000.
+//   merged: the cubes scene drawn by one Draw issuing every cube's draw, transforms in one shared table (#586).
 //   draws: the #486 repro, two passes with a deeper modifier stack per draw.
 //   static: the cubes scene where only the first --moving cubes (default 10) change each frame; the rest are
 //           identical every frame (#520). Measures how well unchanged draws are reused.
@@ -56,6 +57,7 @@ struct Material {
 struct Options {
     enum Scenario: String {
         case cubes
+        case merged
         case draws
         case `static`
         case materials
@@ -76,7 +78,7 @@ struct Options {
             switch argument {
             case "--scenario":
                 guard let scenario = Scenario(rawValue: iterator.next() ?? "") else {
-                    fatalError("--scenario must be cubes, draws, static or materials")
+                    fatalError("--scenario must be cubes, merged, draws, static or materials")
                 }
                 self.scenario = scenario
             case "--frames": frames = Int(iterator.next() ?? "") ?? frames
@@ -246,7 +248,7 @@ let options = Options(arguments: CommandLine.arguments)
 let device = MTLCreateSystemDefaultDevice()!
 let renderer = try OffscreenRenderer(size: CGSize(width: 1280, height: 800), device: device)
 let drawResources = options.scenario == .draws ? try Resources(device: device) : nil
-let cubeResources = [.cubes, .static].contains(options.scenario) ? try CubeResources(device: device) : nil
+let cubeResources = [.cubes, .merged, .static].contains(options.scenario) ? try CubeResources(device: device) : nil
 let materialsResources = options.scenario == .materials ? try MaterialsResources(device: device) : nil
 
 // Builds one frame's root element and reports how many draws it issues.
@@ -255,6 +257,8 @@ func makeRoot(count: Int, frame: Int) throws -> (AnyElement, Int) {
     switch options.scenario {
     case .cubes:
         return (try cubesRoot(count: count, frame: frame, resources: cubeResources!).eraseToAnyElement(), count)
+    case .merged:
+        return (try mergedCubesRoot(count: count, frame: frame, resources: cubeResources!).eraseToAnyElement(), count)
     case .draws:
         return (try root(makeItems(count: count, frame: frame), resources: drawResources!, options: options).eraseToAnyElement(), count * 2)
     case .static:

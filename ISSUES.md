@@ -12079,13 +12079,14 @@ Related: #500 (ForEach of identical draws as one instanced draw), #522 (closure-
 ## 586: Unknown how much CPU one element issuing many draws saves over one element per draw
 
 +++
-status: new
+status: closed
 priority: high
 kind: task
 labels: area:performance, effort:s
 milestone: m3
 created: 2026-11-19T14:57:57Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T15:31:02Z
+closed: 2026-11-19T15:31:02Z
 +++
 
 Part of #585.
@@ -12094,18 +12095,21 @@ The case for a draw-list container rests on per-draw element overhead (#583), bu
 
 Missing: a ReconciliationBenchmark number for the cubes scene drawn by one element issuing all draws, next to the per-draw element number, Release.
 
+- `2026-11-19T15:31:02Z`: Measured with ReconciliationBenchmark --scenario merged (Release, 60 frames, CPU medians). Per-draw elements vs one element issuing all draws: 100 cubes 0.56 vs 0.08 ms (7x), 1000 cubes 5.07 vs 0.13 ms (39x), 5000 cubes 26.3 vs 0.39 ms (67x). About 5.2 us vs 0.07 us per draw.
+
 ---
 
 ## 587: Undecided how rows of a draw list bind per-draw data
 
 +++
-status: new
+status: closed
 priority: high
 kind: task
 labels: area:api, needs-decision, effort:m
 milestone: m3
 created: 2026-11-19T14:57:57Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T15:31:02Z
+closed: 2026-11-19T15:31:02Z
 +++
 
 Part of #585.
@@ -12117,24 +12121,29 @@ Options raised so far:
 - Rows hold small per-row values.
 - Rows hold arbitrary bindings (textures, samplers, buffers), which brings back the per-draw ParameterSet cost.
 
+- `2026-11-19T15:31:02Z`: Decided: rows hold only indices. Per-draw data lives in tables bound on the list, selected by the row's base instance (shader reads table[instance_id]). Rows cannot bind their own textures or buffers; use Draw for that.
+
 ---
 
 ## 588: No draw-list container for many similar draws from one element
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 labels: area:api, area:performance, effort:l
 milestone: m3
 depends: 586, 587
 created: 2026-11-19T14:57:57Z
-updated: 2026-11-19T14:59:54Z
+updated: 2026-11-19T15:31:02Z
+closed: 2026-11-19T15:31:02Z
 +++
 
 Part of #585.
 
 There is no element that issues many similar draws from value-type rows (index range, base vertex, instance range, cull mode, winding) under one pipeline and one set of shared bindings. Each draw needs its own element today.
+
+- `2026-11-19T15:31:02Z`: Added DrawList and DrawRow (Sources/MetalSprockets/Metal/DrawList.swift). Benchmark merged scenario at 1000 cubes: 0.28 ms CPU vs 5.07 ms per-draw elements. Identity by id deferred to #593.
 
 ---
 

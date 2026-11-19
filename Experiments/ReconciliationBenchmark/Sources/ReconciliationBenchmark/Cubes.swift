@@ -26,6 +26,14 @@ struct VertexOut {
     return out;
 }
 
+// The merged scenario: one table of transforms, each draw picks its row with base_instance.
+[[vertex]] VertexOut cube_vertex_merged(VertexIn in [[stage_in]], constant float4x4 *transforms [[buffer(1)]], uint instance [[instance_id]]) {
+    VertexOut out;
+    out.position = transforms[instance] * float4(in.position, 1.0);
+    out.color = in.color;
+    return out;
+}
+
 [[fragment]] float4 cube_fragment(VertexOut in [[stage_in]], constant float &time [[buffer(0)]]) {
     return in.color * (0.75 + 0.25 * sin(time));
 }
@@ -38,6 +46,7 @@ struct CubeVertex {
 
 struct CubeResources {
     var vertexShader: VertexShader
+    var mergedVertexShader: VertexShader
     var fragmentShader: FragmentShader
     var vertexDescriptor: MTLVertexDescriptor
     var vertices: [CubeVertex]
@@ -45,6 +54,7 @@ struct CubeResources {
     init(device: MTLDevice) throws {
         let library = try device.makeLibrary(source: cubeShaderSource, options: nil)
         vertexShader = try VertexShader(library: library, name: "cube_vertex")
+        mergedVertexShader = try VertexShader(library: library, name: "cube_vertex_merged")
         fragmentShader = try FragmentShader(library: library, name: "cube_fragment")
         let descriptor = MTLVertexDescriptor()
         descriptor.attributes[0].format = .float3
@@ -93,6 +103,25 @@ func cubeTransforms(count: Int, frame: Int, moving: Int? = nil) -> [simd_float4x
         model.columns.3 = SIMD4(SIMD3(Float(index % side) - center, Float((index / side) % side) - center, Float(index / (side * side)) - center) * 3, 1)
         let isMoving = moving.map { index < $0 } ?? true
         return projection * view * (isMoving ? animated : still) * model
+    }
+}
+
+/// The cubes scene drawn by one element: a DrawList issues every cube's draw, each picking its transform from a
+/// shared table by base instance (#586).
+func mergedCubesRoot(count: Int, frame: Int, resources: CubeResources) throws -> some Element {
+    let transforms = cubeTransforms(count: count, frame: frame)
+    let time = Float(frame) / 60
+    return try RenderPass(label: "Cubes") {
+        try RenderPipeline(vertexShader: resources.mergedVertexShader, fragmentShader: resources.fragmentShader) {
+            DrawList(0..<count) { index in
+                DrawRow(geometry: .vertices(0..<36), instances: index..<index + 1)
+            }
+            .vertexValues(resources.vertices, index: 0)
+            .parameter("transforms", values: transforms)
+            .parameter("time", value: time)
+        }
+        .vertexDescriptor(resources.vertexDescriptor)
+        .depthCompare(function: .less, writes: true)
     }
 }
 
