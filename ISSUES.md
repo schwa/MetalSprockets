@@ -11957,7 +11957,6 @@ priority: high
 kind: bug
 labels: area:performance, effort:s
 created: 2026-11-19T05:04:44Z
-updated: 2026-11-19T05:04:44Z
 closed: 2026-11-19T05:04:44Z
 +++
 
@@ -11966,6 +11965,27 @@ RecordingScope.retainAllocation appends every allocation it is given, and finish
 retainArgumentBufferVersion (#579) skips repeated versions but passes every allocation of each new version, so textures shared by many argument buffers arrive many times per submission.
 
 Measured in SceneSprockets (ms-gltf-render bench NodePerformanceTest, Release, M5 Max): ~54 ms CPU per frame, with ~61% of samples in the cast (Time Profiler). Reported as SceneSprockets#571.
+
+---
+
+## 582: ArgumentBuffer version builds cost time in proportion to the whole buffer
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: area:performance,effort:m
+created: 2026-11-19T05:41:36Z
++++
+
+After #580 a change re-encodes only the changed fields, but each new version still:
+- allocates a new MTLBuffer and copies the previous version's bytes,
+- copies the per-field resource dictionary (fieldResources) and the stored values dictionary,
+- makes RecordingScope.retainArgumentBufferVersion walk every allocation of the new version.
+
+For a large table where a few fields change every frame this is still work in proportion to the table, not to the change. Measured in SceneSprockets (PBR material table, SceneSprockets#573): AnimationPointerUVs merged 2.34 -> 2.76 ms CPU per frame (Release, M5 Max), with Dictionary copy/resize ~4-6%, memmove ~7% and retainArgumentBufferVersion 3.7% of samples.
+
+Expected: a version whose fields barely changed costs work in proportion to those fields.
 
 ---
 
