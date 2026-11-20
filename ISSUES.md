@@ -12310,6 +12310,25 @@ DrawList takes an optional StereoViews value, applied once before its rows.
 
 ---
 
+## 596: Pipelines cannot be compiled before an element tree is first rendered
+
++++
+status: new
+priority: low
+kind: feature
+created: 2026-11-20T06:05:34Z
++++
+
+Render and compute pipelines are compiled lazily by the internal PipelineCache that belongs to each view's MetalContext. They are compiled the first time an element tree that uses them is encoded. The cache key includes the attachment pixel formats, sample count, vertex layout and linked functions.
+
+Nothing outside MetalSprockets can fill that cache, so the first frame that shows new content pays for compiling its pipelines and can hitch.
+
+Expected: an app or package (for example SceneSprockets, which wants a SCNSceneRenderer.prepare equivalent, SceneSprockets#597) can compile the pipelines that an element tree would use, for a given view configuration (pixel formats, sample count), ahead of time and without encoding a frame. Whether this runs async, and whether it can be cancelled, is open.
+
+Related: keeping compiled pipelines between launches (Metal 4 pipeline archives) is not covered here.
+
+---
+
 ## Milestone: m1
 
 +++
