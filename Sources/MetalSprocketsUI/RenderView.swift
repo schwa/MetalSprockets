@@ -469,7 +469,15 @@ internal struct MetalHostView <Content>: View where Content: Element {
 
     private func update(_ view: MetalLayerView) {
         let device = viewModelBox.device(preferring: device)
-        let commandQueue = viewModelBox.commandQueue(preferring: commandQueue, device: device)
+        // Without Metal 4 the view renders nothing instead of trapping (#573). Apps check `supportsMetalSprockets`.
+        guard device.supportsMetalSprockets, let commandQueue = viewModelBox.commandQueue(preferring: commandQueue, device: device) else {
+            if !viewModelBox.reportedUnsupportedDevice {
+                viewModelBox.reportedUnsupportedDevice = true
+                logger?.error("RenderView: device '\(device.name)' does not support Metal 4. Nothing is rendered.")
+            }
+            view.delegate = nil
+            return
+        }
         let viewModel: RenderViewViewModel<Content>
         if let existing = viewModelBox.value {
             viewModel = existing
@@ -508,6 +516,7 @@ internal final class ViewModelBox<Content: Element> {
     var value: RenderViewViewModel<Content>?
     private var cachedDevice: MTLDevice?
     private var cachedCommandQueue: (any MTL4CommandQueue)?
+    var reportedUnsupportedDevice = false
 
     func device(preferring provided: MTLDevice?) -> MTLDevice {
         if let provided {
@@ -521,14 +530,16 @@ internal final class ViewModelBox<Content: Element> {
         return device
     }
 
-    func commandQueue(preferring provided: (any MTL4CommandQueue)?, device: MTLDevice) -> any MTL4CommandQueue {
+    func commandQueue(preferring provided: (any MTL4CommandQueue)?, device: MTLDevice) -> (any MTL4CommandQueue)? {
         if let provided {
             return provided
         }
         if let cachedCommandQueue {
             return cachedCommandQueue
         }
-        let commandQueue = device.makeMTL4CommandQueue().orFatalError(.resourceCreationFailure("Failed to create Metal 4 command queue."))
+        guard let commandQueue = device.makeMTL4CommandQueue() else {
+            return nil
+        }
         cachedCommandQueue = commandQueue
         return commandQueue
     }

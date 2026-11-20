@@ -73,7 +73,8 @@ struct RenderViewHostingTests {
         let device = box.device(preferring: nil)
         #expect(box.device(preferring: nil) === device)
 
-        let commandQueue = box.commandQueue(preferring: nil, device: device)
+        let commandQueue = try #require(box.commandQueue(preferring: nil, device: device))
+        #expect(device.supportsMetalSprockets)
         #expect(box.commandQueue(preferring: nil, device: device) === commandQueue)
     }
 

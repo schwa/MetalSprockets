@@ -11765,13 +11765,14 @@ Reading the code does not support that guess. Synchronous frames come only from 
 ## 573: RenderView crashes on devices without Metal 4 support
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: area:metal4, area:api, effort:s
 milestone: m1
 created: 2026-11-15T18:54:17Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:09:28Z
+closed: 2026-11-21T02:09:28Z
 +++
 
 RenderView traps on launch on GPUs that do not support Metal 4. `device.makeMTL4CommandQueue()` returns nil, and `ViewModelBox.commandQueue(preferring:device:)` calls `orFatalError` on it.
@@ -11797,13 +11798,14 @@ Actual: the process traps inside RenderView's view update. The app gets no chanc
 ## 574: No API to check if the current device can run MetalSprockets
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:api, area:metal4, effort:s
 milestone: m1
 created: 2026-11-15T18:54:18Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:09:28Z
+closed: 2026-11-21T02:09:28Z
 +++
 
 Apps have no MetalSprockets API to find out if the device supports Metal 4 before they show a RenderView. Each app must find the right GPU family check (for example `supportsFamily(.metal4)` or `.apple7`) on its own. If an app gets it wrong, the app crashes. See the RenderView crash on devices without Metal 4 support.
@@ -12329,7 +12331,7 @@ Related: keeping compiled pipelines between launches (Metal 4 pipeline archives)
 
 ---
 
-## Milestone: m1
+## Milestone M1: m1
 
 +++
 status: open
@@ -12338,7 +12340,7 @@ created: 2026-11-17T19:49:53Z
 
 ---
 
-## Milestone: m2
+## Milestone M2: m2
 
 +++
 status: open
@@ -12347,7 +12349,7 @@ created: 2026-11-17T19:49:53Z
 
 ---
 
-## Milestone: m3
+## Milestone M3: m3
 
 +++
 status: open

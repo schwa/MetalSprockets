@@ -92,7 +92,7 @@ internal final class MetalContext {
         self.maximumInFlightSubmissions = maximumInFlightSubmissions
         self.scratchCapacity = scratchCapacity
         try Self.validateDevice(
-            supportsMetal4: device.supportsFamily(.metal4),
+            supportsMetal4: device.supportsMetalSprockets,
             deviceIdentifier: ObjectIdentifier(device),
             queueDeviceIdentifier: commandQueue.map { ObjectIdentifier($0.device) },
             deviceName: device.name
