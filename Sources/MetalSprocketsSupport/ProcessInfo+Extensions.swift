@@ -21,10 +21,6 @@ public extension ProcessInfo {
         systemEnvironment.metalLoggingEnabled
     }
 
-    var dumpSnapshotsEnabled: Bool {
-        systemEnvironment.dumpSnapshotsEnabled
-    }
-
     var renderViewLogFrameEnabled: Bool {
         systemEnvironment.renderViewLogFrameEnabled
     }

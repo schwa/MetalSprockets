@@ -11403,13 +11403,14 @@ Reported from SceneSprockets #378.
 ## 557: Snapshot support may no longer be worth keeping
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: area:api, effort:s, breaking
 milestone: m2
 created: 2026-11-12T04:58:43Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-21T03:03:21Z
+closed: 2026-11-21T03:03:21Z
 +++
 
 System snapshots (Snapshotter, SystemSnapshot, System+Snapshot) and the companion MetalSprocketsSnapshotUI viewer may be candidates for deprecation. MetalSprocketsSnapshotUI has been removed from metalsprockets.com. Decide whether to keep, deprecate, or remove snapshot support.

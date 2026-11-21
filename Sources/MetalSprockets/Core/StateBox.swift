@@ -91,18 +91,6 @@ internal final class StateBox<Wrapped> {
         self.init(storage: .pending(makeValue))
     }
 
-    /// The value for snapshots, without evaluating a pending initial value or recording a dependency.
-    internal var snapshotValue: Any {
-        lock.withLockUnchecked {
-            switch _value {
-            case .value(let value):
-                return value
-            case .pending:
-                return "<not yet evaluated>"
-            }
-        }
-    }
-
     private init(storage: Storage) {
         self._value = storage
         // Capture `self` weakly so an `MSBinding` that outlives its owning

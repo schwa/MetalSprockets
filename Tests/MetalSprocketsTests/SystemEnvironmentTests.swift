@@ -11,7 +11,6 @@ struct SystemEnvironmentTests {
         #expect(environment.verboseLoggingEnabled == false)
         #expect(environment.fatalErrorOnThrow == false)
         #expect(environment.metalLoggingEnabled == false)
-        #expect(environment.dumpSnapshotsEnabled == false)
         #expect(environment.renderViewLogFrameEnabled == false)
     }
 
@@ -33,9 +32,8 @@ struct SystemEnvironmentTests {
     @Test func `each flag reads its own variable`() {
         #expect(SystemEnvironment(enabled: ["MS_FATALERROR_ON_THROW"]).fatalErrorOnThrow)
         #expect(SystemEnvironment(enabled: ["MS_METAL_LOGGING"]).metalLoggingEnabled)
-        #expect(SystemEnvironment(enabled: ["MS_DUMP_SNAPSHOTS"]).dumpSnapshotsEnabled)
         #expect(SystemEnvironment(enabled: ["MS_RENDERVIEW_LOG_FRAME"]).renderViewLogFrameEnabled)
-        #expect(SystemEnvironment(enabled: ["MS_DUMP_SNAPSHOTS"]).metalLoggingEnabled == false)
+        #expect(SystemEnvironment(enabled: ["MS_RENDERVIEW_LOG_FRAME"]).metalLoggingEnabled == false)
     }
 
     @Test func `raw variables are readable by name`() {
@@ -44,24 +42,9 @@ struct SystemEnvironmentTests {
     }
 
     @Test func `binding current overrides the process environment for the duration of a closure`() {
-        SystemEnvironment.$current.withValue(SystemEnvironment(enabled: ["MS_DUMP_SNAPSHOTS"])) {
-            #expect(SystemEnvironment.current.dumpSnapshotsEnabled)
+        SystemEnvironment.$current.withValue(SystemEnvironment(enabled: ["MS_METAL_LOGGING"])) {
+            #expect(SystemEnvironment.current.metalLoggingEnabled)
         }
-        #expect(SystemEnvironment.current.dumpSnapshotsEnabled == ProcessInfo.processInfo.dumpSnapshotsEnabled)
-    }
-
-    @Test func `an overridden environment reaches the snapshot dump gate`() throws {
-        try SystemEnvironment.$current.withValue(SystemEnvironment(enabled: ["MS_DUMP_SNAPSHOTS"])) {
-            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("SystemEnvironmentTests-\(UUID().uuidString)")
-            let fileURL = directory.appendingPathComponent("snapshots.jsonl")
-            let snapshotter = Snapshotter(fileURL: fileURL)
-            let system = System()
-            try system.update(root: EmptyElement())
-
-            snapshotter.dumpSnapshotIfNeeded(system)
-
-            #expect(FileManager.default.fileExists(atPath: fileURL.path))
-            try? FileManager.default.removeItem(at: directory)
-        }
+        #expect(SystemEnvironment.current.metalLoggingEnabled == ProcessInfo.processInfo.metalLoggingEnabled)
     }
 }

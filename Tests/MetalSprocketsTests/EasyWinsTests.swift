@@ -79,7 +79,6 @@ struct ProcessInfoExtensionsTests {
         _ = info.verboseLoggingEnabled
         _ = info.fatalErrorOnThrow
         _ = info.metalLoggingEnabled
-        _ = info.dumpSnapshotsEnabled
         _ = info.renderViewLogFrameEnabled
     }
 

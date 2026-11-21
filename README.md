@@ -196,7 +196,6 @@ Set these variables in Xcode's scheme editor or your shell. The values `yes`, `t
 | `MS_METAL_LOGGING` | Enable logging within Metal shaders (requires Metal logging support at shader compile time) |
 | `MS_FATALERROR_ON_THROW` | Convert thrown errors to fatal errors for easier debugging |
 | `MS_RENDERVIEW_LOG_FRAME` | Log frame rendering information in RenderView |
-| `MS_DUMP_SNAPSHOTS` | Dump system snapshots to JSONL files in `$TMPDIR/metal-sprockets_snapshots/` for debugging the element tree |
 
 ---
 

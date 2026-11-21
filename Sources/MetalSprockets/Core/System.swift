@@ -54,8 +54,6 @@ package final class System: @unchecked Sendable {
         _dirtyIdentifiers.withLock { $0 }
     }
 
-    private let snapshotter = Snapshotter()
-
     @TaskLocal internal static var current: System?
 
     package init() {
@@ -283,8 +281,6 @@ package final class System: @unchecked Sendable {
             // Again, to pick up invalidation that happened during this update (e.g. a dynamic property calling
             // `invalidate()` while its element was being evaluated), so setup still sees it this frame.
             applyPendingSetupIdentifiers()
-
-            snapshotter.dumpSnapshotIfNeeded(self)
         }
     }
 }

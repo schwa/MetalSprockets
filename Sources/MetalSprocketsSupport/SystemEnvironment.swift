@@ -45,10 +45,6 @@ public struct SystemEnvironment: Sendable {
         isEnabled("MS_METAL_LOGGING")
     }
 
-    public var dumpSnapshotsEnabled: Bool {
-        isEnabled("MS_DUMP_SNAPSHOTS")
-    }
-
     public var renderViewLogFrameEnabled: Bool {
         isEnabled("MS_RENDERVIEW_LOG_FRAME")
     }
