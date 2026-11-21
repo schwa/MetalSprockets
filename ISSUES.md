@@ -10768,9 +10768,8 @@ status: open
 priority: low
 kind: enhancement
 labels: area:api, effort:xl, breaking
-milestone: m3
 created: 2026-10-17T11:49:19Z
-updated: 2026-11-21T02:55:28Z
+updated: 2026-11-21T03:46:24Z
 +++
 
 Use SwiftUI 27's ContentBuilder pattern so nonsensical nesting (e.g. ComputeDispatch inside RenderPipeline) fails to compile. See RFCs/0007-typed-content-domains.md.
@@ -12034,10 +12033,9 @@ status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:xl
-milestone: m3
 depends: 476, 513, 519, 522, 523, 578
 created: 2026-11-19T14:20:17Z
-updated: 2026-11-21T03:33:21Z
+updated: 2026-11-21T03:46:24Z
 +++
 
 Drawing each batch of a model as its own element costs far more CPU than issuing the same Metal draws from one element. SceneSprockets' PBR renderer works around it by drawing most opaque batches from one element per merged set (SceneSprockets#545, RFC 0001), which costs it a second draw path with its own rules.
@@ -12307,10 +12305,9 @@ status: open
 priority: low
 kind: feature
 labels: area:performance, area:metal4, effort:xl
-milestone: m3
 depends: 593
 created: 2026-11-19T14:57:58Z
-updated: 2026-11-21T03:33:21Z
+updated: 2026-11-21T03:46:24Z
 +++
 
 Part of #585.
@@ -12351,9 +12348,8 @@ status: new
 priority: low
 kind: feature
 labels: area:api, effort:m
-milestone: m3
 created: 2026-11-20T06:05:34Z
-updated: 2026-11-21T03:33:25Z
+updated: 2026-11-21T03:46:24Z
 +++
 
 Render and compute pipelines are compiled lazily by the internal PipelineCache that belongs to each view's MetalContext. They are compiled the first time an element tree that uses them is encoded. The cache key includes the attachment pixel formats, sample count, vertex layout and linked functions.
