@@ -219,10 +219,10 @@ internal protocol EnvironmentDependentProperty {}
 public struct MSEnvironment <Value>: EnvironmentDependentProperty {
     /// The current value from the environment.
     public var wrappedValue: Value {
-        guard let system = System.current else {
+        guard ReadingNode.isActive else {
             preconditionFailure("Environment must be used within a System.")
         }
-        guard let currentNode = system.traversalContext.currentNode else {
+        guard let currentNode = ReadingNode.current else {
             preconditionFailure("Environment must be used within a System during an active traversal.")
         }
         return currentNode.environmentValues[keyPath: keyPath]

@@ -5998,12 +5998,13 @@ It is also the only thing that makes the class look internally synchronized, whi
 ## 389: System.current is a global side-channel for traversal context
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l, area:architecture
 created: 2026-08-08T23:14:01Z
-updated: 2026-11-21T03:15:09Z
+updated: 2026-11-21T15:43:14Z
+closed: 2026-11-21T15:43:14Z
 +++
 
 Ten call sites reach traversal state through the `@TaskLocal System.current` rather than being handed the context they need: `MSEnvironment` (EnvironmentValues.swift:170), `EnvironmentReader`, `Element` body evaluation (Element.swift:82), `StateBox.resolveSystem()`, `Element+SystemExtensions`, and the modifiers in `RenderPipelineDescriptorTransformer`, `RenderPassDescriptorModifier`, `MSAAModifier`, `GPUCounters`, plus ambient `ShaderStore` lookup in `ShaderLibrary`.
@@ -6030,6 +6031,7 @@ Decision needed: (a) split this: file the easy group as a subtask (effort:s) and
 - `2026-11-21T03:00:14Z`: Re-audited the remaining 5 System.current uses after #577: MSEnvironment.wrappedValue, StateBox (resolveSystem + read tracking + valueDidChange), Element.trackedBody, EnvironmentReader.visitChildrenBodyless, ShaderLibrary ambient ShaderStore. Three can take the node explicitly: trackedBody and EnvironmentReader get the node from the reconciler (it has currentNode when it visits children), and MSEnvironment can resolve its value in the pre-body dynamic-property update into a reference box. StateBox read tracking is the blocker: a value passed down as MSBinding is read in a child's body, so the dependency must record the reading node, which no explicit parameter carries. ShaderLibrary.resolve runs inside arbitrary element code with no node either. Punting on that design choice.
 - `2026-11-21T03:00:14Z`: Question 2 (design): For StateBox read tracking and the ShaderLibrary ambient store, should System.current be replaced by a narrower task-local that exposes only the node whose body is being evaluated (no System, no traversal stack), with everything else (MSEnvironment, trackedBody, EnvironmentReader) passed the node explicitly? Recommended: Yes. Keep one minimal task-local 'current reading node' for dependency tracking, and pass the node explicitly everywhere else.
 - `2026-11-21T15:31:25Z`: Answer 2: Yes
+- `2026-11-21T15:43:14Z`: Done per answer 2. System.current is gone. A private task-local ReadingNode exposes only the node being visited (no System, no stack); StateBox read tracking, ShaderLibrary's ambient store and @MSEnvironment use it. Element.trackedBody and EnvironmentReader get the node passed from the reconciler (BodylessElement.visitChildrenBodyless(_ node:_:)). Not done: @MSEnvironment still uses ReadingNode rather than an explicit node; filed #597. Test: ReadingNodeTests.
 
 ---
 
@@ -9237,6 +9239,7 @@ Found while debugging SolarSystem #36.
 - `2026-10-16T17:51:28Z`: Autoresearch session: makeTables returns fixed per-stage slots (StageTables) instead of a Dictionary, and bind no longer builds temporary arrays (-7%). Tables are still acquired and fully bound for every draw every frame.
 - `2026-10-16T17:53:15Z`: Big remaining lever after the autoresearch session: Workload is now about 45% of the cubes frame (1.5 of 3.4 ms, Release), and most of it is per-draw table acquisition and binding. Reusing a draw's bound tables when its bindings are unchanged (or encoding unchanged draws more cheaply) is the next large win here. Still needs the design decision. Related: #519 (draw subtrees never reused in Update).
 - `2026-11-17T19:51:20Z`: Question 1 (decision): Drop this to Low until a design for reusing bound argument tables across frames exists, given makeTables is about 25% of Workload in the cubes benchmark? Recommended: No. Keep Medium and design per-draw table reuse after #521/#523 make bindings comparable.
+- `2026-11-21T15:40:03Z`: Answer 1: No
 
 ---
 
@@ -12412,6 +12415,19 @@ Related: keeping compiled pipelines between launches (Metal 4 pipeline archives)
 
 - `2026-11-21T03:33:21Z`: Question 1 (design): Where should ahead-of-time pipeline compilation live, given each RenderView has its own MetalContext and PipelineCache: (a) a shared, public pipeline cache (like ShaderStore) that views and Runners can be given, plus a prepare(element, formats:sampleCount:) async method on it; or (b) a method on RenderView/Runner only? Recommended: (a): a public PipelineStore shared via environment like ShaderStore, with an async prepare(_ content:, colorPixelFormats:, depthPixelFormat:, sampleCount:) that runs setup without encoding; cancellation via Task.
 - `2026-11-21T15:30:16Z`: Answer 1: a
+
+---
+
+## 597: @MSEnvironment still reads its node through the ReadingNode task-local
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-11-21T15:43:09Z
++++
+
+Follow-up of #389. After #389, @MSEnvironment.wrappedValue reads ReadingNode.current, as @MSState read tracking and the ShaderLibrary ambient store do. Answer 2 on #389 wanted MSEnvironment given its node explicitly. Its getter has no parameters and is also read during setup and workload, so the node cannot be passed in without changing how the value is resolved.
 
 ---
 

@@ -54,7 +54,7 @@ struct ObservableObjectTests {
         TestMonitor.shared.clearUpdates()
 
         let display = system.element(at: [0, 0], type: DisplayElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             display.action()
         }
 
@@ -141,7 +141,7 @@ struct ObservableObjectTests {
         TestMonitor.shared.clearUpdates()
 
         let textElement = system.element(at: [0, 0, 0, 1], type: TextElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             textElement.action()
         }
 
@@ -153,7 +153,7 @@ struct ObservableObjectTests {
 
         TestMonitor.shared.clearUpdates()
         let flagElement = system.element(at: [0, 0, 0, 2], type: FlagElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             flagElement.action()
         }
 
@@ -207,7 +207,7 @@ struct ObservableObjectTests {
         TestMonitor.shared.clearUpdates()
 
         let childDisplay = system.element(at: [0, 0, 0, 1, 0], type: DisplayElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             childDisplay.action()
         }
 
@@ -251,7 +251,7 @@ struct ObservableObjectTests {
 
         // Modify through binding
         let display = system.element(at: [0, 0, 0], type: DisplayElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             display.action()
         }
 
@@ -326,7 +326,7 @@ struct ObservableObjectTests {
         TestMonitor.shared.clearUpdates()
 
         if let display = system.element(at: [0, 0, 0], type: DisplayElement.self) {
-            system.withCurrentSystem {
+            system.withReadingContext {
                 display.action()
             }
 
@@ -342,7 +342,7 @@ struct ObservableObjectTests {
         TestMonitor.shared.clearUpdates()
 
         if let independentDisplay = system.element(at: [0, 0, 3, 0], type: DisplayElement.self) {
-            system.withCurrentSystem {
+            system.withReadingContext {
                 independentDisplay.action()
             }
 
@@ -382,7 +382,7 @@ struct ObservableObjectTests {
         TestMonitor.shared.clearUpdates()
 
         let display = try #require(system.element(at: [0, 0], type: DisplayElement.self))
-        system.withCurrentSystem {
+        system.withReadingContext {
             display.action()
         }
         try system.update(root: root)

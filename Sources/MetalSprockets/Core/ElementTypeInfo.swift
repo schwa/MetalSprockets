@@ -63,8 +63,8 @@ private func withOpened<Opened: Element, Concrete, Result, ThrownError>(_ opened
 
 // Static entry points for the cached metatypes. The metatype came from the element's own dynamic type.
 extension BodylessElement {
-    static func visitChildrenBodyless(of element: any Element, _ visit: (any Element) throws -> Void) throws {
-        try withConcrete(element, as: Self.self) { try $0.pointee.visitChildrenBodyless(visit) }
+    static func visitChildrenBodyless(of element: any Element, node: Node, _ visit: (any Element) throws -> Void) throws {
+        try withConcrete(element, as: Self.self) { try $0.pointee.visitChildrenBodyless(node, visit) }
     }
 
     static func configureNodeBodyless(of element: any Element, node: Node, context: TraversalContext) throws {

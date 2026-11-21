@@ -56,7 +56,7 @@ struct SelectiveRebuildTests {
         #expect(TestMonitor.shared.updates == ["root-body", "constant-body", "dynamic-body-0"])
 
         TestMonitor.shared.reset()
-        system.withCurrentSystem {
+        system.withReadingContext {
             root.counter = 1
         }
         try system.update(root: root)
@@ -96,7 +96,7 @@ struct SelectiveRebuildTests {
         #expect(TestMonitor.shared.updates == ["parent-body", "child-body"])
 
         TestMonitor.shared.reset()
-        system.withCurrentSystem {
+        system.withReadingContext {
             root.value = 1
         }
         try system.update(root: root)

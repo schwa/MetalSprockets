@@ -57,13 +57,18 @@ struct ObservationTests {
         #expect(system.dirtyIdentifiers.isEmpty)
     }
 
-    @Test func `visiting children outside a system still evaluates the body`() throws {
-        // No System is active, so observation tracking is skipped and the body is evaluated directly.
-        #expect(System.current == nil)
-
+    @Test func `visiting children of a node whose system is gone still evaluates the body`() throws {
+        // The node's System has been released, so observation tracking is skipped and the body is evaluated directly.
         let recorder = ValueRecorder()
+        let element = ModelElement(model: Model(), recorder: recorder)
+        let node: Node = {
+            let system = System()
+            return Node(system: system, id: StructuralIdentifier(atoms: [], pathHash: 0), element: element)
+        }()
+        #expect(node.system == nil)
+
         var visited: [String] = []
-        try ModelElement(model: Model(), recorder: recorder).visitChildren { child in
+        try element.visitChildren(node: node, typeInfo: ElementTypeInfo.of(element)) { child in
             visited.append("\(type(of: child))")
         }
 

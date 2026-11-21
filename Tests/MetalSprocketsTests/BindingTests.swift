@@ -51,7 +51,7 @@ struct BindingTests {
         #expect(TestMonitor.shared.values["value"] as? Int == 0)
 
         let actionElement = system.element(at: [0, 0, 0], type: ActionElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             actionElement.action()
         }
 
@@ -95,7 +95,7 @@ struct BindingTests {
         try system.update(root: root)
 
         let parentAction = system.element(at: [0, 0, 0], type: ActionElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             parentAction.action()
         }
 
@@ -103,7 +103,7 @@ struct BindingTests {
         #expect(root.counter == 15)
 
         let childAction = system.element(at: [0, 0, 1, 0], type: ActionElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             childAction.action()
         }
 
@@ -152,7 +152,7 @@ struct BindingTests {
         #expect(TestMonitor.shared.values["value"] as? Int == 100)
 
         let leaf = system.element(at: [0, 0, 0, 0], type: ActionElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             leaf.action()
         }
 
@@ -215,7 +215,7 @@ struct BindingTests {
         #expect(TestMonitor.shared.values["sum"] as? Int == 6)
 
         let combined = system.element(at: [0, 0, 0], type: CombinedElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             combined.action()
         }
 
@@ -239,7 +239,7 @@ struct BindingTests {
     @Test
     func testBindingSurvivesStateBoxDeallocation() {
         let system = System()
-        let binding: MSBinding<Int> = system.withCurrentSystem {
+        let binding: MSBinding<Int> = system.withReadingContext {
             var box: StateBox<Int>? = StateBox(42)
             let binding = box!.binding
             #expect(binding.wrappedValue == 42)

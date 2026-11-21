@@ -10,7 +10,7 @@ struct MissingEnvironmentNameTests {
         let system = System()
         try system.update(root: Draw { _ in })
         let error = #expect(throws: MetalSprocketsError.self) {
-            try system.withCurrentSystem { try system.processWorkload() }
+            try system.withReadingContext { try system.processWorkload() }
         }
         #expect(error?.description.hasPrefix("Missing environment value: renderCommandEncoder\n") == true)
     }

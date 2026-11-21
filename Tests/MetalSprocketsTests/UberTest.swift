@@ -115,7 +115,7 @@ struct UberTest {
 
         monitor.reset()
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.counter = 1
         }
 
@@ -241,7 +241,7 @@ struct UberTest {
         #expect(monitor.updates[1] == "child: A-nested")
 
         monitor.reset()
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.modifier = "B"
         }
 

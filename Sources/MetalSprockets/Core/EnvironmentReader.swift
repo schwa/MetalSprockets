@@ -7,11 +7,7 @@ public struct EnvironmentReader<Value, Content: Element>: Element, BodylessEleme
         self.content = content
     }
 
-    func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
-        // TODO: #212 Ideally we would be passed a Node as a parameter here instead of asking the traversal context
-        guard let system = System.current, let node = system.traversalContext.currentNode else {
-            fatalError("EnvironmentReader must be visited within a System context, during an active traversal.")
-        }
+    func visitChildrenBodyless(_ node: Node, _ visit: (any Element) throws -> Void) throws {
         let value = node.environmentValues[keyPath: keyPath]
         let content = try content(value)
         try visit(content)

@@ -88,7 +88,7 @@ struct ElementDumpTests {
         _ = try element.dump()
 
         #expect(system.nodes.count == nodesBefore)
-        #expect(System.current == nil)
+        #expect(!ReadingNode.isActive)
     }
 
     @Test

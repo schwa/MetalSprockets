@@ -7,6 +7,10 @@ internal protocol EnvironmentModifyingElement {}
 internal protocol BodylessElement {
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws
 
+    /// Like ``visitChildrenBodyless(_:)``, for elements that read their own node. The default calls
+    /// ``visitChildrenBodyless(_:)``.
+    func visitChildrenBodyless(_ node: Node, _ visit: (any Element) throws -> Void) throws
+
     func configureNodeBodyless(_ node: Node) throws
 
     /// Like ``configureNodeBodyless(_:)``, for elements that read the parent node or ancestors. `context` has `node`
@@ -47,6 +51,10 @@ internal protocol WorkloadElement: BodylessElement {
 extension BodylessElement {
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws {
         // This line intentionally left blank.
+    }
+
+    func visitChildrenBodyless(_ node: Node, _ visit: (any Element) throws -> Void) throws {
+        try visitChildrenBodyless(visit)
     }
 
     func configureNodeBodyless(_ node: Node) throws {

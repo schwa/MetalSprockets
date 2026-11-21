@@ -176,7 +176,7 @@ internal final class TreeReconciler {
 
         let childEnvironmentStable = environmentStable && (unchanged || !typeInfo.isEnvironmentModifying)
 
-        try element.visitChildren(typeInfo: typeInfo) { child in
+        try element.visitChildren(node: currentNode, typeInfo: typeInfo) { child in
             try processElement(child, environmentStable: childEnvironmentStable)
         }
     }

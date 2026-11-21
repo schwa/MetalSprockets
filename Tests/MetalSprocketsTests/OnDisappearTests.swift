@@ -39,7 +39,7 @@ struct OnDisappearTests {
         #expect(disappearCount == 0)
 
         // Remove the Leaf by flipping `present`.
-        system.withCurrentSystem { root.present = false }
+        system.withReadingContext { root.present = false }
         try system.update(root: root)
 
         #expect(disappearCount == 1)
@@ -67,7 +67,7 @@ struct OnDisappearTests {
 
         // Mutate state multiple times; structure stays the same.
         for i in 1...5 {
-            system.withCurrentSystem { root.counter = i }
+            system.withReadingContext { root.counter = i }
             try system.update(root: root)
             try system.processSetup()
         }
@@ -108,7 +108,7 @@ struct OnDisappearTests {
         try system.update(root: root)
         try system.processSetup()
 
-        system.withCurrentSystem { root.flipped = true }
+        system.withReadingContext { root.flipped = true }
         try system.update(root: root)
         try system.processSetup()
 
@@ -149,7 +149,7 @@ struct OnDisappearTests {
         try system.update(root: root)
         try system.processSetup()
 
-        system.withCurrentSystem { root.present = false }
+        system.withReadingContext { root.present = false }
         try system.update(root: root)
 
         #expect(gone.sorted() == ["a", "b", "c"])
@@ -186,7 +186,7 @@ struct OnDisappearTests {
         try system.update(root: root)
         try system.processSetup()
 
-        system.withCurrentSystem { root.present = false }
+        system.withReadingContext { root.present = false }
         try system.update(root: root)
 
         #expect(outer == 1)
@@ -226,7 +226,7 @@ struct OnDisappearTests {
         try system.update(root: root)
         try system.processSetup()
 
-        system.withCurrentSystem { root.mode = 1 }
+        system.withReadingContext { root.mode = 1 }
         try system.update(root: root)
 
         #expect(count == 1)
@@ -286,7 +286,7 @@ struct OnDisappearTests {
         try system.update(root: root)
         try system.processSetup()
 
-        system.withCurrentSystem { root.present = false }
+        system.withReadingContext { root.present = false }
         // Must not throw — teardown failures are swallowed + logged.
         try system.update(root: root)
     }

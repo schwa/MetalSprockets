@@ -29,7 +29,7 @@ struct StateBoxLifetimeTests {
         try system.update(root: element)
 
         // The node registered as a dependency while the body read `count`.
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.count = 1
         }
         #expect(system.isDirty(try #require(system.nodes.values.first?.id)) || system.dirtyIdentifiers.isEmpty == false)
@@ -37,7 +37,7 @@ struct StateBoxLifetimeTests {
         // Replace the tree so the original node is dropped, then write again: the stale weak reference is pruned
         // rather than resurrected.
         try system.update(root: EmptyElement())
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.count = 2
         }
     }
@@ -50,7 +50,7 @@ struct StateBoxLifetimeTests {
         let child = try #require(system.nodes.values.first { $0.parentIdentifier != nil })
 
         // Stand in for a traversal in flight on the owning isolation while a GPU completion handler touches state:
-        // `System.current` is not installed, so the read must ignore the stack rather than attach to `child`.
+        // `ReadingNode` is not installed, so the read must ignore the stack rather than attach to `child`.
         system.traversalContext.push(child)
         defer { system.traversalContext.pop() }
 

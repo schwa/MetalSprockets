@@ -149,7 +149,7 @@ public struct ShaderLibrary: Identifiable {
                 return snapshot.state
             }
             // Slow path: look for an ambient store.
-            let ambientStore: ShaderStore? = System.current?.traversalContext.currentNode?.environmentValues.shaderStore
+            let ambientStore: ShaderStore? = ReadingNode.current?.environmentValues.shaderStore
             guard let store = ambientStore else {
                 // No ambient store — keep using our private state.
                 // Leave `adopted` false so a future call from inside a System can adopt.

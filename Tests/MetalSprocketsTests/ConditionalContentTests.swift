@@ -67,7 +67,7 @@ struct ConditionalContentTests {
         try system.processSetup()
 
         TestMonitor.shared.reset()
-        system.withCurrentSystem { root.flag = false }
+        system.withReadingContext { root.flag = false }
         try system.update(root: root)
         try system.processSetup()
 

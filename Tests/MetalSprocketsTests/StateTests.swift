@@ -35,7 +35,7 @@ struct StateTests {
 
         #expect(system.dirtyIdentifiers.isEmpty)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             root.count += 1
         }
 
@@ -58,7 +58,7 @@ struct StateTests {
         try system.processWorkload()
 
         let childElement = system.element(at: [0, 0, 1, 0], type: TrackedElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             childElement.action()
         }
 
@@ -140,7 +140,7 @@ struct StateTests {
         #expect(TestMonitor.shared.values["child"] as? Int == 0)
 
         let childElement = system.element(at: [0, 0, 1, 0], type: TrackedElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             childElement.action()
         }
 
@@ -154,7 +154,7 @@ struct StateTests {
         #expect(TestMonitor.shared.values["child"] as? Int == 1)
 
         let parentElement = system.element(at: [0, 0, 0], type: TrackedElement.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             parentElement.action()
         }
 
@@ -224,7 +224,7 @@ struct StateTests {
         #expect(TestMonitor.shared.values["combined"] as? Int == 100)
 
         let leaf = system.element(at: [0, 0, 0], type: PropagationLeaf.self)!
-        system.withCurrentSystem {
+        system.withReadingContext {
             leaf.onIncrement()
         }
 

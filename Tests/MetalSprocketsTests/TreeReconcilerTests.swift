@@ -26,7 +26,7 @@ struct TreeReconcilerTests {
     @Test
     func reconcilerProducesNodesAndBalancedEvents() throws {
         let system = System()
-        let reconciliation = try System.$current.withValue(system) {
+        let reconciliation = try system.withReadingContext {
             try TreeReconciler(system: system).reconcile(root: Root())
         }
 
@@ -51,7 +51,7 @@ struct TreeReconcilerTests {
         try system.update(root: Root())
         let before = system.nodes
 
-        let reconciliation = try System.$current.withValue(system) {
+        let reconciliation = try system.withReadingContext {
             try TreeReconciler(system: system).reconcile(root: Root())
         }
 

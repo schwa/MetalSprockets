@@ -1,5 +1,6 @@
 internal extension System {
-    func withCurrentSystem<R>(_ closure: () throws -> R) rethrows -> R {
-        try Self.$current.withValue(self, operation: closure)
+    /// Runs `closure` with this system's traversal context installed as ``ReadingNode``'s source.
+    func withReadingContext<R>(_ closure: () throws -> R) rethrows -> R {
+        try ReadingNode.withContext(traversalContext, closure)
     }
 }

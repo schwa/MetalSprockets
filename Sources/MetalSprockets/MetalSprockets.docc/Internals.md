@@ -78,7 +78,7 @@ During the setup and workload phases, the framework reads environment values in 
 
 - The `workloadEnter`, `workloadExit`, `setupEnter`, and `setupExit` methods get a `node` parameter directly.
 - The `@MSEnvironment` property wrapper cannot get this parameter.
-- Instead, it reads through the `TraversalContext`, which it finds through `System.current`.
+- Instead, it reads the node through the task-local `ReadingNode`. `ReadingNode` exposes only the node being visited, not the `System` or the node stack. `@MSState` read tracking and the `ShaderLibrary` ambient store use it too. Everything else gets its node passed in.
 
 #### Why This Is a Problem
 
@@ -132,7 +132,7 @@ The traversal is depth-first and visits siblings in order. This gives:
 
 ### Planned Improvements
 
-- Pass the traversal context to elements explicitly, instead of through `System.current`
+- Resolve `@MSEnvironment` before the element is evaluated, instead of through `ReadingNode`
 - A real `ElementModifier` protocol
 - Optimizations for large graphs
 

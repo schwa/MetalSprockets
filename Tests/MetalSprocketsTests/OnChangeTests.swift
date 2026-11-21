@@ -49,7 +49,7 @@ struct OnChangeTests {
         #expect(lastOldValue == nil)
         #expect(lastNewValue == nil)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.counter = 1
         }
         try system.update(root: element)
@@ -59,7 +59,7 @@ struct OnChangeTests {
         #expect(lastOldValue == 0)
         #expect(lastNewValue == 1)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.counter = 5
         }
         try system.update(root: element)
@@ -144,7 +144,7 @@ struct OnChangeTests {
 
         #expect(changeCount == 0)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value = "Hello"
         }
         try system.update(root: element)
@@ -152,7 +152,7 @@ struct OnChangeTests {
 
         #expect(changeCount == 0)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value = "World"
         }
         try system.update(root: element)
@@ -189,7 +189,7 @@ struct OnChangeTests {
 
         #expect(actionCalled == false)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.toggle = true
         }
         try system.update(root: element)
@@ -237,7 +237,7 @@ struct OnChangeTests {
         #expect(value1ChangeCount == 0)
         #expect(value2ChangeCount == 0)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value1 = 10
         }
         try system.update(root: element)
@@ -246,7 +246,7 @@ struct OnChangeTests {
         #expect(value1ChangeCount == 1)
         #expect(value2ChangeCount == 0)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value2 = "B"
         }
         try system.update(root: element)
@@ -255,7 +255,7 @@ struct OnChangeTests {
         #expect(value1ChangeCount == 1)
         #expect(value2ChangeCount == 1)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value1 = 20
             element.value2 = "C"
         }
@@ -305,7 +305,7 @@ struct OnChangeTests {
 
         #expect(changeCount == 0)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value = 10
         }
         try system.update(root: element)
@@ -314,7 +314,7 @@ struct OnChangeTests {
         #expect(changeCount == 1)
         #expect(lastValue == 10)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value = 15
         }
         try system.update(root: element)
@@ -352,21 +352,21 @@ struct OnChangeTests {
 
         #expect(callCount == 0)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value = 1
         }
         try system.update(root: element)
         try system.processSetup()
         #expect(callCount == 1)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value = 1
         }
         try system.update(root: element)
         try system.processSetup()
         #expect(callCount == 1) // Should still be 1
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.value = 2
         }
         try system.update(root: element)

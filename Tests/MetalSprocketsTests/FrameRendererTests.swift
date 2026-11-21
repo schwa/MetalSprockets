@@ -71,7 +71,7 @@ struct FrameRendererTests {
         #expect(throws: Failure.self) {
             try renderer.renderFrame(root: root)
         }
-        #expect(System.current == nil)
+        #expect(!ReadingNode.isActive)
 
         try renderer.renderFrame(root: root)
         #expect(recorder.calls.contains("workload"))

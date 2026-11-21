@@ -54,8 +54,6 @@ package final class System: @unchecked Sendable {
         _dirtyIdentifiers.withLock { $0 }
     }
 
-    @TaskLocal internal static var current: System?
-
     package init() {
         // This line intentionally left blank.
     }
@@ -217,7 +215,7 @@ package final class System: @unchecked Sendable {
         let createdCount = lastCreatedNodeCount
         frameSignposter.endInterval("Update", update, "nodes \(nodeCount), created \(createdCount)")
         let setupStart = CACurrentMediaTime()
-        let timings = try withCurrentSystem {
+        let timings = try withReadingContext {
             let setup = frameSignposter.beginInterval("Setup", id: frameSignposter.makeSignpostID(), "frame \(frame)")
             do {
                 try processSetup()
@@ -249,7 +247,7 @@ package final class System: @unchecked Sendable {
     internal func update(root: some Element) throws {
         assert(traversalContext.isEmpty)
         applyPendingSetupIdentifiers()
-        try withCurrentSystem {
+        try withReadingContext {
             defer {
                 assert(traversalContext.isEmpty, "traversal context should be empty after update")
                 _ = takeDirtyIdentifiers()

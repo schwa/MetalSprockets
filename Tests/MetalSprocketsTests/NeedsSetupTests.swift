@@ -56,7 +56,7 @@ struct NeedsSetupTests {
 
         #expect(SetupTrackingElement.globalSetupEnterCount == 1)
 
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.counter = 1
         }
 

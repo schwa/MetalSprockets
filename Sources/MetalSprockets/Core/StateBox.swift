@@ -21,14 +21,15 @@ internal final class StateBox<Wrapped> {
     private var dependencies: [WeakBox<Node>] = []
     private var hasBeenConnected = false
 
-    private func resolveSystem() -> System? {
-        let current = System.current
+    private func resolveSystem(readingNode: Node? = ReadingNode.current) -> System? {
+        let current = readingNode?.system
+        let inTraversal = ReadingNode.isActive
         return lock.withLockUnchecked {
             if _system == nil {
                 _system = current
                 if _system != nil {
                     hasBeenConnected = true
-                } else if !hasBeenConnected {
+                } else if !hasBeenConnected, !inTraversal {
                     // Never been connected to a graph - this is a real error, else: was connected but graph is now gone (teardown) - this is OK
                     assertionFailure("StateBox must be used within a System.")
                 }
@@ -39,11 +40,12 @@ internal final class StateBox<Wrapped> {
 
     internal var wrappedValue: Wrapped {
         get {
-            // The traversal context belongs to whichever task is running the traversal, so it may only be
-            // touched through the task-local `System.current`. Reads arriving from elsewhere (a GPU completion
-            // handler, a detached Task) get no dependency instead of racing the node stack. See #392.
-            let currentNode = resolveSystem().flatMap { system in
-                System.current === system ? system.traversalContext.currentNode : nil
+            // The reading node is task-local, so reads arriving from elsewhere (a GPU completion handler, a
+            // detached Task) see no node and record no dependency instead of racing the node stack. See #392.
+            let readingNode = ReadingNode.current
+            let system = resolveSystem(readingNode: readingNode)
+            let currentNode = readingNode.flatMap { node in
+                node.system === system ? node : nil
             }
             let pending: (() -> Wrapped)? = lock.withLockUnchecked {
                 dependencies = dependencies.filter { $0.wrappedValue != nil }
@@ -121,7 +123,7 @@ internal final class StateBox<Wrapped> {
     private func valueDidChange() {
         // An element initializer that assigns an `@MSState` with a declaration default goes through the setter
         // before the box is attached to any System. Nothing depends on it yet (#578).
-        if System.current == nil, lock.withLockUnchecked({ _system == nil && !hasBeenConnected }) {
+        if !ReadingNode.isActive, lock.withLockUnchecked({ _system == nil && !hasBeenConnected }) {
             return
         }
         // No system: either the graph is torn down (harmless) or the StateBox

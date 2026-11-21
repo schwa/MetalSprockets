@@ -58,7 +58,7 @@ struct MSStateLazyInitialValueTests {
         let element = Assigned(seed: 3)
         let system = System()
         try system.update(root: element)
-        system.withCurrentSystem {
+        system.withReadingContext {
             #expect(element.value == 3)
             #expect(element.withDefault == 6)
         }
@@ -68,7 +68,7 @@ struct MSStateLazyInitialValueTests {
         let element = Lazy()
         let system = System()
         try system.update(root: element)
-        system.withCurrentSystem {
+        system.withReadingContext {
             element.$value.wrappedValue = 42
             #expect(element.value == 42)
             element.$optional.wrappedValue = 1

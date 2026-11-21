@@ -7,7 +7,10 @@ import Foundation
 /// this context, through ``currentNode`` and ``parentNode``. They do not use a stack on ``System``.
 ///
 /// Outside a traversal, the context is empty. To read environment or state at that time is a programmer error.
-internal final class TraversalContext {
+///
+/// `@unchecked Sendable` for the same reason as ``System``: it is confined to the task running the traversal, and
+/// ``ReadingNode`` only hands it out within that task.
+internal final class TraversalContext: @unchecked Sendable {
     private var stack: [Node] = []
 
     var isEmpty: Bool {
