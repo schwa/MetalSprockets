@@ -12,12 +12,8 @@ public struct RenderPipelineDescriptorTransformer<Content>: Element, BodylessEle
     // Runs in configureNode so the modified descriptor is inherited by children. The descriptor is
     // read from the parent's environment because the node's own copy may be stale from last frame.
     // Mirrors RenderPassDescriptorModifier. See #342.
-    func configureNodeBodyless(_ node: Node) throws {
-        guard let system = System.current else {
-            fatalError("RenderPipelineDescriptorTransformer: No System is currently active.")
-        }
-
-        let parent = system.traversalContext.parentNode
+    func configureNodeBodyless(_ node: Node, context: TraversalContext) throws {
+        let parent = context.parentNode
         guard let renderPipelineDescriptor = parent?.environmentValues.renderPipelineDescriptor ?? node.environmentValues.renderPipelineDescriptor else {
             return // Descriptor not set yet
         }

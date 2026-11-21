@@ -9,6 +9,10 @@ internal protocol BodylessElement {
 
     func configureNodeBodyless(_ node: Node) throws
 
+    /// Like ``configureNodeBodyless(_:)``, for elements that read the parent node or ancestors. `context` has `node`
+    /// pushed. The default calls ``configureNodeBodyless(_:)``.
+    func configureNodeBodyless(_ node: Node, context: TraversalContext) throws
+
     /// Called once when a node is being removed from the tree (the element is no
     /// longer present after an `update`). Use this to release external resources
     /// or unregister observers. GPU resources held in the node's env/caches are
@@ -47,6 +51,10 @@ extension BodylessElement {
 
     func configureNodeBodyless(_ node: Node) throws {
         // This line intentionally left blank.
+    }
+
+    func configureNodeBodyless(_ node: Node, context: TraversalContext) throws {
+        try configureNodeBodyless(node)
     }
 
     func teardown(_ node: Node) throws {

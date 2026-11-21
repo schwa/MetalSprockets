@@ -61,7 +61,7 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
         try visit(content)
     }
 
-    func configureNodeBodyless(_ node: Node) throws {
+    func configureNodeBodyless(_ node: Node, context: TraversalContext) throws {
         guard sampleCount > 1 else {
             resources = nil
             multisampleTexture = nil
@@ -69,17 +69,13 @@ internal struct MSAAModifier<Content>: Element, BodylessContentElement, Environm
             return
         }
 
-        guard let system = System.current else {
-            fatalError("MSAAModifier: No System is currently active.")
-        }
-
         // The modifier rewrites the render pass descriptor, so it only means anything when it
         // wraps a whole pass. Placed inside one it used to be a silent no-op (see #355).
-        if system.traversalContext.hasAncestor(where: { $0.element is any RenderPassElement }) {
+        if context.hasAncestor(where: { $0.element is any RenderPassElement }) {
             throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` must be placed on a RenderPass (or an element containing one), not on content inside a render pass.")
         }
 
-        let parent = system.traversalContext.parentNode
+        let parent = context.parentNode
         guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
             throw MetalSprocketsError.configurationError("`.msaa(sampleCount:)` must be placed on an element that renders into a render pass; no render pass descriptor was found in the environment.")
         }

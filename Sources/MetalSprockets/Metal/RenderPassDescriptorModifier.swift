@@ -11,12 +11,8 @@ internal struct RenderPassDescriptorModifier<Content>: Element, BodylessElement,
 
     // Runs in configureNode so the modified descriptor is inherited by children. The descriptor is
     // read from the parent's environment because the node's own copy may be stale from last frame.
-    func configureNodeBodyless(_ node: Node) throws {
-        guard let system = System.current else {
-            fatalError("RenderPassDescriptorModifier: No System is currently active.")
-        }
-
-        let parent = system.traversalContext.parentNode
+    func configureNodeBodyless(_ node: Node, context: TraversalContext) throws {
+        let parent = context.parentNode
         guard let renderPassDescriptor = parent?.environmentValues.renderPassDescriptor ?? node.environmentValues.renderPassDescriptor else {
             fatalError("RenderPassDescriptorModifier: renderPassDescriptor not available.")
         }

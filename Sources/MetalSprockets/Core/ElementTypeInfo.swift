@@ -67,8 +67,8 @@ extension BodylessElement {
         try withConcrete(element, as: Self.self) { try $0.pointee.visitChildrenBodyless(visit) }
     }
 
-    static func configureNodeBodyless(of element: any Element, node: Node) throws {
-        try withConcrete(element, as: Self.self) { try $0.pointee.configureNodeBodyless(node) }
+    static func configureNodeBodyless(of element: any Element, node: Node, context: TraversalContext) throws {
+        try withConcrete(element, as: Self.self) { try $0.pointee.configureNodeBodyless(node, context: context) }
     }
 
     static func skipsWorkload(of element: any Element, node: Node) -> Bool {

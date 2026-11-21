@@ -11862,13 +11862,14 @@ Needed by SceneSprockets: draws encoded with indirect command buffers, and GPU-d
 ## 577: Element.configureNode and descriptor/MSAA modifiers reach the parent node through System.current
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:s, area:architecture, subtask
 milestone: m1
 created: 2026-11-17T19:55:24Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-21T02:14:18Z
+closed: 2026-11-21T02:14:18Z
 +++
 
 Part of #389. Element.configureNode, RenderPassDescriptorModifier, RenderPipelineDescriptorTransformer and MSAAModifier use System.current only to reach the parent node or walk ancestors. The dependency is invisible in their signatures, and they see nil outside a traversal.

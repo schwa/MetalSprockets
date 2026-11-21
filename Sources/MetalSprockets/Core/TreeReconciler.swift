@@ -167,7 +167,7 @@ internal final class TreeReconciler {
             newEvents.append(.exit(currentNode))
         }
 
-        try element.configureNode(currentNode)
+        try element.configureNode(currentNode, context: system.traversalContext)
 
         levelStarts.append(siblingCounts.count)
         defer {

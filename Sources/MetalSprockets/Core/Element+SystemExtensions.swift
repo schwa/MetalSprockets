@@ -1,14 +1,9 @@
 import Synchronization
 
 internal extension Element {
-    func configureNode(_ node: Node) throws {
-        guard let system = System.current else {
-            preconditionFailure("No System is currently active.")
-        }
-
-        // TODO: #27 Avoid this in future
-        // The current node is already pushed, so the environment parent is the node above it.
-        let parent = system.traversalContext.parentNode
+    /// `context` must have `node` pushed, so the environment parent is the node above it.
+    func configureNode(_ node: Node, context: TraversalContext) throws {
+        let parent = context.parentNode
 
         applyInheritedEnvironment(from: parent, to: node)
 
@@ -17,7 +12,7 @@ internal extension Element {
             try updateDynamicProperties(node)
         }
 
-        try node.typeInfo.bodylessType?.configureNodeBodyless(of: self, node: node)
+        try node.typeInfo.bodylessType?.configureNodeBodyless(of: self, node: node, context: context)
         if hasDynamicProperties {
             try persistDynamicProperties(node)
         }
