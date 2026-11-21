@@ -13,5 +13,7 @@ public extension MTLDevice {
 ///
 /// Returns `false` when there is no Metal device. See ``Metal/MTLDevice/supportsMetalSprockets``.
 public func isMetalSprocketsSupported() -> Bool {
-    MTLCreateSystemDefaultDevice()?.supportsMetalSprockets ?? false
+    // swiftlint:disable:next MTLCreateSystemDefaultDevice
+    MTLCreateSystemDefaultDevice()?.supportsMetalSprockets ?? false // No device must return false, not trap.
+
 }
