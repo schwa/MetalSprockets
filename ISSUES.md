@@ -2736,9 +2736,8 @@ status: open
 priority: low
 kind: enhancement
 labels: effort:l, area:api, breaking
-milestone: m2
 created: 2026-02-19T00:00:00Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T03:15:09Z
 +++
 
 We currently pass data to shaders through three different mechanisms, each with a distinct API:
@@ -2752,6 +2751,8 @@ Conceptually these are all just 'data bound to shaders', differing only in granu
 Investigate whether these can be unified (or at least aligned) behind a more consistent API — making it easier to reason about what's varying at what rate, and to move data between granularities without rewriting call sites.
 
 - `2026-10-07T14:17:51Z`: Folded in #171 (make vertex descriptor a parameter to Render): per-vertex/descriptor configuration is part of this unification.
+- `2026-11-21T03:06:26Z`: Reviewed the current surface: per-draw data uses .parameter(_:value:) / .parameter(_:values:) / .parameters { }, per-vertex data uses .vertexBuffer(_:index:) / .vertexValues(_:index:) / .vertexDescriptor(_:), and per-view data in amplified rendering is an array the caller binds with .parameter(_:values:) and indexes by amplification id in the shader (StereoViews supplies the matrices and configure(_:) sets the mappings). There is no agreed target API, and every candidate renames public modifiers (breaking). Punting for a design decision.
+- `2026-11-21T03:06:26Z`: Question 1 (design): Should per-draw, per-view and per-vertex data share one modifier with an explicit rate, e.g. .parameter("transform", value: m) (per draw), .parameter("viewProjection", perView: matrices) (array indexed by amplification id, length checked against the view count), and .parameter(attribute: 0, values: positions) (per vertex, replacing vertexValues/vertexBuffer), keeping the old modifiers as deprecated forwards? Recommended: Yes: one .parameter family with a rate label (value/perView/attribute), old vertexBuffer/vertexValues deprecated, implemented as a follow-up effort:m issue.
 
 ---
 
@@ -6000,9 +6001,8 @@ status: open
 priority: medium
 kind: enhancement
 labels: effort:l, area:architecture
-milestone: m2
 created: 2026-08-08T23:14:01Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-21T03:15:09Z
 +++
 
 Ten call sites reach traversal state through the `@TaskLocal System.current` rather than being handed the context they need: `MSEnvironment` (EnvironmentValues.swift:170), `EnvironmentReader`, `Element` body evaluation (Element.swift:82), `StateBox.resolveSystem()`, `Element+SystemExtensions`, and the modifiers in `RenderPipelineDescriptorTransformer`, `RenderPassDescriptorModifier`, `MSAAModifier`, `GPUCounters`, plus ambient `ShaderStore` lookup in `ShaderLibrary`.
@@ -11517,10 +11517,9 @@ status: open
 priority: low
 kind: enhancement
 labels: area:api, effort:s
-milestone: m2
 depends: 560
 created: 2026-11-14T21:44:42Z
-updated: 2026-11-17T19:50:30Z
+updated: 2026-11-21T03:15:09Z
 +++
 
 After #560 adds an opt-in render thread (RFCs/0008), RenderView still defaults to main-thread rendering. Apps must opt in to keep busy frames off the main thread. Revisit the default once the render-thread mode has shipped and been tested on macOS and iOS.
@@ -11537,9 +11536,8 @@ status: open
 priority: medium
 kind: task
 labels: area:metal4, effort:s
-milestone: m2
 created: 2026-11-14T22:07:43Z
-updated: 2026-11-17T19:58:08Z
+updated: 2026-11-21T03:15:09Z
 +++
 
 #471 reports random pink or garbage tile-shaped blocks in RenderView output with a slow fragment shader (SolarSystem, ~/Shared/Projects/Scratch/SolarSystem). It has been filed with Apple.
@@ -12032,14 +12030,14 @@ Expected: a version whose fields barely changed costs work in proportion to thos
 ## 583: One element per draw is too expensive for real scenes, so renderers batch draws themselves
 
 +++
-status: new
+status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:xl
 milestone: m3
 depends: 476, 513, 519, 522, 523, 578
 created: 2026-11-19T14:20:17Z
-updated: 2026-11-19T15:43:01Z
+updated: 2026-11-21T03:33:21Z
 +++
 
 Drawing each batch of a model as its own element costs far more CPU than issuing the same Metal draws from one element. SceneSprockets' PBR renderer works around it by drawing most opaque batches from one element per merged set (SceneSprockets#545, RFC 0001), which costs it a second draw path with its own rules.
@@ -12283,33 +12281,36 @@ Rows are issued in the order given, so rows with the same state may be split by 
 ## 593: Draw list re-encodes unchanged rows every frame
 
 +++
-status: new
+status: closed
 priority: low
 kind: feature
-labels: area:performance
+labels: area:performance, effort:m
 milestone: m3
 depends: 588
 created: 2026-11-19T14:57:58Z
-updated: 2026-11-19T15:42:15Z
+updated: 2026-11-21T03:34:34Z
+closed: 2026-11-21T03:34:34Z
 +++
 
 Part of #585.
 
 Rows whose id and contents are the same as the previous frame are encoded again. Unknown whether this matters; worth measuring only after the draw list exists.
 
+- `2026-11-21T03:34:34Z`: Measured with ReconciliationBenchmark --scenario merged (one DrawList, 10000 rows, Release, M5 Max, Time Profiler within DrawList's encode closure): about 92% of the samples are in the Metal driver (AGX encodeAndEmitRenderState, argument dirty-bit extraction, drawPrimitives) and about 4% in DrawList's own per-row code. Skipping unchanged rows on the CPU side can save at most that 4%. Avoiding the re-encode itself needs indirect command buffers, tracked by #594. Closing as not worth doing on its own.
+
 ---
 
 ## 594: Draw list has no GPU culling or indirect command buffer path
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
 labels: area:performance, area:metal4, effort:xl
 milestone: m3
 depends: 593
 created: 2026-11-19T14:57:58Z
-updated: 2026-11-19T15:42:15Z
+updated: 2026-11-21T03:33:21Z
 +++
 
 Part of #585.
@@ -12349,9 +12350,10 @@ DrawList takes an optional StereoViews value, applied once before its rows.
 status: new
 priority: low
 kind: feature
+labels: area:api, effort:m
 milestone: m3
 created: 2026-11-20T06:05:34Z
-updated: 2026-11-21T02:55:06Z
+updated: 2026-11-21T03:33:25Z
 +++
 
 Render and compute pipelines are compiled lazily by the internal PipelineCache that belongs to each view's MetalContext. They are compiled the first time an element tree that uses them is encoded. The cache key includes the attachment pixel formats, sample count, vertex layout and linked functions.
@@ -12361,6 +12363,8 @@ Nothing outside MetalSprockets can fill that cache, so the first frame that show
 Expected: an app or package (for example SceneSprockets, which wants a SCNSceneRenderer.prepare equivalent, SceneSprockets#597) can compile the pipelines that an element tree would use, for a given view configuration (pixel formats, sample count), ahead of time and without encoding a frame. Whether this runs async, and whether it can be cancelled, is open.
 
 Related: keeping compiled pipelines between launches (Metal 4 pipeline archives) is not covered here.
+
+- `2026-11-21T03:33:21Z`: Question 1 (design): Where should ahead-of-time pipeline compilation live, given each RenderView has its own MetalContext and PipelineCache: (a) a shared, public pipeline cache (like ShaderStore) that views and Runners can be given, plus a prepare(element, formats:sampleCount:) async method on it; or (b) a method on RenderView/Runner only? Recommended: (a): a public PipelineStore shared via environment like ShaderStore, with an async prepare(_ content:, colorPixelFormats:, depthPixelFormat:, sampleCount:) that runs setup without encoding; cancellation via Task.
 
 ---
 
@@ -12378,8 +12382,10 @@ closed: 2026-11-21T02:57:23Z
 ## Milestone M2: m2
 
 +++
-status: open
+status: closed
 created: 2026-11-17T19:49:53Z
+updated: 2026-11-21T03:27:20Z
+closed: 2026-11-21T03:27:20Z
 +++
 
 ---
