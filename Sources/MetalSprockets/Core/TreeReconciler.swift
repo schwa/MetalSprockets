@@ -8,6 +8,8 @@ internal struct Reconciliation {
     var events: [TraversalEvent]
     /// How many nodes of the previous tree were reused. When it equals the previous node count, nothing was removed.
     var reusedCount: Int
+    /// How many of the reused nodes came from unchanged subtrees spliced in without being visited (#370, #519).
+    var splicedCount: Int
 }
 
 /// Diffs an element tree against the previous traversal and produces the new node dictionary and traversal events.
@@ -20,10 +22,15 @@ internal final class TreeReconciler {
     private let system: System
 
     /// Nodes entered by the previous traversal, in pre-order, consumed in lock-step with this walk.
-    private var previousIterator: IndexingIterator<[Node]>
+    private let previousNodes: [Node]
+    /// For each of `previousNodes`, the index of its `.enter` event in the previous traversal events.
+    private let previousEnterIndices: [Int]
+    /// Index of the next unconsumed entry in `previousNodes`.
+    private var previousPosition = 0
     private var newEvents: [TraversalEvent] = []
     private var newNodes: [StructuralIdentifier: Node] = [:]
     private var reusedCount = 0
+    private var splicedCount = 0
     /// Atoms for the path from the root to the element currently being processed.
     private var atomStack: [StructuralIdentifier.Atom] = []
     /// Path hashes matching `atomStack`, so each identifier's hash extends its parent's instead of rehashing the path.
@@ -36,13 +43,18 @@ internal final class TreeReconciler {
 
     init(system: System) {
         self.system = system
-        let previousNodes = system.traversalEvents.compactMap { event -> Node? in
-            guard case .enter(let node) = event else {
-                return nil
+        var previousNodes: [Node] = []
+        var previousEnterIndices: [Int] = []
+        previousNodes.reserveCapacity(system.traversalEvents.count / 2)
+        previousEnterIndices.reserveCapacity(system.traversalEvents.count / 2)
+        for (index, event) in system.traversalEvents.enumerated() {
+            if case .enter(let node) = event {
+                previousNodes.append(node)
+                previousEnterIndices.append(index)
             }
-            return node
         }
-        self.previousIterator = previousNodes.makeIterator()
+        self.previousNodes = previousNodes
+        self.previousEnterIndices = previousEnterIndices
         // The new tree is usually the same size as the previous one; avoid rehashing as it grows.
         newNodes.reserveCapacity(previousNodes.count)
         newEvents.reserveCapacity(system.traversalEvents.count)
@@ -50,11 +62,11 @@ internal final class TreeReconciler {
 
     /// Walk `root`, reconciling it against the previous tree.
     ///
-    /// Must be called with `system` installed as ``System/current``: element bodies and dynamic properties resolve
-    /// environment and state through the active node stack while their nodes are being configured.
+    /// Must be called inside ``System/withReadingContext(_:)``: element bodies and dynamic properties resolve
+    /// environment and state through ``ReadingNode`` while their nodes are being configured.
     func reconcile(root: some Element) throws -> Reconciliation {
         try processElement(root)
-        return Reconciliation(nodes: newNodes, events: newEvents, reusedCount: reusedCount)
+        return Reconciliation(nodes: newNodes, events: newEvents, reusedCount: reusedCount, splicedCount: splicedCount)
     }
 
     private func nextIndex(for typeIdentifier: ElementTypeIdentifier) -> Int {
@@ -71,27 +83,42 @@ internal final class TreeReconciler {
         return 0
     }
 
-    /// Splice a whole unchanged subtree from the previous traversal, reusing its nodes and events verbatim.
-    /// Returns false if the reconciler cannot find the subtree. See #370.
-    private func spliceSubtree(_ id: StructuralIdentifier) -> Bool {
-        guard let range = System.subtreeEventRange(for: id, in: system.traversalEvents) else {
-            return false
+    private func nextPreviousNode() -> Node? {
+        guard previousPosition < previousNodes.count else {
+            return nil
         }
+        defer { previousPosition += 1 }
+        return previousNodes[previousPosition]
+    }
+
+    /// Splice the whole unchanged subtree of the previous node just consumed by ``nextPreviousNode()``, reusing its
+    /// nodes and events verbatim. See #370.
+    ///
+    /// The subtree starts at that node's known `.enter` event, so splicing costs the subtree's size, not a search of
+    /// every previous event (#519).
+    private func spliceSubtree() {
+        let events = system.traversalEvents
+        var index = previousEnterIndices[previousPosition - 1]
+        var depth = 0
         var enteredCount = 0
-        for event in system.traversalEvents[range] {
+        repeat {
+            let event = events[index]
             newEvents.append(event)
-            if case .enter(let node) = event {
+            switch event {
+            case .enter(let node):
+                depth += 1
                 enteredCount += 1
                 newNodes[node.id] = node
+            case .exit:
+                depth -= 1
             }
-        }
+            index += 1
+        } while depth > 0
         reusedCount += enteredCount
-        // The subtree's root identifier was already consumed by the caller; consume the descendants so the
-        // previous-identifier iterator stays aligned with the pre-order walk.
-        for _ in 1..<max(enteredCount, 1) {
-            _ = previousIterator.next()
-        }
-        return true
+        splicedCount += enteredCount
+        // The caller consumed the subtree's root; consume the descendants so `previousPosition` stays aligned with
+        // the pre-order walk.
+        previousPosition += enteredCount - 1
     }
 
     /// Whether `candidate`, the previous traversal's node at this position, has identifier `currentId`.
@@ -142,7 +169,7 @@ internal final class TreeReconciler {
         let currentId = StructuralIdentifier(atoms: atomStack, pathHash: pathHash)
         // The previous traversal's node at this position is reused when its identifier matches. One comparison, no
         // dictionary lookup (#497).
-        let candidate = previousIterator.next()
+        let candidate = nextPreviousNode()
         let previousNode = candidate.flatMap { matches($0, currentId: currentId, atom: atom) ? $0 : nil }
         // Class elements never compare equal (their mutable stored properties are invisible to `isEqual`), so
         // they always re-evaluate; only their unchanged children get skipped.
@@ -151,7 +178,9 @@ internal final class TreeReconciler {
 
         // A clean, unchanged subtree under an unchanged parent can be reused wholesale: no body evaluation, no
         // child walk. Dirty marks propagate to ancestors (#367), so a clean root implies a clean subtree.
-        if unchanged, environmentStable, !system.isSubtreeDirty(currentId), spliceSubtree(currentId) {
+        if unchanged, environmentStable, !system.isSubtreeDirty(currentId) {
+            // `unchanged` implies `previousNode` is the candidate just consumed.
+            spliceSubtree()
             return
         }
 

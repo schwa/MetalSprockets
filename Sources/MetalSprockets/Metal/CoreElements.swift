@@ -167,7 +167,9 @@ public struct ParameterModifier<Content>: Element, WorkloadElement, BodylessCont
     var apply: (inout ParameterSet) -> Void
 
     func applyCollapsed(to node: Node, state: inout CollapseState) throws {
-        var parameters = state.parameters ?? node.environmentValues.inheritedParameterSet ?? ParameterSet()
+        // `take()` moves the set out, so its arrays stay uniquely referenced and the chain copies them once, not once
+        // per modifier.
+        var parameters = state.parameters.take() ?? node.environmentValues.inheritedParameterSet ?? ParameterSet()
         apply(&parameters)
         state.parameters = parameters
     }

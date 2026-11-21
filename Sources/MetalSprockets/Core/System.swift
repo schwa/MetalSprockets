@@ -213,7 +213,8 @@ package final class System: @unchecked Sendable {
         }
         let nodeCount = nodes.count
         let createdCount = lastCreatedNodeCount
-        frameSignposter.endInterval("Update", update, "nodes \(nodeCount), created \(createdCount)")
+        let splicedCount = lastSplicedNodeCount
+        frameSignposter.endInterval("Update", update, "nodes \(nodeCount), created \(createdCount), spliced \(splicedCount)")
         let setupStart = CACurrentMediaTime()
         let timings = try withReadingContext {
             let setup = frameSignposter.beginInterval("Setup", id: frameSignposter.makeSignpostID(), "frame \(frame)")
@@ -240,6 +241,9 @@ package final class System: @unchecked Sendable {
 
     /// Nodes created by the most recent update (not reused from the previous frame).
     private(set) var lastCreatedNodeCount = 0
+
+    /// Nodes the most recent update reused by splicing unchanged subtrees, without visiting them.
+    private(set) var lastSplicedNodeCount = 0
 
     /// Timings of the most recent successful ``render(root:)``, for roots that render through another driver.
     package private(set) var lastPhaseTimings: PhaseTimings?
@@ -274,6 +278,7 @@ package final class System: @unchecked Sendable {
             }
 
             lastCreatedNodeCount = reconciliation.nodes.count - reconciliation.reusedCount
+            lastSplicedNodeCount = reconciliation.splicedCount
             self.nodes = reconciliation.nodes
             self.traversalEvents = reconciliation.events
             // Again, to pick up invalidation that happened during this update (e.g. a dynamic property calling
