@@ -2732,12 +2732,13 @@ The port is Metal 4-only. Archives, specialization optimizations, automatic depe
 ## 259: Look at unifying transform/amplification/uniforms
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:l, area:api, breaking
 created: 2026-02-19T00:00:00Z
-updated: 2026-11-21T03:15:09Z
+updated: 2026-11-21T15:31:00Z
+closed: 2026-11-21T15:31:00Z
 +++
 
 We currently pass data to shaders through three different mechanisms, each with a distinct API:
@@ -6028,6 +6029,7 @@ Decision needed: (a) split this: file the easy group as a subtask (effort:s) and
 - `2026-11-17T19:55:27Z`: Decision (Q1): easy group split off as #577. This issue keeps the structural dynamic-property redesign.
 - `2026-11-21T03:00:14Z`: Re-audited the remaining 5 System.current uses after #577: MSEnvironment.wrappedValue, StateBox (resolveSystem + read tracking + valueDidChange), Element.trackedBody, EnvironmentReader.visitChildrenBodyless, ShaderLibrary ambient ShaderStore. Three can take the node explicitly: trackedBody and EnvironmentReader get the node from the reconciler (it has currentNode when it visits children), and MSEnvironment can resolve its value in the pre-body dynamic-property update into a reference box. StateBox read tracking is the blocker: a value passed down as MSBinding is read in a child's body, so the dependency must record the reading node, which no explicit parameter carries. ShaderLibrary.resolve runs inside arbitrary element code with no node either. Punting on that design choice.
 - `2026-11-21T03:00:14Z`: Question 2 (design): For StateBox read tracking and the ShaderLibrary ambient store, should System.current be replaced by a narrower task-local that exposes only the node whose body is being evaluated (no System, no traversal stack), with everything else (MSEnvironment, trackedBody, EnvironmentReader) passed the node explicitly? Recommended: Yes. Keep one minimal task-local 'current reading node' for dependency tracking, and pass the node explicitly everywhere else.
+- `2026-11-21T15:31:25Z`: Answer 2: Yes
 
 ---
 
@@ -8969,7 +8971,7 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 
 ---
 
-## 471: Random tile-shaped corruption in a RenderView frame with a slow fragment shader
+## 471: Random tile-shaped corruption in RenderView with slow fragment shader
 
 +++
 status: blocked
@@ -8977,24 +8979,63 @@ priority: medium
 kind: bug
 labels: area:metal4, effort:l
 created: 2026-10-02T15:19:38Z
-updated: 2026-11-21T02:57:32Z
+updated: 2026-11-21T15:36:02Z
 +++
 
-SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
+SolarSystem (`~/Shared/Projects/Scratch/SolarSystem`) shows random rectangular pink or garbage blocks in RenderView output.
 
-Frame structure: render pass 1 draws into a pooled rgba16Float HDR texture (cleared) with instanced impostor quads. Pass 2 is the view's render pass: a full-screen tone map that reads the HDR texture, then Slug text pipelines. QueueBarrier(after: .fragment, before: .fragment) at the start of pass 2. The HDR texture returns to its pool from onSubmissionFinished and is registered in a ResourceCollection. Per-frame uniforms, body array and draw list are bound with .parameter(value:) and .parameter(values:), which use scratch storage.
+## Steps to reproduce
 
-Evidence:
-- The shaders use no frame index or random input, so per-frame variation means timing, not shader maths.
-- The fragment shader ray-marches a heightmap (up to about 450 texture-sampling steps per pixel). Disabling that march mostly stops the corruption. Vertical exaggeration has no effect, because the step count does not depend on it. A slower GPU frame widens the window for a timing bug.
-- Toggling overlay pipelines on or off (pipeline set change) triggers one to two bad frames.
-- Offscreen rendering (Runner.run, one frame at a time) has never shown it. An 8-frame test that toggles the overlays is clean.
-- API and shader validation report nothing. The barrier is visible in an Xcode GPU capture (pass 1 -> Barrier Fragment -> pass 2).
-- It reproduced before #465 and #466 landed and after; both are now in use.
+1. Run SolarSystem in a RenderView.
+2. Keep the camera still and change nothing else.
+3. Watch the Moon's lit side near the terminator, or switch to Surface camera mode.
 
-Looks fine on reading: scratch arenas and argument tables are reused only through retireCompletedSubmissions(), gated on completion.isRetiredSuccessfully. Not yet checked: whether isRetiredSuccessfully can become true before the GPU finishes, and whether anything handed out by a recording slot (scratch, argument tables, allocator) can be reused while an earlier submission is in flight.
+## Expected
 
-Suggested next steps: a RenderView stress test with a deliberately slow fragment shader over many frames, checking for frame-to-frame variation; and a debug option to force one submission in flight to separate cross-frame races from everything else.
+The output is stable from frame to frame when the camera is still and nothing else changes.
+
+## Actual
+
+- Rectangular pink or garbage blocks appear and change every frame.
+- The blocks cluster on the Moon's lit side near the terminator.
+- Sometimes the whole frame goes pink for one frame.
+- In Surface camera mode the whole screen can be garbage.
+
+## Frame structure
+
+- **Pass 1:** Draws instanced impostor quads into a pooled `rgba16Float` HDR texture, which is cleared.
+- **Pass 2:** This is the view's render pass.
+  - It starts with `QueueBarrier(after: .fragment, before: .fragment)`.
+  - It runs a full-screen tone map that reads the HDR texture, then the Slug text pipelines.
+- **HDR texture lifetime:** The texture returns to its pool from `onSubmissionFinished` and is registered in a `ResourceCollection`.
+- **Per-frame data:** The per-frame uniforms, body array and draw list are bound with `.parameter(value:)` and `.parameter(values:)`, which use scratch storage.
+
+## Evidence
+
+- **Timing, not shader maths:** The shaders use no frame index or random input, so the variation between frames points to timing.
+- **Heightmap ray march:**
+  - The fragment shader ray-marches a heightmap, with up to about 450 texture-sampling steps per pixel.
+  - Disabling the march mostly stops the corruption.
+  - Vertical exaggeration has no effect, because the step count does not depend on it.
+  - A slower GPU frame widens the window for a timing bug.
+- **Overlay toggling:** Turning overlay pipelines on or off changes the pipeline set and triggers one or two bad frames.
+- **Offscreen rendering:** Rendering one frame at a time with `Runner.run` has never shown the problem. An 8-frame test that toggles the overlays is clean.
+- **Validation:** API and shader validation report nothing.
+- **Barrier in capture:** An Xcode GPU capture shows the barrier in place: pass 1 → Barrier Fragment → pass 2.
+- **#465 and #466:** The problem reproduced both before and after these landed. Both are now in use.
+
+## Investigation status
+
+**Checked, looks correct:** Scratch arenas and argument tables are reused only through `retireCompletedSubmissions()`, which is gated on `completion.isRetiredSuccessfully`.
+
+**Not yet checked:**
+- Whether `isRetiredSuccessfully` can become true before the GPU finishes.
+- Whether anything handed out by a recording slot (scratch, argument tables, allocator) can be reused while an earlier submission is still in flight.
+
+## Suggested next steps
+
+- Add a RenderView stress test that uses a deliberately slow fragment shader over many frames and checks for variation between frames.
+- Add a debug option that forces only one submission in flight. This would separate races between frames from all other causes.
 
 - `2026-10-05T23:14:53Z`: Closing as invalid for now. Reopen if the tile-shaped corruption reproduces again.
 - `2026-10-06T21:27:26Z`: Reopening: pink/garbage output in RenderView is reported again, now also in MetalSprocketsGLTF's GLTFViewer (Metal 4). Workaround found by the user: set the MTKView's framebufferOnly to false (RenderView: .metalFramebufferOnly(false)), so the drawable's texture has usage beyond render target; with that the pink output goes away. GLTFViewer now has a 'Framebuffer Only' toggle in its Display tab for A/B testing (MetalSprocketsGLTF 191f1610). Guess, unverified: framebufferOnly drawables can use a different memory/compression (lossless or framebuffer-only) path, so this may be an interaction between Metal 4 drawable textures and how they are written or resolved (MSAA resolve, store actions, or reads of the drawable), rather than the fragment shader timing suspected above. Next: reproduce with framebufferOnly true vs false in the same app, with and without MSAA, and check a GPU capture for the drawable's usage and store/resolve actions.
@@ -10066,6 +10107,7 @@ In the cube demo, every item changes every frame.
 - `2026-10-16T17:51:27Z`: Autoresearch session: IdentifiedElement (one per ForEach item) no longer gets a node; its identity goes on its content's atom, and Int ids are stored directly. Sibling counts use a flat stack instead of a Dictionary per node. Directions 1, 3 and 4 in this issue are not done.
 - `2026-10-16T17:53:15Z`: After the autoresearch session, the remaining directions here (type-level work once per ForEach; positional matching when ids are unchanged; reusing unchanged items) are among the big remaining levers. Item reuse (direction 4) overlaps #519.
 - `2026-11-17T19:51:20Z`: Question 1 (decision): Start with directions 1 and 5 (per-ForEach type-level caching, and avoiding the AnyHashable box for common ID types), since they need no API contract? Recommended: Yes. Do 1 and 5 first; defer 4 because it needs a content-depends-only-on-item contract.
+- `2026-11-21T15:31:44Z`: Answer 1: Yes
 
 ---
 
@@ -10353,12 +10395,12 @@ Expected
 ## 513: Collapsed parameter chains rebuild ParameterSet every frame per draw
 
 +++
-status: open
+status: blocked
 priority: medium
 kind: enhancement
 labels: area:performance, area:metal4, effort:m
 created: 2026-10-16T15:41:08Z
-updated: 2026-11-21T02:57:20Z
+updated: 2026-11-21T15:38:26Z
 +++
 
 Part of RFC 0006.
@@ -10385,6 +10427,8 @@ Binding unchanged parameters costs little per draw.
 - `2026-10-21T16:32:56Z`: Tried: reviewed ParameterModifier.applyCollapsed and ParameterSet. Punting: skipping the per-frame rebuild needs to know that bindings are unchanged, but ParameterModifier stores an apply closure and value entries are .bytes closures, so nothing can be compared. That is #521 (deferred). Unblocker: decide #521 (store bindings as data, e.g. an Equatable entry with value bytes), then a node can cache its ParameterSet and reuse it when the entries and the inherited set are equal.
 - `2026-11-21T02:43:12Z`: Tried caching the collapsed chain's ParameterSet per node (compare each modifier's set with last frame's in place, rebuild only on change), on top of the data-based #521 attempt. Even the static scenario (identical values every frame) was slower than the closure baseline: Workload 1.35->1.66 ms, because the equality checks and fat binding copies cost more than rebuilding. Punting with #521. Attempt kept on bookmark attempt-521-513.
 - `2026-11-21T02:43:12Z`: Question 1 (decision): Should #513 wait for the #521 decision (data-based bindings), since a per-node cache needs comparable bindings and the measured cache cost exceeded the rebuild? Recommended: Yes. Block #513 on #521 and revisit after #519.
+- `2026-11-21T15:35:00Z`: Answer 1: Yes
+- `2026-11-21T15:38:25Z`: Not attempted this run. Per answer to Q1, #513 waits on the #521 decision (data-based bindings); #521 in turn waits on #519 subtree reuse, which is still open. Marking blocked.
 
 ---
 
@@ -10586,6 +10630,10 @@ What is wrong
 
 - `2026-11-21T02:43:12Z`: Tried storing bindings as data (ParameterSet of Binding enums, values copied as bytes, Metal objects by identity). Modifiers then compare equal (tests passed), but ReconciliationBenchmark (Release, 1000 cubes, interleaved A/B, median ms) regressed: cubes Update 1.65->1.71..2.4 and Workload 1.30->1.70..2.3 depending on layout; static Update 1.73->1.93, Workload 1.35->1.66; draws Workload 0.59->0.87. Causes seen in Time Profiler: larger modifier values copied through the nested chain (inline bytes), extra allocation per modifier, and real equality comparisons where closure modifiers used to fail fast. Punting: the gain only shows once #519 skips unchanged subtrees, so the trade-off is a design call. Attempt kept on bookmark attempt-521-513 (commit c654ea34).
 - `2026-11-21T02:43:12Z`: Question 1 (decision): Is a per-frame regression of about 0.3-0.4 ms per 1000 draws (Update and Workload) acceptable for data-based parameter modifiers, before #519 subtree reuse lands to recover it? Recommended: No. Do #519's reuse path first (or together), and only switch to data bindings when the benchmark shows a net win.
+- `2026-11-21T15:34:00Z`: Answer 1: 519 is done?
+- `2026-11-21T15:38:37Z`: Not re-attempted this run. Re answer 1: #519 is not done; it is still open (subtree reuse not implemented). The earlier data-binding attempt (bookmark attempt-521-513) regressed Update/Workload by ~0.3-0.4 ms per 1000 draws, and that cost can only be won back once #519 skips unchanged subtrees. #519 is next in this run's queue.
+- `2026-11-21T15:38:37Z`: Question 2 (decision): Since #519 is still open, should #521 wait until #519's subtree reuse lands and then be re-benchmarked from bookmark attempt-521-513? Recommended: Yes. Block #521 on #519, then rebase attempt-521-513 onto it and land only if the benchmark shows a net win.
+- `2026-11-21T15:39:44Z`: Answer 2: yes
 
 ---
 
@@ -11512,13 +11560,14 @@ Seen in SceneSprockets (SceneSprockets #393): SceneView's per-frame culling and 
 ## 561: RenderView renders on the main thread by default
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:api, effort:s
 depends: 560
 created: 2026-11-14T21:44:42Z
-updated: 2026-11-21T03:15:09Z
+updated: 2026-11-21T15:34:50Z
+closed: 2026-11-21T15:34:50Z
 +++
 
 After #560 adds an opt-in render thread (RFCs/0008), RenderView still defaults to main-thread rendering. Apps must opt in to keep busy frames off the main thread. Revisit the default once the render-thread mode has shipped and been tested on macOS and iOS.
@@ -11531,12 +11580,12 @@ After #560 adds an opt-in render thread (RFCs/0008), RenderView still defaults t
 ## 562: Unknown whether the tile-shaped corruption (#471) still occurs with RenderView's new backing and render thread
 
 +++
-status: open
+status: blocked
 priority: medium
 kind: task
 labels: area:metal4, effort:s
 created: 2026-11-14T22:07:43Z
-updated: 2026-11-21T03:15:09Z
+updated: 2026-11-21T15:35:31Z
 +++
 
 #471 reports random pink or garbage tile-shaped blocks in RenderView output with a slow fragment shader (SolarSystem, ~/Shared/Projects/Scratch/SolarSystem). It has been filed with Apple.
@@ -11553,6 +11602,7 @@ Expected: SolarSystem has been run in both modes with the #471 repro conditions,
 - `2026-11-14T22:11:07Z`: Related: #563. A mid-frame settings mismatch in render-thread mode could also produce bad frames, so keep the window size and MSAA fixed while testing, or test after #563.
 - `2026-11-21T02:59:51Z`: Not run in this autonomous pass: the check needs SolarSystem (separate repo) rebuilt against current MetalSprockets, a code change there to switch RenderView threading, and interactive runs with visual inspection for pink tiles near the Moon's terminator. Launching GUI apps and editing another repo were out of scope without permission.
 - `2026-11-21T02:59:51Z`: Question 1 (verify): Should I run SolarSystem in .main and .renderThread modes (editing SolarSystem to switch the mode, launching it with xcb run, and screenshotting frames to scan for pink tiles), or will you run it and record the results on #471? Recommended: Let the agent do it: allow edits to SolarSystem and xcb run for this check.
+- `2026-11-21T15:34:30Z`: Answer 1: Solar system doesn't cause pink problems.
 
 ---
 
@@ -12361,6 +12411,7 @@ Expected: an app or package (for example SceneSprockets, which wants a SCNSceneR
 Related: keeping compiled pipelines between launches (Metal 4 pipeline archives) is not covered here.
 
 - `2026-11-21T03:33:21Z`: Question 1 (design): Where should ahead-of-time pipeline compilation live, given each RenderView has its own MetalContext and PipelineCache: (a) a shared, public pipeline cache (like ShaderStore) that views and Runners can be given, plus a prepare(element, formats:sampleCount:) async method on it; or (b) a method on RenderView/Runner only? Recommended: (a): a public PipelineStore shared via environment like ShaderStore, with an async prepare(_ content:, colorPixelFormats:, depthPixelFormat:, sampleCount:) that runs setup without encoding; cancellation via Task.
+- `2026-11-21T15:30:16Z`: Answer 1: a
 
 ---
 
