@@ -241,18 +241,19 @@ struct RenderStateTests {
         #expect(pixel(48, 48) == [0, 0, 0, 255])
     }
 
-    // #455: rasterizer state set inside one Draw closure must not reach later siblings.
+    // #455, #472: rasterizer state set with modifiers on one Draw must not reach later siblings.
     @Test(.timeLimit(.minutes(1)), arguments: [MTLCullMode.front, .back])
     func cullAndFillModeDoNotLeakToSiblings(cullMode: MTLCullMode) async throws {
         let shaders = try shaders(Self.colorSource)
         let fullscreen = try vertexBuffer([[-1, -1], [3, -1], [-1, 3]])
         let renderer = try TestOffscreenRenderer(size: CGSize(width: 64, height: 64), pixelFormat: .bgra8Unorm)
         let scene = try RenderPipeline(vertexShader: shaders.vertex, fragmentShader: shaders.fragment) {
-            Draw { encoder in
-                encoder.setTriangleFillMode(.lines)
-                encoder.setCullMode(cullMode)
-                encoder.setFrontFacing(.counterClockwise)
-            }
+            Draw(.triangle, vertexCount: 3)
+                .vertexBuffer(fullscreen, index: 0)
+                .parameter("color", value: SIMD4<Float>(0, 1, 0, 1))
+                .triangleFillMode(.lines)
+                .cullMode(cullMode)
+                .frontFacing(.counterClockwise)
             Draw { $0.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3) }
                 .vertexBuffer(fullscreen, index: 0)
                 .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
@@ -261,6 +262,38 @@ struct RenderStateTests {
         var bytes = [UInt8](repeating: 0, count: 4)
         texture.getBytes(&bytes, bytesPerRow: 64 * 4, from: MTLRegionMake2D(32, 32, 1, 1), mipmapLevel: 0)
         #expect(bytes == [0, 0, 255, 255])
+    }
+
+    // #472: the pass sets rasterizer state only when it changes, so validation reports no redundant calls.
+    @Test(.timeLimit(.minutes(1)))
+    func rasterizerStateIsSetOnlyOnChange() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let context = try MetalContext(device: device)
+        let targetDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: 4, height: 4, mipmapped: false)
+        targetDescriptor.usage = .renderTarget
+        let target = try #require(device.makeTexture(descriptor: targetDescriptor))
+        let pass = MTL4RenderPassDescriptor()
+        pass.colorAttachments[0].texture = target
+        pass.colorAttachments[0].loadAction = .clear
+        var counts: [Int] = []
+        let recording = try context.submit { scope in
+            try scope.withRenderPass(descriptor: pass) { renderPass in
+                func apply(_ cullMode: MTLCullMode) throws {
+                    try renderPass.applyRasterizerState(cullMode: cullMode, triangleFillMode: .fill, frontFacing: .clockwise)
+                    counts.append(renderPass.rasterizerStateCallCount)
+                }
+                try apply(.none)
+                try apply(.none)
+                try apply(.back)
+                try apply(.back)
+                try apply(.none)
+                renderPass.invalidateRasterizerState()
+                try apply(.none)
+            }
+        }
+        try context.waitForResult(recording)
+        // Defaults cost nothing, each change costs one call, and invalidation re-sets all four.
+        #expect(counts == [0, 0, 1, 1, 2, 6])
     }
 
     private func centerPixel(_ texture: any MTLTexture) -> [UInt8] {

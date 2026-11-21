@@ -77,8 +77,8 @@ public struct StereoViews: Sendable {
         }
     }
 
-    /// Makes the following draws on `encoder` go to every view. Each draw resets amplification, so call this before
-    /// every draw. Pipelines must set `maxVertexAmplificationCount` to at least ``count``. Does nothing for one view.
+    /// Makes the following draws on `encoder` go to every view. Amplification and viewports set here carry over to later
+    /// draws in the pass, so set them back (amplification count 1) before a draw that must go to one view. Pipelines must set `maxVertexAmplificationCount` to at least ``count``. Does nothing for one view.
     public func configure(_ encoder: any MTL4RenderCommandEncoder) {
         guard isStereo else {
             return

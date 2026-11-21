@@ -9007,13 +9007,14 @@ Suggested next steps: a RenderView stress test with a deliberately slow fragment
 ## 472: Three redundant-call validation warnings per draw, every frame
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: area:metal4, effort:s, breaking
 milestone: m2
 created: 2026-10-02T15:54:58Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-21T03:02:13Z
+closed: 2026-11-21T03:02:13Z
 +++
 
 `Draw.swift` (around line 75) calls `setCullMode(.none)`, `setTriangleFillMode(.fill)`, `setFrontFacing(.clockwise)` and `setVertexAmplificationCount(1)` before every draw, so state set inside one `Draw` closure does not leak to the next.

@@ -10,6 +10,7 @@
 - **Source-breaking:** `onCommandBufferCompleted(perform:)` now takes an `@isolated(any) @Sendable` closure. A closure written on an actor (for example `@MainActor`) still runs there. A closure with no actor no longer runs non-`Sendable` code on an arbitrary thread (#567). Closures that capture mutable locals or a non-`Sendable` `self` must change.
 - `MSState` is `Sendable` when its value is. To write an element's own state from a completion handler, capture the storage: `.onCommandBufferCompleted { [_baked] result in _baked.wrappedValue = … }` (#570).
 - `RenderView` no longer uses `MTKView`. It uses its own view backed by a `CAMetalLayer`. The `metal*` view modifiers work as before (#560).
+- **Behaviour change:** `Draw` no longer resets cull mode, triangle fill mode, front-facing winding and vertex amplification before every draw, which caused three redundant-call validation warnings per draw. Use the new `.cullMode(_:)`, `.triangleFillMode(_:)` and `.frontFacing(_:)` modifiers; the pass sets them only when they change. State a `Draw` closure sets directly on the encoder now carries over to later draws in the pass. Move it to the modifiers, or set it back at the end of the closure (#472).
 - The iOS and visionOS Simulators are not supported. Their SDKs have no Metal 4 APIs, so MetalSprockets does not build for them (#473).
 
 ## 0.2.3

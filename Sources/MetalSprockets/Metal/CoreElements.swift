@@ -62,6 +62,9 @@ internal extension MSEnvironmentValues {
     @MSEntry var stencilReference: UInt32?
     @MSEntry var viewport: MTLViewport?
     @MSEntry var scissor: MTLScissorRect?
+    @MSEntry var cullMode: MTLCullMode?
+    @MSEntry var triangleFillMode: MTLTriangleFillMode?
+    @MSEntry var frontFacing: MTLWinding?
 
     @MSEntry var activeRenderPassDescriptor: MTL4RenderPassDescriptor?
     @MSEntry var renderPipeline: PipelineCache.RenderPipeline?
@@ -247,6 +250,25 @@ package extension Element {
 
     func scissor(_ rect: MTLScissorRect) -> some Element {
         DrawStateModifier(content: self) { $0.scissor = rect }
+    }
+}
+
+// Rasterizer state for the draws in a subtree. The pass sets it only when it changes, so validation reports no
+// redundant calls (#472). Draws outside the subtree get Metal's defaults back.
+public extension Element {
+    /// Sets which faces the draws in this subtree cull. The default is `.none`.
+    func cullMode(_ mode: MTLCullMode) -> some Element {
+        DrawStateModifier(content: self) { $0.cullMode = mode }
+    }
+
+    /// Sets how the draws in this subtree fill triangles. The default is `.fill`.
+    func triangleFillMode(_ mode: MTLTriangleFillMode) -> some Element {
+        DrawStateModifier(content: self) { $0.triangleFillMode = mode }
+    }
+
+    /// Sets the winding of front-facing triangles for the draws in this subtree. The default is `.clockwise`.
+    func frontFacing(_ winding: MTLWinding) -> some Element {
+        DrawStateModifier(content: self) { $0.frontFacing = winding }
     }
 
     /// Keeps external owners (such as `CVMetalTexture`s backing camera textures) alive until the submission ends.

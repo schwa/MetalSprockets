@@ -237,12 +237,19 @@ internal final class RenderPassEncoder {
     var scissorOverridden = false
     private(set) var operations: [Operation] = []
     // Last state bound on the encoder, to skip redundant sets that flood MTL_DEBUG_LAYER. nil forces the next set.
-    // Only state the library binds (never the raw Draw closure) is cached here; cull/fill/winding/amplification are
-    // reset every draw because a Draw closure may set them (see Draw).
+    // Only state the library binds is cached here. State a Draw closure sets directly carries over to later draws
+    // (#472), unless the closure is a library one that invalidates the cache.
     private var boundPipeline: ObjectIdentifier?
     private var boundDepthStencil: ObjectIdentifier?
     private var boundDepthBias: DepthBias?
     private var boundStencilReference: UInt32?
+    // A new encoder starts at Metal's defaults.
+    private var boundCullMode: MTLCullMode? = MTLCullMode.none
+    private var boundTriangleFillMode: MTLTriangleFillMode? = .fill
+    private var boundFrontFacing: MTLWinding? = .clockwise
+    private var boundAmplificationIsDefault = true
+    /// The rasterizer state calls this pass made. For tests.
+    private(set) var rasterizerStateCallCount = 0
 
     fileprivate init(encoder: any MTL4RenderCommandEncoder, scope: RecordingScope) {
         self.encoder = encoder
@@ -260,6 +267,42 @@ internal final class RenderPassEncoder {
 
     /// Binds per-draw depth/stencil state, skipping any that already matches the encoder. Called by `Draw` before its
     /// geometry closure. These are library-owned, so the cache stays valid across draws.
+    /// Sets cull mode, fill mode and winding only when they differ from what this pass last set (#472).
+    func applyRasterizerState(cullMode: MTLCullMode, triangleFillMode: MTLTriangleFillMode, frontFacing: MTLWinding) throws {
+        let encoder = try activeEncoder()
+        if boundCullMode != cullMode {
+            encoder.setCullMode(cullMode)
+            boundCullMode = cullMode
+            rasterizerStateCallCount += 1
+        }
+        if boundTriangleFillMode != triangleFillMode {
+            encoder.setTriangleFillMode(triangleFillMode)
+            boundTriangleFillMode = triangleFillMode
+            rasterizerStateCallCount += 1
+        }
+        if boundFrontFacing != frontFacing {
+            encoder.setFrontFacing(frontFacing)
+            boundFrontFacing = frontFacing
+            rasterizerStateCallCount += 1
+        }
+        if !boundAmplificationIsDefault {
+            encoder.setVertexAmplificationCount(1)
+            boundAmplificationIsDefault = true
+            rasterizerStateCallCount += 1
+        }
+    }
+
+    /// Forgets the rasterizer state, viewport and scissor after a library closure that set them, so the next draw sets
+    /// them again.
+    func invalidateRasterizerState() {
+        boundCullMode = nil
+        boundTriangleFillMode = nil
+        boundFrontFacing = nil
+        boundAmplificationIsDefault = false
+        viewportOverridden = true
+        scissorOverridden = true
+    }
+
     func applyDrawState(depthStencil: any MTLDepthStencilState, bias: DepthBias, stencilReference: UInt32) throws {
         let encoder = try activeEncoder()
         let depthStencilID = ObjectIdentifier(depthStencil)

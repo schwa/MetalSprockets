@@ -116,11 +116,12 @@ public struct DrawList: Element {
         let indexBuffer = indexBuffer
         let indexType = indexType
         let stereoViews = stereoViews
-        return Draw(resources: indexBuffer.map { [$0] } ?? []) { encoder in
+        // The rows set cull mode, winding and amplification, so the pass sets them again for the next draw (#472).
+        return Draw(resources: indexBuffer.map { [$0] } ?? [], changesRasterizerState: true) { encoder in
             stereoViews?.configure(encoder)
-            // Draw has reset cull mode and winding to these defaults; set them only when a row changes them.
-            var cullMode = MTLCullMode.none
-            var winding = MTLWinding.clockwise
+            // Unknown at the start: the enclosing modifiers may have set them. Set on the first row, then on changes.
+            var cullMode: MTLCullMode?
+            var winding: MTLWinding?
             for row in rows {
                 if row.cullMode != cullMode {
                     encoder.setCullMode(row.cullMode)

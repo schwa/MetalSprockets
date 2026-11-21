@@ -6,9 +6,12 @@ import MetalSprocketsSupport
 /// Issues draw calls with the enclosing ``RenderPipeline``.
 ///
 /// Before `encodeGeometry` runs, the pipeline, its argument tables (from ``Element/parameter(_:functionTypes:value:)-(String,FunctionTypes,Value)``
-/// and related modifiers), depth/stencil state, depth bias, viewport and scissor are already bound. Cull mode, triangle
-/// fill mode, front-facing winding and vertex amplification count are reset to Metal's defaults. Every draw sets that
-/// state, so nothing leaks from one draw to the next.
+/// and related modifiers), depth/stencil state, depth bias, viewport, scissor, cull mode, triangle fill mode and
+/// front-facing winding are already bound. Set the rasterizer state with ``Element/cullMode(_:)``,
+/// ``Element/triangleFillMode(_:)`` and ``Element/frontFacing(_:)``. The pass sets it only when it changes.
+///
+/// - Important: State that `encodeGeometry` sets directly on the encoder (for example `setCullMode`) carries over to
+///   later draws in the pass. Use the modifiers instead, or set the state back at the end of the closure.
 ///
 /// ```swift
 /// Draw { encoder in
@@ -60,14 +63,17 @@ public struct Draw: Element, WorkloadElement, Equatable {
     var inputs: [Any] = []
     // Resources the geometry reads by GPU address, kept resident and alive for the submission.
     var resources: [any MTLResource] = []
+    // Library closures that set rasterizer state, viewports or amplification make the pass forget its cached state.
+    var changesRasterizerState = false
 
     public init(encodeGeometry: @escaping (any MTL4RenderCommandEncoder) throws -> Void) {
         self.geometry = .closure(encodeGeometry)
     }
 
-    init(resources: [any MTLResource], encodeGeometry: @escaping (any MTL4RenderCommandEncoder) throws -> Void) {
+    init(resources: [any MTLResource], changesRasterizerState: Bool = false, encodeGeometry: @escaping (any MTL4RenderCommandEncoder) throws -> Void) {
         self.geometry = .closure(encodeGeometry)
         self.resources = resources
+        self.changesRasterizerState = changesRasterizerState
     }
 
     init(resources: [any MTLResource], geometry: Geometry) {
@@ -181,6 +187,9 @@ public struct Draw: Element, WorkloadElement, Equatable {
         }
         let bias = environment.depthBias ?? DepthBias(bias: 0, slopeScale: 0, clamp: 0)
         let stencilReference = environment.stencilReference ?? 0
+        let cullMode = environment.cullMode ?? .none
+        let triangleFillMode = environment.triangleFillMode ?? .fill
+        let frontFacing = environment.frontFacing ?? .clockwise
         // Viewport and scissor are left at the encoder's defaults unless a draw asks for them, because the right
         // default depends on the target (rasterization rate maps and amplified layers need more than one full-texture
         // rect). Once a draw overrides them, later draws in the pass without an override get the defaults back.
@@ -197,11 +206,7 @@ public struct Draw: Element, WorkloadElement, Equatable {
             // Depth/stencil state and bias logically apply to every draw, but the pass skips any that already match the
             // encoder so unchanged siblings do not re-bind. An unset value still means the default, never a leak.
             try pass.applyDrawState(depthStencil: depthStencil, bias: bias, stencilReference: stencilReference)
-            // Rasterizer state a Draw closure may set. Reset to Metal's defaults so it does not leak to later siblings.
-            encoder.setCullMode(.none)
-            encoder.setTriangleFillMode(.fill)
-            encoder.setFrontFacing(.clockwise)
-            encoder.setVertexAmplificationCount(1)
+            try pass.applyRasterizerState(cullMode: cullMode, triangleFillMode: triangleFillMode, frontFacing: frontFacing)
             if let viewport = explicitViewport {
                 encoder.setViewport(viewport)
                 pass.viewportOverridden = true
@@ -217,6 +222,9 @@ public struct Draw: Element, WorkloadElement, Equatable {
                 pass.scissorOverridden = false
             }
             try encode(encoder)
+            if changesRasterizerState {
+                pass.invalidateRasterizerState()
+            }
         }
     }
 
