@@ -20,22 +20,105 @@ import MetalSprocketsSupport
 ///
 /// Metal 4 encoders have no `setVertexBytes` or `setFragmentTexture`. Pass data with the parameter and vertex
 /// modifiers instead, and declare anything referenced only by the closure with ``Element/useResource(_:usage:stages:)-9b6tt``.
-public struct Draw: Element, WorkloadElement {
+public struct Draw: Element, WorkloadElement, Equatable {
     // Cannot use EnvironmentReader here: Draw runs in the workload phase, when the render command encoder exists,
     // not during the tree expansion phase where EnvironmentReader operates.
     public typealias Body = Never
 
-    var encodeGeometry: (any MTL4RenderCommandEncoder) throws -> Void
-    // Resources the closure reads by GPU address, kept resident and alive for the submission.
+    /// What the draw encodes. Every case except `closure` is plain data, so such draws compare equal (#522).
+    enum Geometry {
+        case closure((any MTL4RenderCommandEncoder) throws -> Void)
+        case primitives(Primitives)
+        case indexed(MTLPrimitiveType, IndexBuffer, instanceCount: Int)
+        case indirect(MTLPrimitiveType, buffer: any MTLBuffer, offset: Int)
+        case indexedIndirect(IndexedIndirect)
+    }
+
+    struct Primitives: Equatable {
+        var primitiveType: MTLPrimitiveType
+        var vertexStart: Int
+        var vertexCount: Int
+        var instanceCount: Int
+        var baseInstance: Int
+    }
+
+    struct IndexedIndirect: Equatable {
+        var primitiveType: MTLPrimitiveType
+        var indexBuffer: any MTLBuffer
+        var indexType: MTLIndexType
+        var indexBufferOffset: Int
+        var indirectBuffer: any MTLBuffer
+        var indirectBufferOffset: Int
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.primitiveType == rhs.primitiveType && lhs.indexBuffer === rhs.indexBuffer && lhs.indexType == rhs.indexType && lhs.indexBufferOffset == rhs.indexBufferOffset && lhs.indirectBuffer === rhs.indirectBuffer && lhs.indirectBufferOffset == rhs.indirectBufferOffset
+        }
+    }
+
+    var geometry: Geometry
+    // Resources the geometry reads by GPU address, kept resident and alive for the submission.
     var resources: [any MTLResource] = []
 
     public init(encodeGeometry: @escaping (any MTL4RenderCommandEncoder) throws -> Void) {
-        self.encodeGeometry = encodeGeometry
+        self.geometry = .closure(encodeGeometry)
     }
 
     init(resources: [any MTLResource], encodeGeometry: @escaping (any MTL4RenderCommandEncoder) throws -> Void) {
-        self.encodeGeometry = encodeGeometry
+        self.geometry = .closure(encodeGeometry)
         self.resources = resources
+    }
+
+    init(resources: [any MTLResource], geometry: Geometry) {
+        self.geometry = geometry
+        self.resources = resources
+    }
+
+    /// Draws `vertexCount` vertices without an encode closure, so an unchanged draw compares equal between frames.
+    public init(_ primitiveType: MTLPrimitiveType, vertexStart: Int = 0, vertexCount: Int, instanceCount: Int = 1, baseInstance: Int = 0) {
+        self.geometry = .primitives(Primitives(primitiveType: primitiveType, vertexStart: vertexStart, vertexCount: vertexCount, instanceCount: instanceCount, baseInstance: baseInstance))
+    }
+
+    // A closure draw is never equal. Data draws compare by value, and buffers by identity.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        guard lhs.resources.count == rhs.resources.count, zip(lhs.resources, rhs.resources).allSatisfy({ $0 === $1 }) else {
+            return false
+        }
+        switch (lhs.geometry, rhs.geometry) {
+        case let (.primitives(lhsPrimitives), .primitives(rhsPrimitives)):
+            return lhsPrimitives == rhsPrimitives
+        case let (.indexed(lhsType, lhsIndices, lhsInstances), .indexed(rhsType, rhsIndices, rhsInstances)):
+            return lhsType == rhsType && lhsIndices == rhsIndices && lhsInstances == rhsInstances
+        case let (.indirect(lhsType, lhsBuffer, lhsOffset), .indirect(rhsType, rhsBuffer, rhsOffset)):
+            return lhsType == rhsType && lhsBuffer === rhsBuffer && lhsOffset == rhsOffset
+        case let (.indexedIndirect(lhsDraw), .indexedIndirect(rhsDraw)):
+            return lhsDraw == rhsDraw
+        default:
+            return false
+        }
+    }
+
+    private func encode(_ encoder: any MTL4RenderCommandEncoder) throws {
+        switch geometry {
+        case .closure(let encodeGeometry):
+            try encodeGeometry(encoder)
+        case .primitives(let draw):
+            encoder.drawPrimitives(primitiveType: draw.primitiveType, vertexStart: draw.vertexStart, vertexCount: draw.vertexCount, instanceCount: draw.instanceCount, baseInstance: draw.baseInstance)
+        case let .indexed(primitiveType, indices, instanceCount):
+            let range = try indices.validatedRange()
+            encoder.drawIndexedPrimitives(primitiveType: primitiveType, indexCount: indices.indexCount, indexType: indices.type, indexBuffer: range.address, indexBufferLength: range.length, instanceCount: instanceCount)
+        case let .indirect(primitiveType, buffer, offset):
+            let arguments = try IndirectArguments<MTLDrawPrimitivesIndirectArguments>.address(buffer, offset: offset)
+            encoder.drawPrimitives(primitiveType: primitiveType, indirectBuffer: arguments)
+        case .indexedIndirect(let draw):
+            let (primitiveType, indexBuffer, indexType, indexBufferOffset, indirectBuffer, indirectBufferOffset) = (draw.primitiveType, draw.indexBuffer, draw.indexType, draw.indexBufferOffset, draw.indirectBuffer, draw.indirectBufferOffset)
+            let indexSize = indexType == .uint16 ? 2 : 4
+            guard indexBufferOffset >= 0, indexBufferOffset.isMultiple(of: indexSize), indexBufferOffset < indexBuffer.length else {
+                throw EncodingFailure.invalidRange("index buffer offset \(indexBufferOffset) is invalid for index buffer length \(indexBuffer.length)")
+            }
+            let arguments = try IndirectArguments<MTLDrawIndexedPrimitivesIndirectArguments>.address(indirectBuffer, offset: indirectBufferOffset)
+            let indexLength = (indexBuffer.length - indexBufferOffset) / indexSize * indexSize
+            encoder.drawIndexedPrimitives(primitiveType: primitiveType, indexType: indexType, indexBuffer: indexBuffer.gpuAddress + UInt64(indexBufferOffset), indexBufferLength: indexLength, indirectBuffer: arguments)
+        }
     }
 
     func workloadEnter(_ node: Node) throws {
@@ -90,7 +173,7 @@ public struct Draw: Element, WorkloadElement {
                 encoder.setScissorRect(scissor)
                 pass.scissorOverridden = false
             }
-            try encodeGeometry(encoder)
+            try encode(encoder)
         }
     }
 

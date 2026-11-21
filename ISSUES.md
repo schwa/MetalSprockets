@@ -10579,13 +10579,14 @@ What is wrong
 ## 522: No closure-free Draw for single draw calls
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:api, effort:m
 milestone: m1
 created: 2026-10-16T18:03:38Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:45:03Z
+closed: 2026-11-21T02:45:03Z
 +++
 
 Part of #519.
@@ -10598,6 +10599,7 @@ What is wrong
 - Data-only Draw initializers for those cases (for example Draw(.triangle, vertexCount: 3), indexed with instance count, indirect). They compare by their arguments, and can declare their own buffers resident. The closure form stays.
 
 - `2026-11-19T15:34:44Z`: Still needed after DrawList (#588): DrawList is built on a Draw closure, so it also never compares equal and is rebuilt every frame. Its rows are Hashable, so it should use the same closure-free comparison (groundwork for #593).
+- `2026-11-21T02:45:03Z`: Added Draw(_:vertexStart:vertexCount:instanceCount:baseInstance:); the existing indexed and indirect inits are now data too. Draw is Equatable: data draws compare by value and buffers by identity, closure draws never compare equal. DrawList (comment of 2026-11-19) is not changed: its body still builds a closure Draw.
 
 ---
 

@@ -11,9 +11,7 @@ public extension Draw {
     /// Draws indexed primitives from `indexBuffer`. `indexBufferOffset` is in bytes.
     init(primitiveType: MTLPrimitiveType, indexBuffer: any MTLBuffer, indexType: MTLIndexType, indexCount: Int, indexBufferOffset: Int = 0, instanceCount: Int = 1) {
         let indices = IndexBuffer(buffer: indexBuffer, type: indexType, indexCount: indexCount, offset: indexBufferOffset)
-        self.init(resources: [indexBuffer]) { encoder in
-            try encoder.drawIndexed(primitiveType: primitiveType, indices: indices, instanceCount: instanceCount)
-        }
+        self.init(resources: [indexBuffer], geometry: .indexed(primitiveType, indices, instanceCount: instanceCount))
     }
 
     /// Draws every submesh of `mesh`. Bind its vertex buffers with ``Element/vertexBuffers(of:)``.

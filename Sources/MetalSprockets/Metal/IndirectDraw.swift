@@ -9,24 +9,13 @@ import MetalSprocketsSupport
 public extension Draw {
     /// Draws primitives with arguments the GPU reads from `indirectBuffer` (`MTLDrawPrimitivesIndirectArguments`).
     init(primitiveType: MTLPrimitiveType, indirectBuffer: any MTLBuffer, indirectBufferOffset: Int = 0) {
-        self.init(resources: [indirectBuffer]) { encoder in
-            let arguments = try IndirectArguments<MTLDrawPrimitivesIndirectArguments>.address(indirectBuffer, offset: indirectBufferOffset)
-            encoder.drawPrimitives(primitiveType: primitiveType, indirectBuffer: arguments)
-        }
+        self.init(resources: [indirectBuffer], geometry: .indirect(primitiveType, buffer: indirectBuffer, offset: indirectBufferOffset))
     }
 
     /// Draws indexed primitives with arguments the GPU reads from `indirectBuffer`
     /// (`MTLDrawIndexedPrimitivesIndirectArguments`). The arguments' `indexStart` is relative to `indexBufferOffset`.
     init(primitiveType: MTLPrimitiveType, indexBuffer: any MTLBuffer, indexType: MTLIndexType, indexBufferOffset: Int = 0, indirectBuffer: any MTLBuffer, indirectBufferOffset: Int = 0) {
-        self.init(resources: [indexBuffer, indirectBuffer]) { encoder in
-            let indexSize = indexType == .uint16 ? 2 : 4
-            guard indexBufferOffset >= 0, indexBufferOffset.isMultiple(of: indexSize), indexBufferOffset < indexBuffer.length else {
-                throw EncodingFailure.invalidRange("index buffer offset \(indexBufferOffset) is invalid for index buffer length \(indexBuffer.length)")
-            }
-            let arguments = try IndirectArguments<MTLDrawIndexedPrimitivesIndirectArguments>.address(indirectBuffer, offset: indirectBufferOffset)
-            let indexLength = (indexBuffer.length - indexBufferOffset) / indexSize * indexSize
-            encoder.drawIndexedPrimitives(primitiveType: primitiveType, indexType: indexType, indexBuffer: indexBuffer.gpuAddress + UInt64(indexBufferOffset), indexBufferLength: indexLength, indirectBuffer: arguments)
-        }
+        self.init(resources: [indexBuffer, indirectBuffer], geometry: .indexedIndirect(IndexedIndirect(primitiveType: primitiveType, indexBuffer: indexBuffer, indexType: indexType, indexBufferOffset: indexBufferOffset, indirectBuffer: indirectBuffer, indirectBufferOffset: indirectBufferOffset)))
     }
 }
 

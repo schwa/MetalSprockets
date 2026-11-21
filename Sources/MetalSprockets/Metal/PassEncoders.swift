@@ -1,11 +1,15 @@
 import Metal
 import MetalSprocketsSupport
 
-internal struct IndexBuffer {
+internal struct IndexBuffer: Equatable {
     let buffer: any MTLBuffer
     let type: MTLIndexType
     let indexCount: Int
     var offset = 0
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.buffer === rhs.buffer && lhs.type == rhs.type && lhs.indexCount == rhs.indexCount && lhs.offset == rhs.offset
+    }
 
     /// The GPU address and byte length of the indexed range, after checking it lies inside the buffer.
     func validatedRange() throws -> (address: MTLGPUAddress, length: Int) {
