@@ -6026,6 +6026,8 @@ Decision needed: (a) split this: file the easy group as a subtask (effort:s) and
 - `2026-11-17T19:51:20Z`: Question 1 (decision): Split off the easy group (Element.configureNode, RenderPassDescriptorModifier, RenderPipelineDescriptorTransformer, MSAAModifier via a weak Node.parent) as an effort:s subtask, and keep this issue for the structural redesign? Recommended: Yes. Split off the easy group.
 - `2026-11-17T19:52:00Z`: Answer 1: Yes
 - `2026-11-17T19:55:27Z`: Decision (Q1): easy group split off as #577. This issue keeps the structural dynamic-property redesign.
+- `2026-11-21T03:00:14Z`: Re-audited the remaining 5 System.current uses after #577: MSEnvironment.wrappedValue, StateBox (resolveSystem + read tracking + valueDidChange), Element.trackedBody, EnvironmentReader.visitChildrenBodyless, ShaderLibrary ambient ShaderStore. Three can take the node explicitly: trackedBody and EnvironmentReader get the node from the reconciler (it has currentNode when it visits children), and MSEnvironment can resolve its value in the pre-body dynamic-property update into a reference box. StateBox read tracking is the blocker: a value passed down as MSBinding is read in a child's body, so the dependency must record the reading node, which no explicit parameter carries. ShaderLibrary.resolve runs inside arbitrary element code with no node either. Punting on that design choice.
+- `2026-11-21T03:00:14Z`: Question 2 (design): For StateBox read tracking and the ShaderLibrary ambient store, should System.current be replaced by a narrower task-local that exposes only the node whose body is being evaluated (no System, no traversal stack), with everything else (MSEnvironment, trackedBody, EnvironmentReader) passed the node explicitly? Recommended: Yes. Keep one minimal task-local 'current reading node' for dependency tracking, and pass the node explicitly everywhere else.
 
 ---
 
@@ -8974,9 +8976,8 @@ status: blocked
 priority: medium
 kind: bug
 labels: area:metal4, effort:l
-milestone: m2
 created: 2026-10-02T15:19:38Z
-updated: 2026-11-17T19:50:01Z
+updated: 2026-11-21T02:57:32Z
 +++
 
 SolarSystem (~/Shared/Projects/Scratch/SolarSystem) shows random rectangular pink or garbage blocks in RenderView output. The blocks change every frame with a still camera and nothing else changing. Sometimes the whole frame goes pink for one frame. They cluster on the Moon's lit side near the terminator. In Surface camera mode the whole screen can be garbage.
@@ -9161,25 +9162,24 @@ Re-sized to effort:l and deferred: macro plus StateBox change plus migration is 
 
 ---
 
-## 476: Argument tables are rebuilt and fully re-bound for every draw on every frame
+## 476: Metal 4 argument tables rebuilt and re-bound for every draw each frame
 
 +++
 status: open
 priority: medium
 kind: enhancement
 labels: area:metal4, area:performance, effort:l, needs-decision
-milestone: m1
 created: 2026-10-03T00:16:32Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:57:20Z
 +++
 
-Potential performance issue, not measured.
+Potential performance issue. It has not been measured.
 
-On the Metal 4 path, every draw gets fresh argument tables on every frame, and every parameter is bound again, even when the pipeline and its parameters have not changed since the last frame.
+On the Metal 4 path, every draw gets new argument tables on every frame, and every parameter is bound again. This happens even when the pipeline and its parameters have not changed since the last frame.
 
-Seen in Metal4Parameters.makeTables: for each stage it calls scope.argumentTable(sizes:label:), then binds every entry, function table, and vertex buffer.
+This is visible in `Metal4Parameters.makeTables`. For each stage it calls `scope.argumentTable(sizes:label:)`, then binds every entry, function table, and vertex buffer.
 
-Impact is probably small for scenes with few draws. For example, SolarSystem has 2 to 8 draws per frame. It could matter for scenes with many draws or many parameters per draw.
+The impact is probably small for scenes with few draws. For example, SolarSystem has 2 to 8 draws per frame. It could matter for scenes with many draws or many parameters per draw.
 
 Unknown:
 - The real CPU cost per draw. It has not been profiled.
@@ -10017,37 +10017,41 @@ Open questions
 
 ---
 
-## 501: ForEach children each pay the full per-node update cost, though they share one structure
+## 501: ForEach children each pay the full per-node update cost
 
 +++
 status: open
 priority: medium
 kind: enhancement
 labels: area:performance, needs-decision, effort:l
-milestone: m1
 created: 2026-10-16T13:55:05Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:57:20Z
 +++
 
-From the #489 profile. Related: #486, #495, #496, #497, #490. Not the same as #500 (instancing).
+Found in the #489 profile. Related: #486, #490, #495, #496, #497. This is separate from #500 (instancing).
 
-What is wrong
-- In large scenes most nodes are ForEach children (1000 cubes = 1000 copies of the same subtree). Each child pays the full per-node update cost: reflection-based equality (#495), dynamic-property discovery (#496), full-path identifier hashing and lookup (#497), and boxing its ID in AnyElementID (AnyHashable).
+## Problem
+
+In large scenes, most nodes are ForEach children. For example, 1000 cubes means 1000 copies of the same subtree. These children share one structure, but each one pays the full per-node update cost:
+
+- Reflection-based equality (#495)
+- Dynamic-property discovery (#496)
+- Full-path identifier hashing and lookup (#497)
+- Boxing its ID in `AnyElementID` (`AnyHashable`)
+
+Specific issues:
+
 - Work that depends only on the child's element type is repeated for every child.
-- Children are found through System.nodes by full path, even when the IDs and their order are unchanged from the previous frame.
-- An unchanged item still runs its content closure and has its whole subtree diffed.
+- Children are looked up in `System.nodes` by full path, even when the IDs and their order are unchanged from the previous frame.
+- An unchanged item still runs its content closure, and its whole subtree is diffed.
 
-Possible directions (to decide)
-1. Do type-level work (dynamic properties, how to compare stored properties, conformance lookups) once per ForEach and reuse it for every child.
-2. Keep a per-ForEach table from item ID to child node, so lookup does not depend on depth.
-3. When IDs match the previous frame in the same order, match children to nodes by position, with no hashing.
-4. When an item equals the previous frame's item (Data.Element: Equatable), reuse the child subtree without calling content or diffing. Needs a contract that content depends only on the item. Does not help when every item changes each frame (the cube demo).
-5. Avoid the AnyHashable box for common ID types such as Int, or box once per child.
+The repeated type-level work and the `AnyHashable` boxing also happen outside ForEach. That part overlaps with #495–#497.
 
-1 and 5 also apply outside ForEach and overlap with #495-#497.
+In the cube demo, every item changes every frame.
 
-Repro
-1. Scripts/profile-benchmark.sh (1000 cubes in a ForEach)
+## Steps to reproduce
+
+1. Run `Scripts/profile-benchmark.sh`, which renders 1000 cubes in a ForEach.
 
 - `2026-10-16T13:56:50Z`: Implementation note (per Jonathan): use modern Swift. Span / MutableSpan / RawSpan, InlineArray, ~Copyable types, and swift-collections containers are all available (platforms are macOS/iOS/visionOS 26). swift-collections is currently only a transitive dependency; adding it directly is fine. Candidates: OrderedDictionary for per-ForEach item-ID-to-node tables; Span over children.
 - `2026-10-16T13:57:33Z`: Notes on ~Copyable / borrowing / Span (discussion, not verified):
@@ -10344,28 +10348,35 @@ Expected
 
 ---
 
-## 513: Collapsed parameter chain rebuilds the ParameterSet for every draw every frame
+## 513: Collapsed parameter chains rebuild ParameterSet every frame per draw
 
 +++
 status: open
 priority: medium
 kind: enhancement
 labels: area:performance, area:metal4, effort:m
-milestone: m1
 created: 2026-10-16T15:41:08Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:57:20Z
 +++
 
 Part of RFC 0006.
 
-From the real-app trace in #507 (Release, 1000 cubes): ParameterModifier.workloadEnter is about 15% of Workload.
+In the real-app trace in #507 (Release build, 1000 cubes), `ParameterModifier.workloadEnter` accounts for about 15% of `Workload`.
 
-What is wrong
-- Every frame, each collapsed parameter chain reads the inherited ParameterSet, copies it, runs every binding closure, and writes the result into the node's environment (which also triggers an environment update).
-- This happens even when the bindings are the same as the previous frame.
+## Actual behavior
 
-Expected
-- Binding unchanged parameters costs little per draw.
+Every frame, each collapsed parameter chain:
+
+1. Reads the inherited `ParameterSet`.
+2. Copies it.
+3. Runs every binding closure.
+4. Writes the result into the node's environment, which also triggers an environment update.
+
+This happens even when the bindings are unchanged from the previous frame.
+
+## Expected behavior
+
+Binding unchanged parameters costs little per draw.
 
 - `2026-10-16T15:56:09Z`: Partly addressed: collapsed chains are walked via a metatype cached in ElementTypeInfo (static requirements cast to the concrete type) instead of as? any CollapsibleWorkloadModifier; that cast was ~58% of ParameterModifier.workloadEnter in the benchmark. Cubes cpu 7.2 -> 6.8-6.9 ms. Still open: the ParameterSet is rebuilt every frame (a few allocations per draw), now a few percent.
 - `2026-10-16T17:51:28Z`: Autoresearch session: collapsed chains are walked in place through pointers and the Content metatype instead of copying the rest of the chain at each level (-3.4%). The ParameterSet itself is still rebuilt every frame.
@@ -10503,10 +10514,9 @@ status: open
 priority: medium
 kind: enhancement
 labels: area:performance, area:api, effort:l
-milestone: m1
 depends: 520, 521, 522, 523
 created: 2026-10-16T17:52:46Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-21T02:57:20Z
 +++
 
 Part of RFC 0006. A big remaining lever after the autoresearch session.
@@ -10560,9 +10570,8 @@ status: open
 priority: medium
 kind: enhancement
 labels: area:performance, area:api, effort:m
-milestone: m1
 created: 2026-10-16T18:03:37Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:57:20Z
 +++
 
 Part of #519.
@@ -10757,9 +10766,9 @@ status: open
 priority: low
 kind: enhancement
 labels: area:api, effort:xl, breaking
-milestone: m2
+milestone: m3
 created: 2026-10-17T11:49:19Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:55:28Z
 +++
 
 Use SwiftUI 27's ContentBuilder pattern so nonsensical nesting (e.g. ComputeDispatch inside RenderPipeline) fails to compile. See RFCs/0007-typed-content-domains.md.
@@ -11542,6 +11551,8 @@ Not known:
 Expected: SolarSystem has been run in both modes with the #471 repro conditions, and the results are recorded on #471.
 
 - `2026-11-14T22:11:07Z`: Related: #563. A mid-frame settings mismatch in render-thread mode could also produce bad frames, so keep the window size and MSAA fixed while testing, or test after #563.
+- `2026-11-21T02:59:51Z`: Not run in this autonomous pass: the check needs SolarSystem (separate repo) rebuilt against current MetalSprockets, a code change there to switch RenderView threading, and interactive runs with visual inspection for pink tiles near the Moon's terminator. Launching GUI apps and editing another repo were out of scope without permission.
+- `2026-11-21T02:59:51Z`: Question 1 (verify): Should I run SolarSystem in .main and .renderThread modes (editing SolarSystem to switch the mode, launching it with xcb run, and screenshotting frames to scan for pink tiles), or will you run it and record the results on #471? Recommended: Let the agent do it: allow edits to SolarSystem and xcb run for this check.
 
 ---
 
@@ -12335,7 +12346,9 @@ DrawList takes an optional StereoViews value, applied once before its rows.
 status: new
 priority: low
 kind: feature
+milestone: m3
 created: 2026-11-20T06:05:34Z
+updated: 2026-11-21T02:55:06Z
 +++
 
 Render and compute pipelines are compiled lazily by the internal PipelineCache that belongs to each view's MetalContext. They are compiled the first time an element tree that uses them is encoded. The cache key includes the attachment pixel formats, sample count, vertex layout and linked functions.
@@ -12351,8 +12364,10 @@ Related: keeping compiled pipelines between launches (Metal 4 pipeline archives)
 ## Milestone M1: m1
 
 +++
-status: open
+status: closed
 created: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:57:23Z
+closed: 2026-11-21T02:57:23Z
 +++
 
 ---
