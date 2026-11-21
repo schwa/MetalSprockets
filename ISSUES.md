@@ -8976,12 +8976,13 @@ Observed on macOS with Xcode 27 during verification of #468 and #469. The shader
 ## 471: Random tile-shaped corruption in RenderView with slow fragment shader
 
 +++
-status: blocked
+status: closed
 priority: medium
 kind: bug
 labels: area:metal4, effort:l
 created: 2026-10-02T15:19:38Z
-updated: 2026-11-21T15:36:02Z
+updated: 2026-11-21T16:18:11Z
+closed: 2026-11-21T16:18:11Z
 +++
 
 SolarSystem (`~/Shared/Projects/Scratch/SolarSystem`) shows random rectangular pink or garbage blocks in RenderView output.
@@ -9044,6 +9045,7 @@ The output is stable from frame to frame when the camera is still and nothing el
 - `2026-10-07T14:23:11Z`: Deferring for now.
 - `2026-11-14T22:07:44Z`: Filed with Apple. Re-test against the new RenderView backing and render thread is tracked in the new investigation issue (see related).
 - `2026-11-14T22:07:46Z`: Re-test is #562.
+- `2026-11-21T16:18:11Z`: Closing: the pink tile corruption no longer reproduces in SolarSystem since the RenderView rewrite (#560). GLTFViewer with framebufferOnly true was not re-checked; reopen if pink output shows up there or anywhere else.
 
 ---
 
@@ -10398,12 +10400,13 @@ Expected
 ## 513: Collapsed parameter chains rebuild ParameterSet every frame per draw
 
 +++
-status: blocked
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:metal4, effort:m
 created: 2026-10-16T15:41:08Z
-updated: 2026-11-21T15:38:26Z
+updated: 2026-11-21T16:51:20Z
+closed: 2026-11-21T16:51:20Z
 +++
 
 Part of RFC 0006.
@@ -10432,6 +10435,7 @@ Binding unchanged parameters costs little per draw.
 - `2026-11-21T02:43:12Z`: Question 1 (decision): Should #513 wait for the #521 decision (data-based bindings), since a per-node cache needs comparable bindings and the measured cache cost exceeded the rebuild? Recommended: Yes. Block #513 on #521 and revisit after #519.
 - `2026-11-21T15:35:00Z`: Answer 1: Yes
 - `2026-11-21T15:38:25Z`: Not attempted this run. Per answer to Q1, #513 waits on the #521 decision (data-based bindings); #521 in turn waits on #519 subtree reuse, which is still open. Marking blocked.
+- `2026-11-21T16:51:20Z`: Won't fix separately. A per-node cache needs comparable bindings (the #521 approach, closed) and measured slower than rebuilding. The chain now copies its set once per chain instead of once per modifier (commit 'Splice unchanged subtrees in O(subtree) and count them'). Remaining per-frame cost is tracked by #598.
 
 ---
 
@@ -10559,13 +10563,14 @@ Expected
 ## 519: Draw subtrees are never reused between frames because closure-holding elements never compare equal
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:api, effort:l
 depends: 520, 521, 522, 523
 created: 2026-10-16T17:52:46Z
-updated: 2026-11-21T02:57:20Z
+updated: 2026-11-21T16:50:57Z
+closed: 2026-11-21T16:50:57Z
 +++
 
 Part of RFC 0006. A big remaining lever after the autoresearch session.
@@ -10585,6 +10590,14 @@ Expected
 - `2026-10-16T18:04:01Z`: Split into #520 (static-scene benchmark, prerequisite), #521 (data-only parameter/vertex modifiers), #522 (closure-free Draw for single calls), #523 (Draw with explicit inputs). Speculative and deferred: #524 (result-builder Draw).
 - `2026-11-17T19:51:20Z`: Question 1 (decision): Make unchanged draw subtrees reusable through Equatable data payloads (#521, #522) plus explicit inputs (#523), rather than a caller-supplied identity or version? Recommended: Yes. Use data payloads and explicit inputs.
 - `2026-11-17T19:53:00Z`: Answer 1: Yes
+- `2026-11-21T15:43:31Z`: Not attempted this run. 3 of 4 subtasks are closed (#520, #522, #523); #521 is open. #521's data-binding attempt (bookmark attempt-521-513) works and makes ParameterModifier compare equal, but regressed per-frame cost by ~0.3-0.4 ms per 1000 draws, and #521 was then held until #519 shows a net win. #519 cannot show that win while parameter modifiers still never compare equal, so the two wait on each other.
+- `2026-11-21T15:43:31Z`: Question 2 (decision): #519 and #521 wait on each other. Should I land #521's data bindings (attempt-521-513) together with #519 in one change, and keep it only if the static-scene benchmark (#520) shows a net Update win? Recommended: Yes. Rebase attempt-521-513, finish #519 on top, benchmark static and cubes scenes, land both only on a net win; otherwise close #521 as won't-fix.
+- `2026-11-21T16:22:31Z`: Tried: rebased the #521 data bindings (dropped the #513 per-node cache), made ParameterModifier Equatable when its content is (Mirror reflection over the nested chain cost ~14 ms/frame otherwise), made splicing O(subtree) instead of a linear search of all previous events, and added a spliced-node count (System.lastSplicedNodeCount, Update signpost). Unit test: data Draw + data parameters under Group/ForEach splice on the next update. ReconciliationBenchmark Release, 1000 cubes, median Update/Workload ms: static 2.70/2.01 -> 3.74/2.36, cubes 2.72/2.02 -> 3.37/2.43. No splicing happens in real renders: processElement only splices when environmentStable, and every environment-modifying ancestor is never equal: RecordingRoot (new scope and command buffer each frame), RenderPass (content holds the ForEach closure), EnvironmentWritingModifier (modify closure). Removing RecordingRoot alone did not change the numbers. Not landed; work kept on bookmark attempt-521-519 (lnokvmxk).
+- `2026-11-21T16:22:31Z`: Question 3 (design): Draws below RecordingRoot/RenderPass/EnvironmentWritingModifier can never splice, because environment stability is decided by whether those ancestors compare equal. Should stability instead be decided by whether the environment values a node writes changed, with RecordingRoot's per-frame plumbing (scope, command buffer, submission index) exempt as workload-only? Recommended: Yes. Compare each environment-modifying node's written values with last frame's (Equatable by value, objects by identity, otherwise changed). Exempt recording plumbing keys. Nodes whose body reads submissionIndex re-evaluate every frame.
+- `2026-11-21T16:22:41Z`: Answer 2: Yes (user, in chat: finish 521 and start 519).
+- `2026-11-21T16:31:16Z`: Answer 3: Yes (user in chat: let's try it).
+- `2026-11-21T16:31:16Z`: Tried Q3 on bookmark attempt-521-519: environment stability now comes from comparing each env-modifying node's written values; RecordingRoot and RenderPass are frame plumbing; submissionIndex readers re-evaluate every frame. Also per-kind ParameterSet storage and in-place chain append. Splicing now works in real renders. ReconciliationBenchmark Release, total CPU ms old -> new: static 4.9 -> 4.5, cubes 4.9 -> 5.4, draws(400) 13.0 -> 14.6, materials 8.3 -> 10.8, merged 0.27 -> 0.29. Wins only when most draws are unchanged; loses when draws change, mostly from building and comparing data-based modifiers.
+- `2026-11-21T16:50:57Z`: Won't fix as designed. The data-binding plus value-based environment stability attempt (change lnokvmxk) works but is a net loss unless most draws are unchanged. Replaced by #598.
 
 ---
 
@@ -10615,12 +10628,13 @@ Expected
 ## 521: Parameter, vertex buffer and vertex value modifiers store closures, so they never compare equal
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:api, effort:m
 created: 2026-10-16T18:03:37Z
-updated: 2026-11-21T02:57:20Z
+updated: 2026-11-21T16:50:57Z
+closed: 2026-11-21T16:50:57Z
 +++
 
 Part of #519.
@@ -10637,6 +10651,8 @@ What is wrong
 - `2026-11-21T15:38:37Z`: Not re-attempted this run. Re answer 1: #519 is not done; it is still open (subtree reuse not implemented). The earlier data-binding attempt (bookmark attempt-521-513) regressed Update/Workload by ~0.3-0.4 ms per 1000 draws, and that cost can only be won back once #519 skips unchanged subtrees. #519 is next in this run's queue.
 - `2026-11-21T15:38:37Z`: Question 2 (decision): Since #519 is still open, should #521 wait until #519's subtree reuse lands and then be re-benchmarked from bookmark attempt-521-513? Recommended: Yes. Block #521 on #519, then rebase attempt-521-513 onto it and land only if the benchmark shows a net win.
 - `2026-11-21T15:39:44Z`: Answer 2: yes
+- `2026-11-21T16:22:32Z`: Rebased and finished on bookmark attempt-521-519 together with #519 work. Modifiers compare equal (ParameterModifierEqualityTests), but with no splicing yet (see #519) it costs ~0.6 ms Update and ~0.4 ms Workload per 1000 draws. Held until #519-Q3 is answered.
+- `2026-11-21T16:50:57Z`: Won't fix on its own: data-based modifiers only pay off together with subtree reuse, and cost more per changing draw. Replaced by #598.
 
 ---
 
@@ -12397,12 +12413,12 @@ DrawList takes an optional StereoViews value, applied once before its rows.
 ## 596: Pipelines cannot be compiled before an element tree is first rendered
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
 labels: area:api, effort:m
 created: 2026-11-20T06:05:34Z
-updated: 2026-11-21T03:46:24Z
+updated: 2026-11-21T16:53:12Z
 +++
 
 Render and compute pipelines are compiled lazily by the internal PipelineCache that belongs to each view's MetalContext. They are compiled the first time an element tree that uses them is encoded. The cache key includes the attachment pixel formats, sample count, vertex layout and linked functions.
@@ -12415,19 +12431,81 @@ Related: keeping compiled pipelines between launches (Metal 4 pipeline archives)
 
 - `2026-11-21T03:33:21Z`: Question 1 (design): Where should ahead-of-time pipeline compilation live, given each RenderView has its own MetalContext and PipelineCache: (a) a shared, public pipeline cache (like ShaderStore) that views and Runners can be given, plus a prepare(element, formats:sampleCount:) async method on it; or (b) a method on RenderView/Runner only? Recommended: (a): a public PipelineStore shared via environment like ShaderStore, with an async prepare(_ content:, colorPixelFormats:, depthPixelFormat:, sampleCount:) that runs setup without encoding; cancellation via Task.
 - `2026-11-21T15:30:16Z`: Answer 1: a
+- `2026-11-21T16:53:52Z`: Investigated for design (a). PipelineCache is confined to one MetalContext (not locked), owns that context's MTL4Compiler, and evicts entries once no node holds their lease and they went unused for two frames (endFrame, #535). A shared public store needs locking, one compiler per device, and an eviction rule that spans several contexts. prepare(content) would run the setup phase on a headless System with metalContext and a render pass descriptor built from the given formats; RenderPipeline, MeshRenderPipeline and ComputePass setup need no recording scope, but SetupModifier closures (user code) would run too. Effort looks closer to l than m. Not started.
+- `2026-11-21T16:53:52Z`: Question 2 (design): How long should pipelines compiled by prepare() stay cached, given the cache today evicts anything no node has used for two frames? Recommended: Pinned for the store's lifetime: prepare() returns nothing to hold, so the store keeps what it prepared until the store is released. Pipelines compiled during rendering keep today's two-frame eviction.
+- `2026-11-21T16:53:52Z`: Question 3 (decision): Should prepare() run SetupModifier closures (user code in the setup phase), or skip them and compile only pipelines? Recommended: Compile only pipelines: walk the tree and run RenderPipeline/MeshRenderPipeline/ComputePass setup, skip other setup elements, so prepare has no side effects.
+- `2026-11-21T16:53:52Z`: Question 4 (decision): Should a store be bound to one MTLDevice, rejecting views on another device? Recommended: Yes. One store, one device, one compiler; a view on another device throws when given the store.
+- `2026-11-21T17:14:34Z`: Answer 4: Yes
+- `2026-11-21T17:15:14Z`: Answer 3: Yes it should
+- `2026-11-21T17:15:25Z`: Answer 2: lifetime
+- `2026-11-21T17:15:55Z`: API direction (per Jonathan): public final class PipelineStore: Sendable { init(device:) throws; var device; func prepare(_ content: some Element, colorPixelFormats: [MTLPixelFormat], depthPixelFormat: MTLPixelFormat = .invalid, stencilPixelFormat: MTLPixelFormat = .invalid, sampleCount: Int = 1) async throws  (no return value); func removeAll() }. No RenderTargetFormat type. Attached like ShaderStore: View.pipelineStore(_:) and MetalContextConfiguration.pipelineStore. Cancellation through Task cancellation.
 
 ---
 
 ## 597: @MSEnvironment still reads its node through the ReadingNode task-local
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
+labels: effort:m, area:architecture
 created: 2026-11-21T15:43:09Z
+updated: 2026-11-21T17:02:31Z
+closed: 2026-11-21T17:02:31Z
 +++
 
 Follow-up of #389. After #389, @MSEnvironment.wrappedValue reads ReadingNode.current, as @MSState read tracking and the ShaderLibrary ambient store do. Answer 2 on #389 wanted MSEnvironment given its node explicitly. Its getter has no parameters and is also read during setup and workload, so the node cannot be passed in without changing how the value is resolved.
+
+- `2026-11-21T16:54:10Z`: Investigated. The explicit form would make @MSEnvironment an MSDynamicProperty holding a reference box, bound to its node in update(in:) before body, with the getter reading box.node.environmentValues (correct in setup and workload too, since the node's values are current per phase). Two problems: (1) one element value placed at two positions shares one box, so the second node's update rebinds the first element's reads (the task-local gets this right); (2) every element type with @MSEnvironment would need Mirror reflection each update (DynamicPropertyCache), a per-frame cost the task-local does not have. Not started.
+- `2026-11-21T16:54:10Z`: Question 1 (decision): Given that binding @MSEnvironment to its node breaks when one element value appears at two positions, and adds per-frame reflection, should #597 be closed as won't fix and the ReadingNode task-local kept for @MSEnvironment? Recommended: Yes. Close #597; ReadingNode already exposes only the current node, which was the goal of #389.
+- `2026-11-21T17:02:31Z`: Answer 1: Yes.
+- `2026-11-21T17:02:31Z`: Won't fix. Binding @MSEnvironment to its node breaks when one element value appears at two positions and adds per-frame reflection; the ReadingNode task-local already exposes only the current node (#389).
+
+---
+
+## 598: Static draw-heavy scenes pay the full Update cost every frame
+
++++
+status: closed
+priority: medium
+kind: enhancement
+labels: area:performance, effort:l
+created: 2026-11-21T16:50:54Z
+updated: 2026-11-21T17:42:30Z
+closed: 2026-11-21T17:42:30Z
++++
+
+A scene where most draws do not change between frames still reconciles every draw every frame. For 1000 cubes in ReconciliationBenchmark (static scenario, Release), Update is about 2.7 ms per frame even when 990 of 1000 draws are identical to the previous frame. There is no way for unchanged draws to cost less than changed ones.
+
+Replaces #519 and #521.
+
+Prior attempt (change lnokvmxk, not landed):
+- Parameter, vertex buffer and vertex value modifiers stored as data, Equatable ParameterModifier.
+- Environment stability decided by comparing each environment-modifying node's written values; RecordingRoot and RenderPass treated as per-frame plumbing; submissionIndex readers re-evaluated every frame.
+- Result, total CPU ms before -> after: static 99% unchanged 4.9 -> 4.5, 80% unchanged 4.9 -> 4.7, all moving (cubes) 4.9 -> 5.4, draws 13.0 -> 14.6, materials 8.3 -> 10.8. Break-even about 50-60% unchanged for the cubes draw.
+- The loss on changing draws came from building data-based modifiers (a storage object and an array per modifier) and from comparisons that now do real work.
+
+Expected: unchanged draws cost noticeably less than changed ones, without making scenes where draws change every frame slower.
+
+- `2026-11-21T16:53:25Z`: Not attempted this run: filed an hour ago from the closed #519/#521 attempt (change lnokvmxk), which was a net loss on cubes/draws/materials. A new attempt needs a different approach chosen first.
+- `2026-11-21T16:53:25Z`: Question 1 (decision): Which approach should the next attempt at #598 take? Recommended: Retry lnokvmxk with cheaper data modifiers (one binding stored inline, no allocation per modifier), profile materials first, and land only if cubes, draws and materials are within noise of today while static improves. Fall back to a caller-supplied version/identity on a draw subtree if that still loses.
+- `2026-11-21T17:15:59Z`: Answer 1: Go with the recommendation (user: do 598).
+- `2026-11-21T17:42:30Z`: Fixed with an opt-in Memo(key) { content } element plus value-based environment stability (writes of environment-modifying ancestors are compared by value; RecordingRoot and RenderPass are per-frame plumbing; bodies reading submissionIndex re-evaluate every frame). Without Memo nothing changes: ReconciliationBenchmark Release, total CPU ms, cubes 5.1 -> 5.1, draws 13.0 -> 13.1, materials 8.6 -> 8.5. With Memo on the static scene: 0% moving 5.1 -> 3.4 (Update 2.85 -> 1.1), 20% moving 5.1 -> 4.0, 50% 5.1 -> 5.0, 100% 5.1 -> 6.6 (Memo costs more when every key changes). The data-modifier approach (#521) was dropped: building and comparing data modifiers cost more than closure modifiers in every scene where draws change.
+
+---
+
+## 599: Custom APIs that duplicate existing SwiftUI-style equivalents
+
++++
+status: new
+priority: none
+kind: none
+created: 2026-11-22T04:06:13Z
++++
+
+Look for more things that we’ve invented that could be replaced by swiftui style apis.
+
+For instance we almost had Memo() and .equatable() was more swifftui like
 
 ---
 
