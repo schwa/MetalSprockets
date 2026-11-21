@@ -519,6 +519,43 @@ internal final class MetalLayerView: PlatformView {
 
     // MARK: Frame
 
+    /// Whether frames come only when requested: the view is paused or uses `setNeedsDisplay`.
+    var rendersOnDemand: Bool {
+        enableSetNeedsDisplay || isPaused
+    }
+
+    /// Asks for one frame when the view renders on demand. Does nothing while the display link drives frames (#553).
+    func requestFrame() {
+        guard rendersOnDemand else {
+            return
+        }
+        requestedFrameCount += 1
+        if enableSetNeedsDisplay {
+            #if os(macOS)
+            needsDisplay = true
+            #else
+            setNeedsDisplay()
+            #endif
+        } else if !isFrameRequestPending {
+            // Deferred, so a request made inside a SwiftUI update does not render inside it, and requests coalesce.
+            isFrameRequestPending = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self else {
+                    return
+                }
+                isFrameRequestPending = false
+                if window != nil, isPaused, !enableSetNeedsDisplay {
+                    draw()
+                }
+            }
+        }
+    }
+
+    private var isFrameRequestPending = false
+
+    /// For tests.
+    private(set) var requestedFrameCount = 0
+
     /// Renders a frame on the frame thread. Without a render thread it renders before returning.
     func draw() {
         guard let renderThread else {

@@ -71,6 +71,45 @@ struct RenderViewViewModelTests {
         #expect(viewModel.lastError == nil)
     }
 
+    // On-demand rendering (#553): content can ask for another frame, and only on-demand views take requests.
+    @Test(.requiresMetal4) func `content can request another frame`() async throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let view = makeView(device: device)
+        var remaining = 2
+        let viewModel = try makeViewModel(device: device) { context, _ in
+            if remaining > 0 {
+                remaining -= 1
+                context.requestFrame()
+            }
+            return try triangle()
+        }
+        var requests = 0
+        viewModel.requestFrame = { requests += 1 }
+        view.delegate = viewModel
+        view.draw()
+        await Task.yield()
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(requests == 1)
+        view.draw()
+        view.draw()
+        try await Task.sleep(for: .milliseconds(50))
+        // The third frame did not ask.
+        #expect(requests == 2)
+    }
+
+    @Test func `only on-demand views take frame requests`() {
+        let view = MetalLayerView(frame: CGRect(x: 0, y: 0, width: 64, height: 64))
+        view.requestFrame()
+        #expect(view.requestedFrameCount == 0)
+        view.isPaused = true
+        view.requestFrame()
+        #expect(view.requestedFrameCount == 1)
+        view.isPaused = false
+        view.enableSetNeedsDisplay = true
+        view.requestFrame()
+        #expect(view.requestedFrameCount == 2)
+    }
+
     @Test(.requiresMetal4) func `successive frames reuse the system`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let view = makeView(device: device)

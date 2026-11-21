@@ -11297,13 +11297,14 @@ Env: macOS 26, MetalSprockets 0.2.8, Debug build.
 ## 553: RenderView has no way to request a frame in on-demand mode
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:api, effort:m
 milestone: m1
 created: 2026-10-23T21:32:23Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:50:57Z
+closed: 2026-11-21T02:50:57Z
 +++
 
 RenderView can run its MTKView in paused or setNeedsDisplay mode (.metalIsPaused, .metalEnableSetNeedsDisplay). But the host app cannot ask for a frame when its render inputs change: the MTKView and its delegate are hidden inside RenderView, and the SwiftUI update closure stores the new content without marking the view as needing display.
@@ -11313,6 +11314,7 @@ Because of this, apps cannot render on demand (only when the camera, transforms,
 Missing: a supported way to invalidate a RenderView in on-demand mode. For example, redraw when RenderView's inputs change, or an environment- or binding-provided redraw request. Renderers that accumulate over frames also need a way to keep requesting frames until they converge.
 
 - `2026-11-14T22:06:32Z`: Related to #560: RenderView no longer uses MTKView. It hosts MetalLayerView, and with threading: .renderThread frames run on a render thread, so a redraw request must reach that thread.
+- `2026-11-21T02:50:57Z`: In on-demand mode (metalIsPaused or metalEnableSetNeedsDisplay), every SwiftUI update of a RenderView now requests a frame, so changing its inputs redraws. Content can call RenderViewContext.requestFrame() to ask for another frame (for renderers that converge over frames). Requests reach the render thread through MetalLayerView.draw(). A frame skipped at the in-flight limit is requested again. Continuous views ignore requests.
 
 ---
 

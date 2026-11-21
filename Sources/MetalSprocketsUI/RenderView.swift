@@ -506,6 +506,11 @@ internal struct MetalHostView <Content>: View where Content: Element {
         viewModel.shaderStore = shaderStore
         viewModel.diagnostics = RenderViewDiagnostics(environment: environment)
         viewModel.depthStoreAction = environment.metalDepthStoreAction
+        viewModel.requestFrame = { [weak view] in
+            view?.requestFrame()
+        }
+        // In on-demand mode, a SwiftUI update means the inputs may have changed, so render a frame (#553).
+        view.requestFrame()
     }
 }
 
@@ -560,6 +565,8 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
         var shaderStore: ShaderStore?
         var diagnostics = RenderViewDiagnostics(environment: EnvironmentValues())
         var depthStoreAction: MTLStoreAction?
+        /// Asks the view for another frame. Called on the main thread.
+        var requestFrame: (() -> Void)?
     }
 
     // Settings hold main-actor closures; with a render thread they are only called on the main thread.
@@ -654,6 +661,11 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
     var frameTimingChange: ((FrameTimingStatistics) -> Void)? {
         get { settings.frameTimingChange }
         set { updateSettings { $0.frameTimingChange = newValue } }
+    }
+
+    var requestFrame: (() -> Void)? {
+        get { settings.requestFrame }
+        set { updateSettings { $0.requestFrame = newValue } }
     }
 
     var captureConfiguration: RenderViewCaptureConfiguration? {
@@ -843,6 +855,11 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
                 guard try runner.prepareFrame() else {
                     skippedFrameCount += 1
                     frameSignposter.emitEvent("Frame skipped", "in-flight limit")
+                    // An on-demand view gets no other frame, so ask again. A continuous view ignores this.
+                    if let requestFrame = settings.requestFrame {
+                        nonisolated(unsafe) let unchecked = requestFrame
+                        DispatchQueue.main.async { unchecked() }
+                    }
                     return
                 }
                 // May block here until a drawable is free.
@@ -889,11 +906,20 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
                 frameTimingTracker.lastGPUTime = frameRenderer.lastGPUTime
                 frameTimingTracker.lastGPUTimings = frameRenderer.lastGPUTimings
                 let frameTimingStatistics = frameTimingTracker.recordFrame(timestamp: currentTime)
+                let frameRequest = FrameRequest()
                 let context = RenderViewContext(
                     frameUniforms: frameUniforms,
                     frameTimingStatistics: frameTimingStatistics,
-                    attachedDepthTexture: currentRenderPassDescriptor.depthAttachment.texture
+                    attachedDepthTexture: currentRenderPassDescriptor.depthAttachment.texture,
+                    frameRequest: frameRequest
                 )
+                defer {
+                    if frameRequest.isRequested, let requestFrame = settings.requestFrame {
+                        nonisolated(unsafe) let unchecked = requestFrame
+                        // Async even on the main thread, so the next frame does not start inside this one.
+                        DispatchQueue.main.async { unchecked() }
+                    }
+                }
                 reportFrameTiming(frameTimingStatistics, to: settings.frameTimingChange)
 
                 let t0 = CACurrentMediaTime()
@@ -1030,6 +1056,15 @@ public struct RenderViewContext {
 
     var attachedDepthTexture: MTLTexture?
 
+    var frameRequest: FrameRequest?
+
+    /// Asks for another frame after this one when the view renders on demand (`metalIsPaused(true)` or
+    /// `metalEnableSetNeedsDisplay(true)`). For example, a renderer that accumulates over frames calls this until it
+    /// converges. While the view renders continuously, this does nothing.
+    public func requestFrame() {
+        frameRequest?.isRequested = true
+    }
+
     /// The frame's depth attachment, or `nil` if the view has no depth format.
     ///
     /// Readable only in a later pass (or after a copy), not in the pass that writes it. RenderView does not
@@ -1041,6 +1076,11 @@ public struct RenderViewContext {
         assert(attachedDepthTexture?.storageMode != .memoryless, "RenderViewContext.depthTexture is memoryless and cannot be read. Configure a non-memoryless depth storage mode.")
         return attachedDepthTexture
     }
+}
+
+/// Set by ``RenderViewContext/requestFrame()`` during a frame.
+internal final class FrameRequest {
+    var isRequested = false
 }
 
 // MARK: - FrameUniforms
