@@ -296,7 +296,7 @@ struct MeshRenderPipelineTests {
         descriptor.stencilAttachment.loadAction = .clear
         descriptor.stencilAttachment.storeAction = .dontCare
 
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
         try runner.run(
             try objectMeshPass(scale: 1, tint: [0, 1, 0, 1], depthCompare: true)
                 .renderPassDescriptor(descriptor)

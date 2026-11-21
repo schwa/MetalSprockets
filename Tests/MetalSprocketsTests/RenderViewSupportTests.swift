@@ -142,7 +142,7 @@ struct RenderViewSupportTests {
         ) { result in
             box.result = result
         }
-        try Runner(device: device, commandQueue: queue).run(root)
+        try Runner(configuration: MetalContextConfiguration(device: device, commandQueue: queue)).run(root)
         #expect(box.result?.outcome == .completed)
     }
 

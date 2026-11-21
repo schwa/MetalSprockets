@@ -624,7 +624,9 @@ internal final class RenderViewViewModel <Content>: NSObject, MetalLayerViewDele
             try runner.setMaximumInFlightSubmissions(settings.maximumInFlightSubmissions)
             return runner
         }
-        let runner = try FrameRunner(device: device, commandQueue: commandQueue, system: frameRenderer.system, shaderLogging: settings.shaderLogging, maximumInFlightSubmissions: settings.maximumInFlightSubmissions)
+        // The same configuration Runner and OffscreenRenderer take, filled from the view's modifiers (#483).
+        let configuration = MetalContextConfiguration(device: device, commandQueue: commandQueue, shaderLogging: settings.shaderLogging, residency: settings.residency, maximumInFlightSubmissions: settings.maximumInFlightSubmissions)
+        let runner = try FrameRunner(configuration: configuration, system: frameRenderer.system)
         _runner = runner
         return runner
     }

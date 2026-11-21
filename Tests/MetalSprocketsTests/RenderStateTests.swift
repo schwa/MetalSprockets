@@ -439,7 +439,7 @@ struct RenderStateTests {
                     .depthStencil(DepthState(compare: .always, isWriteEnabled: false, frontStencil: test, backStencil: test), stencilReference: 7)
             }.vertexDescriptor(shaders.vertex.inferredVertexDescriptor())
         }.renderPassDescriptor(pass)
-        let result = try await FrameRunner(device: device).run(scene)
+        let result = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(scene)
         #expect(result.outcome == .completed)
         func pixel(_ x: Int, _ y: Int) -> [UInt8] {
             var bytes = [UInt8](repeating: 0, count: 4)
@@ -498,7 +498,7 @@ struct RenderStateTests {
             color.getBytes(&pixel, bytesPerRow: 16 * 4, from: MTLRegionMake2D(8, 8, 1, 1), mipmapLevel: 0)
             return pixel
         }
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
         try runner.run(try frame(reference: 200))
         #expect(center() == [0, 255, 0, 255])
         try runner.run(try frame(reference: 7))
@@ -527,7 +527,7 @@ struct RenderStateTests {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.storeAction = .dontCare
         let shaders = try shaders(Self.quadSource)
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
         try runner.run(try RenderPass {
             try RenderPipeline(vertexShader: shaders.vertex, fragmentShader: shaders.fragment) {
                 Draw { $0.drawPrimitives(primitiveType: .triangleStrip, vertexStart: 0, vertexCount: 4) }

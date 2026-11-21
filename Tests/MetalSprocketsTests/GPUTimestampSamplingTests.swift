@@ -86,7 +86,7 @@ struct GPUTimestampSamplingTests {
             }
         }
         .gpuCounters { collector.append($0) }
-        let result = try await FrameRunner(device: device).run(content)
+        let result = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(content)
         #expect(result.outcome == .completed)
         let sample = try #require(collector.values.first)
         #expect(try #require(sample.duration) > 0)

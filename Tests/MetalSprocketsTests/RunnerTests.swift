@@ -18,6 +18,20 @@ struct RunnerTests {
     }
     """
 
+    // Every root takes the same configuration (#483).
+    @Test("Roots apply a shared MetalContextConfiguration", .requiresMetal4)
+    func rootsApplySharedConfiguration() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let queue = try #require(device.makeMTL4CommandQueue())
+        let configuration = MetalContextConfiguration(device: device, commandQueue: queue, shaderLogging: .disabled, maximumInFlightSubmissions: 1)
+        let runner = try Runner(configuration: configuration)
+        #expect(runner.commandQueue === queue)
+        #expect(runner.maximumInFlightSubmissions == 1)
+        #expect(runner.context.logState == nil)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 8, height: 8), configuration: configuration)
+        #expect(renderer.commandQueue === queue)
+    }
+
     @Test("Runner runs a single element tree", .requiresMetal4)
     func runsSingleElementTree() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
@@ -25,7 +39,7 @@ struct RunnerTests {
         let count = 8
         let buffer = try #require(device.makeBuffer(length: MemoryLayout<Float>.stride * count, options: .storageModeShared))
 
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
 
         let element = try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
@@ -52,7 +66,7 @@ struct RunnerTests {
         let count = 8
         let buffer = try #require(device.makeBuffer(length: MemoryLayout<Float>.stride * count, options: .storageModeShared))
 
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
 
         let element = try ComputePass {
             try ComputePipeline(computeKernel: kernel) {
@@ -78,7 +92,7 @@ struct RunnerTests {
     func usesSuppliedDeviceAndQueue() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let queue = try #require(device.makeMTL4CommandQueue())
-        let runner = try Runner(device: device, commandQueue: queue)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device, commandQueue: queue))
         #expect(runner.device === device)
         #expect(runner.commandQueue === queue)
     }

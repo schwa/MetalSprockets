@@ -79,7 +79,7 @@ struct MetalFXSpatialTests {
 
     @Test(.timeLimit(.minutes(1)))
     func scaledOutputFollowsEachFramesInputAndResizes() async throws {
-        let runner = try FrameRunner(device: device)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         let input = try texture(.rgba16Float, 64, 64, usage: [.renderTarget, .shaderRead])
         let red: SIMD4<Float> = [1, 0, 0, 1]
         let blue: SIMD4<Float> = [0, 0, 1, 1]
@@ -121,7 +121,7 @@ struct MetalFXSpatialTests {
         let input = try texture(.bgra8Unorm, 64, 64, usage: [.renderTarget, .shaderRead])
         let output = try texture(.bgra8Unorm, 128, 128, usage: [.renderTarget, .shaderRead, .shaderWrite])
         let readback = try texture(.bgra8Unorm, 128, 128, usage: [.shaderRead], storage: .shared)
-        let result = try await FrameRunner(device: device).run(frame(input: input, output: output, readback: readback, left: [0, 1, 0, 1], right: [1, 1, 1, 1]))
+        let result = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(frame(input: input, output: output, readback: readback, left: [0, 1, 0, 1], right: [1, 1, 1, 1]))
         #expect(result.outcome == .completed)
         var bytes = [UInt8](repeating: 0, count: 4)
         readback.getBytes(&bytes, bytesPerRow: 128 * 4, from: MTLRegionMake2D(16, 64, 1, 1), mipmapLevel: 0)
@@ -133,12 +133,12 @@ struct MetalFXSpatialTests {
         let input = try texture(.rgba16Float, 32, 32, usage: [.renderTarget, .shaderRead])
         let shared = try texture(.rgba16Float, 64, 64, usage: [.renderTarget, .shaderRead, .shaderWrite], storage: .shared)
         await #expect(throws: MetalSprocketsError.self) {
-            _ = try await FrameRunner(device: device).run(MetalFXSpatial(inputTexture: input, outputTexture: shared))
+            _ = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(MetalFXSpatial(inputTexture: input, outputTexture: shared))
         }
         let unreadable = try texture(.rgba16Float, 32, 32, usage: [.renderTarget])
         let output = try texture(.rgba16Float, 64, 64, usage: [.renderTarget, .shaderRead, .shaderWrite])
         await #expect(throws: MetalSprocketsError.self) {
-            _ = try await FrameRunner(device: device).run(MetalFXSpatial(inputTexture: unreadable, outputTexture: output))
+            _ = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(MetalFXSpatial(inputTexture: unreadable, outputTexture: output))
         }
     }
 }

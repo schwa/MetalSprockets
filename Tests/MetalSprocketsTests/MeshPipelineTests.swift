@@ -140,7 +140,7 @@ struct MeshPipelineTests {
         let content = try RenderPass {
             try scene(shaders, scale: 1, tint: [0, 1, 0, 1], depthCompare: true)
         }.renderPassDescriptor(pass)
-        let result = try await FrameRunner(device: device).run(content)
+        let result = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(content)
         #expect(result.outcome == .completed)
         try Golden.verify(try OffscreenRenderer.Rendering(texture: color).cgImage, named: "MeshTriangle")
     }

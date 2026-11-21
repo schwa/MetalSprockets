@@ -51,8 +51,11 @@ public struct OffscreenRenderer {
     private var ownedResources: ResourceCollection?
 
     /// `clearDepth` is the depth each frame starts from: 1 for the usual depth convention, 0 for reverse-Z (where nearer
-    /// is greater).
-    public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture, clearDepth: Double = 1, shaderLogging: ShaderLogging = .processDefault) throws {
+    /// is greater). The device is the textures' device; a different `configuration.device` throws.
+    public init(size: CGSize, colorTexture: MTLTexture, depthTexture: MTLTexture, clearDepth: Double = 1, configuration: MetalContextConfiguration = MetalContextConfiguration()) throws {
+        if let device = configuration.device, device !== colorTexture.device {
+            throw MetalSprocketsError.configurationError("The configuration's device is not the device of the render targets.")
+        }
         self.device = colorTexture.device
         self.size = size
         self.colorTexture = colorTexture
@@ -67,19 +70,20 @@ public struct OffscreenRenderer {
         renderPassDescriptor.depthAttachment.clearDepth = clearDepth
         renderPassDescriptor.depthAttachment.storeAction = .store // TODO: #25 This is hardcoded. Should usually be .dontCare but we need to read back in some examples.
         self.renderPassDescriptor = renderPassDescriptor
-        self.runner = try Runner(device: device, shaderLogging: shaderLogging)
+        var configuration = configuration
+        configuration.device = colorTexture.device
+        self.runner = try Runner(configuration: configuration)
         self.commandQueue = runner.commandQueue
     }
 
     public init(
         size: CGSize,
-        device: MTLDevice? = nil,
         colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead],
         depthUsage: MTLTextureUsage = [.renderTarget],
         clearDepth: Double = 1,
-        shaderLogging: ShaderLogging = .processDefault
+        configuration: MetalContextConfiguration = MetalContextConfiguration()
     ) throws {
-        let device = device ?? _MTLCreateSystemDefaultDevice()
+        let device = configuration.resolvedDevice
         let colorTextureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: Int(size.width), height: Int(size.height), mipmapped: false)
         colorTextureDescriptor.usage = colorUsage
         let colorTexture = try device.makeTexture(descriptor: colorTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create color texture"))
@@ -88,12 +92,12 @@ public struct OffscreenRenderer {
         depthTextureDescriptor.usage = depthUsage
         let depthTexture = try device.makeTexture(descriptor: depthTextureDescriptor).orThrow(.resourceCreationFailure("Failed to create depth texture"))
         depthTexture.label = "Depth Texture"
-        try self.init(size: size, colorTexture: colorTexture, depthTexture: depthTexture, clearDepth: clearDepth, shaderLogging: shaderLogging)
+        try self.init(size: size, colorTexture: colorTexture, depthTexture: depthTexture, clearDepth: clearDepth, configuration: configuration)
         let resources = try ResourceCollection(device: device)
         try resources.register(colorTexture)
         try resources.register(depthTexture)
         ownedResources = resources
-        runner.residency.collections = [resources]
+        runner.residency.collections.append(resources)
     }
 
     public struct Rendering {

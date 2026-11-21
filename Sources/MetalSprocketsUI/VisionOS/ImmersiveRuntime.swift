@@ -44,7 +44,7 @@ internal final class ImmersiveRuntime<Content: Element> {
         // CompositorServices exposes no Metal 4 queue, render context or presentation on the simulator.
         throw MetalSprocketsError.deviceCababilityFailure("Immersive rendering on Metal 4 requires an Apple Vision Pro; the visionOS simulator has no Metal 4 compositor API.")
         #else
-        self.runner = try FrameRunner(device: device, commandQueue: layerRenderer.commandQueue, system: frameRenderer.system, maximumInFlightSubmissions: maximumInFlightSubmissions)
+        self.runner = try FrameRunner(configuration: MetalContextConfiguration(device: device, commandQueue: layerRenderer.commandQueue, maximumInFlightSubmissions: maximumInFlightSubmissions), system: frameRenderer.system)
         #endif
         self.arSession = ARKitSession()
         self.worldTracking = WorldTrackingProvider()

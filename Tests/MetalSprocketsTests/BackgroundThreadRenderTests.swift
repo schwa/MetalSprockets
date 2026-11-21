@@ -10,7 +10,7 @@ func offscreenRenderOnBackgroundThread() async throws {
     let error: (any Error)? = await withCheckedContinuation { continuation in
         let thread = Thread {
             do {
-                let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64), device: device)
+                let renderer = try OffscreenRenderer(size: CGSize(width: 64, height: 64), configuration: MetalContextConfiguration(device: device))
                 for _ in 0..<20 {
                     _ = try renderer.render(RenderPass { EmptyElement() })
                 }

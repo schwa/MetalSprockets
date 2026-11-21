@@ -222,7 +222,7 @@ struct ResourceCollectionTests {
         let external = try device.makeResidencySet(descriptor: MTLResidencySetDescriptor())
         external.addAllocation(externalBuffer)
         external.commit()
-        let runner = try Runner(device: device, residency: ResidencyConfiguration(collections: [collection], residencySets: [external]))
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device, residency: ResidencyConfiguration(collections: [collection], residencySets: [external])))
         let submission = try runner.submit(
             try ComputePass {
                 ComputeCommand {
@@ -249,7 +249,7 @@ struct ResourceCollectionTests {
         let external = try device.makeResidencySet(descriptor: MTLResidencySetDescriptor())
         external.addAllocation(externalBuffer)
         external.commit()
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
         for value in UInt8(1)...3 {
             let submission = try runner.submit(
                 try ComputePass {

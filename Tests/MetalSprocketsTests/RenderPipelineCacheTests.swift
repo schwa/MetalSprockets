@@ -84,7 +84,7 @@ struct RenderPipelineCacheTests {
         descriptor.stencilAttachment.loadAction = .clear
         descriptor.stencilAttachment.storeAction = .dontCare
 
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
         try runner.run(
             try pass(shaders: shaders)
                 .renderPassDescriptor(descriptor)

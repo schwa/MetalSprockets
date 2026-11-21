@@ -37,9 +37,9 @@ public final class OffscreenVideoRenderer {
         colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead],
         depthUsage: MTLTextureUsage = [.renderTarget],
         clearDepth: Double = 1,
-        shaderLogging: ShaderLogging = .processDefault
+        configuration: MetalContextConfiguration = MetalContextConfiguration()
     ) throws {
-        try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, colorUsage: colorUsage, depthUsage: depthUsage, clearDepth: clearDepth, shaderLogging: shaderLogging, waitUntilReady: nil)
+        try self.init(size: size, frameRate: frameRate, outputURL: outputURL, pixelFormat: pixelFormat, videoCodec: videoCodec, colorUsage: colorUsage, depthUsage: depthUsage, clearDepth: clearDepth, configuration: configuration, waitUntilReady: nil)
     }
 
     /// Designated init. `waitUntilReady` is the back-pressure strategy. When it
@@ -54,7 +54,7 @@ public final class OffscreenVideoRenderer {
         colorUsage: MTLTextureUsage = [.renderTarget, .shaderRead],
         depthUsage: MTLTextureUsage = [.renderTarget],
         clearDepth: Double = 1,
-        shaderLogging: ShaderLogging = .processDefault,
+        configuration: MetalContextConfiguration = MetalContextConfiguration(),
         waitUntilReady: (() async -> Void)?
     ) throws {
         self.size = size
@@ -67,7 +67,7 @@ public final class OffscreenVideoRenderer {
         guard pixelFormat == .bgra8Unorm || pixelFormat == .bgra8Unorm_srgb else {
             throw MetalSprocketsError.configurationError("Video export requires a BGRA8 pixel format, not \(pixelFormat).")
         }
-        runner = try Runner(shaderLogging: shaderLogging)
+        runner = try Runner(configuration: configuration)
         device = runner.device
         commandQueue = runner.commandQueue
 
@@ -93,7 +93,7 @@ public final class OffscreenVideoRenderer {
         let resources = try ResourceCollection(device: device)
         try resources.register(colorTexture)
         try resources.register(depthTexture)
-        runner.residency.collections = [resources]
+        runner.residency.collections.append(resources)
 
         renderPassDescriptor = MTL4RenderPassDescriptor()
         renderPassDescriptor.colorAttachments[0].texture = colorTexture

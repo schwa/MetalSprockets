@@ -34,7 +34,7 @@ struct ShaderProvenancePublicTests {
     @Test(.requiresMetal4)
     func customLoadersAndConformersPreservePipelineIdentity() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
         let output = try #require(device.makeBuffer(length: 4, options: .storageModeShared))
         for libraryValue in [UInt32(10), UInt32(100)] {
             let library = try device.makeLibrary(source: """

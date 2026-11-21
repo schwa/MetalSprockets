@@ -111,13 +111,13 @@ struct MetalFXTemporalTests {
     /// Output of a brand-new scaler's first frame, which has no history.
     private func freshFirstFrame(input: Int, output: Int, phase: UInt32, jitter: SIMD2<Float> = .zero) async throws -> [Float] {
         let textures = try textures(input: input, output: output)
-        _ = try await FrameRunner(device: device).run(try frame(textures, phase: phase, jitter: jitter))
+        _ = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(try frame(textures, phase: phase, jitter: jitter))
         return pixels(textures.readback)
     }
 
     @Test(.timeLimit(.minutes(1)))
     func historyAccumulatesAcrossFramesAndResetDiscardsIt() async throws {
-        let runner = try FrameRunner(device: device)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         let textures = try textures(input: 64, output: 128)
         var outputs: [[Float]] = []
         for _ in 0..<6 {
@@ -156,7 +156,7 @@ struct MetalFXTemporalTests {
 
     @Test(.timeLimit(.minutes(1)))
     func resizingRebuildsTheScalerWithoutStaleHistory() async throws {
-        let runner = try FrameRunner(device: device)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         let small = try textures(input: 64, output: 128)
         for _ in 0..<4 {
             _ = try await runner.run(try frame(small, phase: 0))
@@ -173,7 +173,7 @@ struct MetalFXTemporalTests {
     @Test(.timeLimit(.minutes(1)))
     func historySurvivesOverlappingInFlightSubmissions() async throws {
         // Reference: three frames, each awaited before the next.
-        let sequential = try FrameRunner(device: device)
+        let sequential = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         let reference = try textures(input: 64, output: 128)
         for phase: UInt32 in [0, 0, 1] {
             _ = try await sequential.run(try frame(reference, phase: phase))
@@ -208,11 +208,11 @@ struct MetalFXTemporalTests {
         let good = try textures(input: 32, output: 64)
         let shared = try texture(.rgba16Float, 64, usage: [.renderTarget, .shaderRead, .shaderWrite], storage: .shared)
         await #expect(throws: MetalSprocketsError.self) {
-            _ = try await FrameRunner(device: device).run(MetalFXTemporal(inputTexture: good.input, depthTexture: good.depth, motionTexture: good.motion, outputTexture: shared))
+            _ = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(MetalFXTemporal(inputTexture: good.input, depthTexture: good.depth, motionTexture: good.motion, outputTexture: shared))
         }
         let unreadableMotion = try texture(.rg16Float, 32, usage: [.renderTarget])
         await #expect(throws: MetalSprocketsError.self) {
-            _ = try await FrameRunner(device: device).run(MetalFXTemporal(inputTexture: good.input, depthTexture: good.depth, motionTexture: unreadableMotion, outputTexture: good.output))
+            _ = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(MetalFXTemporal(inputTexture: good.input, depthTexture: good.depth, motionTexture: unreadableMotion, outputTexture: good.output))
         }
     }
 }

@@ -25,7 +25,7 @@ internal final class TestOffscreenRenderer {
     private var descriptor: MTL4RenderPassDescriptor
 
     init(size: CGSize, device: (any MTLDevice)? = nil, pixelFormat: MTLPixelFormat = .bgra8Unorm_srgb, sampleCount: Int = 1) throws {
-        runner = try FrameRunner(device: device)
+        runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         guard sampleCount >= 1, runner.device.supportsTextureSampleCount(sampleCount) else {
             throw MetalSprocketsError.deviceCababilityFailure("Device '\(runner.device.name)' does not support \(sampleCount) samples per pixel.")
         }

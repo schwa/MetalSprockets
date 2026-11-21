@@ -51,13 +51,13 @@ struct DebugGroupEncodingTests {
             }
         }
         // API Validation rejects unbalanced groups when an encoder or the command buffer ends.
-        let result = try await FrameRunner(device: device).run(content.debugGroup("Outer"))
+        let result = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(content.debugGroup("Outer"))
         #expect(result.outcome == .completed)
     }
 
     @Test(.timeLimit(.minutes(1)))
     func aThrownWorkloadUnwindsGroupsAndTheNextFrameStillRenders() async throws {
-        let runner = try FrameRunner(device: device)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         let texture = try target()
         let failing = try pass(texture) {
             AnyBodylessElement().onWorkloadEnter { _ in throw DeliberateFailure() }
@@ -109,21 +109,21 @@ struct ShaderLoggingTests {
 
         // Through Runner.
         let runnerMessages = OSAllocatedUnfairLock<[String]>(initialState: [])
-        let runner = try Runner(device: device, shaderLogging: .handler { message in runnerMessages.withLock { $0.append(message) } })
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device, shaderLogging: .handler { message in runnerMessages.withLock { $0.append(message) } }))
         #expect(runner.context.logState != nil)
         try runner.run(content)
         #expect(try await waitForMessage(runnerMessages))
 
         // Through OffscreenRenderer (its root carries the same option).
         let offscreenMessages = OSAllocatedUnfairLock<[String]>(initialState: [])
-        let offscreen = try OffscreenRenderer(size: CGSize(width: 8, height: 8), device: device, shaderLogging: .handler { message in offscreenMessages.withLock { $0.append(message) } })
+        let offscreen = try OffscreenRenderer(size: CGSize(width: 8, height: 8), configuration: MetalContextConfiguration(device: device, shaderLogging: .handler { message in offscreenMessages.withLock { $0.append(message) } }))
         _ = try offscreen.render(content)
         #expect(try await waitForMessage(offscreenMessages))
 
         // Off unless asked for, or unless the process sets MS_METAL_LOGGING=1.
-        #expect(try Runner(device: device, shaderLogging: .disabled).context.logState == nil)
+        #expect(try Runner(configuration: MetalContextConfiguration(device: device, shaderLogging: .disabled)).context.logState == nil)
         #expect((ShaderLogging.processDefault.configuration != nil) == SystemEnvironment.current.metalLoggingEnabled)
-        #expect((try Runner(device: device).context.logState != nil) == SystemEnvironment.current.metalLoggingEnabled)
+        #expect((try Runner(configuration: MetalContextConfiguration(device: device)).context.logState != nil) == SystemEnvironment.current.metalLoggingEnabled)
     }
 }
 
@@ -171,7 +171,7 @@ struct CaptureTests {
     /// The capture ends from the submission's terminal handler, which can run just after the awaited result returns.
     private func run(_ content: some Element) async throws {
         defer { waitForCaptureToEnd() }
-        let result = try await FrameRunner(device: device).run(content)
+        let result = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(content)
         #expect(result.outcome == .completed)
     }
 
@@ -250,7 +250,7 @@ struct CaptureTests {
                 manager.stopCapture()
             }
         }
-        let result = try await FrameRunner(device: device).run(try frame().capture(destination: .gpuTraceDocument, outputURL: try traceURL()))
+        let result = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(try frame().capture(destination: .gpuTraceDocument, outputURL: try traceURL()))
         #expect(result.outcome == .completed)
         #expect(manager.isCapturing)
     }

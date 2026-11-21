@@ -93,7 +93,7 @@ struct CustomCounterHeapTests {
         .onCommandBufferCompleted { result in
             resolved.set((try? Self.timestamps(callbackHeap, count: count)) ?? [], result.gpuDuration)
         }
-        let renderer = try OffscreenRenderer(size: CGSize(width: 512, height: 512), device: device)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 512, height: 512), configuration: MetalContextConfiguration(device: device))
         _ = try renderer.render(content)
         let value = try #require(resolved.value)
         try checkTimestamps(value.timestamps, count: count, gpuDuration: value.gpuDuration)
@@ -119,7 +119,7 @@ struct CustomCounterHeapTests {
         .onCommandBufferCompleted { result in
             resolved.set((try? Self.timestamps(callbackHeap, count: count)) ?? [], result.gpuDuration)
         }
-        let renderer = try OffscreenRenderer(size: CGSize(width: 16, height: 16), device: device)
+        let renderer = try OffscreenRenderer(size: CGSize(width: 16, height: 16), configuration: MetalContextConfiguration(device: device))
         _ = try renderer.render(content)
         let value = try #require(resolved.value)
         try checkTimestamps(value.timestamps, count: count, gpuDuration: value.gpuDuration)

@@ -16,11 +16,10 @@ package final class FrameRunner {
         set { context.residencyConfiguration = newValue }
     }
 
-    package init(device: (any MTLDevice)? = nil, commandQueue: (any MTL4CommandQueue)? = nil, system: System = System(), shaderLogging: ShaderLogging = .processDefault, maximumInFlightSubmissions: Int = 3) throws {
-        let device = device ?? commandQueue?.device ?? _MTLCreateSystemDefaultDevice()
-        self.device = device
+    package init(configuration: MetalContextConfiguration = MetalContextConfiguration(), system: System = System()) throws {
         self.system = system
-        self.context = try MetalContext(device: device, commandQueue: commandQueue, maximumInFlightSubmissions: maximumInFlightSubmissions, shaderLogging: shaderLogging.configuration)
+        self.context = try configuration.makeContext()
+        self.device = context.device
     }
 
     /// Reports whether the in-flight limit permits another frame without waiting.
@@ -87,6 +86,6 @@ package final class FrameRunner {
     /// Runs `content` once on a fresh runner.
     @discardableResult
     nonisolated(nonsending) static func runOnce(_ content: some Element, device: (any MTLDevice)? = nil) async throws -> SubmissionResult {
-        try await FrameRunner(device: device).run(content)
+        try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(content)
     }
 }

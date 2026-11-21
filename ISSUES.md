@@ -9352,13 +9352,14 @@ On device, the first frames after opening an immersive space (ImmersiveRenderCon
 ## 483: Unify RenderView modifiers and Runner/OffscreenRenderer config
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:m, area:api, breaking
 milestone: m2
 created: 2026-10-07T01:51:42Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-21T03:06:15Z
+closed: 2026-11-21T03:06:15Z
 +++
 
 RenderView configures its Metal context through SwiftUI view modifiers backed by EnvironmentValues (`.device`, `.commandQueue`, `.shaderStore`, `.metalShaderLogging`, `.renderViewLogFrame`, `.renderViewFatalErrorOnError`). Runner and OffscreenRenderer configure the same underlying context through init parameters (device, commandQueue, shaderLogging, residency, maximumInFlightSubmissions; plus size/colorUsage/depthUsage/clearDepth for OffscreenRenderer).

@@ -68,7 +68,7 @@ struct FunctionTableTests {
         let kernel = try ComputeKernel(library: library, name: "compute_main")
         let plusOne = try VisibleFunction(library: library, name: "plus_one")
         let timesTwo = try VisibleFunction(library: library, name: "times_two")
-        let runner = try FrameRunner(device: device)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         let expectedPlusOne = (0..<64).map { UInt32($0) + 1 }
         let expectedTimesTwo = (0..<64).map { UInt32($0) * 2 }
         #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne, timesTwo], table: [plusOne]) == expectedPlusOne)
@@ -91,7 +91,7 @@ struct FunctionTableTests {
         let kernel = try ComputeKernel(library: library, name: "compute_main")
         let plusOne = try VisibleFunction(library: library, name: "plus_one")
         let timesTwo = try VisibleFunction(library: library, name: "times_two")
-        let runner = try FrameRunner(device: device)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne], table: [plusOne]) == (0..<64).map { UInt32($0) + 1 })
         #expect(try await computeRun(runner: runner, kernel: kernel, linked: [timesTwo], table: [timesTwo]) == (0..<64).map { UInt32($0) * 2 })
         #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne, timesTwo], table: [timesTwo]) == (0..<64).map { UInt32($0) * 2 })
@@ -106,7 +106,7 @@ struct FunctionTableTests {
         let kernel = try ComputeKernel(library: library, name: "compute_main")
         let plusOne = try VisibleFunction(library: library, name: "plus_one").linking(.static)
         let timesTwo = try VisibleFunction(library: library, name: "times_two")
-        let runner = try FrameRunner(device: device)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne], table: [plusOne]) == (0..<64).map { UInt32($0) + 1 })
         #expect(runner.context.pipelines.compilationCount == 1)
         #expect(try await computeRun(runner: runner, kernel: kernel, linked: [plusOne, timesTwo], table: [plusOne]) == (0..<64).map { UInt32($0) + 1 })
@@ -140,7 +140,7 @@ struct FunctionTableTests {
                     .parameter("out", buffer: output)
             }.linkedFunctions([transform])
         }
-        let result = try await FrameRunner(device: device).run(content)
+        let result = try await FrameRunner(configuration: MetalContextConfiguration(device: device)).run(content)
         #expect(result.outcome == .completed)
         let values = Array(UnsafeBufferPointer(start: output.contents().bindMemory(to: UInt32.self, capacity: count), count: count))
         #expect(values == (0..<count).map { UInt32($0) + 5 })
@@ -231,7 +231,7 @@ struct FunctionTableTests {
         constants["offset"] = .uint32(19)
         let nineteen = try VisibleFunction(library: library, name: "transform", constants: constants, specializedName: "transformNineteen")
         let kernel = try ComputeKernel(library: library, name: "compute_main")
-        let output = try await computeRun(runner: try FrameRunner(device: device), kernel: kernel, linked: [eleven, nineteen], table: [eleven, nineteen])
+        let output = try await computeRun(runner: try FrameRunner(configuration: MetalContextConfiguration(device: device)), kernel: kernel, linked: [eleven, nineteen], table: [eleven, nineteen])
         let expected: [UInt32] = (0..<64).map { (index: Int) -> UInt32 in UInt32(index + 11) * 1_000 + UInt32(index + 19) }
         #expect(output == expected)
 
@@ -239,7 +239,7 @@ struct FunctionTableTests {
         constants["offset"] = .uint32(23)
         let clash = try VisibleFunction(library: library, name: "transform", constants: constants, specializedName: "transformEleven")
         await #expect(throws: MetalSprocketsError.self) {
-            _ = try await computeRun(runner: try FrameRunner(device: device), kernel: kernel, linked: [eleven, clash], table: [eleven])
+            _ = try await computeRun(runner: try FrameRunner(configuration: MetalContextConfiguration(device: device)), kernel: kernel, linked: [eleven, clash], table: [eleven])
         }
     }
 

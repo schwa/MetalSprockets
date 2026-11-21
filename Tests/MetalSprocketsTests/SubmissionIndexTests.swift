@@ -15,7 +15,7 @@ struct SubmissionIndexTests {
 
     @Test("Each recording sees its own submission index and the in-flight limit", .requiresMetal4)
     func indexAdvancesPerSubmission() throws {
-        let runner = try Runner(maximumInFlightSubmissions: 2)
+        let runner = try Runner(configuration: MetalContextConfiguration(maximumInFlightSubmissions: 2))
         let recorder = Recorder()
         for _ in 0..<5 {
             let element = EnvironmentReader(keyPath: \.submissionIndex) { index in

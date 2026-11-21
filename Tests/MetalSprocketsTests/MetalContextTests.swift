@@ -30,7 +30,7 @@ struct MetalContextTests {
         let device = try #require(MTLCreateSystemDefaultDevice())
         for limit in [0, -1] {
             #expect(throws: MetalSprocketsError.self) {
-                try Runner(device: device, maximumInFlightSubmissions: limit)
+                try Runner(configuration: MetalContextConfiguration(device: device, maximumInFlightSubmissions: limit))
             }
         }
     }
@@ -60,7 +60,7 @@ struct MetalContextTests {
     @Test(.timeLimit(.minutes(1)))
     func `submitting more than the limit applies backpressure instead of failing`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let runner = try Runner(device: device, maximumInFlightSubmissions: 1)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device, maximumInFlightSubmissions: 1))
         var previous: Submission?
         for _ in 0..<20 {
             let submission = try runner.submit(EmptyElement())

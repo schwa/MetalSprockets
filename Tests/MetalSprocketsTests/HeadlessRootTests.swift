@@ -95,7 +95,7 @@ struct HeadlessRootTests {
     @Test(.timeLimit(.minutes(1)))
     func runnerComputesRepeatedlyAndRecoversFromErrors() async throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let runner = try FrameRunner(device: device)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         let kernel = try ComputeKernel(library: await device.makeLibrary(source: Self.kernelSource, options: nil), name: "add_kernel")
         let buffer = try #require(device.makeBuffer(length: 8 * 4, options: .storageModeShared))
         func content(offset: Float, failing: Bool = false) throws -> some Element {
@@ -129,7 +129,7 @@ struct HeadlessRootTests {
     func runnerUsesAnInjectedQueueAndValidatesItsDevice() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let queue = try device.makeMTL4CommandQueue(descriptor: MTL4CommandQueueDescriptor())
-        let runner = try FrameRunner(device: device, commandQueue: queue)
+        let runner = try FrameRunner(configuration: MetalContextConfiguration(device: device, commandQueue: queue))
         #expect(runner.context.commandQueue === queue)
         #expect(runner.device === device)
     }
@@ -137,7 +137,7 @@ struct HeadlessRootTests {
     @Test(.timeLimit(.minutes(1)))
     func teardownWithOutstandingWorkKeepsResourcesUntilCompletion() async throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        var runner: FrameRunner? = try FrameRunner(device: device)
+        var runner: FrameRunner? = try FrameRunner(configuration: MetalContextConfiguration(device: device))
         let gate = try #require(device.makeSharedEvent())
         try #require(runner).context.waitForEvent(gate, value: 1)
         let completion = try #require(runner).context.completionEvent

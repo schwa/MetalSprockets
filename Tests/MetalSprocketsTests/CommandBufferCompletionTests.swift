@@ -287,7 +287,7 @@ struct CommandBufferCompletionTests {
 
         var userHandlerCommandBufferSeen = false
 
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
         try runner.run(
             try Group {
                 try RenderPass {

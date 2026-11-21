@@ -49,7 +49,7 @@ struct GPUTimingTests {
     }
 
     private func renderer() throws -> OffscreenRenderer {
-        try OffscreenRenderer(size: CGSize(width: 256, height: 256), device: device)
+        try OffscreenRenderer(size: CGSize(width: 256, height: 256), configuration: MetalContextConfiguration(device: device))
     }
 
     @Test(.timeLimit(.minutes(1)))

@@ -9,7 +9,7 @@ struct EmptyRenderPassTests {
     @Test(.timeLimit(.minutes(1)))
     func emptyPassClearsEachFramesTarget() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
         let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 4, height: 4, mipmapped: false)
         textureDescriptor.usage = [.renderTarget, .shaderRead]
         textureDescriptor.storageMode = .shared

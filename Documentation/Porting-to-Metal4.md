@@ -202,7 +202,7 @@ let resources = try ResourceCollection(device: device)
 try resources.register(texture)
 try resources.register(buffer)
 let residency = ResidencyConfiguration(collections: [resources])
-let runner = try Runner(device: device, residency: residency)
+let runner = try Runner(configuration: MetalContextConfiguration(device: device, residency: residency))
 ```
 
 `RenderView(residency: residency) { context, size in ... }` accepts the same configuration.
@@ -299,7 +299,7 @@ For synchronous code, `try submission.waitUntilCompleted()` returns the result a
 | `CommandBufferElement(completion: .none)`, then commit yourself | `let submission = try runner.submit(content)`; encoding and submission are one operation |
 | `.onCommandBufferCompleted { buffer in buffer.gpuEndTime - buffer.gpuStartTime }` | `.onCommandBufferCompleted { result in result.gpuDuration }` |
 | `.onCommandBufferScheduled { … }` | `.onSubmissionCommitted { submissionIdentifier in … }` (CPU commit, not GPU start) |
-| `.commandBufferDescriptor(…)`, `.metalLoggingEnabled(true)` | `Runner(shaderLogging: .logger)` (also on `OffscreenRenderer`), or `.metalShaderLogging(.logger)` on a `RenderView`. `.handler { message in … }` sends messages to your code. `MS_METAL_LOGGING=1` still sets the default. |
+| `.commandBufferDescriptor(…)`, `.metalLoggingEnabled(true)` | `Runner(configuration: MetalContextConfiguration(shaderLogging: .logger))` (also on `OffscreenRenderer`), or `.metalShaderLogging(.logger)` on a `RenderView`. `.handler { message in … }` sends messages to your code. `MS_METAL_LOGGING=1` still sets the default. |
 
 `onCommandBufferCompleted` runs on a completion executor, not your actor. Encoding failures report
 nothing. To write `@MSState` (or other isolated state) from the result, use the isolation-aware overload
@@ -314,7 +314,7 @@ running; the hop is asynchronous.
 - `MTL4RenderPipelineColorAttachmentDescriptor` uses `blendingState = .enabled`, not `isBlendingEnabled`, wherever
   you configure it.
 - Environment values `commandQueue`, `commandBuffer`, `renderCommandEncoder` and `computeCommandEncoder` are Metal 4
-  types. The root owns the queue and command buffer; pass your own queue with `Runner(device:commandQueue:)` using
+  types. The root owns the queue and command buffer; pass your own queue with `MetalContextConfiguration(device:commandQueue:)` using
   `device.makeMTL4CommandQueue()`.
 - `.renderPipelineDescriptorModifier(_:)` is removed; it was a deprecated name for
   `.renderPipelineDescriptorTransformer(_:)`.

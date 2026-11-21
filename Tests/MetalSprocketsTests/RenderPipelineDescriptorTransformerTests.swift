@@ -301,7 +301,7 @@ func testPSOCacheStableWithDescriptorModifier() throws {
     rpd.depthAttachment.clearDepth = 1
     rpd.depthAttachment.storeAction = .store
 
-    let runner = try Runner(device: device, commandQueue: commandQueue)
+    let runner = try Runner(configuration: MetalContextConfiguration(device: device, commandQueue: commandQueue))
     var pipelineStates: [any MTLRenderPipelineState] = []
 
     for _ in 0..<3 {

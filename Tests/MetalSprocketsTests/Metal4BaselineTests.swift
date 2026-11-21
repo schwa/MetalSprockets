@@ -133,8 +133,8 @@ struct Metal4BaselineTests {
     }
 
     private func compareCounters(plain: some Element, counted: some Element, device: MTLDevice) throws -> [String: Any] {
-        let plainRunner = try Runner(device: device)
-        let countedRunner = try Runner(device: device)
+        let plainRunner = try Runner(configuration: MetalContextConfiguration(device: device))
+        let countedRunner = try Runner(configuration: MetalContextConfiguration(device: device))
 
         func frame(_ runner: Runner, _ content: some Element) throws -> (cpu: Double, gpu: Double) {
             try autoreleasepool {
@@ -173,7 +173,7 @@ struct Metal4BaselineTests {
     // Ported from the legacy `CommandBufferElement(.none)` + manual commit to the recorded-submission token API, with
     // the same per-frame checks (completed, positive GPU time). Archived legacy measurements are not re-recorded.
     private func measure(_ content: some Element, device: MTLDevice) throws -> [String: Any] {
-        let runner = try Runner(device: device)
+        let runner = try Runner(configuration: MetalContextConfiguration(device: device))
 
         func frame() throws -> (System.PhaseTimings, Double) {
             try autoreleasepool {
