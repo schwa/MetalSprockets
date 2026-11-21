@@ -10368,6 +10368,8 @@ Expected
 - `2026-10-16T15:56:09Z`: Partly addressed: collapsed chains are walked via a metatype cached in ElementTypeInfo (static requirements cast to the concrete type) instead of as? any CollapsibleWorkloadModifier; that cast was ~58% of ParameterModifier.workloadEnter in the benchmark. Cubes cpu 7.2 -> 6.8-6.9 ms. Still open: the ParameterSet is rebuilt every frame (a few allocations per draw), now a few percent.
 - `2026-10-16T17:51:28Z`: Autoresearch session: collapsed chains are walked in place through pointers and the Content metatype instead of copying the rest of the chain at each level (-3.4%). The ParameterSet itself is still rebuilt every frame.
 - `2026-10-21T16:32:56Z`: Tried: reviewed ParameterModifier.applyCollapsed and ParameterSet. Punting: skipping the per-frame rebuild needs to know that bindings are unchanged, but ParameterModifier stores an apply closure and value entries are .bytes closures, so nothing can be compared. That is #521 (deferred). Unblocker: decide #521 (store bindings as data, e.g. an Equatable entry with value bytes), then a node can cache its ParameterSet and reuse it when the entries and the inherited set are equal.
+- `2026-11-21T02:43:12Z`: Tried caching the collapsed chain's ParameterSet per node (compare each modifier's set with last frame's in place, rebuild only on change), on top of the data-based #521 attempt. Even the static scenario (identical values every frame) was slower than the closure baseline: Workload 1.35->1.66 ms, because the equality checks and fat binding copies cost more than rebuilding. Punting with #521. Attempt kept on bookmark attempt-521-513.
+- `2026-11-21T02:43:12Z`: Question 1 (decision): Should #513 wait for the #521 decision (data-based bindings), since a per-node cache needs comparable bindings and the measured cache cost exceeded the rebuild? Recommended: Yes. Block #513 on #521 and revisit after #519.
 
 ---
 
@@ -10568,6 +10570,9 @@ What is wrong
 
 ## Proposed (per Jonathan)
 - Store the binding as data (name, stages, value) instead of a closure, and compare it: plain-data values by bytes, Equatable values with ==, Metal objects by identity.
+
+- `2026-11-21T02:43:12Z`: Tried storing bindings as data (ParameterSet of Binding enums, values copied as bytes, Metal objects by identity). Modifiers then compare equal (tests passed), but ReconciliationBenchmark (Release, 1000 cubes, interleaved A/B, median ms) regressed: cubes Update 1.65->1.71..2.4 and Workload 1.30->1.70..2.3 depending on layout; static Update 1.73->1.93, Workload 1.35->1.66; draws Workload 0.59->0.87. Causes seen in Time Profiler: larger modifier values copied through the nested chain (inline bytes), extra allocation per modifier, and real equality comparisons where closure modifiers used to fail fast. Punting: the gain only shows once #519 skips unchanged subtrees, so the trade-off is a design call. Attempt kept on bookmark attempt-521-513 (commit c654ea34).
+- `2026-11-21T02:43:12Z`: Question 1 (decision): Is a per-frame regression of about 0.3-0.4 ms per 1000 draws (Update and Workload) acceptable for data-based parameter modifiers, before #519 subtree reuse lands to recover it? Recommended: No. Do #519's reuse path first (or together), and only switch to data bindings when the benchmark shows a net win.
 
 ---
 
