@@ -6032,13 +6032,14 @@ Decision needed: (a) split this: file the easy group as a subtask (effort:s) and
 ## 390: System still owns the node dictionary, phases, dirty set and snapshotting
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:l, area:architecture
 milestone: m1
 created: 2026-08-08T23:14:01Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:52:51Z
+closed: 2026-11-21T02:52:51Z
 +++
 
 #292 proposed splitting `System` into a `TreeReconciler` (done, #372), a `PhaseRunner` that drives setup/workload over a frozen traversal event list, and a thin `System` facade composing the two.
@@ -6050,6 +6051,7 @@ Wanted: move the phase traversal into its own type that owns the traversal conte
 Note: mostly subsumes the remaining god-object part of #292; the side-channel half is tracked separately.
 
 - `2026-09-30T16:18:18Z`: Related: #389 tracks the System.current side-channel half of #292.
+- `2026-11-21T02:52:51Z`: Setup and workload traversal moved from System+Process into PhaseRunner (Core/PhaseRunner.swift), which runs over the frozen traversal events; System.processSetup/processWorkload are now thin forwards. The TraversalContext stays on System because the reconciler and System.current readers (#389) share it; PhaseRunner drives it but does not own it. The node dictionary, dirty sets and snapshotting remain on System as the facade's state.
 
 ---
 
