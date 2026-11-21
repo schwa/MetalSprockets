@@ -11189,13 +11189,14 @@ Fix options: make the test seam wait for readiness too (or wrap the real wait), 
 ## 549: Pass-level compute timestamps sometimes under-report the pass duration
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: area:timing, area:metal4, effort:m
 milestone: m1
 created: 2026-10-21T14:59:32Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:13:26Z
+closed: 2026-11-21T02:13:26Z
 +++
 
 Found while measuring #491 (Apple M5 Max, macOS 27, Xcode 27 RC; probe /tmp/probe491/probe.swift).

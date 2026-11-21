@@ -105,6 +105,51 @@ struct GPUCountersTests {
         #expect(sample.fragment == nil)
     }
 
+    // Without a dispatch before it, the start timestamp of a compute pass is written late, often after most of the first
+    // dispatch has run, so the pass duration is under-reported (#549).
+    @Test(
+        "gpuCounters reports a stable compute pass duration",
+        .requiresMetal4,
+        .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Counter sampling unavailable on CI runners")
+    )
+    @MainActor
+    func gpuCountersComputeDurationIsStable() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let source = """
+        #include <metal_stdlib>
+        using namespace metal;
+
+        kernel void spin_kernel(device float *out [[buffer(0)]], uint tid [[thread_position_in_grid]]) {
+            float value = tid;
+            for (int index = 0; index < 4000; index++) { value = fma(value, 1.0001, 0.5); }
+            out[tid] = value;
+        }
+        """
+        let kernel = try ComputeKernel(source: source)
+        let count = 1 << 20
+        let buffer = try #require(device.makeBuffer(length: MemoryLayout<Float>.stride * count, options: .storageModePrivate))
+        let box = SampleBox()
+        var durations: [TimeInterval] = []
+        for _ in 0..<8 {
+            try ComputePass {
+                try ComputePipeline(computeKernel: kernel) {
+                    try ForEach(0..<6, id: \.self) { _ in
+                        try ComputeDispatch(threadsPerGrid: MTLSize(width: count, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+                            .parameter("out", buffer: buffer)
+                    }
+                }
+            }
+            .gpuCounters(label: "Spin") { sample in
+                box.sample = sample
+            }
+            .run()
+            durations.append(try #require(box.sample?.duration))
+        }
+        // The first frame can run longer while the GPU clocks up, so compare with the median.
+        let median = durations.sorted()[durations.count / 2]
+        #expect(durations.allSatisfy { $0 > median * 0.75 }, "durations: \(durations)")
+    }
+
     @Test(
         "Sampler converts tick deltas to non-negative seconds",
         .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "Counter sampling unavailable on CI runners")

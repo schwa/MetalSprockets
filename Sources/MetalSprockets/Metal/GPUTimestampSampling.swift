@@ -192,6 +192,7 @@ internal extension ComputePassEncoder {
         guard let request, request.claim(self, isRender: false) else {
             return
         }
+        try primeStartTimestamp()
         try writeTimestamp(into: request.heap.heap, index: TimestampSampler.Index.start)
     }
 

@@ -269,6 +269,7 @@ internal extension RenderPassEncoder {
 internal extension ComputePassEncoder {
     func beginGPUTimings(_ requests: [GPUTimingPassRequest]) throws {
         for request in requests where request.entry.markStarted() {
+            try primeStartTimestamp()
             request.entry.start = try request.collector.write(request.entry.reserved, on: self)
         }
     }

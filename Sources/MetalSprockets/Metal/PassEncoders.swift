@@ -77,6 +77,7 @@ internal final class ComputePassEncoder {
     // Last pipeline bound on the encoder, to skip redundant setComputePipelineState. nil forces the next set.
     private var boundPipeline: ObjectIdentifier?
     private var lastSharedTimestamp: (owner: ObjectIdentifier, location: GPUTimingLocation)?
+    private var isStartTimestampPrimed = false
 
     fileprivate init(encoder: any MTL4ComputeCommandEncoder, scope: RecordingScope) {
         self.encoder = encoder
@@ -168,6 +169,19 @@ internal final class ComputePassEncoder {
         try StageValidation.requireNonempty(barrier.beforeQueueStages, "Producer barrier before")
         encoder.barrier(afterStages: barrier.after, beforeQueueStages: barrier.beforeQueueStages, visibilityOptions: barrier.visibility)
         operations.append(.producerBarrier(after: barrier.after, beforeQueueStages: barrier.beforeQueueStages))
+    }
+
+    /// Encodes a no-op dispatch once, before the first start timestamp, so that timestamp is not written late (#549).
+    func primeStartTimestamp() throws {
+        guard !isStartTimestampPrimed else {
+            return
+        }
+        isStartTimestampPrimed = true
+        let encoder = try activeEncoder()
+        encoder.setComputePipelineState(try TimestampPrimer.pipeline(for: scope.device))
+        boundPipeline = nil
+        let one = MTLSize(width: 1, height: 1, depth: 1)
+        encoder.dispatchThreads(threadsPerGrid: one, threadsPerThreadgroup: one)
     }
 
     func writeTimestamp(into heap: any MTL4CounterHeap, index: Int) throws {
