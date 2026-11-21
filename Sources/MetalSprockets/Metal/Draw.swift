@@ -56,6 +56,8 @@ public struct Draw: Element, WorkloadElement, Equatable {
     }
 
     var geometry: Geometry
+    // The declared inputs of a closure draw (#523). Empty for a closure that declares none, which is never equal.
+    var inputs: [Any] = []
     // Resources the geometry reads by GPU address, kept resident and alive for the submission.
     var resources: [any MTLResource] = []
 
@@ -73,6 +75,42 @@ public struct Draw: Element, WorkloadElement, Equatable {
         self.resources = resources
     }
 
+    /// A closure draw that compares equal when `inputs` are equal: `Equatable` values with `==`, objects (such as Metal
+    /// buffers) by identity. Any other input never compares equal.
+    ///
+    /// The closure must depend only on `inputs`. A value it captures from elsewhere is not compared, so a change to it
+    /// can be missed.
+    ///
+    /// ```swift
+    /// Draw(mesh, wireframe) { encoder, mesh, wireframe in
+    ///     encoder.setTriangleFillMode(wireframe ? .lines : .fill)
+    ///     encoder.draw(mesh)
+    /// }
+    /// ```
+    public init<First, each Input>(_ first: First, _ input: repeat each Input, encodeGeometry: @escaping (any MTL4RenderCommandEncoder, First, repeat each Input) throws -> Void) {
+        // At least one input, so `Draw { encoder in ... }` still picks the never-equal closure form.
+        var inputs: [Any] = [first]
+        for value in repeat each input {
+            inputs.append(value)
+        }
+        self.inputs = inputs
+        self.geometry = .closure { encoder in
+            try encodeGeometry(encoder, first, repeat each input)
+        }
+    }
+
+    static func inputsEqual(_ lhs: [Any], _ rhs: [Any]) -> Bool {
+        lhs.count == rhs.count && zip(lhs, rhs).allSatisfy { lhs, rhs in
+            if let equatable = type(of: lhs) as? any Equatable.Type {
+                return equatable.isEqualErased(lhs, rhs)
+            }
+            if type(of: lhs) is AnyClass, type(of: rhs) is AnyClass {
+                return (lhs as AnyObject) === (rhs as AnyObject)
+            }
+            return false
+        }
+    }
+
     /// Draws `vertexCount` vertices without an encode closure, so an unchanged draw compares equal between frames.
     public init(_ primitiveType: MTLPrimitiveType, vertexStart: Int = 0, vertexCount: Int, instanceCount: Int = 1, baseInstance: Int = 0) {
         self.geometry = .primitives(Primitives(primitiveType: primitiveType, vertexStart: vertexStart, vertexCount: vertexCount, instanceCount: instanceCount, baseInstance: baseInstance))
@@ -84,6 +122,11 @@ public struct Draw: Element, WorkloadElement, Equatable {
             return false
         }
         switch (lhs.geometry, rhs.geometry) {
+        case (.closure, .closure):
+            guard !lhs.inputs.isEmpty else {
+                return false
+            }
+            return inputsEqual(lhs.inputs, rhs.inputs)
         case let (.primitives(lhsPrimitives), .primitives(rhsPrimitives)):
             return lhsPrimitives == rhsPrimitives
         case let (.indexed(lhsType, lhsIndices, lhsInstances), .indexed(rhsType, rhsIndices, rhsInstances)):

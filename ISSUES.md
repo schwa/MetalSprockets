@@ -10606,13 +10606,14 @@ What is wrong
 ## 523: Draw closures cannot declare the inputs they depend on
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:api, effort:m
 milestone: m1
 created: 2026-10-16T18:03:38Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-21T02:46:49Z
+closed: 2026-11-21T02:46:49Z
 +++
 
 Part of #519.

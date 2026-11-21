@@ -17,6 +17,27 @@ struct DataDrawTests {
         #expect(closure != closure)
     }
 
+    // Closure draws with declared inputs compare by those inputs (#523).
+    @Test func `closure draws compare by declared inputs`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let buffer = try #require(device.makeBuffer(length: 64))
+        let other = try #require(device.makeBuffer(length: 64))
+        func make(_ count: Int, _ wireframe: Bool, _ buffer: any MTLBuffer) -> Draw {
+            Draw(count, wireframe, buffer) { encoder, count, wireframe, _ in
+                encoder.setTriangleFillMode(wireframe ? .lines : .fill)
+                encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: count)
+            }
+        }
+        #expect(make(3, false, buffer) == make(3, false, buffer))
+        #expect(isEqual(make(3, false, buffer), make(3, false, buffer)))
+        #expect(make(3, false, buffer) != make(6, false, buffer))
+        #expect(make(3, false, buffer) != make(3, true, buffer))
+        #expect(make(3, false, buffer) != make(3, false, other))
+        // A closure without inputs still never compares equal.
+        let plain = Draw { _ in }
+        #expect(plain != plain)
+    }
+
     @Test func `indexed and indirect draws compare buffers by identity`() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let buffer = try #require(device.makeBuffer(length: 64))
@@ -30,6 +51,19 @@ struct DataDrawTests {
     @Test(.requiresMetal4)
     @MainActor
     func `a data draw renders like the closure draw`() throws {
+        try renderTriangle(Draw(.triangle, vertexCount: 3))
+    }
+
+    @Test(.requiresMetal4)
+    @MainActor
+    func `a closure draw receives its inputs`() throws {
+        try renderTriangle(Draw(MTLPrimitiveType.triangle, 3) { encoder, primitiveType, count in
+            encoder.drawPrimitives(primitiveType: primitiveType, vertexStart: 0, vertexCount: count)
+        })
+    }
+
+    @MainActor
+    private func renderTriangle(_ draw: Draw) throws {
         let source = """
         #include <metal_stdlib>
         using namespace metal;
@@ -48,7 +82,7 @@ struct DataDrawTests {
             let vertexShader = try VertexShader(source: source)
             let fragmentShader = try FragmentShader(source: source)
             try RenderPipeline(vertexShader: vertexShader, fragmentShader: fragmentShader) {
-                Draw(.triangle, vertexCount: 3)
+                draw
                     .vertexValues(([[0, 0.75], [-0.75, -0.75], [0.75, -0.75]] as [SIMD2<Float>]), index: 0)
                     .parameter("color", value: SIMD4<Float>(1, 0, 0, 1))
             }
