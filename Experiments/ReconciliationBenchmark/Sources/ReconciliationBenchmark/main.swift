@@ -249,7 +249,7 @@ func seconds(_ duration: Duration) -> Double {
 
 let options = Options(arguments: CommandLine.arguments)
 let device = MTLCreateSystemDefaultDevice()!
-let renderer = try OffscreenRenderer(size: CGSize(width: 1280, height: 800), device: device)
+let renderer = try OffscreenRenderer(size: CGSize(width: 1280, height: 800), configuration: MetalContextConfiguration(device: device))
 let drawResources = options.scenario == .draws ? try Resources(device: device) : nil
 let cubeResources = [.cubes, .merged, .static].contains(options.scenario) ? try CubeResources(device: device) : nil
 let materialsResources = options.scenario == .materials ? try MaterialsResources(device: device) : nil
