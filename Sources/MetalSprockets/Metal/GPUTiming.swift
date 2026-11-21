@@ -27,8 +27,10 @@ public extension Element {
     /// ``ComputePass`` to the end of the last. The nearest enclosing ``onGPUTimings(_:)`` gets the results.
     /// If there is no such modifier, this modifier does nothing.
     ///
-    /// Apple GPUs time at pass boundaries only, so place this on or above a pass. Inside a pass it measures nothing and
-    /// logs a warning. To time a smaller piece of work, put it in its own pass.
+    /// Inside a ``ComputePass``, this measures from before the subtree's first dispatch to after its last. Each such
+    /// timestamp waits for the dispatches before it, so it serializes the pass slightly (about 0.7% in #491). Inside a
+    /// ``RenderPass`` it measures nothing and logs a warning, because render passes time at pass boundaries only. To time
+    /// part of a render pass, put it in its own pass.
     ///
     /// Consecutive passes can run at the same time on the GPU, so a pass's interval can include time spent waiting for
     /// or overlapping with earlier passes. Read these intervals as a profile of the real frame, not as isolated costs.
@@ -318,6 +320,8 @@ internal struct GPUTimingsModifier<Content>: Element, WorkloadElement, BodylessC
 
 internal final class GPUTimedCache: NodeElementCache {
     var hasWarned = false
+    /// The interval of a `gpuTimed` inside a compute pass, ended in `workloadExit`.
+    var dispatchEntry: GPUTimingEntry?
 }
 
 internal struct GPUTimedModifier<Content>: Element, WorkloadElement, BodylessContentElement where Content: Element {
@@ -328,22 +332,46 @@ internal struct GPUTimedModifier<Content>: Element, WorkloadElement, BodylessCon
         guard let collector = node.environmentValues.gpuTimingCollector else {
             return
         }
-        // Apple GPUs only time at pass and stage boundaries (no draw or dispatch boundary sampling), so a timestamp
-        // inside a pass does not measure the subtree.
-        guard node.environmentValues.renderPassEncoder == nil, node.environmentValues.computePassEncoder == nil else {
+        // Render passes only time at pass and stage boundaries (#492), so a timestamp inside one does not measure the
+        // subtree.
+        guard node.environmentValues.renderPassEncoder == nil else {
             let cache = node.cache(GPUTimedCache.self) { GPUTimedCache() }
             if !cache.hasWarned {
                 cache.hasWarned = true
-                logger?.warning("gpuTimed(\"\(label)\") is inside a pass and measures nothing. Place it on or above a RenderPass or ComputePass.")
+                logger?.warning("gpuTimed(\"\(label)\") is inside a render pass and measures nothing. Place it on or above a RenderPass.")
             }
             return
         }
         let scope = try node.environmentValues.recordingScope.orThrow(.missingEnvironment("recordingScope"))
+        // Inside a compute pass, precise timestamps at dispatch boundaries are reliable (#491, #550).
+        if let pass = node.environmentValues.computePassEncoder {
+            let cache = node.cache(GPUTimedCache.self) { GPUTimedCache() }
+            cache.dispatchEntry = nil
+            guard let entry = try collector.reserve(label, scope: scope), entry.markStarted() else {
+                return
+            }
+            try pass.primeStartTimestamp()
+            entry.start = try collector.write(entry.reserved, on: pass)
+            cache.dispatchEntry = entry
+            return
+        }
         guard let entry = try collector.reserve(label, scope: scope) else {
             return
         }
         // Start from the parent's list: this node's own write from the previous frame would otherwise accumulate.
         node.environmentValues.gpuTimingPassRequests = node.environmentValues.inheritedValue(GPUTimingPassRequestsKey.self) + [GPUTimingPassRequest(collector: collector, entry: entry)]
+    }
+
+    func workloadExit(_ node: Node) throws {
+        guard let pass = node.environmentValues.computePassEncoder, let collector = node.environmentValues.gpuTimingCollector else {
+            return
+        }
+        let cache = node.cache(GPUTimedCache.self) { GPUTimedCache() }
+        guard let entry = cache.dispatchEntry else {
+            return
+        }
+        cache.dispatchEntry = nil
+        entry.end = try collector.write(entry.reservedEnd, on: pass)
     }
 
     nonisolated func requiresSetup(comparedTo old: Self) -> Bool { false }

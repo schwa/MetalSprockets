@@ -101,11 +101,42 @@ struct GPUTimingTests {
         .onGPUTimings { collected.append($0) }
         _ = try renderer().render(content)
 
-        // Both end on the same compute encoder back to back, where Metal keeps only the first precise timestamp.
+        // All end on the same compute encoder back to back, where Metal keeps only the first precise timestamp.
+        // The dispatch is the whole pass, so its timing inside the pass (#550) shares them too.
         let timings = try #require(collected.batches.first)
-        #expect(timings.map(\.label) == ["outer", "inner"])
+        #expect(timings.map(\.label) == ["outer", "inner", "dispatch"])
         #expect(timings.allSatisfy { $0.duration > 0 })
         #expect(timings[0].startTimestamp == timings[1].startTimestamp && timings[0].endTimestamp == timings[1].endTimestamp)
+        #expect(timings[2].startTimestamp == timings[0].startTimestamp && timings[2].endTimestamp == timings[0].endTimestamp)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `gpuTimed inside a compute pass times each dispatch`() throws {
+        let collected = Collected()
+        let library = try device.makeLibrary(source: Self.source, options: nil)
+        let kernel = try ComputeKernel(library: library, name: "spin")
+        let output = try #require(device.makeBuffer(length: 4 * 65_536, options: .storageModeShared))
+        func dispatch(_ width: Int) throws -> some Element {
+            try ComputeDispatch(threadsPerGrid: MTLSize(width: width, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+                .parameter("output", buffer: output)
+        }
+        let content = try ComputePass {
+            try ComputePipeline(computeKernel: kernel) {
+                try dispatch(65_536).gpuTimed("first")
+                try dispatch(65_536).gpuTimed("second")
+            }
+        }
+        .gpuTimed("pass")
+        .onGPUTimings { collected.append($0) }
+        _ = try renderer().render(content)
+
+        let timings = try #require(collected.batches.first)
+        #expect(timings.map(\.label) == ["pass", "first", "second"])
+        #expect(timings.allSatisfy { $0.duration > 0 })
+        let pass = timings[0], first = timings[1], second = timings[2]
+        #expect(pass.startTimestamp <= first.startTimestamp)
+        #expect(first.endTimestamp <= second.endTimestamp)
+        #expect(second.endTimestamp <= pass.endTimestamp)
     }
 
     @Test(.timeLimit(.minutes(1)))

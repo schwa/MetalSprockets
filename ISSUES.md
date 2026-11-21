@@ -11230,13 +11230,14 @@ Possible fix: write a timestamp after every dispatch in a timed compute pass and
 ## 550: Allow gpuTimed inside compute passes at dispatch boundaries
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:timing, area:metal4, effort:m
 milestone: m1
 created: 2026-10-21T14:59:43Z
-updated: 2026-11-17T19:49:53Z
+updated: 2026-11-21T02:51:58Z
+closed: 2026-11-21T02:51:58Z
 +++
 
 #491 showed per-dispatch precise timestamps in one Metal 4 compute encoder match Instruments (within about 1 us) and are stable, at about 0.7% cost. Today gpuTimed inside a pass logs a warning and measures nothing (GPUTimedModifier). Allow it inside a ComputePass: write a shared timestamp before the first and after the last dispatch of the subtree (writeSharedTimestamp already avoids adjacent duplicates). Render passes stay pass-level until #492 is understood. Document the small serialization cost.
