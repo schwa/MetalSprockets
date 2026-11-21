@@ -116,7 +116,10 @@ internal final class MetalContext {
             throw MetalSprocketsError.validationError("Metal 4 submission identifiers are exhausted.")
         }
         isEncoding = true
-        defer { isEncoding = false }
+        defer {
+            isEncoding = false
+            pipelines.endFrame()
+        }
         let commands: CommandResources
         if let reused = reusableCommands.popLast() {
             reused.reset()

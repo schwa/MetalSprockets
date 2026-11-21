@@ -10885,13 +10885,14 @@ Option 2 removes the cost; option 1 hides it. Repro: MetalSprocketsParticles Sti
 ## 535: Pipeline and binary-function caches never evict
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, effort:l
 milestone: m1
 created: 2026-10-21T00:26:17Z
-updated: 2026-11-17T19:55:27Z
+updated: 2026-11-21T02:49:16Z
+closed: 2026-11-21T02:49:16Z
 +++
 
 PipelineCache keeps every compiled pipeline (render, mesh, compute), every compute base pipeline, and every binary function (#534) for the life of the context. Nothing is ever removed.
@@ -10905,6 +10906,7 @@ Actual: memory only grows until the MetalContext is destroyed.
 
 - `2026-11-17T19:51:20Z`: Question 1 (design): Evict pipeline and binary-function cache entries by reference counting from the nodes that use them, rather than LRU with a size limit? Recommended: Yes. Release entries when no node uses them.
 - `2026-11-17T19:54:27Z`: Answer 1: Yes
+- `2026-11-21T02:49:16Z`: Cache entries are now held weakly. Pipeline values that nodes keep in their environment hold their entry (and the bases and binary functions it was built from), so entries are released when no node uses them, plus a one-frame keep-alive window so a pipeline that briefly leaves the tree is not recompiled. Submissions retain the pipelines they bind, so eviction cannot free one in flight. A pipeline's FunctionTables are released with it. Failed binary-linking bases stay cached (no GPU memory) so the failing compile is not retried.
 
 ---
 

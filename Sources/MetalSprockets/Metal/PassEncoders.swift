@@ -95,6 +95,8 @@ internal final class ComputePassEncoder {
         if boundPipeline != pipelineID {
             encoder.setComputePipelineState(pipeline.state)
             boundPipeline = pipelineID
+            // The cache can evict a pipeline while this submission still uses it (#535).
+            try scope.retainObject(pipeline.lease ?? pipeline.state)
         }
         encoder.setArgumentTable(tables[.kernel])
         switch grid {
@@ -327,6 +329,8 @@ internal final class RenderPassEncoder {
         if boundPipeline != pipelineID {
             encoder.setRenderPipelineState(pipeline.state)
             boundPipeline = pipelineID
+            // The cache can evict a pipeline while this submission still uses it (#535).
+            try scope.retainObject(pipeline.lease ?? pipeline.state)
         }
         for stage in pipeline.stages {
             encoder.setArgumentTable(tables[stage], stages: FunctionTables.renderStage(stage))

@@ -125,6 +125,8 @@ internal final class PipelineCache {
         /// Built once for each compiled pipeline. Setup publishes it every frame.
         let reflection: Reflection?
         let tableLabels: [MTLFunctionType: String]
+        /// Keeps the cache entry, and the bases and binary functions it was built from, alive while this value is held.
+        var lease: AnyObject?
 
         init(state: any MTLRenderPipelineState, bindings: PipelineBindings, stages: [MTLFunctionType] = [.vertex, .fragment], reflection: MTLRenderPipelineReflection? = nil, base: (any MTLRenderPipelineState)? = nil, binaryFunctions: [MTLFunctionType: [String: any MTL4BinaryFunction]] = [:]) {
             self.state = state
@@ -222,6 +224,8 @@ internal final class PipelineCache {
         let functionTables: FunctionTables
         let reflection: Reflection?
         let tableLabels: [MTLFunctionType: String]
+        /// Keeps the cache entry, and the base and binary functions it was built from, alive while this value is held.
+        var lease: AnyObject?
 
         init(state: any MTLComputePipelineState, bindings: PipelineBindings, reflection: MTLComputePipelineReflection? = nil, base: (any MTLComputePipelineState)? = nil, binaryFunctions: [String: any MTL4BinaryFunction] = [:]) {
             self.state = state
@@ -295,12 +299,49 @@ internal final class PipelineCache {
 
     private let device: any MTLDevice
     let compiler: any MTL4Compiler
-    private var renderPipelines: [RenderKey: RenderPipeline] = [:]
-    private var computePipelines: [ComputeKey: ComputePipeline] = [:]
-    private var computeBases: [ComputeBaseKey: ComputeBase] = [:]
-    private var renderBases: [RenderBaseKey: RenderBase] = [:]
-    private var binaryFunctions: [ShaderFunction: any MTL4BinaryFunction] = [:]
-    private var meshPipelines: [MeshKey: RenderPipeline] = [:]
+    // Entries are released when no pipeline value that nodes hold uses them any more (#535). Bases and binary functions
+    // stay cached while a pipeline built from them does.
+    private var renderPipelines = EvictingCache<RenderKey, RenderPipeline>()
+    private var computePipelines = EvictingCache<ComputeKey, ComputePipeline>()
+    private var computeBases = EvictingCache<ComputeBaseKey, ComputeBase>()
+    private var renderBases = EvictingCache<RenderBaseKey, RenderBase>()
+    private var binaryFunctions = EvictingCache<ShaderFunction, any MTL4BinaryFunction>()
+    private var meshPipelines = EvictingCache<MeshKey, RenderPipeline>()
+    // Failed binary-linking bases hold no GPU memory, so they stay cached and the failing compile is not retried.
+    private var staticOnlyRenderBases: Set<RenderBaseKey> = []
+    private var staticOnlyComputeBases: Set<ComputeBaseKey> = []
+    // Entries used in this and the previous frame stay cached even with no node holding them, so a pipeline that
+    // briefly leaves the tree, or moves in it, is not recompiled.
+    private var usedThisFrame: [AnyObject] = []
+    private var usedLastFrame: [AnyObject] = []
+
+    /// The number of cached pipelines still in use. For tests.
+    var livePipelineCount: Int {
+        renderPipelines.count + computePipelines.count + meshPipelines.count
+    }
+
+    /// Ends the keep-alive window of the entries used in the previous frame.
+    func endFrame() {
+        usedLastFrame = usedThisFrame
+        usedThisFrame.removeAll(keepingCapacity: true)
+    }
+
+    private func lease<Value>(_ entry: CacheEntry<Value>) -> CacheEntry<Value> {
+        usedThisFrame.append(entry)
+        return entry
+    }
+
+    private func leased(_ entry: CacheEntry<RenderPipeline>) -> RenderPipeline {
+        var pipeline = lease(entry).value
+        pipeline.lease = entry
+        return pipeline
+    }
+
+    private func leased(_ entry: CacheEntry<ComputePipeline>) -> ComputePipeline {
+        var pipeline = lease(entry).value
+        pipeline.lease = entry
+        return pipeline
+    }
 
     private(set) var compilationCount = 0
 
@@ -339,7 +380,7 @@ internal final class PipelineCache {
         )
         let key = RenderKey(base: baseKey, vertexBinary: Self.references(vertexLinked, .binary), fragmentBinary: Self.references(fragmentLinked, .binary))
         if let cached = renderPipelines[key] {
-            return cached
+            return leased(cached)
         }
         let allLinked = Self.uniqued(vertexLinked + fragmentLinked)
         try validate([baseKey.vertex, baseKey.fragment] + allLinked.map(\.reference), label: configuration.label)
@@ -347,9 +388,11 @@ internal final class PipelineCache {
         try Self.validateExportNames(fragmentLinked.map(\.reference), label: configuration.label)
         try ShaderDeviceCheck.validateLinkedFunctions(allLinked, device: device, label: configuration.label)
         let hasBinary = !key.vertexBinary.isEmpty || !key.fragmentBinary.isEmpty
-        if hasBinary, allowsBinaryLinking, case let .binary(base, reflection) = try renderBase(baseKey) {
-            let vertexBinaries = try key.vertexBinary.map { try binaryFunction($0) }
-            let fragmentBinaries = try key.fragmentBinary.map { try binaryFunction($0) }
+        if hasBinary, allowsBinaryLinking, let baseEntry = try renderBase(baseKey), case let .binary(base, reflection) = baseEntry.value {
+            let vertexEntries = try key.vertexBinary.map { try binaryFunction($0) }
+            let fragmentEntries = try key.fragmentBinary.map { try binaryFunction($0) }
+            let vertexBinaries = vertexEntries.map(\.value)
+            let fragmentBinaries = fragmentEntries.map(\.value)
             let functions = MTL4RenderPipelineBinaryFunctionsDescriptor()
             functions.vertexAdditionalBinaryFunctions = vertexBinaries
             functions.fragmentAdditionalBinaryFunctions = fragmentBinaries
@@ -360,8 +403,7 @@ internal final class PipelineCache {
             ]
             let bindings = PipelineBindings([(.vertex, reflection.vertexBindings), (.fragment, reflection.fragmentBindings)])
             let pipeline = RenderPipeline(state: state, bindings: bindings, reflection: reflection, base: base, binaryFunctions: named)
-            renderPipelines[key] = pipeline
-            return pipeline
+            return leased(renderPipelines.insert(pipeline, dependencies: [baseEntry] + vertexEntries + fragmentEntries, for: key))
         }
         // No binary functions, or the shaders need static linking: link everything statically.
         let descriptor = try makeRenderDescriptor(baseKey)
@@ -375,8 +417,7 @@ internal final class PipelineCache {
         compilationCount += 1
         let reflection = try state.reflection.orThrow(.resourceCreationFailure("Metal 4 render pipeline returned no reflection"))
         let pipeline = RenderPipeline(state: state, bindings: PipelineBindings([(.vertex, reflection.vertexBindings), (.fragment, reflection.fragmentBindings)]))
-        renderPipelines[key] = pipeline
-        return pipeline
+        return leased(renderPipelines.insert(pipeline, for: key))
     }
 
     private func makeRenderDescriptor(_ key: RenderBaseKey) throws -> MTL4RenderPipelineDescriptor {
@@ -402,9 +443,13 @@ internal final class PipelineCache {
         return descriptor
     }
 
-    private func renderBase(_ key: RenderBaseKey) throws -> RenderBase {
+    /// Nil when the shaders need static linking.
+    private func renderBase(_ key: RenderBaseKey) throws -> CacheEntry<RenderBase>? {
         if let cached = renderBases[key] {
-            return cached
+            return lease(cached)
+        }
+        if staticOnlyRenderBases.contains(key) {
+            return nil
         }
         let descriptor = try makeRenderDescriptor(key)
         descriptor.supportVertexBinaryLinking = true
@@ -420,8 +465,11 @@ internal final class PipelineCache {
             Self.logStaticFallback(label: key.label, function: key.vertex.name + "/" + key.fragment.name, error: error)
             base = .staticOnly
         }
-        renderBases[key] = base
-        return base
+        guard case .binary = base else {
+            staticOnlyRenderBases.insert(key)
+            return nil
+        }
+        return lease(renderBases.insert(base, for: key))
     }
 
     func meshRenderPipeline(_ configuration: MeshRenderPipelineConfiguration) throws -> RenderPipeline {
@@ -438,7 +486,7 @@ internal final class PipelineCache {
             label: configuration.label
         )
         if let cached = meshPipelines[key] {
-            return cached
+            return leased(cached)
         }
         guard device.supportsFamily(.apple7) || device.supportsFamily(.mac2) else {
             throw MetalSprocketsError.deviceCababilityFailure("Device '\(device.name)' does not support mesh shaders.")
@@ -476,8 +524,7 @@ internal final class PipelineCache {
             stageBindings.insert((.object, reflection.objectBindings), at: 0)
         }
         let pipeline = RenderPipeline(state: state, bindings: PipelineBindings(stageBindings), stages: stageBindings.map(\.0))
-        meshPipelines[key] = pipeline
-        return pipeline
+        return leased(meshPipelines.insert(pipeline, for: key))
     }
 
     private static func staticLinking(_ functions: [ShaderFunction]) throws -> MTL4StaticLinkingDescriptor {
@@ -506,14 +553,15 @@ internal final class PipelineCache {
         let baseKey = ComputeBaseKey(kernel: kernel.reference, staticLinked: Self.references(linkedFunctions, .static), label: label)
         let key = ComputeKey(base: baseKey, binary: Self.references(linkedFunctions, .binary))
         if let cached = computePipelines[key] {
-            return cached
+            return leased(cached)
         }
         let allLinked = linkedFunctions.map(\.reference)
         try validate([baseKey.kernel] + allLinked, label: label)
         try Self.validateExportNames(allLinked, label: label)
         try ShaderDeviceCheck.validateLinkedFunctions(linkedFunctions, device: device, label: label)
-        if !key.binary.isEmpty, allowsBinaryLinking, case .binary(_, let reflection) = try computeBase(baseKey) {
-            let binaries = try key.binary.map { try binaryFunction($0) }
+        if !key.binary.isEmpty, allowsBinaryLinking, let baseEntry = try computeBase(baseKey), case .binary(_, let reflection) = baseEntry.value {
+            let binaryEntries = try key.binary.map { try binaryFunction($0) }
+            let binaries = binaryEntries.map(\.value)
             // Pass the binary functions at creation. Adding them to the base pipeline with
             // makeComputePipelineState(additionalBinaryFunctions:) crashes under Metal API validation (#541).
             // This is a pipeline creation, not a kernel compile, so compilationCount does not count it.
@@ -523,8 +571,7 @@ internal final class PipelineCache {
             let named = Dictionary(zip(key.binary.map(\.exportName), binaries)) { first, _ in first }
             // The state holds the static functions too, so table lookups need no base.
             let pipeline = ComputePipeline(state: state, bindings: PipelineBindings([(.kernel, reflection.bindings)]), reflection: reflection, binaryFunctions: named)
-            computePipelines[key] = pipeline
-            return pipeline
+            return leased(computePipelines.insert(pipeline, dependencies: [baseEntry] + binaryEntries, for: key))
         }
         // No binary functions, or the kernel needs static linking: link everything statically.
         let descriptor = MTL4ComputePipelineDescriptor()
@@ -539,13 +586,16 @@ internal final class PipelineCache {
         compilationCount += 1
         let reflection = try state.reflection.orThrow(.resourceCreationFailure("Metal 4 compute pipeline returned no reflection"))
         let pipeline = ComputePipeline(state: state, bindings: PipelineBindings([(.kernel, reflection.bindings)]))
-        computePipelines[key] = pipeline
-        return pipeline
+        return leased(computePipelines.insert(pipeline, for: key))
     }
 
-    private func computeBase(_ key: ComputeBaseKey) throws -> ComputeBase {
+    /// Nil when the kernel needs static linking.
+    private func computeBase(_ key: ComputeBaseKey) throws -> CacheEntry<ComputeBase>? {
         if let cached = computeBases[key] {
-            return cached
+            return lease(cached)
+        }
+        if staticOnlyComputeBases.contains(key) {
+            return nil
         }
         let descriptor = try makeComputeDescriptor(key)
         let base: ComputeBase
@@ -559,8 +609,11 @@ internal final class PipelineCache {
             Self.logStaticFallback(label: key.label, function: key.kernel.name, error: error)
             base = .staticOnly
         }
-        computeBases[key] = base
-        return base
+        guard case .binary = base else {
+            staticOnlyComputeBases.insert(key)
+            return nil
+        }
+        return lease(computeBases.insert(base, for: key))
     }
 
     /// Bases are cached by key, so this logs once per pipeline. The failed build is a full compile that is thrown
@@ -583,16 +636,15 @@ internal final class PipelineCache {
         return descriptor
     }
 
-    private func binaryFunction(_ function: ShaderFunction) throws -> any MTL4BinaryFunction {
+    private func binaryFunction(_ function: ShaderFunction) throws -> CacheEntry<any MTL4BinaryFunction> {
         if let cached = binaryFunctions[function] {
-            return cached
+            return lease(cached)
         }
         let descriptor = MTL4BinaryFunctionDescriptor()
         descriptor.name = function.exportName
         descriptor.functionDescriptor = try function.makeFunctionDescriptor()
         let binary = try compiler.makeBinaryFunction(descriptor: descriptor, compilerTaskOptions: nil)
-        binaryFunctions[function] = binary
-        return binary
+        return lease(binaryFunctions.insert(binary, for: function))
     }
 
     /// Under capture, MTL4Compiler.makeBinaryFunction returns functions that the capture layer cannot unwrap, and any

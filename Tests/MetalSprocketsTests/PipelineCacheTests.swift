@@ -41,6 +41,31 @@ struct PipelineCacheTests {
         #expect(context.pipelines.compilationCount == 2)
     }
 
+    // Pipelines that nothing holds are released after the keep-alive window (#535).
+    @Test
+    func unusedPipelinesAreEvicted() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let context = try MetalContext(device: device)
+        let library = try device.makeLibrary(source: Self.source(offset: 0), options: nil)
+        var held: PipelineCache.ComputePipeline? = try context.pipelines.computePipeline(kernel: kernel(library, addend: 1))
+        _ = try context.pipelines.computePipeline(kernel: kernel(library, addend: 2))
+        #expect(context.pipelines.livePipelineCount == 2)
+        context.pipelines.endFrame()
+        context.pipelines.endFrame()
+        // Only the held pipeline survives the window.
+        #expect(context.pipelines.livePipelineCount == 1)
+        _ = try context.pipelines.computePipeline(kernel: kernel(library, addend: 1))
+        #expect(context.pipelines.compilationCount == 2)
+        weak var state = held?.state
+        held = nil
+        context.pipelines.endFrame()
+        context.pipelines.endFrame()
+        #expect(context.pipelines.livePipelineCount == 0)
+        #expect(state == nil)
+        _ = try context.pipelines.computePipeline(kernel: kernel(library, addend: 1))
+        #expect(context.pipelines.compilationCount == 3)
+    }
+
     @Test
     func sameNamedFunctionsFromDifferentLibrariesDoNotAlias() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
