@@ -141,6 +141,10 @@ internal final class TreeReconciler {
     /// ancestor changes, the elements must run again, even when they compare equal.
     private func processElement(_ element: any Element, environmentStable: Bool = true, explicitID inheritedExplicitID: AnyElementID? = nil) throws {
         let typeInfo = ElementTypeInfo.of(element)
+        if let transparentType = typeInfo.transparentType {
+            try processElement(transparentType.transparentContent(of: element), environmentStable: environmentStable, explicitID: inheritedExplicitID)
+            return
+        }
         // `.id()` and ForEach wrap content in an IdentifiedElement. It has no behaviour of its own, so it gets no node:
         // its identity goes on its content's atom instead, saving one node per ForEach item. A wrapper around
         // already-identified content keeps its node, so both identities stay in the path.
@@ -196,14 +200,23 @@ internal final class TreeReconciler {
             newEvents.append(.exit(currentNode))
         }
 
+        // Children see a stable environment when this node's writes are the same as last frame's, even if the element
+        // itself compares unequal (it may hold a closure). Frame plumbing is ignored (#598).
+        var writesStable = unchanged || !typeInfo.isEnvironmentModifying || typeInfo.writesFramePlumbing
+        let previousOwnValues = !writesStable && previousNode != nil ? currentNode.environmentValues.ownValues : nil
+
         try element.configureNode(currentNode, context: system.traversalContext)
+
+        if let previousOwnValues {
+            writesStable = currentNode.environmentValues.ownValues.isSame(as: previousOwnValues)
+        }
 
         levelStarts.append(siblingCounts.count)
         defer {
             siblingCounts.removeSubrange(levelStarts.removeLast()...)
         }
 
-        let childEnvironmentStable = environmentStable && (unchanged || !typeInfo.isEnvironmentModifying)
+        let childEnvironmentStable = environmentStable && writesStable
 
         try element.visitChildren(node: currentNode, typeInfo: typeInfo) { child in
             try processElement(child, environmentStable: childEnvironmentStable)

@@ -94,7 +94,7 @@ modules:
     - decl: |
         public func cullMode(_ mode: MTLCullMode) -> some Element
       doc: Sets which faces the draws in this subtree cull. The default is `.none`.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:260
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:262
     - decl: |
         public func currentDrawable(_ currentDrawable: CAMetalDrawable?) -> some Element
       doc: Sets the drawable this frame presents to.
@@ -230,12 +230,15 @@ modules:
           - keyPath: A writable key path to the environment value.
           - value: The value to set.
       source: Sources/MetalSprockets/Core/EnvironmentWritingModifier.swift:119
+    - decl: 'public func equatable() -> EquatableElement<Self> where Self: Equatable'
+      doc: Prevents the element from updating its subtree when its new value is equal to its old value.
+      source: Sources/MetalSprockets/Core/EquatableElement.swift:45
     - decl: public func eraseToAnyElement() -> AnyElement
       source: Sources/MetalSprockets/Core/AnyElement.swift:21
     - decl: |
         public func frontFacing(_ winding: MTLWinding) -> some Element
       doc: Sets the winding of front-facing triangles for the draws in this subtree. The default is `.clockwise`.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:270
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:272
     - decl: |
         public func gpuCounters(label: String? = nil, _ handler: @escaping @Sendable (GPUCounterSample) -> Void) -> some Element
       doc: |-
@@ -299,7 +302,7 @@ modules:
 
         - Parameter id: A hashable value identifying this element.
         - Returns: An element with the explicit identity applied.
-      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:79
+      source: Sources/MetalSprockets/Core/IdentifiedElement.swift:85
     - decl: |
         public func linkedFunctions(_ functions: [VisibleFunction]) -> some Element
       doc: |-
@@ -481,7 +484,7 @@ modules:
     - decl: |
         public func onSubmissionTerminated(_ action: @escaping @Sendable (SubmissionResult) -> Void) -> some Element
       doc: Invokes `action` once with the terminal result of the recording this subtree encodes into, if it is committed.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:293
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:295
     - decl: |
         public func onWorkloadEnter(_ action: @escaping (MSEnvironmentValues) throws -> Void) -> some Element
       source: Sources/MetalSprockets/Metal/WorkloadModifier.swift:27
@@ -607,7 +610,7 @@ modules:
     - decl: |
         public func retainOwners(_ owners: [AnyObject]) -> some Element
       doc: Keeps external owners (such as `CVMetalTexture`s backing camera textures) alive until the submission ends.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:275
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:277
     - decl: public func run() throws
       doc: |-
         Runs the element tree once against a freshly-created device and command
@@ -661,7 +664,7 @@ modules:
     - decl: |
         public func triangleFillMode(_ mode: MTLTriangleFillMode) -> some Element
       doc: Sets how the draws in this subtree fill triangles. The default is `.fill`.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:265
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:267
     - decl: |
         @ElementBuilder public func useComputeResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage) -> some Element
       source: Sources/MetalSprockets/Support/Support.swift:43
@@ -679,7 +682,7 @@ modules:
     - decl: |
         public func useResidencySet(_ residencySet: any MTLResidencySet) -> some Element
       doc: Attaches an externally owned residency set to every submission this subtree encodes into.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:233
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:235
     - decl: |
         @ElementBuilder public func useResource(_ resource: (any MTLResource)?, usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       source: Sources/MetalSprockets/Support/Support.swift:17
@@ -692,11 +695,11 @@ modules:
     - decl: |
         public func useResourceCollection(_ collection: ResourceCollection) -> some Element
       doc: Keeps `collection` resident for every submission this subtree encodes into.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:228
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:230
     - decl: |
         public func useResources(_ allocations: [any MTLAllocation]) -> some Element
       doc: Declares allocations referenced indirectly or by raw encoder closures, for residency and lifetime.
-      source: Sources/MetalSprockets/Metal/CoreElements.swift:284
+      source: Sources/MetalSprockets/Metal/CoreElements.swift:286
     - decl: |
         public func useResources(_ resources: [any MTLResource], usage: MTLResourceUsage, stages: MTLRenderStages) -> some Element
       doc: Keeps `resources` resident and alive for the submission.
@@ -864,7 +867,7 @@ modules:
           }
       }
       ```
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:165
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:199
   - decl: 'public protocol ShaderLoader : Sendable'
     doc: |-
       The port through which ``ShaderLibrary`` obtains provenance-bearing functions.
@@ -1474,6 +1477,42 @@ modules:
     members:
     - decl: 'public init(keyPath: KeyPath<MSEnvironmentValues, Value>, @ElementBuilder content: @escaping (Value) throws -> Content)'
       source: Sources/MetalSprockets/Core/EnvironmentReader.swift:5
+  - decl: 'public struct EquatableElement<Content> where Content : Element, Content : Equatable'
+    doc: |-
+      An element that compares its content with the content's own `==`, like SwiftUI's `EquatableView`.
+
+      When the content is equal to the previous frame's and the environment has not changed, the system reuses the
+      whole subtree from that frame: it does not evaluate the content's `body` or anything below it. This makes
+      unchanged parts of a large scene cost much less to update (#598).
+
+      Create one with ``Element/equatable()``. Any `Equatable` element is already compared with `==`; this wrapper makes
+      the intent explicit, as in SwiftUI.
+
+      ```swift
+      struct Cube: Element, Equatable {
+          var transform: simd_float4x4
+
+          var body: some Element {
+              Draw(.triangle, vertexCount: 36)
+                  .parameter("transform", value: transform)
+          }
+      }
+
+      ForEach(cubes) { cube in
+          Cube(transform: cube.transform).equatable()
+      }
+      ```
+
+      `body` must depend only on the stored properties that `==` compares and on the environment. A value it reads from
+      elsewhere is not compared, so a change to it is not seen until `==` returns false.
+    source: Sources/MetalSprockets/Core/EquatableElement.swift:27
+    members:
+    - decl: 'public init(content: Content)'
+      source: Sources/MetalSprockets/Core/EquatableElement.swift:34
+    - decl: 'public var body: Content { get }'
+      source: Sources/MetalSprockets/Core/EquatableElement.swift:38
+    - decl: 'public var content: Content'
+      source: Sources/MetalSprockets/Core/EquatableElement.swift:28
   - decl: 'public struct ForEach<Data, ID, Content> where Data : RandomAccessCollection, ID : Hashable, Content : Element'
     doc: |-
       Creates elements from a collection of data.
@@ -1945,17 +1984,17 @@ modules:
       - ``MSEnvironmentKey``
       - ``MSState``
       - ``MSBinding``
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:219
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:253
     members:
     - decl: 'public init(_ keyPath: KeyPath<MSEnvironmentValues, Value>)'
       doc: |-
         Creates an environment property wrapper for the specified key path.
 
         - Parameter keyPath: A key path to the environment value to read.
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:236
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:270
     - decl: 'public var wrappedValue: Value { get }'
       doc: The current value from the environment.
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:221
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:255
   - decl: public struct MSEnvironmentValues
     doc: |-
       A collection of environment values propagated through the element tree.
@@ -2026,7 +2065,7 @@ modules:
     - decl: 'public var currentDrawable: CAMetalDrawable? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:33
     - decl: 'public var debugDescription: String { get }'
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:261
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:295
     - decl: 'public var depthAttachment: MTLTexture? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:31
     - decl: 'public var depthStencilDescriptor: MTLDepthStencilDescriptor? { get set }'
@@ -2041,7 +2080,7 @@ modules:
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:37
     - decl: 'public var maximumInFlightSubmissions: Int { get }'
       doc: The in-flight limit of the root recording this tree. One outside a recording.
-      source: Sources/MetalSprockets/Metal/Recording.swift:23
+      source: Sources/MetalSprockets/Metal/Recording.swift:29
     - decl: 'public var metalLoggingEnabled: Bool { get set }'
       doc: |-
         The process-wide `MS_METAL_LOGGING` setting. On Metal 4 a log state covers a whole command buffer, so roots
@@ -2078,7 +2117,7 @@ modules:
     - decl: 'public var vertexDescriptor: MTLVertexDescriptor? { get set }'
       source: Sources/MetalSprockets/Metal/UVEnvironmentValues+Implementation.swift:23
     - decl: 'public subscript<Key>(key: Key.Type) -> Key.Value where Key : MSEnvironmentKey { get set }'
-      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:174
+      source: Sources/MetalSprockets/Core/EnvironmentValues.swift:208
   - decl: '@propertyWrapper public struct MSObservedObject<ObjectType> where ObjectType : ObservableObject'
     source: Sources/MetalSprockets/Core/ObservedObject.swift:4
     members:
@@ -3050,7 +3089,7 @@ modules:
     source: Sources/MetalSprockets/Core/Element.swift:45
   - decl: public associatedtype Value
     doc: The type of value stored by this key.
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:167
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:201
   - decl: 'public init(_ reference: ShaderFunction) throws'
     doc: Creates a shader from a function with explicit library provenance.
     source: Sources/MetalSprockets/Metal/Shaders.swift:40
@@ -3075,7 +3114,7 @@ modules:
     source: Sources/MetalSprockets/Metal/Shaders.swift:37
   - decl: 'public static var defaultValue: Value { get }'
     doc: The value to use when no value is set.
-    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:170
+    source: Sources/MetalSprockets/Core/EnvironmentValues.swift:204
   - decl: 'public static var functionType: MTLFunctionType { get }'
     doc: The Metal function type this shader represents.
     source: Sources/MetalSprockets/Metal/Shaders.swift:32

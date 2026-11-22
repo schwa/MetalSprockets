@@ -4,6 +4,12 @@
 /// descendants read the environment while their bodies run.
 internal protocol EnvironmentModifyingElement {}
 
+/// An environment-modifying element whose writes are per-frame plumbing (recording scope, command buffer, a fresh
+/// pipeline descriptor). Descendants do not read these while their bodies run, so the writes changing every frame does
+/// not stop unchanged subtrees below from being reused (#598). `submissionIndex` is the exception; reading it marks the
+/// reader as changing every frame.
+internal protocol FramePlumbingElement: EnvironmentModifyingElement {}
+
 internal protocol BodylessElement {
     func visitChildrenBodyless(_ visit: (any Element) throws -> Void) throws
 

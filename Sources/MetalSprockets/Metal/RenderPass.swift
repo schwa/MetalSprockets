@@ -25,7 +25,7 @@ internal protocol RenderPassElement {
 ///     }
 /// }
 /// ```
-public struct RenderPass <Content>: Element, SetupElement, WorkloadElement, BodylessContentElement, RenderPassElement, EnvironmentModifyingElement where Content: Element {
+public struct RenderPass <Content>: Element, SetupElement, WorkloadElement, BodylessContentElement, RenderPassElement, FramePlumbingElement where Content: Element {
     private let label: String?
     internal let content: Content
 

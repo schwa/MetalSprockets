@@ -32,6 +32,8 @@ package final class System: @unchecked Sendable {
 
     private(set) var traversalEvents: [TraversalEvent] = []
     private(set) var nodes: [StructuralIdentifier: Node] = [:]
+    /// Nodes that read a per-frame value during the last update. See ``noteReadsPerFrameValue(_:)``.
+    private var perFrameReaders: [WeakBox<Node>] = []
     /// The node stack for the traversal currently in flight. The phase that does the traversal owns it. Outside a
     /// traversal, it is empty. Environment and state resolve through this context (see ``TraversalContext``).
     let traversalContext = TraversalContext()
@@ -185,6 +187,22 @@ package final class System: @unchecked Sendable {
         return false
     }
 
+    /// Records that `node` read a value that changes every frame (``MSEnvironmentValues/submissionIndex``), so the
+    /// next update evaluates it again instead of reusing it (#598). Owning isolation only.
+    internal func noteReadsPerFrameValue(_ node: Node) {
+        perFrameReaders.append(WeakBox(node))
+    }
+
+    private func markPerFrameReadersDirty() {
+        let readers = perFrameReaders
+        perFrameReaders.removeAll(keepingCapacity: true)
+        for reader in readers {
+            if let node = reader(), nodes[node.id] === node {
+                markDirtyIncludingAncestors(node)
+            }
+        }
+    }
+
     /// Atomically remove and return all currently-dirty identifiers.
     internal func takeDirtyIdentifiers() -> Set<StructuralIdentifier> {
         _dirtyIdentifiers.withLock { dirty in
@@ -251,6 +269,7 @@ package final class System: @unchecked Sendable {
     internal func update(root: some Element) throws {
         assert(traversalContext.isEmpty)
         applyPendingSetupIdentifiers()
+        markPerFrameReadersDirty()
         try withReadingContext {
             defer {
                 assert(traversalContext.isEmpty, "traversal context should be empty after update")

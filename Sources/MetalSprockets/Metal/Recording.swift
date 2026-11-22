@@ -17,7 +17,13 @@ public extension MSEnvironmentValues {
     /// `slots[Int(submissionIndex % UInt64(maximumInFlightSubmissions))]`. Recording only starts when fewer than
     /// `maximumInFlightSubmissions` submissions are in flight, so the GPU has finished with the slot. Changing the
     /// limit at runtime breaks this pairing for the frames in flight.
-    var submissionIndex: UInt64 { _submissionIndex }
+    var submissionIndex: UInt64 {
+        // Changes every frame, so a node that reads it can never be reused unchanged (#598).
+        if let node = ReadingNode.current {
+            node.system?.noteReadsPerFrameValue(node)
+        }
+        return _submissionIndex
+    }
 
     /// The in-flight limit of the root recording this tree. One outside a recording.
     var maximumInFlightSubmissions: Int { _maximumInFlightSubmissions }
@@ -25,7 +31,7 @@ public extension MSEnvironmentValues {
 
 /// Publishes a recording's plumbing (scope, context, command buffer, queue, device) from one node. Five separate
 /// environment modifiers cost a measurable share of every frame's update phase (#436).
-internal struct RecordingRoot<Content: Element>: Element, BodylessElement, EnvironmentModifyingElement {
+internal struct RecordingRoot<Content: Element>: Element, BodylessElement, FramePlumbingElement {
     var content: Content
     var scope: RecordingScope
     var context: MetalContext

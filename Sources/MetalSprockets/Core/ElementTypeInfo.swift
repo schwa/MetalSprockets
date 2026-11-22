@@ -10,8 +10,10 @@ internal struct ElementTypeInfo: @unchecked Sendable {
     let setupType: (any SetupElement.Type)?
     let workloadType: (any WorkloadElement.Type)?
     let isEnvironmentModifying: Bool
+    let writesFramePlumbing: Bool
     let explicitlyIdentifiedType: (any ExplicitlyIdentifiedElement.Type)?
     let identityWrapperType: (any IdentityWrapperElement.Type)?
+    let transparentType: (any TransparentElement.Type)?
     /// Set for collapsible workload modifiers, so their chains are walked without protocol casts.
     let collapsibleType: (any CollapsibleWorkloadModifier.Type)?
 
@@ -36,8 +38,10 @@ internal struct ElementTypeInfo: @unchecked Sendable {
             setupType: elementType as? any SetupElement.Type,
             workloadType: elementType as? any WorkloadElement.Type,
             isEnvironmentModifying: elementType is any EnvironmentModifyingElement.Type,
+            writesFramePlumbing: elementType is any FramePlumbingElement.Type,
             explicitlyIdentifiedType: elementType as? any ExplicitlyIdentifiedElement.Type,
             identityWrapperType: elementType as? any IdentityWrapperElement.Type,
+            transparentType: elementType as? any TransparentElement.Type,
             collapsibleType: elementType as? any CollapsibleWorkloadModifier.Type
         )
         cache.withLock { $0[key] = info }
@@ -99,6 +103,12 @@ extension WorkloadElement {
 extension ExplicitlyIdentifiedElement {
     static func explicitID(of element: any Element) -> AnyElementID {
         withConcrete(element, as: Self.self) { $0.pointee.explicitID }
+    }
+}
+
+extension TransparentElement {
+    static func transparentContent(of element: any Element) -> any Element {
+        withConcrete(element, as: Self.self) { $0.pointee.transparentContent }
     }
 }
 

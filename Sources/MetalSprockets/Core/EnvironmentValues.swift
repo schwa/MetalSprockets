@@ -61,12 +61,46 @@ public struct MSEnvironmentValues {
     /// checked, so a wrong box traps instead of being undefined behaviour (#525).
     class Box: CustomStringConvertible {
         var description: String { "" }
+
+        /// Whether `other` holds a value known to be the same as this one. Unknown means different.
+        func hasSameValue(as other: Box) -> Bool {
+            self === other
+        }
     }
 
     final class TypedBox<Value>: Box {
         let value: Value
         init(_ value: Value) { self.value = value }
         override var description: String { "\(value)" }
+
+        override func hasSameValue(as other: Box) -> Bool {
+            if self === other {
+                return true
+            }
+            guard let other = other as? TypedBox<Value> else {
+                return false
+            }
+            return isSameEnvironmentValue(value, other.value)
+        }
+    }
+
+    /// The values written directly on this environment, to tell whether a node's writes changed between frames.
+    /// The parameter set is left out: parameter modifiers write it during workload, not while the tree is reconciled.
+    struct OwnValues {
+        fileprivate var values: [Key: Box]
+
+        func isSame(as other: Self) -> Bool {
+            guard values.count == other.values.count else {
+                return false
+            }
+            return values.allSatisfy { key, box in
+                other.values[key].map { box.hasSameValue(as: $0) } ?? false
+            }
+        }
+    }
+
+    var ownValues: OwnValues {
+        OwnValues(values: values)
     }
 
     /// Values written directly on this environment.

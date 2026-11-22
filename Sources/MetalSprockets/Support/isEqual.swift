@@ -25,6 +25,32 @@ internal func isEqual(_ lhs: Any, _ rhs: Any) -> Bool {
     return isEqualStructurally(lhs, rhs)
 }
 
+/// Compares two environment values: `Equatable` values with `==`, objects by identity, optionals by their contents.
+/// Anything else is treated as different (#598).
+internal func isSameEnvironmentValue(_ lhs: Any, _ rhs: Any) -> Bool {
+    if let equatableType = ComparisonCache.info(for: lhs).equatableType {
+        return equatableType.isEqualErased(lhs, rhs)
+    }
+    guard type(of: lhs) == type(of: rhs) else {
+        return false
+    }
+    if type(of: lhs) is AnyClass {
+        return (lhs as AnyObject) === (rhs as AnyObject)
+    }
+    let lhsMirror = Mirror(reflecting: lhs)
+    guard lhsMirror.displayStyle == .optional else {
+        return false
+    }
+    switch (lhsMirror.children.first, Mirror(reflecting: rhs).children.first) {
+    case (nil, nil):
+        return true
+    case let (lhsWrapped?, rhsWrapped?):
+        return isSameEnvironmentValue(lhsWrapped.value, rhsWrapped.value)
+    default:
+        return false
+    }
+}
+
 extension Equatable {
     /// `lhs` must have type `Self` (it comes from the cached metatype of `lhs`). Different dynamic types are unequal.
     static func isEqualErased(_ lhs: Any, _ rhs: Any) -> Bool {

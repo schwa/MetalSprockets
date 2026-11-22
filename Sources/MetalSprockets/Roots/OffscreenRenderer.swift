@@ -47,7 +47,7 @@ public struct OffscreenRenderer {
     }
     public var renderPassDescriptor: MTL4RenderPassDescriptor
     public var commandQueue: any MTL4CommandQueue
-    private let runner: Runner
+    internal let runner: Runner
     private var ownedResources: ResourceCollection?
 
     /// `clearDepth` is the depth each frame starts from: 1 for the usual depth convention, 0 for reverse-Z (where nearer

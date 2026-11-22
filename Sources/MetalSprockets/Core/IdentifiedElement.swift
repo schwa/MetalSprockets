@@ -43,6 +43,12 @@ internal protocol ExplicitlyIdentifiedElement {
 ///
 /// Bodyless, so visiting its content needs no body evaluation or observation tracking: one per `ForEach` item.
 /// An identity-only wrapper: the reconciler gives its content the wrapper's identity and skips the wrapper's node.
+/// An element with no behaviour of its own. The reconciler processes its content in its place, so it gets no node and
+/// no identity atom.
+internal protocol TransparentElement {
+    var transparentContent: any Element { get }
+}
+
 internal protocol IdentityWrapperElement: ExplicitlyIdentifiedElement {
     var wrappedContent: any Element { get }
 }

@@ -39,7 +39,7 @@ struct VertexOut {
 }
 """
 
-struct CubeVertex {
+struct CubeVertex: Equatable {
     var position: SIMD3<Float>
     var color: SIMD4<Float>
 }
@@ -137,6 +137,27 @@ func mergedCubesRoot(count: Int, frame: Int, resources: CubeResources, cull: Boo
     }
 }
 
+/// One cube as an Equatable element, for `--equatable`. `vertices` is the same array every frame, so comparing it is a
+/// buffer identity check.
+private struct Cube: Element, Equatable {
+    var transform: simd_float4x4
+    var time: Float
+    var vertices: [CubeVertex]
+
+    var body: some Element {
+        cube(transform: transform, time: time, vertices: vertices)
+    }
+}
+
+private func cube(transform: simd_float4x4, time: Float, vertices: [CubeVertex]) -> some Element {
+    Draw { encoder in
+        encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 36)
+    }
+    .vertexValues(vertices, index: 0)
+    .parameter("transform", value: transform)
+    .parameter("time", value: time)
+}
+
 func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
     let y = 1 / tan(fovY / 2)
     let x = y / aspect
@@ -146,19 +167,21 @@ func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> simd_fl
 
 /// `moving`: see `cubeTransforms`. With a value, the shared `time` parameter is also fixed, so unchanged cubes are
 /// identical to the previous frame (the static scene, #520).
-func cubesRoot(count: Int, frame: Int, resources: CubeResources, moving: Int? = nil) throws -> some Element {
+func cubesRoot(count: Int, frame: Int, resources: CubeResources, moving: Int? = nil, equatable: Bool = false) throws -> some Element {
     let transforms = cubeTransforms(count: count, frame: frame, moving: moving)
     let time: Float = moving == nil ? Float(frame) / 60 : 0
     let vertices = resources.vertices
     return try RenderPass(label: "Cubes") {
         try RenderPipeline(vertexShader: resources.vertexShader, fragmentShader: resources.fragmentShader) {
-            ForEach(Array(transforms.enumerated()), id: \.offset) { _, transform in
-                Draw { encoder in
-                    encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 36)
+            // The branch is outside the ForEach, so each item stays one element type.
+            if equatable {
+                ForEach(Array(transforms.enumerated()), id: \.offset) { _, transform in
+                    Cube(transform: transform, time: time, vertices: vertices).equatable()
                 }
-                .vertexValues(vertices, index: 0)
-                .parameter("transform", value: transform)
-                .parameter("time", value: time)
+            } else {
+                ForEach(Array(transforms.enumerated()), id: \.offset) { _, transform in
+                    cube(transform: transform, time: time, vertices: vertices)
+                }
             }
         }
         .vertexDescriptor(resources.vertexDescriptor)
