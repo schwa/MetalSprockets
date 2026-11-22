@@ -133,7 +133,7 @@ struct GPUCountersTests {
         for _ in 0..<8 {
             try ComputePass {
                 try ComputePipeline(computeKernel: kernel) {
-                    try ForEach(0..<6, id: \.self) { _ in
+                    ForEach(0..<6, id: \.self) { _ in
                         try ComputeDispatch(threadsPerGrid: MTLSize(width: count, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
                             .parameter("out", buffer: buffer)
                     }
