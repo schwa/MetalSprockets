@@ -56,7 +56,7 @@ struct PipelineCacheTests {
         #expect(context.pipelines.livePipelineCount == 1)
         _ = try context.pipelines.computePipeline(kernel: kernel(library, addend: 1))
         #expect(context.pipelines.compilationCount == 2)
-        weak var state = held?.state
+        weak let state = held?.state
         held = nil
         context.pipelines.endFrame()
         context.pipelines.endFrame()
