@@ -27,6 +27,8 @@ internal final class RenderThread: Sendable {
             state.withLock { $0.runLoop = nil }
         }
         thread.name = name
+        // Secondary threads default to 512 KB, too little for deep element trees in debug builds; match the main thread.
+        thread.stackSize = 8 << 20
         thread.qualityOfService = .userInteractive
         thread.start()
         started.wait()
