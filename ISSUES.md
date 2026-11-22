@@ -12600,8 +12600,10 @@ closed: 2026-11-21T03:27:20Z
 ## Milestone M3: m3
 
 +++
-status: open
+status: closed
 created: 2026-11-19T14:59:24Z
+updated: 2026-11-22T04:18:56Z
+closed: 2026-11-22T04:18:56Z
 +++
 
 ---
