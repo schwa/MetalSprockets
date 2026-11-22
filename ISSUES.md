@@ -9214,9 +9214,9 @@ Re-sized to effort:l and deferred: macro plus StateBox change plus migration is 
 status: open
 priority: medium
 kind: enhancement
-labels: area:metal4, area:performance, effort:l, needs-decision
+labels: area:metal4, area:performance, effort:l
 created: 2026-10-03T00:16:32Z
-updated: 2026-11-21T02:57:20Z
+updated: 2026-11-22T04:15:43Z
 +++
 
 Potential performance issue. It has not been measured.
@@ -10071,9 +10071,9 @@ Open questions
 status: open
 priority: medium
 kind: enhancement
-labels: area:performance, needs-decision, effort:l
+labels: area:performance, effort:l
 created: 2026-10-16T13:55:05Z
-updated: 2026-11-21T02:57:20Z
+updated: 2026-11-22T04:15:20Z
 +++
 
 Found in the #489 profile. Related: #486, #490, #495, #496, #497. This is separate from #500 (instancing).
@@ -12102,9 +12102,9 @@ status: open
 priority: high
 kind: enhancement
 labels: area:performance, effort:xl
-depends: 476, 513, 519, 522, 523, 578
+depends: 513, 519, 522, 523, 578
 created: 2026-11-19T14:20:17Z
-updated: 2026-11-21T03:46:24Z
+updated: 2026-11-22T04:16:54Z
 +++
 
 Drawing each batch of a model as its own element costs far more CPU than issuing the same Metal draws from one element. SceneSprockets' PBR renderer works around it by drawing most opaque batches from one element per merged set (SceneSprockets#545, RFC 0001), which costs it a second draw path with its own rules.
@@ -12498,15 +12498,80 @@ Expected: unchanged draws cost noticeably less than changed ones, without making
 ## 599: Custom APIs that duplicate existing SwiftUI-style equivalents
 
 +++
-status: new
-priority: none
-kind: none
+status: open
+priority: low
+kind: task
+labels: area:api, effort:s, has-subtasks
+depends: 600, 601, 602, 603
 created: 2026-11-22T04:06:13Z
+updated: 2026-11-22T04:14:46Z
 +++
 
 Look for more things that we’ve invented that could be replaced by swiftui style apis.
 
 For instance we almost had Memo() and .equatable() was more swifftui like
+
+- `2026-11-22T04:13:17Z`: Scan done. Filed #600 (EnvironmentReader), #601 (workloadEnabled naming), #602 (ForEach constant range), #603 (owned-object state wrapper). Not filed: eraseToAnyElement vs AnyElement(_:), RenderView.onDrawableSizeChange vs onGeometryChange, missing .onAppear. MS-prefixed wrappers are intentional (avoid clashes with SwiftUI).
+
+---
+
+## 600: EnvironmentReader has no SwiftUI counterpart
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:api, effort:s, breaking
+created: 2026-11-22T04:13:14Z
+updated: 2026-11-22T04:14:46Z
++++
+
+Part of #599. EnvironmentReader(keyPath:) { value in ... } is an element that reads one environment value and builds content from it. SwiftUI has no such type: code reads environment values with @Environment inside a view. In MetalSprockets the same can be done with @MSEnvironment inside a small element, so EnvironmentReader is a second way to do it. Related: #212.
+
+---
+
+## 601: workloadEnabled(_:) has no SwiftUI-style name
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:api, effort:s, breaking
+created: 2026-11-22T04:13:14Z
+updated: 2026-11-22T04:14:46Z
++++
+
+Part of #599. .workloadEnabled(false) keeps a subtree set up but does not encode it. The name is our own. The nearest SwiftUI modifiers are .hidden() (still laid out, not drawn) and Bool-taking modifiers such as .disabled(_:).
+
+---
+
+## 602: ForEach has no constant-range initializer
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:api, effort:s
+created: 2026-11-22T04:13:14Z
+updated: 2026-11-22T04:14:46Z
++++
+
+Part of #599. SwiftUI has ForEach(_ data: Range<Int>, content:) for a constant range. MetalSprockets has only the Identifiable and id: key path initializers, so callers write ForEach(Array(0..<n), id: \.self) { ... }.
+
+---
+
+## 603: No owned-object state wrapper like SwiftUI's @State with @Observable or @StateObject
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:api, effort:m
+created: 2026-11-22T04:13:14Z
+updated: 2026-11-22T04:14:46Z
++++
+
+Part of #599. MetalSprockets has MSObservedObject (like @ObservedObject) and observation tracking of @Observable reads in body. There is no documented way for an element to own a reference-type model across updates, as SwiftUI does with @State holding an @Observable object or @StateObject. Not yet checked whether @MSState already works for this.
 
 ---
 
