@@ -12575,6 +12575,27 @@ Part of #599. MetalSprockets has MSObservedObject (like @ObservedObject) and obs
 
 ---
 
+## 604: DrawList re-encodes every draw each frame instead of caching commands in an indirect command buffer
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:l
+created: 2026-11-23T13:36:37Z
++++
+
+DrawList encodes every row as a draw each frame, even when the rows have not changed. Its rows already map to indirect draw commands, so they could be encoded once into an indirect command buffer and executed each frame until the rows change.
+
+Notes from SceneSprockets#517:
+- Commands in one indirect command buffer inherit cull mode and winding from the Draw, so rows would split into one range per (cullMode, winding).
+- Encoding into an ICB every frame saves nothing; the gain comes from re-encoding only when the rows change.
+- SceneSprockets' PBR renderer would adopt it first and needs a release it can require.
+
+Requested from SceneSprockets#517.
+
+---
+
 ## Milestone M1: m1
 
 +++
