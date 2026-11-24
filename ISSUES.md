@@ -12578,11 +12578,13 @@ Part of #599. MetalSprockets has MSObservedObject (like @ObservedObject) and obs
 ## 604: DrawList re-encodes every draw each frame instead of caching commands in an indirect command buffer
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l
 created: 2026-11-23T13:36:37Z
+updated: 2026-11-24T17:45:35Z
+closed: 2026-11-24T17:45:35Z
 +++
 
 DrawList encodes every row as a draw each frame, even when the rows have not changed. Its rows already map to indirect draw commands, so they could be encoded once into an indirect command buffer and executed each frame until the rows change.

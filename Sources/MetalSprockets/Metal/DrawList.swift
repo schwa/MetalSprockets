@@ -1,5 +1,6 @@
 import Metal
 import MetalSprocketsSupport
+import MetalSupport
 import simd
 
 // MARK: - DrawRow
@@ -67,19 +68,31 @@ public struct DrawList: Element {
     let indexType: MTLIndexType
     let stereoViews: StereoViews?
     let cullingViewProjections: [simd_float4x4]
+    let cachesCommands: Bool
+
+    @MSEnvironment(\.device)
+    var device
+
+    @MSState
+    var commandCache = DrawListCommandCache()
 
     /// With `stereoViews`, every row draws to each view with vertex amplification. With `cullingViewProjections`, a row
     /// whose bounds lie outside every one of those frustums is skipped. Clip z must be in 0...w.
-    public init(indexBuffer: (any MTLBuffer)? = nil, indexType: MTLIndexType = .uint32, stereoViews: StereoViews? = nil, cullingViewProjections: [simd_float4x4] = [], rows: [DrawRow]) {
+    ///
+    /// With `cachesCommands`, the rows are encoded once into an indirect command buffer and executed each frame until
+    /// the visible rows change. The enclosing pipeline must support indirect command buffers
+    /// (``Element/supportsIndirectCommandBuffers()``). Culling that changes the visible rows re-encodes them.
+    public init(indexBuffer: (any MTLBuffer)? = nil, indexType: MTLIndexType = .uint32, stereoViews: StereoViews? = nil, cullingViewProjections: [simd_float4x4] = [], cachesCommands: Bool = false, rows: [DrawRow]) {
         self.rows = rows
         self.indexBuffer = indexBuffer
         self.indexType = indexType
         self.stereoViews = stereoViews
         self.cullingViewProjections = cullingViewProjections
+        self.cachesCommands = cachesCommands
     }
 
-    public init<Data: Sequence>(indexBuffer: (any MTLBuffer)? = nil, indexType: MTLIndexType = .uint32, stereoViews: StereoViews? = nil, cullingViewProjections: [simd_float4x4] = [], _ data: Data, row: (Data.Element) throws -> DrawRow) rethrows {
-        self.init(indexBuffer: indexBuffer, indexType: indexType, stereoViews: stereoViews, cullingViewProjections: cullingViewProjections, rows: try data.map(row))
+    public init<Data: Sequence>(indexBuffer: (any MTLBuffer)? = nil, indexType: MTLIndexType = .uint32, stereoViews: StereoViews? = nil, cullingViewProjections: [simd_float4x4] = [], cachesCommands: Bool = false, _ data: Data, row: (Data.Element) throws -> DrawRow) rethrows {
+        self.init(indexBuffer: indexBuffer, indexType: indexType, stereoViews: stereoViews, cullingViewProjections: cullingViewProjections, cachesCommands: cachesCommands, rows: try data.map(row))
     }
 
     /// The rows not culled, in order.
@@ -112,10 +125,31 @@ public struct DrawList: Element {
     }
 
     public var body: some Element {
+        get throws {
+            try makeBody()
+        }
+    }
+
+    private func makeBody() throws -> Draw {
         let rows = visibleRows
         let indexBuffer = indexBuffer
         let indexType = indexType
         let stereoViews = stereoViews
+        if cachesCommands {
+            let commands = try commandCache.commands(device: device ?? _MTLCreateSystemDefaultDevice(), rows: rows, indexBuffer: indexBuffer, indexType: indexType)
+            let resources: [any MTLResource] = [commands.buffer].compactMap(\.self) + (indexBuffer.map { [$0] } ?? [])
+            return Draw(resources: resources, changesRasterizerState: true) { encoder in
+                stereoViews?.configure(encoder)
+                guard let buffer = commands.buffer else {
+                    return
+                }
+                for segment in commands.segments {
+                    encoder.setCullMode(segment.cullMode)
+                    encoder.setFrontFacing(segment.winding)
+                    encoder.executeCommands(buffer: buffer, range: segment.range)
+                }
+            }
+        }
         // The rows set cull mode, winding and amplification, so the pass sets them again for the next draw (#472).
         return Draw(resources: indexBuffer.map { [$0] } ?? [], changesRasterizerState: true) { encoder in
             stereoViews?.configure(encoder)
@@ -152,5 +186,82 @@ public struct DrawList: Element {
                 }
             }
         }
+    }
+}
+
+// MARK: - DrawListCommandCache
+
+// Rows encoded into an indirect command buffer, kept until the inputs change (#604). A change makes a new buffer, so a
+// frame still on the GPU keeps reading the old one.
+internal final class DrawListCommandCache: @unchecked Sendable {
+    struct Segment: Equatable {
+        var cullMode: MTLCullMode
+        var winding: MTLWinding
+        var range: Range<Int>
+    }
+
+    struct Commands {
+        var buffer: (any MTLIndirectCommandBuffer)?
+        var segments: [Segment]
+    }
+
+    private struct Key: Equatable {
+        var device: ObjectIdentifier
+        var rows: [DrawRow]
+        var indexBuffer: ObjectIdentifier?
+        var indexType: MTLIndexType
+    }
+
+    private let lock = NSLock()
+    private var key: Key?
+    private var cached: Commands?
+    private(set) var encodeCount = 0
+
+    func commands(device: any MTLDevice, rows: [DrawRow], indexBuffer: (any MTLBuffer)?, indexType: MTLIndexType) throws -> Commands {
+        let key = Key(device: ObjectIdentifier(device), rows: rows, indexBuffer: indexBuffer.map(ObjectIdentifier.init), indexType: indexType)
+        return try lock.withLock {
+            if let cached, self.key == key {
+                return cached
+            }
+            let commands = try Self.encode(device: device, rows: rows, indexBuffer: indexBuffer, indexType: indexType)
+            self.key = key
+            cached = commands
+            encodeCount += 1
+            return commands
+        }
+    }
+
+    private static func encode(device: any MTLDevice, rows: [DrawRow], indexBuffer: (any MTLBuffer)?, indexType: MTLIndexType) throws -> Commands {
+        let drawn = rows.filter { row in
+            switch row.geometry {
+            case .vertices(let range):
+                !row.instances.isEmpty && !range.isEmpty
+            case .indexed(let range, _):
+                !row.instances.isEmpty && !range.isEmpty
+            }
+        }
+        guard !drawn.isEmpty else {
+            return Commands(buffer: nil, segments: [])
+        }
+        let buffer = try device.makeRenderIndirectCommandBuffer(maxCommandCount: drawn.count, options: .storageModeShared)
+        var segments: [Segment] = []
+        for (index, row) in drawn.enumerated() {
+            let command = buffer.indirectRenderCommandAt(index)
+            switch row.geometry {
+            case .vertices(let range):
+                command.drawPrimitives(row.primitiveType, vertexStart: range.lowerBound, vertexCount: range.count, instanceCount: row.instances.count, baseInstance: row.instances.lowerBound)
+            case let .indexed(range, baseVertex):
+                let indexBuffer = try indexBuffer.orThrow(.configurationError("DrawList has indexed rows but no indexBuffer."))
+                let indexSize = indexType == .uint16 ? 2 : 4
+                _ = try IndexBuffer(buffer: indexBuffer, type: indexType, indexCount: range.count, offset: range.lowerBound * indexSize).validatedRange()
+                command.drawIndexedPrimitives(row.primitiveType, indexCount: range.count, indexType: indexType, indexBuffer: indexBuffer, indexBufferOffset: range.lowerBound * indexSize, instanceCount: row.instances.count, baseVertex: baseVertex, baseInstance: row.instances.lowerBound)
+            }
+            if let last = segments.last, last.cullMode == row.cullMode, last.winding == row.winding {
+                segments[segments.count - 1].range = last.range.lowerBound ..< index + 1
+            } else {
+                segments.append(Segment(cullMode: row.cullMode, winding: row.winding, range: index ..< index + 1))
+            }
+        }
+        return Commands(buffer: buffer, segments: segments)
     }
 }

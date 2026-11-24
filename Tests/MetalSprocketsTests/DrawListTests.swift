@@ -36,15 +36,16 @@ struct DrawListTests {
     ]
     static let colors: [SIMD4<Float>] = [[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1]]
 
-    private func render(_ rows: [DrawRow]) async throws -> (left: [UInt8], right: [UInt8]) {
+    private func render(_ rows: [DrawRow], cachesCommands: Bool = false) async throws -> (left: [UInt8], right: [UInt8]) {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
         let indexBuffer = try #require(device.makeBuffer(bytes: indices, length: MemoryLayout<UInt16>.stride * indices.count))
         let element = try RenderPipeline(vertexShader: VertexShader(source: Self.source), fragmentShader: FragmentShader(source: Self.source)) {
-            DrawList(indexBuffer: indexBuffer, indexType: .uint16, rows: rows)
+            DrawList(indexBuffer: indexBuffer, indexType: .uint16, cachesCommands: cachesCommands, rows: rows)
                 .parameter("positions", values: Self.positions)
                 .parameter("colors", values: Self.colors)
         }
+        .supportsIndirectCommandBuffers()
         let renderer = try TestOffscreenRenderer(size: CGSize(width: 64, height: 64), pixelFormat: .bgra8Unorm)
         let texture = try await renderer.render(element).texture
         func pixel(_ x: Int) -> [UInt8] {
@@ -55,27 +56,45 @@ struct DrawListTests {
         return (pixel(16), pixel(48))
     }
 
-    @Test(.requiresMetal4) func `rows pick per-draw data by base instance`() async throws {
+    @Test(.requiresMetal4, arguments: [false, true]) func `rows pick per-draw data by base instance`(cachesCommands: Bool) async throws {
         let pixels = try await render([
             DrawRow(geometry: .vertices(0..<6), instances: 0..<1),
             DrawRow(geometry: .indexed(0..<6, baseVertex: 6), instances: 1..<2)
-        ])
+        ], cachesCommands: cachesCommands)
         #expect(pixels.left == [0, 0, 255, 255])
         #expect(pixels.right == [0, 255, 0, 255])
     }
 
-    @Test(.requiresMetal4) func `cull mode and winding apply per row`() async throws {
+    @Test(.requiresMetal4, arguments: [false, true]) func `cull mode and winding apply per row`(cachesCommands: Bool) async throws {
         // The full-screen triangle is counter-clockwise, so a clockwise front face culls it as a back face.
         let culled = try await render([
             DrawRow(geometry: .vertices(0..<6), instances: 0..<1),
             DrawRow(geometry: .vertices(10..<13), instances: 2..<3, cullMode: .back, winding: .clockwise)
-        ])
+        ], cachesCommands: cachesCommands)
         #expect(culled.left == [0, 0, 255, 255])
         let drawn = try await render([
             DrawRow(geometry: .vertices(0..<6), instances: 0..<1),
             DrawRow(geometry: .vertices(10..<13), instances: 2..<3, cullMode: .back, winding: .counterClockwise)
-        ])
+        ], cachesCommands: cachesCommands)
         #expect(drawn.left == [255, 0, 0, 255])
+    }
+
+    @Test(.requiresMetal4) func `command cache re-encodes only when rows change`() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let cache = DrawListCommandCache()
+        let rows = [
+            DrawRow(geometry: .vertices(0..<3), cullMode: .back),
+            DrawRow(geometry: .vertices(3..<6), cullMode: .back),
+            DrawRow(geometry: .vertices(6..<6)),
+            DrawRow(geometry: .vertices(6..<9), cullMode: .none)
+        ]
+        let first = try cache.commands(device: device, rows: rows, indexBuffer: nil, indexType: .uint32)
+        let second = try cache.commands(device: device, rows: rows, indexBuffer: nil, indexType: .uint32)
+        #expect(cache.encodeCount == 1)
+        #expect(first.buffer === second.buffer)
+        #expect(first.segments.map(\.range) == [0..<2, 2..<3])
+        _ = try cache.commands(device: device, rows: Array(rows.prefix(1)), indexBuffer: nil, indexType: .uint32)
+        #expect(cache.encodeCount == 2)
     }
 
     static let amplifiedSource = """
