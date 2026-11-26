@@ -16,6 +16,9 @@ struct RenderDemoView: View {
     @AppStorage("cubeCount") private var cubeCount = 1
     @AppStorage("instanced") private var instanced = true
     @AppStorage("renderThread") private var renderThread = false
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     private static let cubeCounts = [1, 100, 500, 1_000, 2_000, 5_000]
 
@@ -29,24 +32,31 @@ struct RenderDemoView: View {
     var body: some View {
         // Copied out of view state so the content closure is Sendable and can run on a render thread.
         let scene = CubeScene(pausedTime: isPaused ? pausedTime : nil, cubeCount: cubeCount, instanced: instanced)
-        // RenderView is the bridge between SwiftUI and Metal - closure called every frame
-        Group {
-            if renderThread {
-                RenderView(threading: .renderThread) { context, size in
-                    try scene.content(context: context, size: size)
-                }
-            } else {
-                RenderView { context, size in
-                    try scene.content(context: context, size: size)
+        // The render fills the whole window, but the frame timing badge is a sibling layer that stays inside the safe
+        // area, so it never sits under the toolbar (on the side on iPhone Duo) or the status bar.
+        ZStack {
+            // RenderView is the bridge between SwiftUI and Metal - closure called every frame
+            Group {
+                if renderThread {
+                    RenderView(threading: .renderThread) { context, size in
+                        try scene.content(context: context, size: size)
+                    }
+                } else {
+                    RenderView { context, size in
+                        try scene.content(context: context, size: size)
+                    }
                 }
             }
+            .ignoresSafeArea()
+            // Required for depth testing
+            .metalDepthStencilPixelFormat(.depth32Float)
+            // MSAA - notice how edges are smoother when enabled
+            .metalSampleCount(msaaEnabled ? sampleCount : 1)
+            .onFrameTimingChange { frameTimingStatistics = $0 }
+
+            frameTimingBadge
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         }
-        .ignoresSafeArea()
-        // Required for depth testing
-        .metalDepthStencilPixelFormat(.depth32Float)
-        // MSAA - notice how edges are smoother when enabled
-        .metalSampleCount(msaaEnabled ? sampleCount : 1)
-        .onFrameTimingChange { frameTimingStatistics = $0 }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(isPaused ? "Play" : "Pause", systemImage: isPaused ? "play.fill" : "pause.fill") {
@@ -61,12 +71,17 @@ struct RenderDemoView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
-                Picker("Cubes", selection: $cubeCount) {
-                    ForEach(Self.cubeCounts, id: \.self) { count in
-                        Text("\(count) cubes").tag(count)
+                // A symbol label, not the picker's selection text: text-labelled items can't join the vertical
+                // toolbar on iPhone Duo and end up in a separate bar at the top.
+                Menu {
+                    Picker("Cubes", selection: $cubeCount) {
+                        ForEach(Self.cubeCounts, id: \.self) { count in
+                            Text("\(count) cubes").tag(count)
+                        }
                     }
+                } label: {
+                    Label("Cubes", systemImage: "cube")
                 }
-                .pickerStyle(.menu)
             }
             ToolbarItem(placement: .primaryAction) {
                 Toggle("Render Thread", systemImage: "cpu", isOn: $renderThread)
@@ -97,15 +112,23 @@ struct RenderDemoView: View {
                 ShareLink(item: Screenshot(), preview: SharePreview("Screenshot", image: Image(systemName: "photo")))
             }
         }
-        .overlay(alignment: .bottomLeading) {
-            Text(msaaEnabled ? "MSAA \(sampleCount)x" : "MSAA Off")
-                .modifier(OverlayBadgeModifier())
+    }
+
+    @ViewBuilder
+    private var frameTimingBadge: some View {
+        if let frameTimingStatistics {
+            FrameTimingView(statistics: frameTimingStatistics, options: frameTimingOptions)
         }
-        .overlay(alignment: .bottomTrailing) {
-            if let frameTimingStatistics {
-                FrameTimingView(statistics: frameTimingStatistics, options: .all)
-            }
-        }
+    }
+
+    /// The full readout covers too much of a compact-width window (such as the outer display of iPhone Duo), so only
+    /// the headline numbers are shown there.
+    private var frameTimingOptions: FrameTimingDisplayOptions {
+        #if os(macOS)
+        .all
+        #else
+        horizontalSizeClass == .compact ? [.fps, .frameTime, .gpuTime] : .all
+        #endif
     }
 }
 

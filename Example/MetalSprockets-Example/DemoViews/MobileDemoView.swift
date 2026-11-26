@@ -46,7 +46,8 @@ struct MobileDemoView: View {
                     RenderDemoView()
                 }
             }
-            .ignoresSafeArea()
+            // No `.ignoresSafeArea()` here: each demo extends only its render view under the bars, so its overlays
+            // stay clear of the toolbar, which sits on the side on iPhone Duo.
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("AR", systemImage: "arkit") { toggleARMode() }
@@ -97,6 +98,7 @@ struct ARDemoView: View {
                         try DemoCubeRenderPipeline(transform: transform, time: time)
                     }
                 }
+                .ignoresSafeArea()
                 .metalDepthStencilPixelFormat(.depth32Float)
                 .metalClearColor(.init(red: 0, green: 0, blue: 0, alpha: 0))
             } else {
