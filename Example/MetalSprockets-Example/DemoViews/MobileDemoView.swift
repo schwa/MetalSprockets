@@ -148,34 +148,38 @@ struct ARDemoView: View {
     @Binding var frameData: ARFrameData
 
     var body: some View {
-        Group {
-            if let textureY = frameData.textureY, let textureCbCr = frameData.textureCbCr {
-                // Read out of `frameData` once, so the closure captures this frame's textures rather than racing
-                // with the next ARKit update (or with teardown).
-                let textureCoordinates = frameData.textureCoordinates
-                let projectionMatrix = frameData.projectionMatrix
-                let viewMatrix = frameData.viewMatrix
+        // Keeps the camera image physically still while the toolbar and status bar rotate around it.
+        FixedOrientationView {
+            Group {
+                if let textureY = frameData.textureY, let textureCbCr = frameData.textureCbCr {
+                    // Read out of `frameData` once, so the closure captures this frame's textures rather than racing
+                    // with the next ARKit update (or with teardown).
+                    let textureCoordinates = frameData.textureCoordinates
+                    let projectionMatrix = frameData.projectionMatrix
+                    let viewMatrix = frameData.viewMatrix
 
-                RenderView { context, _ in
-                    let time = context.frameUniforms.time
-                    let modelMatrix = float4x4.translation(0, -0.25, -2) * cubeRotationMatrix(time: TimeInterval(time)) * float4x4.scale(0.25, 0.25, 0.25)
-                    let transform = projectionMatrix * viewMatrix * modelMatrix
+                    RenderView { context, _ in
+                        let time = context.frameUniforms.time
+                        let modelMatrix = float4x4.translation(0, -0.25, -2) * cubeRotationMatrix(time: TimeInterval(time)) * float4x4.scale(0.25, 0.25, 0.25)
+                        let transform = projectionMatrix * viewMatrix * modelMatrix
 
-                    try RenderPass {
-                        YCbCrBillboardRenderPass(textureY: textureY, textureCbCr: textureCbCr, textureCoordinates: textureCoordinates)
-                        try DemoCubeRenderPipeline(transform: transform, time: time)
+                        try RenderPass {
+                            YCbCrBillboardRenderPass(textureY: textureY, textureCbCr: textureCbCr, textureCoordinates: textureCoordinates)
+                            try DemoCubeRenderPipeline(transform: transform, time: time)
+                        }
                     }
+                    .metalDepthStencilPixelFormat(.depth32Float)
+                    .metalClearColor(.init(red: 0, green: 0, blue: 0, alpha: 0))
+                } else {
+                    ProgressView("Starting camera…")
                 }
-                .ignoresSafeArea()
-                .metalDepthStencilPixelFormat(.depth32Float)
-                .metalClearColor(.init(red: 0, green: 0, blue: 0, alpha: 0))
-            } else {
-                ProgressView("Starting camera…")
             }
+            // Stays attached in both states: the modifier is what turns ARKit frames into the textures the first
+            // branch is waiting for. `.fixed` keeps the camera matrices at the angle the image started at.
+            .arkit(session: session, frame: frame, frameData: $frameData, orientation: .fixed)
         }
-        // Stays attached in both states: the modifier is what turns ARKit frames into the textures the first branch
-        // is waiting for.
-        .arkit(session: session, frame: frame, frameData: $frameData)
+        // Outside the container, so it — and the render view it holds — fills the whole window.
+        .ignoresSafeArea()
     }
 }
 

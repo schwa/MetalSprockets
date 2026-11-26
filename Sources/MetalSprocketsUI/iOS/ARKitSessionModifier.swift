@@ -84,12 +84,25 @@ public struct ARFrameData {
 
 // MARK: - View Modifier
 
+/// How AR content responds when the interface rotates.
+public enum ARContentOrientation: Sendable {
+    /// The camera image and 3D content re-orient with the interface, and rotate with it during the system's rotation
+    /// animation.
+    case followsInterface
+
+    /// The camera matrices stay at the angle the content was first drawn at, for content that doesn't turn with the
+    /// interface. Place the view inside a ``FixedOrientationView``, which keeps it physically still while the
+    /// interface rotates around it. Needs a session, and iOS 27 or later; otherwise behaves like `followsInterface`.
+    case fixed
+}
+
 private struct ARKitFrameModifier: ViewModifier {
     /// When supplied, the session is told which layer shows the camera image, and its `viewRotationAngle` drives the
     /// camera matrices. Without it the modifier falls back to the scene's interface orientation.
     let session: ARSession?
     let frame: ARFrame?
     @Binding var frameData: ARFrameData
+    let orientation: ARContentOrientation
 
     @Environment(\.device)
     private var environmentDevice
@@ -102,14 +115,20 @@ private struct ARKitFrameModifier: ViewModifier {
     /// `displayTransform(for:viewportSize:)` want the size of the surface the camera image is being fitted to, which
     /// is this view — not the screen. Reading `UIScreen.main.bounds` here produced a wrong fit under Split View,
     /// Stage Manager, and on external displays.
-    @State private var viewportSize: CGSize = .zero
+    @State private var containerSize: CGSize = .zero
+
+    /// The session's current `viewRotationAngle`, in degrees: how the interface is rotated relative to the camera.
+    @State private var interfaceAngle: CGFloat?
+
+    /// With `.fixed`, the angle the content was first drawn at, and keeps being drawn at.
+    @State private var pinnedAngle: CGFloat?
 
     func body(content: Content) -> some View {
         content
             .onGeometryChange(for: CGSize.self) { proxy in
                 proxy.size
             } action: { size in
-                viewportSize = size
+                containerSize = size
             }
             .background {
                 if let session {
@@ -128,14 +147,28 @@ private struct ARKitFrameModifier: ViewModifier {
                 textureCache = cache
             }
             .onChange(of: frame?.timestamp) { _, _ in
+                updateInterfaceAngle()
                 processFrame()
             }
+    }
+
+    private func updateInterfaceAngle() {
+        guard #available(iOS 27, *), let angle = session?.viewRotationAngle else {
+            return
+        }
+        if interfaceAngle != angle {
+            interfaceAngle = angle
+        }
+        if orientation == .fixed, pinnedAngle == nil {
+            pinnedAngle = angle
+        }
     }
 
     private func processFrame() {
         guard let frame, let textureCache else {
             return
         }
+        let viewportSize = containerSize
         guard viewportSize.width > 0, viewportSize.height > 0 else {
             return
         }
@@ -172,7 +205,8 @@ private struct ARKitFrameModifier: ViewModifier {
         CVMetalTextureCacheFlush(textureCache, 0)
 
         let displayTransform: CGAffineTransform
-        if #available(iOS 27, *), let viewRotationAngle = session?.viewRotationAngle {
+        // With `.fixed` the content is drawn at its pinned angle; `FixedOrientationView` keeps it physically still.
+        if #available(iOS 27, *), let viewRotationAngle = (orientation == .fixed ? pinnedAngle : nil) ?? interfaceAngle {
             // The session measures the rotation of the layer the image is drawn on. Unlike an interface orientation
             // this stays correct when the camera and the display aren't in the usual relationship — such as on each
             // of iPhone Duo's displays.
@@ -180,7 +214,7 @@ private struct ARKitFrameModifier: ViewModifier {
             data.projectionMatrix = frame.camera.projectionMatrix(viewRotationAngle: viewRotationAngle, viewportSize: viewportSize, zNear: 0.01, zFar: 100.0)
             displayTransform = frame.displayTransform(viewRotationAngle: viewRotationAngle, viewportSize: viewportSize).inverted()
         } else {
-            displayTransform = applyInterfaceOrientation(frame: frame, to: &data)
+            displayTransform = applyInterfaceOrientation(frame: frame, viewportSize: viewportSize, to: &data)
         }
         let baseTexCoords: [CGPoint] = [CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1), CGPoint.zero, CGPoint(x: 1, y: 0)]
         data.textureCoordinates = baseTexCoords.map { SIMD2<Float>(Float($0.applying(displayTransform).x), Float($0.applying(displayTransform).y)) }
@@ -190,7 +224,7 @@ private struct ARKitFrameModifier: ViewModifier {
 
     /// Sets the camera matrices from the scene's interface orientation, and returns the inverted display transform.
     /// Used before iOS 27, or until the session reports a view rotation angle.
-    private func applyInterfaceOrientation(frame: ARFrame, to data: inout ARFrameData) -> CGAffineTransform {
+    private func applyInterfaceOrientation(frame: ARFrame, viewportSize: CGSize, to data: inout ARFrameData) -> CGAffineTransform {
         // Camera sensor is landscape, rotate to match screen orientation
         // effectiveGeometry replaces the deprecated UIWindowScene.interfaceOrientation.
         let interfaceOrientation = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.effectiveGeometry.interfaceOrientation ?? .portrait
@@ -251,7 +285,7 @@ public extension View {
     /// .arkit(frame: arSession.currentFrame, frameData: $frameData)
     /// ```
     func arkit(frame: ARFrame?, frameData: Binding<ARFrameData>) -> some View {
-        modifier(ARKitFrameModifier(session: nil, frame: frame, frameData: frameData))
+        modifier(ARKitFrameModifier(session: nil, frame: frame, frameData: frameData, orientation: .followsInterface))
     }
 
     /// Processes ARKit frames and extracts data for Metal rendering, orienting the camera with the session's view
@@ -266,8 +300,10 @@ public extension View {
     ///   - session: The session producing `frame`.
     ///   - frame: The current ARFrame from `session`.
     ///   - frameData: A binding to store the extracted frame data.
-    func arkit(session: ARSession, frame: ARFrame?, frameData: Binding<ARFrameData>) -> some View {
-        modifier(ARKitFrameModifier(session: session, frame: frame, frameData: frameData))
+    ///   - orientation: Whether the AR content rotates with the interface, or stays still while the interface rotates
+    ///     around it.
+    func arkit(session: ARSession, frame: ARFrame?, frameData: Binding<ARFrameData>, orientation: ARContentOrientation = .followsInterface) -> some View {
+        modifier(ARKitFrameModifier(session: session, frame: frame, frameData: frameData, orientation: orientation))
     }
 }
 #endif
