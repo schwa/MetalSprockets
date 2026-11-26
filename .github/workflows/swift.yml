@@ -15,11 +15,11 @@ jobs:
         run: swiftlint --strict
 
   build-and-test:
-    runs-on: xcode-27
+    runs-on: macos-26
     steps:
       - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
-          xcode-version: "27.2"
+          xcode-version: "26.6"
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Download MetalToolchain
         run: xcodebuild -downloadComponent MetalToolchain
