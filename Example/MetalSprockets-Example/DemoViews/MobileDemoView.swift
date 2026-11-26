@@ -41,7 +41,7 @@ struct MobileDemoView: View {
         NavigationStack {
             Group {
                 if isARMode {
-                    ARDemoView(frame: viewModel.currentFrame, frameData: $frameData)
+                    ARDemoView(session: viewModel.session, frame: viewModel.currentFrame, frameData: $frameData)
                 } else {
                     RenderDemoView()
                 }
@@ -76,6 +76,7 @@ struct MobileDemoView: View {
 
 /// Renders the demo cube composited over the ARKit camera feed.
 struct ARDemoView: View {
+    var session: ARSession
     var frame: ARFrame?
     @Binding var frameData: ARFrameData
 
@@ -107,12 +108,12 @@ struct ARDemoView: View {
         }
         // Stays attached in both states: the modifier is what turns ARKit frames into the textures the first branch
         // is waiting for.
-        .arkit(frame: frame, frameData: $frameData)
+        .arkit(session: session, frame: frame, frameData: $frameData)
     }
 }
 
 #Preview("AR, waiting for camera") {
     @Previewable @State var frameData = ARFrameData()
-    ARDemoView(frame: nil, frameData: $frameData)
+    ARDemoView(session: ARSession(), frame: nil, frameData: $frameData)
 }
 #endif

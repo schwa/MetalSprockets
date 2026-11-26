@@ -85,6 +85,9 @@ public struct ARFrameData {
 // MARK: - View Modifier
 
 private struct ARKitFrameModifier: ViewModifier {
+    /// When supplied, the session is told which layer shows the camera image, and its `viewRotationAngle` drives the
+    /// camera matrices. Without it the modifier falls back to the scene's interface orientation.
+    let session: ARSession?
     let frame: ARFrame?
     @Binding var frameData: ARFrameData
 
@@ -107,6 +110,11 @@ private struct ARKitFrameModifier: ViewModifier {
                 proxy.size
             } action: { size in
                 viewportSize = size
+            }
+            .background {
+                if let session {
+                    ARSessionViewLayerView(session: session)
+                }
             }
             .onAppear {
                 // Prefer the device from the environment so the textures live on the same device the RenderView
@@ -163,6 +171,26 @@ private struct ARKitFrameModifier: ViewModifier {
 
         CVMetalTextureCacheFlush(textureCache, 0)
 
+        let displayTransform: CGAffineTransform
+        if #available(iOS 27, *), let viewRotationAngle = session?.viewRotationAngle {
+            // The session measures the rotation of the layer the image is drawn on. Unlike an interface orientation
+            // this stays correct when the camera and the display aren't in the usual relationship — such as on each
+            // of iPhone Duo's displays.
+            data.viewMatrix = frame.camera.viewMatrix(viewRotationAngle: viewRotationAngle)
+            data.projectionMatrix = frame.camera.projectionMatrix(viewRotationAngle: viewRotationAngle, viewportSize: viewportSize, zNear: 0.01, zFar: 100.0)
+            displayTransform = frame.displayTransform(viewRotationAngle: viewRotationAngle, viewportSize: viewportSize).inverted()
+        } else {
+            displayTransform = applyInterfaceOrientation(frame: frame, to: &data)
+        }
+        let baseTexCoords: [CGPoint] = [CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1), CGPoint.zero, CGPoint(x: 1, y: 0)]
+        data.textureCoordinates = baseTexCoords.map { SIMD2<Float>(Float($0.applying(displayTransform).x), Float($0.applying(displayTransform).y)) }
+
+        frameData = data
+    }
+
+    /// Sets the camera matrices from the scene's interface orientation, and returns the inverted display transform.
+    /// Used before iOS 27, or until the session reports a view rotation angle.
+    private func applyInterfaceOrientation(frame: ARFrame, to data: inout ARFrameData) -> CGAffineTransform {
         // Camera sensor is landscape, rotate to match screen orientation
         // effectiveGeometry replaces the deprecated UIWindowScene.interfaceOrientation.
         let interfaceOrientation = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.effectiveGeometry.interfaceOrientation ?? .portrait
@@ -180,11 +208,25 @@ private struct ARKitFrameModifier: ViewModifier {
 
         data.projectionMatrix = frame.camera.projectionMatrix(for: interfaceOrientation, viewportSize: viewportSize, zNear: 0.01, zFar: 100.0)
 
-        let displayTransform = frame.displayTransform(for: interfaceOrientation, viewportSize: viewportSize).inverted()
-        let baseTexCoords: [CGPoint] = [CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1), CGPoint.zero, CGPoint(x: 1, y: 0)]
-        data.textureCoordinates = baseTexCoords.map { SIMD2<Float>(Float($0.applying(displayTransform).x), Float($0.applying(displayTransform).y)) }
+        return frame.displayTransform(for: interfaceOrientation, viewportSize: viewportSize).inverted()
+    }
+}
 
-        frameData = data
+/// An empty view, sized and placed like the AR content, whose layer is given to `ARSession.viewLayer`. The session
+/// needs a layer on screen where the camera image is shown before it can report `viewRotationAngle`.
+private struct ARSessionViewLayerView: UIViewRepresentable {
+    let session: ARSession
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        if #available(iOS 27, *) {
+            session.viewLayer = uiView.layer
+        }
     }
 }
 
@@ -209,7 +251,23 @@ public extension View {
     /// .arkit(frame: arSession.currentFrame, frameData: $frameData)
     /// ```
     func arkit(frame: ARFrame?, frameData: Binding<ARFrameData>) -> some View {
-        modifier(ARKitFrameModifier(frame: frame, frameData: frameData))
+        modifier(ARKitFrameModifier(session: nil, frame: frame, frameData: frameData))
+    }
+
+    /// Processes ARKit frames and extracts data for Metal rendering, orienting the camera with the session's view
+    /// rotation angle.
+    ///
+    /// Prefer this over ``arkit(frame:frameData:)``. On iOS 27 and later it registers this view as the session's
+    /// `viewLayer` and uses `ARSession.viewRotationAngle`, which is correct on devices where the camera and the
+    /// display aren't in the usual relationship, such as iPhone Duo. Earlier systems fall back to the interface
+    /// orientation.
+    ///
+    /// - Parameters:
+    ///   - session: The session producing `frame`.
+    ///   - frame: The current ARFrame from `session`.
+    ///   - frameData: A binding to store the extracted frame data.
+    func arkit(session: ARSession, frame: ARFrame?, frameData: Binding<ARFrameData>) -> some View {
+        modifier(ARKitFrameModifier(session: session, frame: frame, frameData: frameData))
     }
 }
 #endif
