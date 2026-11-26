@@ -265,9 +265,11 @@ private struct ARSessionViewLayerView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        #if compiler(>=6.4)
         if #available(iOS 27, *) {
             session.viewLayer = uiView.layer
         }
+        #endif
     }
 }
 
