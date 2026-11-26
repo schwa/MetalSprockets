@@ -153,6 +153,7 @@ private struct ARKitFrameModifier: ViewModifier {
     }
 
     private func updateInterfaceAngle() {
+        // swiftlint:disable:next number_separator
         #if canImport(UIKit, _version: 9127) // iOS 27 SDK; iOS 26.x SDKs ship UIKit 9126.x
         guard #available(iOS 27, *), let angle = session?.viewRotationAngle else {
             return
@@ -207,6 +208,7 @@ private struct ARKitFrameModifier: ViewModifier {
         CVMetalTextureCacheFlush(textureCache, 0)
 
         let displayTransform: CGAffineTransform
+        // swiftlint:disable:next number_separator
         #if canImport(UIKit, _version: 9127) // iOS 27 SDK
         // With `.fixed` the content is drawn at its pinned angle; `FixedOrientationView` keeps it physically still.
         if #available(iOS 27, *), let viewRotationAngle = (orientation == .fixed ? pinnedAngle : nil) ?? interfaceAngle {
@@ -264,6 +266,7 @@ private struct ARSessionViewLayerView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        // swiftlint:disable:next number_separator
         #if canImport(UIKit, _version: 9127) // iOS 27 SDK
         if #available(iOS 27, *) {
             session.viewLayer = uiView.layer
