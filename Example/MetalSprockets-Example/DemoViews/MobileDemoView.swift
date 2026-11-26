@@ -54,6 +54,9 @@ struct MobileDemoView: View {
                 }
             }
         }
+        // Rotating mid-session reorients the camera feed and the cube under the user, so AR keeps the interface in
+        // whichever orientation it started in.
+        .interfaceOrientationLocked(isARMode)
     }
 
     private func toggleARMode() {
@@ -70,6 +73,70 @@ struct MobileDemoView: View {
 
 #Preview {
     MobileDemoView()
+}
+
+// MARK: - Orientation lock
+
+extension View {
+    /// While `isLocked` is true, stops the interface rotating away from the orientation it's in.
+    func interfaceOrientationLocked(_ isLocked: Bool) -> some View {
+        background(InterfaceOrientationLockView(isLocked: isLocked))
+    }
+}
+
+/// Reaches the window this view is in, so the lock pins that scene's current orientation, and asks its root view
+/// controller to re-read the supported orientations from `AppDelegate`.
+private struct InterfaceOrientationLockView: UIViewRepresentable {
+    var isLocked: Bool
+
+    func makeUIView(context: Context) -> LockView {
+        let view = LockView()
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ view: LockView, context: Context) {
+        view.isLocked = isLocked
+    }
+
+    final class LockView: UIView {
+        var isLocked = false {
+            didSet {
+                if isLocked != oldValue {
+                    apply()
+                }
+            }
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            apply()
+        }
+
+        private func apply() {
+            guard let window else {
+                return
+            }
+            if isLocked, let orientation = window.windowScene?.effectiveGeometry.interfaceOrientation {
+                AppDelegate.orientationLock = UIInterfaceOrientationMask(orientation)
+            } else {
+                AppDelegate.orientationLock = nil
+            }
+            window.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        }
+    }
+}
+
+private extension UIInterfaceOrientationMask {
+    init(_ orientation: UIInterfaceOrientation) {
+        switch orientation {
+        case .portrait: self = .portrait
+        case .portraitUpsideDown: self = .portraitUpsideDown
+        case .landscapeLeft: self = .landscapeLeft
+        case .landscapeRight: self = .landscapeRight
+        default: self = .portrait
+        }
+    }
 }
 
 // MARK: - ARDemoView

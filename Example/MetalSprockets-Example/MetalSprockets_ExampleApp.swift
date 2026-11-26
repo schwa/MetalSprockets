@@ -12,8 +12,25 @@ class ImmersiveFrameTiming {
 }
 #endif
 
+#if os(iOS)
+/// The only UIKit hook a SwiftUI app has for limiting rotation: SwiftUI owns the root view controller, so its
+/// `supportedInterfaceOrientations` can't be overridden.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    /// When set, the only orientations the interface may rotate to. See `View.interfaceOrientationLocked(_:)`.
+    static var orientationLock: UIInterfaceOrientationMask?
+
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        // `.all` is narrowed by the orientations declared in the Info.plist.
+        Self.orientationLock ?? .all
+    }
+}
+#endif
+
 @main
 struct MetalSprockets_ExampleApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
     #if os(visionOS)
     @State private var immersiveFrameTiming = ImmersiveFrameTiming()
     #endif
