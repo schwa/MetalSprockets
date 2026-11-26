@@ -153,6 +153,8 @@ private struct ARKitFrameModifier: ViewModifier {
     }
 
     private func updateInterfaceAngle() {
+        // viewRotationAngle needs the iOS 27 SDK (Xcode 27 / Swift 6.4).
+        #if compiler(>=6.4)
         guard #available(iOS 27, *), let angle = session?.viewRotationAngle else {
             return
         }
@@ -162,6 +164,7 @@ private struct ARKitFrameModifier: ViewModifier {
         if orientation == .fixed, pinnedAngle == nil {
             pinnedAngle = angle
         }
+        #endif
     }
 
     private func processFrame() {
@@ -205,6 +208,7 @@ private struct ARKitFrameModifier: ViewModifier {
         CVMetalTextureCacheFlush(textureCache, 0)
 
         let displayTransform: CGAffineTransform
+        #if compiler(>=6.4)
         // With `.fixed` the content is drawn at its pinned angle; `FixedOrientationView` keeps it physically still.
         if #available(iOS 27, *), let viewRotationAngle = (orientation == .fixed ? pinnedAngle : nil) ?? interfaceAngle {
             // The session measures the rotation of the layer the image is drawn on. Unlike an interface orientation
@@ -216,6 +220,9 @@ private struct ARKitFrameModifier: ViewModifier {
         } else {
             displayTransform = applyInterfaceOrientation(frame: frame, viewportSize: viewportSize, to: &data)
         }
+        #else
+        displayTransform = applyInterfaceOrientation(frame: frame, viewportSize: viewportSize, to: &data)
+        #endif
         let baseTexCoords: [CGPoint] = [CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1), CGPoint.zero, CGPoint(x: 1, y: 0)]
         data.textureCoordinates = baseTexCoords.map { SIMD2<Float>(Float($0.applying(displayTransform).x), Float($0.applying(displayTransform).y)) }
 
